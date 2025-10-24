@@ -14,18 +14,21 @@ import {
   Home, 
   Package, 
   ClipboardList, 
-  Users, 
   TrendingUp,
   Settings,
   HelpCircle,
   Beaker,
+  LogOut,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { getUserDisplayName, getUserInitials } from "@/lib/authUtils";
 
 interface AppSidebarProps {
-  userRole?: "ecp" | "lab" | "supplier" | "engineer";
+  userRole?: "ecp" | "lab_tech" | "supplier" | "engineer";
 }
 
 const menuItems = {
@@ -35,7 +38,7 @@ const menuItems = {
     { title: "My Orders", url: "/ecp/orders", icon: ClipboardList },
     { title: "Returns", url: "/ecp/returns", icon: TrendingUp },
   ],
-  lab: [
+  lab_tech: [
     { title: "Dashboard", url: "/lab/dashboard", icon: Home },
     { title: "Order Queue", url: "/lab/queue", icon: ClipboardList },
     { title: "Production", url: "/lab/production", icon: Package },
@@ -56,14 +59,19 @@ const menuItems = {
 
 const roleLabels = {
   ecp: "Eye Care Professional",
-  lab: "Lab Technician",
+  lab_tech: "Lab Technician",
   supplier: "Supplier",
   engineer: "Principal Engineer",
 };
 
-export function AppSidebar({ userRole = "lab" }: AppSidebarProps) {
+export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
   const [location] = useLocation();
+  const { user } = useAuth();
   const items = menuItems[userRole];
+
+  const handleLogout = () => {
+    window.location.href = "/api/logout";
+  };
 
   return (
     <Sidebar>
@@ -130,17 +138,36 @@ export function AppSidebar({ userRole = "lab" }: AppSidebarProps) {
       </SidebarContent>
 
       <SidebarFooter className="p-4">
-        <div className="flex items-center gap-3 p-2 rounded-md hover-elevate">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-              {userRole === "ecp" ? "EC" : userRole === "lab" ? "LT" : userRole === "supplier" ? "SP" : "PE"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">Demo User</p>
-            <p className="text-xs text-muted-foreground truncate">user@example.com</p>
+        {user && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 p-2 rounded-md">
+              <Avatar className="h-8 w-8">
+                {user.profileImageUrl && <AvatarImage src={user.profileImageUrl} />}
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                  {getUserInitials(user)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate" data-testid="text-user-name">
+                  {getUserDisplayName(user)}
+                </p>
+                <p className="text-xs text-muted-foreground truncate" data-testid="text-user-email">
+                  {user.email || "No email"}
+                </p>
+              </div>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full justify-start"
+              onClick={handleLogout}
+              data-testid="button-logout-sidebar"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              <span>Logout</span>
+            </Button>
           </div>
-        </div>
+        )}
       </SidebarFooter>
     </Sidebar>
   );

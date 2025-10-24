@@ -3,42 +3,55 @@ import { OrderCard } from "@/components/OrderCard";
 import { SearchBar } from "@/components/SearchBar";
 import { Button } from "@/components/ui/button";
 import { Package, Clock, CheckCircle, AlertCircle, Plus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { useToast } from "@/hooks/use-toast";
+import type { OrderWithDetails } from "@shared/schema";
+
+interface OrderStats {
+  total: number;
+  pending: number;
+  inProduction: number;
+  completed: number;
+}
 
 export default function ECPDashboard() {
   const [searchValue, setSearchValue] = useState("");
+  const { toast } = useToast();
 
-  //todo: remove mock functionality
-  const recentOrders = [
-    {
-      orderId: "ORD-2024-1001",
-      patientName: "John Smith",
-      ecp: "Vision Care Center",
-      status: "in_production" as const,
-      orderDate: "2024-10-20",
-      lensType: "Progressive",
-      coating: "Anti-Reflective",
-    },
-    {
-      orderId: "ORD-2024-1002",
-      patientName: "Sarah Johnson",
-      ecp: "Eye Health Associates",
-      status: "quality_check" as const,
-      orderDate: "2024-10-21",
-      lensType: "Single Vision",
-      coating: "Blue Light Filter",
-    },
-    {
-      orderId: "ORD-2024-1003",
-      patientName: "Michael Chen",
-      ecp: "Clarity Optical",
-      status: "shipped" as const,
-      orderDate: "2024-10-19",
-      lensType: "Bifocal",
-      coating: "Scratch Resistant",
-    },
-  ];
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<OrderStats>({
+    queryKey: ["/api/stats"],
+  });
+
+  const { data: orders, isLoading: ordersLoading, error: ordersError } = useQuery<OrderWithDetails[]>({
+    queryKey: ["/api/orders"],
+  });
+
+  useEffect(() => {
+    if (statsError && isUnauthorizedError(statsError as Error)) {
+      toast({
+        title: "Session expired",
+        description: "Please log in again to continue.",
+        variant: "destructive",
+      });
+      window.location.href = "/api/login";
+    }
+  }, [statsError, toast]);
+
+  useEffect(() => {
+    if (ordersError && isUnauthorizedError(ordersError as Error)) {
+      toast({
+        title: "Session expired",
+        description: "Please log in again to continue.",
+        variant: "destructive",
+      });
+      window.location.href = "/api/login";
+    }
+  }, [ordersError, toast]);
+
+  const recentOrders = orders?.slice(0, 6) || [];
 
   return (
     <div className="space-y-6">
@@ -57,30 +70,36 @@ export default function ECPDashboard() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Orders"
-          value="127"
-          icon={Package}
-          trend={{ value: "+8 this week", isPositive: true }}
-        />
-        <StatCard
-          title="In Production"
-          value="12"
-          icon={Clock}
-        />
-        <StatCard
-          title="Completed"
-          value="98"
-          icon={CheckCircle}
-          trend={{ value: "+15.2% from last month", isPositive: true }}
-        />
-        <StatCard
-          title="Pending Review"
-          value="3"
-          icon={AlertCircle}
-        />
-      </div>
+      {statsLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-32 bg-card rounded-md animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatCard
+            title="Total Orders"
+            value={stats?.total.toString() || "0"}
+            icon={Package}
+          />
+          <StatCard
+            title="In Production"
+            value={stats?.inProduction.toString() || "0"}
+            icon={Clock}
+          />
+          <StatCard
+            title="Completed"
+            value={stats?.completed.toString() || "0"}
+            icon={CheckCircle}
+          />
+          <StatCard
+            title="Pending"
+            value={stats?.pending.toString() || "0"}
+            icon={AlertCircle}
+          />
+        </div>
+      )}
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -93,15 +112,43 @@ export default function ECPDashboard() {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {recentOrders.map((order) => (
-            <OrderCard
-              key={order.orderId}
-              {...order}
-              onViewDetails={() => console.log(`View details for ${order.orderId}`)}
-            />
-          ))}
-        </div>
+        {ordersLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-48 bg-card rounded-md animate-pulse" />
+            ))}
+          </div>
+        ) : recentOrders.length === 0 ? (
+          <div className="text-center py-12">
+            <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No orders yet</h3>
+            <p className="text-muted-foreground mb-4">
+              Get started by creating your first lens order.
+            </p>
+            <Link href="/ecp/new-order">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Order
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {recentOrders.map((order) => (
+              <OrderCard
+                key={order.id}
+                orderId={order.orderNumber}
+                patientName={order.patient.name}
+                ecp={order.ecp.organizationName || `${order.ecp.firstName} ${order.ecp.lastName}`}
+                status={order.status}
+                orderDate={new Date(order.orderDate).toISOString().split('T')[0]}
+                lensType={order.lensType}
+                coating={order.coating}
+                onViewDetails={() => console.log(`View details for ${order.id}`)}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

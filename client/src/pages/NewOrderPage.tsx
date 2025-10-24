@@ -13,6 +13,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+import { isUnauthorizedError } from "@/lib/authUtils";
 
 const steps = [
   { label: "Patient Info", description: "Basic details" },
@@ -23,6 +28,9 @@ const steps = [
 
 export default function NewOrderPage() {
   const [currentStep, setCurrentStep] = useState(0);
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  
   const [formData, setFormData] = useState({
     patientName: "",
     patientDOB: "",
@@ -42,12 +50,41 @@ export default function NewOrderPage() {
     notes: "",
   });
 
+  const createOrderMutation = useMutation({
+    mutationFn: async (data: Record<string, unknown>) => {
+      const response = await apiRequest("POST", "/api/orders", data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Order created successfully",
+        description: "Your lens order has been submitted.",
+      });
+      setLocation("/ecp/dashboard");
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Session expired",
+          description: "Please log in again to continue.",
+          variant: "destructive",
+        });
+        window.location.href = "/api/login";
+      } else {
+        toast({
+          title: "Failed to create order",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    },
+  });
+
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
-      console.log('Moving to step', currentStep + 1);
     } else {
-      console.log('Submitting order', formData);
+      handleSubmit();
     }
   };
 
@@ -55,6 +92,39 @@ export default function NewOrderPage() {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
+  };
+
+  const handleSubmit = () => {
+    if (!formData.patientName || !formData.lensType || !formData.lensMaterial || !formData.coating) {
+      toast({
+        title: "Missing required fields",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const orderData = {
+      patientName: formData.patientName,
+      patientDOB: formData.patientDOB || undefined,
+      odSphere: formData.odSphere || undefined,
+      odCylinder: formData.odCylinder || undefined,
+      odAxis: formData.odAxis || undefined,
+      odAdd: formData.odAdd || undefined,
+      osSphere: formData.osSphere || undefined,
+      osCylinder: formData.osCylinder || undefined,
+      osAxis: formData.osAxis || undefined,
+      osAdd: formData.osAdd || undefined,
+      pd: formData.pd || undefined,
+      lensType: formData.lensType,
+      lensMaterial: formData.lensMaterial,
+      coating: formData.coating,
+      frameType: formData.frameType || undefined,
+      notes: formData.notes || undefined,
+      status: "pending" as const,
+    };
+
+    createOrderMutation.mutate(orderData);
   };
 
   const updateFormData = (field: string, value: string) => {
@@ -174,7 +244,7 @@ export default function NewOrderPage() {
                       id="os-cylinder"
                       value={formData.osCylinder}
                       onChange={(e) => updateFormData("osCylinder", e.target.value)}
-                      placeholder="e.g., -1.00"
+                      placeholder="e.g., -0.50"
                       className="font-mono"
                       data-testid="input-os-cylinder"
                     />
@@ -185,7 +255,7 @@ export default function NewOrderPage() {
                       id="os-axis"
                       value={formData.osAxis}
                       onChange={(e) => updateFormData("osAxis", e.target.value)}
-                      placeholder="e.g., 175"
+                      placeholder="e.g., 90"
                       className="font-mono"
                       data-testid="input-os-axis"
                     />
@@ -211,7 +281,7 @@ export default function NewOrderPage() {
                   value={formData.pd}
                   onChange={(e) => updateFormData("pd", e.target.value)}
                   placeholder="e.g., 63"
-                  className="font-mono max-w-xs"
+                  className="font-mono max-w-32"
                   data-testid="input-pd"
                 />
               </div>
@@ -230,10 +300,10 @@ export default function NewOrderPage() {
                     <SelectValue placeholder="Select lens type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="single-vision">Single Vision</SelectItem>
-                    <SelectItem value="progressive">Progressive</SelectItem>
-                    <SelectItem value="bifocal">Bifocal</SelectItem>
-                    <SelectItem value="trifocal">Trifocal</SelectItem>
+                    <SelectItem value="Single Vision">Single Vision</SelectItem>
+                    <SelectItem value="Bifocal">Bifocal</SelectItem>
+                    <SelectItem value="Progressive">Progressive</SelectItem>
+                    <SelectItem value="Reading">Reading</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -245,13 +315,14 @@ export default function NewOrderPage() {
                   onValueChange={(value) => updateFormData("lensMaterial", value)}
                 >
                   <SelectTrigger id="lens-material" data-testid="select-lens-material">
-                    <SelectValue placeholder="Select lens material" />
+                    <SelectValue placeholder="Select material" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cr39">CR-39 (Plastic)</SelectItem>
-                    <SelectItem value="polycarbonate">Polycarbonate</SelectItem>
-                    <SelectItem value="high-index">High Index 1.67</SelectItem>
-                    <SelectItem value="trivex">Trivex</SelectItem>
+                    <SelectItem value="CR-39">CR-39 (Standard Plastic)</SelectItem>
+                    <SelectItem value="Polycarbonate">Polycarbonate</SelectItem>
+                    <SelectItem value="Trivex">Trivex</SelectItem>
+                    <SelectItem value="High-Index 1.67">High-Index 1.67</SelectItem>
+                    <SelectItem value="High-Index 1.74">High-Index 1.74</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -266,10 +337,12 @@ export default function NewOrderPage() {
                     <SelectValue placeholder="Select coating" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ar">Anti-Reflective</SelectItem>
-                    <SelectItem value="blue-light">Blue Light Filter</SelectItem>
-                    <SelectItem value="scratch">Scratch Resistant</SelectItem>
-                    <SelectItem value="premium">Premium Multi-Coat</SelectItem>
+                    <SelectItem value="None">None</SelectItem>
+                    <SelectItem value="Anti-Reflective">Anti-Reflective</SelectItem>
+                    <SelectItem value="Scratch Resistant">Scratch Resistant</SelectItem>
+                    <SelectItem value="Blue Light Filter">Blue Light Filter</SelectItem>
+                    <SelectItem value="Photochromic">Photochromic (Transitions)</SelectItem>
+                    <SelectItem value="Polarized">Polarized</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -284,99 +357,93 @@ export default function NewOrderPage() {
                     <SelectValue placeholder="Select frame type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="full-rim">Full Rim</SelectItem>
-                    <SelectItem value="semi-rimless">Semi-Rimless</SelectItem>
-                    <SelectItem value="rimless">Rimless</SelectItem>
+                    <SelectItem value="Full Rim">Full Rim</SelectItem>
+                    <SelectItem value="Semi-Rimless">Semi-Rimless</SelectItem>
+                    <SelectItem value="Rimless">Rimless</SelectItem>
+                    <SelectItem value="Sport">Sport</SelectItem>
+                    <SelectItem value="Safety">Safety</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="notes">Special Instructions</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => updateFormData("notes", e.target.value)}
-                  placeholder="Any special requirements or notes..."
-                  rows={3}
-                  data-testid="textarea-notes"
-                />
               </div>
             </div>
           )}
 
           {currentStep === 3 && (
             <div className="space-y-6">
-              <div className="rounded-md border border-border p-4 space-y-4">
-                <div>
-                  <h3 className="font-semibold mb-2">Patient Information</h3>
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">Name:</span>{" "}
-                    {formData.patientName || "Not provided"}
-                  </p>
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">DOB:</span>{" "}
-                    {formData.patientDOB || "Not provided"}
-                  </p>
+              <div>
+                <h3 className="font-semibold mb-2">Patient Information</h3>
+                <div className="text-sm space-y-1">
+                  <p><span className="text-muted-foreground">Name:</span> {formData.patientName}</p>
+                  {formData.patientDOB && <p><span className="text-muted-foreground">DOB:</span> {formData.patientDOB}</p>}
                 </div>
+              </div>
 
-                <div>
-                  <h3 className="font-semibold mb-2">Prescription</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="font-medium">OD (Right)</p>
-                      <p className="font-mono">
-                        SPH: {formData.odSphere || "--"} CYL: {formData.odCylinder || "--"} AXIS: {formData.odAxis || "--"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-medium">OS (Left)</p>
-                      <p className="font-mono">
-                        SPH: {formData.osSphere || "--"} CYL: {formData.osCylinder || "--"} AXIS: {formData.osAxis || "--"}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-sm mt-2">
-                    <span className="text-muted-foreground">PD:</span> {formData.pd || "--"} mm
-                  </p>
+              <div>
+                <h3 className="font-semibold mb-2">Prescription</h3>
+                <div className="text-sm font-mono space-y-1">
+                  {(formData.odSphere || formData.odCylinder || formData.odAxis || formData.odAdd) && (
+                    <p><span className="text-muted-foreground">OD:</span> SPH {formData.odSphere || "—"} CYL {formData.odCylinder || "—"} AXIS {formData.odAxis || "—"} ADD {formData.odAdd || "—"}</p>
+                  )}
+                  {(formData.osSphere || formData.osCylinder || formData.osAxis || formData.osAdd) && (
+                    <p><span className="text-muted-foreground">OS:</span> SPH {formData.osSphere || "—"} CYL {formData.osCylinder || "—"} AXIS {formData.osAxis || "—"} ADD {formData.osAdd || "—"}</p>
+                  )}
+                  {formData.pd && <p><span className="text-muted-foreground">PD:</span> {formData.pd}</p>}
                 </div>
+              </div>
 
-                <div>
-                  <h3 className="font-semibold mb-2">Lens Details</h3>
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">Type:</span>{" "}
-                    {formData.lensType || "Not selected"}
-                  </p>
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">Material:</span>{" "}
-                    {formData.lensMaterial || "Not selected"}
-                  </p>
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">Coating:</span>{" "}
-                    {formData.coating || "Not selected"}
-                  </p>
+              <div>
+                <h3 className="font-semibold mb-2">Lens Specifications</h3>
+                <div className="text-sm space-y-1">
+                  <p><span className="text-muted-foreground">Type:</span> {formData.lensType}</p>
+                  <p><span className="text-muted-foreground">Material:</span> {formData.lensMaterial}</p>
+                  <p><span className="text-muted-foreground">Coating:</span> {formData.coating}</p>
+                  {formData.frameType && <p><span className="text-muted-foreground">Frame:</span> {formData.frameType}</p>}
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="notes">Additional Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => updateFormData("notes", e.target.value)}
+                  placeholder="Any special instructions or notes..."
+                  rows={4}
+                  data-testid="textarea-notes"
+                />
               </div>
             </div>
           )}
+
+          <div className="flex justify-between pt-4">
+            <Button
+              variant="outline"
+              onClick={handleBack}
+              disabled={currentStep === 0}
+              data-testid="button-back"
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <Button
+              onClick={handleNext}
+              disabled={createOrderMutation.isPending}
+              data-testid="button-next"
+            >
+              {createOrderMutation.isPending ? (
+                <>Submitting...</>
+              ) : currentStep === steps.length - 1 ? (
+                <>Submit Order</>
+              ) : (
+                <>
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </>
+              )}
+            </Button>
+          </div>
         </CardContent>
       </Card>
-
-      <div className="flex justify-between">
-        <Button
-          variant="outline"
-          onClick={handleBack}
-          disabled={currentStep === 0}
-          data-testid="button-back"
-        >
-          <ChevronLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
-        <Button onClick={handleNext} data-testid="button-next">
-          {currentStep === steps.length - 1 ? "Submit Order" : "Next"}
-          {currentStep < steps.length - 1 && <ChevronRight className="h-4 w-4 ml-2" />}
-        </Button>
-      </div>
     </div>
   );
 }
