@@ -8,6 +8,15 @@ The application is built as a modern, cloud-native platform with a focus on data
 
 ## Recent Changes
 
+**October 26, 2025 - Phase 4 Complete: Settings Management System**
+- Created comprehensive settings database schema with `organizationSettings` and `userPreferences` tables
+- Implemented organization settings: company info, contact details, address, order configuration (prefix, lead times)
+- Built user preferences system: theme selection, language, email notification controls
+- Added role-based access control: organization settings restricted to lab staff, preferences available to all users
+- Created tabbed Settings UI with forms for organization and user preferences
+- Full CRUD API endpoints with Zod validation and proper authorization guards
+- End-to-end testing verified: settings persistence, role-based access, and UI data flow
+
 **October 26, 2025 - Phase 3 Complete: Customer Reference & PO Enhancement**
 - Added `customerReferenceNumber` field to order creation form (NewOrderPage) for better order tracking
 - Enhanced PO PDF generation to display supplier contact details (account number, email, phone)
