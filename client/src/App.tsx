@@ -14,6 +14,7 @@ import ECPDashboard from "@/pages/ECPDashboard";
 import LabDashboard from "@/pages/LabDashboard";
 import SupplierDashboard from "@/pages/SupplierDashboard";
 import NewOrderPage from "@/pages/NewOrderPage";
+import SettingsPage from "@/pages/SettingsPage";
 import { LogOut } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -160,12 +161,7 @@ function AuthenticatedApp() {
           </>
         )}
 
-        <Route path="/settings">
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-semibold">Settings</h2>
-            <p className="text-muted-foreground mt-2">User preferences and configuration</p>
-          </div>
-        </Route>
+        <Route path="/settings" component={SettingsPage} />
         <Route path="/help">
           <div className="text-center py-12">
             <h2 className="text-2xl font-semibold">Help & Documentation</h2>
