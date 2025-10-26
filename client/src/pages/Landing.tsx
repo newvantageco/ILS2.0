@@ -1,16 +1,28 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Glasses, Package, Users, TrendingUp, CheckCircle2, Zap, Shield, BarChart3 } from "lucide-react";
+import { Glasses, Package, Users, TrendingUp, CheckCircle2, Zap, Shield, BarChart3, Mail } from "lucide-react";
+import { useLocation } from "wouter";
+import { SiReplit } from "react-icons/si";
 
 export default function Landing() {
-  const handleLogin = () => {
+  const [, setLocation] = useLocation();
+
+  const handleReplitLogin = () => {
     window.location.href = "/api/login";
+  };
+
+  const handleEmailLogin = () => {
+    setLocation("/email-login");
+  };
+
+  const handleEmailSignup = () => {
+    setLocation("/email-signup");
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-background to-muted/20">
       <header className="border-b border-border backdrop-blur-sm bg-background/80 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4 gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
               <span className="text-primary-foreground font-bold text-xl">ILS</span>
@@ -20,9 +32,16 @@ export default function Landing() {
               <p className="text-xs text-muted-foreground">Enterprise Lens Management</p>
             </div>
           </div>
-          <Button onClick={handleLogin} size="lg" data-testid="button-login" className="shadow-md">
-            Sign In
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button onClick={handleEmailLogin} variant="outline" data-testid="button-email-login">
+              <Mail className="h-4 w-4 mr-2" />
+              Email Sign In
+            </Button>
+            <Button onClick={handleReplitLogin} data-testid="button-replit-login" className="shadow-md">
+              <SiReplit className="h-4 w-4 mr-2" />
+              Replit Sign In
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -42,14 +61,17 @@ export default function Landing() {
                 A unified platform for managing lens orders, production workflows, and quality control across eye care professionals, labs, and suppliers.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6">
-                <Button size="lg" onClick={handleLogin} data-testid="button-login-cta" className="shadow-lg text-lg px-8 h-12">
-                  Get Started
+                <Button size="lg" onClick={handleEmailSignup} data-testid="button-signup-cta" className="shadow-lg text-lg px-8 h-12">
+                  <Mail className="h-5 w-5 mr-2" />
+                  Sign Up with Email
                 </Button>
-                <Button size="lg" variant="outline" className="text-lg px-8 h-12" data-testid="button-learn-more" onClick={() => {
-                  document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
-                }}>
-                  Learn More
+                <Button size="lg" variant="outline" onClick={handleReplitLogin} className="text-lg px-8 h-12 shadow-md" data-testid="button-replit-cta">
+                  <SiReplit className="h-5 w-5 mr-2" />
+                  Sign Up with Replit
                 </Button>
+              </div>
+              <div className="text-sm text-muted-foreground pt-2">
+                Already have an account? <button onClick={handleEmailLogin} className="text-primary hover:underline font-medium" data-testid="link-email-login">Sign in with email</button> or <button onClick={handleReplitLogin} className="text-primary hover:underline font-medium" data-testid="link-replit-login">Replit</button>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-6 pt-8 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
@@ -187,9 +209,14 @@ export default function Landing() {
             <p className="text-lg text-muted-foreground">
               Join leading lens manufacturers and eye care professionals who trust ILS for their production management.
             </p>
-            <div className="pt-4">
-              <Button size="lg" onClick={handleLogin} className="shadow-lg text-lg px-10 h-12">
-                Get Started Today
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+              <Button size="lg" onClick={handleEmailSignup} className="shadow-lg text-lg px-10 h-12" data-testid="button-signup-bottom">
+                <Mail className="h-5 w-5 mr-2" />
+                Create Account
+              </Button>
+              <Button size="lg" variant="outline" onClick={handleReplitLogin} className="text-lg px-10 h-12 shadow-md" data-testid="button-replit-bottom">
+                <SiReplit className="h-5 w-5 mr-2" />
+                Sign In with Replit
               </Button>
             </div>
           </div>

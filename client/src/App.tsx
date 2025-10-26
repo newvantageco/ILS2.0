@@ -20,6 +20,8 @@ import SignupPage from "@/pages/SignupPage";
 import PendingApprovalPage from "@/pages/PendingApprovalPage";
 import AccountSuspendedPage from "@/pages/AccountSuspendedPage";
 import AdminDashboard from "@/pages/AdminDashboard";
+import EmailLoginPage from "@/pages/EmailLoginPage";
+import EmailSignupPage from "@/pages/EmailSignupPage";
 import { LogOut } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -63,6 +65,15 @@ function AppLayout({ children, userRole }: { children: React.ReactNode; userRole
 function AuthenticatedApp() {
   const { user, isLoading } = useAuth();
   const [location] = useLocation();
+
+  // Public routes (accessible without auth)
+  if (location === '/email-login') {
+    return <EmailLoginPage />;
+  }
+  
+  if (location === '/email-signup') {
+    return <EmailSignupPage />;
+  }
 
   if (isLoading) {
     return (

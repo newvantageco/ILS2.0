@@ -130,7 +130,18 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  // Check if user is authenticated via passport
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  // If this is a local email/password user, skip token refresh logic
+  if (user.local) {
+    return next();
+  }
+
+  // For Replit OAuth users, check and refresh tokens as needed
+  if (!user.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
