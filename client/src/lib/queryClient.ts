@@ -1,8 +1,14 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-async function throwIfResNotOk(res: Response) {
+async function throwIfResNotOk(res: Response, clearCacheOnAuthFailure = true) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
+    
+    // Clear all cached data on authorization failures to prevent showing PHI to unauthorized users
+    if (clearCacheOnAuthFailure && (res.status === 401 || res.status === 403)) {
+      queryClient.clear();
+    }
+    
     throw new Error(`${res.status}: ${text}`);
   }
 }
