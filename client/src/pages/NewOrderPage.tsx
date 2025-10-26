@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -57,6 +57,7 @@ export default function NewOrderPage() {
       return await response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
       toast({
         title: "Order created successfully",
         description: "Your lens order has been submitted.",

@@ -100,12 +100,7 @@ function AuthenticatedApp() {
           <>
             <Route path="/ecp/dashboard" component={ECPDashboard} />
             <Route path="/ecp/new-order" component={NewOrderPage} />
-            <Route path="/ecp/orders">
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-semibold">My Orders</h2>
-                <p className="text-muted-foreground mt-2">Order history will be displayed here</p>
-              </div>
-            </Route>
+            <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/returns">
               <div className="text-center py-12">
                 <h2 className="text-2xl font-semibold">Returns Management</h2>
