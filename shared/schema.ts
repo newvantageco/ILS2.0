@@ -162,6 +162,31 @@ export const technicalDocuments = pgTable("technical_documents", {
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
 });
 
+export const organizationSettings = pgTable("organization_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyName: text("company_name"),
+  logoUrl: text("logo_url"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  address: jsonb("address"),
+  orderNumberPrefix: text("order_number_prefix").default("ORD"),
+  defaultLeadTimeDays: integer("default_lead_time_days").default(7),
+  enableEmailNotifications: jsonb("enable_email_notifications").default(sql`'{"orderReceived": true, "orderShipped": true, "poCreated": true}'::jsonb`),
+  businessHours: jsonb("business_hours"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  updatedById: varchar("updated_by_id").references(() => users.id),
+});
+
+export const userPreferences = pgTable("user_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique().references(() => users.id),
+  theme: text("theme").default("light"),
+  language: text("language").default("en"),
+  emailNotifications: jsonb("email_notifications").default(sql`'{"orderUpdates": true, "systemAlerts": true}'::jsonb`),
+  dashboardLayout: jsonb("dashboard_layout"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const upsertUserSchema = createInsertSchema(users);
 export const insertPatientSchema = createInsertSchema(patients).omit({
   id: true,
@@ -236,6 +261,26 @@ export const insertSupplierSchema = z.object({
 
 export const updateSupplierSchema = insertSupplierSchema.partial();
 
+export const updateOrganizationSettingsSchema = createInsertSchema(organizationSettings).omit({
+  id: true,
+  updatedAt: true,
+  updatedById: true,
+}).extend({
+  address: z.object({
+    street: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zipCode: z.string().optional(),
+    country: z.string().optional(),
+  }).optional(),
+});
+
+export const updateUserPreferencesSchema = createInsertSchema(userPreferences).omit({
+  id: true,
+  userId: true,
+  updatedAt: true,
+});
+
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
 
@@ -293,3 +338,9 @@ export type TechnicalDocumentWithSupplier = TechnicalDocument & {
 
 export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
 export type UpdateSupplier = z.infer<typeof updateSupplierSchema>;
+
+export type UpdateOrganizationSettings = z.infer<typeof updateOrganizationSettingsSchema>;
+export type OrganizationSettings = typeof organizationSettings.$inferSelect;
+
+export type UpdateUserPreferences = z.infer<typeof updateUserPreferencesSchema>;
+export type UserPreferences = typeof userPreferences.$inferSelect;
