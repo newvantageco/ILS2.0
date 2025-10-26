@@ -14,7 +14,8 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-export const userRoleEnum = pgEnum("user_role", ["ecp", "lab_tech", "engineer", "supplier"]);
+export const userRoleEnum = pgEnum("user_role", ["ecp", "lab_tech", "engineer", "supplier", "admin"]);
+export const accountStatusEnum = pgEnum("account_status", ["pending", "active", "suspended"]);
 export const orderStatusEnum = pgEnum("order_status", [
   "pending",
   "in_production",
@@ -56,6 +57,8 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: userRoleEnum("role"),
+  accountStatus: accountStatusEnum("account_status").default("pending").notNull(),
+  statusReason: text("status_reason"),
   organizationName: text("organization_name"),
   accountNumber: text("account_number"),
   contactEmail: text("contact_email"),
