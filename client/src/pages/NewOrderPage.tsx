@@ -43,6 +43,7 @@ export default function NewOrderPage() {
     osAxis: "",
     osAdd: "",
     pd: "",
+    traceFileUrl: "",
     lensType: "",
     lensMaterial: "",
     coating: "",
@@ -116,6 +117,7 @@ export default function NewOrderPage() {
       osAxis: formData.osAxis || undefined,
       osAdd: formData.osAdd || undefined,
       pd: formData.pd || undefined,
+      traceFileUrl: formData.traceFileUrl || undefined,
       lensType: formData.lensType,
       lensMaterial: formData.lensMaterial,
       coating: formData.coating,
@@ -284,6 +286,26 @@ export default function NewOrderPage() {
                   className="font-mono max-w-32"
                   data-testid="input-pd"
                 />
+              </div>
+
+              <div className="pt-4 border-t">
+                <h3 className="font-semibold mb-2">Digital Trace File (Optional)</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Upload a digital trace file from your edging system for precision frame measurements.
+                </p>
+                <div>
+                  <Label htmlFor="trace-file">Trace File URL</Label>
+                  <Input
+                    id="trace-file"
+                    value={formData.traceFileUrl}
+                    onChange={(e) => updateFormData("traceFileUrl", e.target.value)}
+                    placeholder="https://example.com/trace-files/trace123.xml"
+                    data-testid="input-trace-file"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter the URL of the uploaded trace file (OMA, XML, or CSV format).
+                  </p>
+                </div>
               </div>
             </div>
           )}
