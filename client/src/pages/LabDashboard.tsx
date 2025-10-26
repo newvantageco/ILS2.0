@@ -4,9 +4,11 @@ import { SearchBar } from "@/components/SearchBar";
 import { FilterBar } from "@/components/FilterBar";
 import { CreatePurchaseOrderDialog } from "@/components/CreatePurchaseOrderDialog";
 import { ShipOrderDialog } from "@/components/ShipOrderDialog";
+import { SuppliersTable } from "@/components/SuppliersTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, Clock, CheckCircle, TrendingUp, Printer, Mail } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -165,139 +167,171 @@ export default function LabDashboard() {
         </p>
       </div>
 
-      {statsLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-card rounded-md animate-pulse" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            title="Total Orders"
-            value={stats?.total.toString() || "0"}
-            icon={Package}
-          />
-          <StatCard
-            title="In Production"
-            value={stats?.inProduction.toString() || "0"}
-            icon={Clock}
-          />
-          <StatCard
-            title="Completed Today"
-            value={completedToday.toString()}
-            icon={CheckCircle}
-          />
-          <StatCard
-            title="Efficiency Rate"
-            value={`${efficiencyRate}%`}
-            icon={TrendingUp}
-          />
-        </div>
-      )}
+      <Tabs defaultValue="orders" className="w-full">
+        <TabsList>
+          <TabsTrigger value="orders" data-testid="tab-orders">Orders</TabsTrigger>
+          <TabsTrigger value="purchase-orders" data-testid="tab-purchase-orders">Purchase Orders</TabsTrigger>
+          <TabsTrigger value="suppliers" data-testid="tab-suppliers">Suppliers</TabsTrigger>
+        </TabsList>
 
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row gap-4 items-start">
-          <SearchBar
-            value={searchValue}
-            onChange={setSearchValue}
-            placeholder="Search orders, patients, or ECPs..."
-          />
-          <CreatePurchaseOrderDialog />
-        </div>
+        <TabsContent value="orders" className="space-y-6 mt-6">
+          {statsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-32 bg-card rounded-md animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <StatCard
+                title="Total Orders"
+                value={stats?.total.toString() || "0"}
+                icon={Package}
+              />
+              <StatCard
+                title="In Production"
+                value={stats?.inProduction.toString() || "0"}
+                icon={Clock}
+              />
+              <StatCard
+                title="Completed Today"
+                value={completedToday.toString()}
+                icon={CheckCircle}
+              />
+              <StatCard
+                title="Efficiency Rate"
+                value={`${efficiencyRate}%`}
+                icon={TrendingUp}
+              />
+            </div>
+          )}
 
-        <FilterBar
-          statusFilter={statusFilter}
-          onStatusChange={setStatusFilter}
-          ecpFilter={ecpFilter}
-          onEcpChange={setEcpFilter}
-          onClearFilters={() => {
-            setStatusFilter("");
-            setEcpFilter("");
-          }}
-        />
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4 items-start">
+              <SearchBar
+                value={searchValue}
+                onChange={setSearchValue}
+                placeholder="Search orders, patients, or ECPs..."
+              />
+              <CreatePurchaseOrderDialog />
+            </div>
 
-        {ordersLoading ? (
-          <div className="h-96 bg-card rounded-md animate-pulse" />
-        ) : tableOrders.length === 0 ? (
-          <div className="text-center py-12">
-            <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No orders found</h3>
-            <p className="text-muted-foreground">
-              {searchValue || statusFilter 
-                ? "Try adjusting your search or filters." 
-                : "Orders will appear here once they are created."}
-            </p>
+            <FilterBar
+              statusFilter={statusFilter}
+              onStatusChange={setStatusFilter}
+              ecpFilter={ecpFilter}
+              onEcpChange={setEcpFilter}
+              onClearFilters={() => {
+                setStatusFilter("");
+                setEcpFilter("");
+              }}
+            />
+
+            {ordersLoading ? (
+              <div className="h-96 bg-card rounded-md animate-pulse" />
+            ) : tableOrders.length === 0 ? (
+              <div className="text-center py-12">
+                <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No orders found</h3>
+                <p className="text-muted-foreground">
+                  {searchValue || statusFilter 
+                    ? "Try adjusting your search or filters." 
+                    : "Orders will appear here once they are created."}
+                </p>
+              </div>
+            ) : (
+              <OrderTable
+                orders={tableOrders}
+                onViewDetails={(id) => console.log(`View details for ${id}`)}
+                onUpdateStatus={handleUpdateStatus}
+                onShipOrder={handleShipOrder}
+              />
+            )}
           </div>
-        ) : (
-          <OrderTable
-            orders={tableOrders}
-            onViewDetails={(id) => console.log(`View details for ${id}`)}
-            onUpdateStatus={handleUpdateStatus}
-            onShipOrder={handleShipOrder}
-          />
-        )}
-      </div>
+        </TabsContent>
 
-      {purchaseOrders && purchaseOrders.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Purchase Orders</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>PO Number</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {purchaseOrders.slice(0, 5).map((po) => (
-                  <TableRow key={po.id} data-testid={`row-po-${po.id}`}>
-                    <TableCell className="font-medium" data-testid={`text-po-number-${po.id}`}>
-                      {po.poNumber}
-                    </TableCell>
-                    <TableCell data-testid={`text-po-supplier-${po.id}`}>
-                      {po.supplier.organizationName || 'Unknown'}
-                    </TableCell>
-                    <TableCell data-testid={`text-po-date-${po.id}`}>
-                      {format(new Date(po.createdAt), "MMM dd, yyyy")}
-                    </TableCell>
-                    <TableCell data-testid={`text-po-total-${po.id}`}>
-                      ${parseFloat(po.totalAmount || "0").toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handlePrintPO(po.id)}
-                          data-testid={`button-print-po-${po.id}`}
-                        >
-                          <Printer className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => emailPOMutation.mutate(po.id)}
-                          disabled={emailPOMutation.isPending}
-                          data-testid={`button-email-po-${po.id}`}
-                        >
-                          <Mail className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+        <TabsContent value="purchase-orders" className="space-y-6 mt-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Manage purchase orders and send them to suppliers</p>
+            <CreatePurchaseOrderDialog />
+          </div>
+          
+          {purchaseOrders && purchaseOrders.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Purchase Orders</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>PO Number</TableHead>
+                      <TableHead>Supplier</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {purchaseOrders.map((po) => (
+                      <TableRow key={po.id} data-testid={`row-po-${po.id}`}>
+                        <TableCell className="font-medium" data-testid={`text-po-number-${po.id}`}>
+                          {po.poNumber}
+                        </TableCell>
+                        <TableCell data-testid={`text-po-supplier-${po.id}`}>
+                          {po.supplier.organizationName || 'Unknown'}
+                        </TableCell>
+                        <TableCell data-testid={`text-po-date-${po.id}`}>
+                          {format(new Date(po.createdAt), "MMM dd, yyyy")}
+                        </TableCell>
+                        <TableCell data-testid={`text-po-total-${po.id}`}>
+                          ${parseFloat(po.totalAmount || "0").toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handlePrintPO(po.id)}
+                              data-testid={`button-print-po-${po.id}`}
+                            >
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => emailPOMutation.mutate(po.id)}
+                              disabled={emailPOMutation.isPending}
+                              data-testid={`button-email-po-${po.id}`}
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center">
+                  <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Purchase Orders</h3>
+                  <p className="text-muted-foreground mb-4">Create your first purchase order to get started.</p>
+                  <CreatePurchaseOrderDialog />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="suppliers" className="space-y-6 mt-6">
+          <SuppliersTable />
+        </TabsContent>
+      </Tabs>
 
       <ShipOrderDialog
         orderId={selectedOrderId}
