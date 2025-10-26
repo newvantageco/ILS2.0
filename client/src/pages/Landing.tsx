@@ -45,7 +45,9 @@ export default function Landing() {
                 <Button size="lg" onClick={handleLogin} data-testid="button-login-cta" className="shadow-lg text-lg px-8 h-12">
                   Get Started
                 </Button>
-                <Button size="lg" variant="outline" className="text-lg px-8 h-12">
+                <Button size="lg" variant="outline" className="text-lg px-8 h-12" data-testid="button-learn-more" onClick={() => {
+                  document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                }}>
                   Learn More
                 </Button>
               </div>
@@ -67,7 +69,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="py-20 px-6 bg-muted/30">
+        <section id="features" className="py-20 px-6 bg-muted/30">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-16">
               <h3 className="text-3xl md:text-4xl font-bold mb-4">Built for Every Role</h3>
@@ -206,9 +208,9 @@ export default function Landing() {
               </span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-foreground transition-colors">Terms of Service</a>
-              <a href="#" className="hover:text-foreground transition-colors">Contact</a>
+              <a href="#" className="hover:text-foreground transition-colors" data-testid="link-privacy">Privacy Policy</a>
+              <a href="#" className="hover:text-foreground transition-colors" data-testid="link-terms">Terms of Service</a>
+              <a href="#" className="hover:text-foreground transition-colors" data-testid="link-contact">Contact</a>
             </div>
           </div>
         </div>

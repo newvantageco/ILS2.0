@@ -27,10 +27,13 @@ export default function SignupPage() {
       const response = await apiRequest("POST", "/api/auth/complete-signup", data);
       return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      const isAdmin = formData.role === "admin";
       toast({
         title: "Account created successfully",
-        description: "Your account is pending approval. You'll be notified once it's activated.",
+        description: isAdmin 
+          ? "Your admin account has been activated. Redirecting to dashboard..."
+          : "Your account is pending approval. You'll be notified once it's activated.",
       });
       setLocation("/");
     },
