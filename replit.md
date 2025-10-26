@@ -8,6 +8,19 @@ The application is built as a modern, cloud-native platform with a focus on data
 
 ## Recent Changes
 
+**October 26, 2025 - Phase 6 Complete: OMA File Support for Lab Workflows**
+- Extended orders schema with OMA file storage: omaFileContent (text), omaFilename (varchar), omaParsedData (JSONB)
+- Created OMA parser utility (`shared/omaParser.ts`) to extract prescription data and frame tracing from text-based OMA files
+- Built OMAFileUpload component with drag-and-drop support and real-time parsing preview
+- Created OMAViewer component to display parsed prescription, frame measurements, and tracing data
+- Integrated OMA upload into NewOrderPage (step 2: Lens & Frame) with inline preview
+- Built comprehensive OrderDetailsPage showing all order information with OMA viewer when present
+- Added role-based back navigation (ECP → /ecp/dashboard, Lab → /lab/dashboard)
+- Updated ECPDashboard and LabDashboard to navigate to /order/:id on "View details" click
+- API endpoints: PATCH /api/orders/:id/oma (upload), GET /api/orders/:id/oma (download), DELETE /api/orders/:id/oma (remove)
+- Order creation endpoint automatically parses and stores OMA files when provided
+- End-to-end flow: order creation with OMA → storage → viewing works seamlessly
+
 **October 26, 2025 - Phase 5 Complete: User Signup & Admin Dashboard**
 - Added "admin" role to user_role enum and account_status field (pending/active/suspended)
 - Built SignupPage for new users to register with role selection (ecp/lab_tech/engineer/supplier) and organization details
