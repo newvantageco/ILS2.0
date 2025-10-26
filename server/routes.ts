@@ -693,7 +693,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         po.supplier.email,
         po.supplier.organizationName || 'Supplier',
         po.poNumber,
-        pdfBuffer
+        pdfBuffer,
+        po.supplier.accountNumber || undefined
       );
 
       res.json({ message: "Email sent successfully" });

@@ -42,7 +42,8 @@ export async function sendPurchaseOrderEmail(
   supplierEmail: string,
   supplierName: string,
   poNumber: string,
-  pdfBuffer: Buffer
+  pdfBuffer: Buffer,
+  accountNumber?: string
 ): Promise<void> {
   const { client, fromEmail } = await getResendClient();
 
@@ -54,6 +55,7 @@ export async function sendPurchaseOrderEmail(
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #A76111;">New Purchase Order</h2>
         <p>Dear ${supplierName},</p>
+        ${accountNumber ? `<p style="color: #666; font-size: 14px;">Account Number: <strong>${accountNumber}</strong></p>` : ''}
         <p>Please find attached Purchase Order <strong>${poNumber}</strong> from Integrated Lens System.</p>
         <p>Please review the attached PDF and confirm receipt at your earliest convenience.</p>
         <p>If you have any questions, please contact us.</p>
