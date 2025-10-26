@@ -45,6 +45,7 @@ export interface IStorage {
     offset?: number;
   }): Promise<OrderWithDetails[]>;
   updateOrderStatus(id: string, status: Order["status"]): Promise<Order | undefined>;
+  markOrderAsShipped(id: string, trackingNumber: string): Promise<OrderWithDetails | undefined>;
   getOrderStats(ecpId?: string): Promise<{
     total: number;
     pending: number;
@@ -59,6 +60,7 @@ export interface IStorage {
 
   createPurchaseOrder(po: InsertPurchaseOrder & { lineItems: InsertPOLineItem[] }, createdById: string): Promise<PurchaseOrderWithDetails>;
   getPurchaseOrder(id: string): Promise<PurchaseOrderWithDetails | undefined>;
+  getPurchaseOrderById(id: string): Promise<PurchaseOrderWithDetails | undefined>;
   getPurchaseOrders(filters?: {
     supplierId?: string;
     status?: string;
@@ -219,6 +221,22 @@ export class DbStorage implements IStorage {
     return order;
   }
 
+  async markOrderAsShipped(id: string, trackingNumber: string): Promise<OrderWithDetails | undefined> {
+    const [order] = await db
+      .update(orders)
+      .set({ 
+        status: "shipped",
+        trackingNumber,
+        shippedAt: new Date(),
+      })
+      .where(eq(orders.id, id))
+      .returning();
+    
+    if (!order) return undefined;
+
+    return await this.getOrder(id);
+  }
+
   async getOrderStats(ecpId?: string): Promise<{
     total: number;
     pending: number;
@@ -346,6 +364,10 @@ export class DbStorage implements IStorage {
       },
       lineItems: items,
     };
+  }
+
+  async getPurchaseOrderById(id: string): Promise<PurchaseOrderWithDetails | undefined> {
+    return await this.getPurchaseOrder(id);
   }
 
   async getPurchaseOrders(filters: {

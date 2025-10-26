@@ -12,6 +12,9 @@ import {
   updatePOStatusSchema
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
+import { generatePurchaseOrderPDF } from "./pdfService";
+import { sendPurchaseOrderEmail, sendShipmentNotificationEmail } from "./emailService";
+import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
@@ -506,6 +509,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting technical document:", error);
       res.status(500).json({ message: "Failed to delete technical document" });
+    }
+  });
+
+  // PDF and Email routes
+  app.get('/api/purchase-orders/:id/pdf', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer' && user.role !== 'supplier')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const po = await storage.getPurchaseOrderById(req.params.id);
+      
+      if (!po) {
+        return res.status(404).json({ message: "Purchase order not found" });
+      }
+
+      // Suppliers can only access their own POs
+      if (user.role === 'supplier' && po.supplierId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const pdfDoc = generatePurchaseOrderPDF(po as any);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="PO-${po.poNumber}.pdf"`);
+      
+      pdfDoc.pipe(res);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      res.status(500).json({ message: "Failed to generate PDF" });
+    }
+  });
+
+  app.post('/api/purchase-orders/:id/email', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
+        return res.status(403).json({ message: "Only lab staff can email purchase orders" });
+      }
+
+      const po = await storage.getPurchaseOrderById(req.params.id);
+      
+      if (!po) {
+        return res.status(404).json({ message: "Purchase order not found" });
+      }
+
+      if (!po.supplier.email) {
+        return res.status(400).json({ message: "Supplier email not found" });
+      }
+
+      // Generate PDF as buffer
+      const pdfDoc = generatePurchaseOrderPDF(po as any);
+      const chunks: Buffer[] = [];
+      
+      pdfDoc.on('data', (chunk) => chunks.push(chunk));
+      
+      await new Promise<void>((resolve, reject) => {
+        pdfDoc.on('end', () => resolve());
+        pdfDoc.on('error', reject);
+      });
+
+      const pdfBuffer = Buffer.concat(chunks);
+
+      await sendPurchaseOrderEmail(
+        po.supplier.email,
+        po.supplier.organizationName || 'Supplier',
+        po.poNumber,
+        pdfBuffer
+      );
+
+      res.json({ message: "Email sent successfully" });
+    } catch (error) {
+      console.error("Error sending email:", error);
+      res.status(500).json({ message: "Failed to send email" });
+    }
+  });
+
+  const markOrderShippedSchema = z.object({
+    trackingNumber: z.string().min(1, "Tracking number is required"),
+  });
+
+  app.patch('/api/orders/:id/ship', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
+        return res.status(403).json({ message: "Only lab staff can mark orders as shipped" });
+      }
+
+      const validation = markOrderShippedSchema.safeParse(req.body);
+      if (!validation.success) {
+        const validationError = fromZodError(validation.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+
+      const order = await storage.markOrderAsShipped(req.params.id, validation.data.trackingNumber);
+      
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      // Send email to ECP
+      const ecp = await storage.getUser(order.ecpId);
+      if (ecp && ecp.email) {
+        await sendShipmentNotificationEmail(
+          ecp.email,
+          `${ecp.firstName || ''} ${ecp.lastName || ''}`.trim() || 'Customer',
+          order.orderNumber,
+          order.patient.name,
+          validation.data.trackingNumber
+        );
+      }
+
+      res.json(order);
+    } catch (error) {
+      console.error("Error marking order as shipped:", error);
+      res.status(500).json({ message: "Failed to mark order as shipped" });
     }
   });
 
