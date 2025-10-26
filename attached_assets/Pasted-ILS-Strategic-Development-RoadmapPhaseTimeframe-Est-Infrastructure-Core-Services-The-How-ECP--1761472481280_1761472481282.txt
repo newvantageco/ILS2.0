@@ -1,0 +1,32 @@
+ILS Strategic Development RoadmapPhaseTimeframe (Est.)Infrastructure & Core Services (The "How")ECP Gateway (Customer Portal)Lab Core (Internal Hub)Vendor Connect (Supplier Portal)Phase 0: Foundation & DiscoveryMonths 1-3• Team Assembled (Design, Dev, DevOps)
+• Cloud Infra Setup (AWS/GCP)
+• Git Repo & CI/CD pipeline established
+• Core Auth Service built (secure login)• UI/UX Mockups & Prototypes
+• Pilot ECP Workshops
+• Finalized MVP feature backlog• Database Schema v1 designed & deployed (Orders, Users, Patients, Core Products)
+• Core API v1 built (auth, basic CRUD)• Supplier DB Schema designedPhase 1: Core Backbone (MVP)Months 4-6• Production PostgreSQL DB deployed
+• HIPAA-compliant logging & monitoring
+• Initial Deployment (v1.0)• LAUNCH: ECP Gateway v1.0
+• Secure ECP login
+• Validated Order Entry Form
+• Basic Order Status Tracking (read-only)• LAUNCH: Lab Core v1.0
+• Digital Job Tray (order queue)
+• Manual Status Update controls
+• Basic order search & view• (On Hold)Phase 2: Machine & Supplier IntegrationMonths 7-9• API endpoints for machine data ingestion
+• API endpoints for supplier POs
+• Refine DB for machine/material logs• Feature Add: Digital trace file uploads
+• Feature Add: "Difficult Dispense" consult log• LMS/LDS Integration (auto-calculation)
+• Machine Integration (Listen-only): Log job complete/error codes from generators & coaters• LAUNCH: Vendor Connect v1.0
+• Secure Supplier Login
+• Digital PO Management
+• Technical Data Library (spec uploads)Phase 3: The "Brain" & Quality LoopMonths 10-12• Data aggregation service for analytics
+• Secure API for ECP-Lab messaging• LAUNCH: ECP Gateway v2.0
+• Returns & Non-Adapt Module (captures structured data)
+• 2-Way Communication Log (linked to orders)• LAUNCH: Engineering Hub v1.0
+• RCA Workbench (analytics dashboard)
+• Digital Calibration & Maint. Tracker
+• Internal QA Failure Logging module• (On Hold - Focus on internal QA)Phase 4: Full Automation & InnovationMonth 13+• Refine APIs for 2-way machine control
+• Scalable R&D "sandbox" environment• Feature Add: "Pilot Product" ordering (for approved ECPs)• LAUNCH: Engineering Hub v2.0
+• R&D Pilot Module (tracks experimental jobs)
+• Machine Integration (2-Way): Push coating recipes, surfacing params• LAUNCH: Vendor Connect v2.0
+• Full SNCR Workflow (links internal QA failures to supplier material batches)Summary of First 90 Days (Phase 0)As your plan states, the immediate priority is Phase 0. My development squad and I will focus exclusively on:Workshops & Design: Finalizing the MVP backlog and producing high-fidelity, clickable prototypes for ECP and Lab portals.Infrastructure: Building the secure, scalable cloud environment on AWS/GCP.Database & API: Implementing the foundational database schema and the core authentication and order-submission API.This sets the stage for a rapid and successful Phase 1 (MVP) launch in the following quarter.
