@@ -19,6 +19,7 @@ import { fromZodError } from "zod-validation-error";
 import { generatePurchaseOrderPDF } from "./pdfService";
 import { sendPurchaseOrderEmail, sendShipmentNotificationEmail } from "./emailService";
 import { z } from "zod";
+import { parseOMAFile, isValidOMAFile } from "@shared/omaParser";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
@@ -241,6 +242,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching order:", error);
       res.status(500).json({ message: "Failed to fetch order" });
+    }
+  });
+
+  // OMA file upload endpoint
+  app.patch('/api/orders/:id/oma', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Only ECPs, lab techs, and engineers can upload OMA files
+      if (user.role !== 'ecp' && user.role !== 'lab_tech' && user.role !== 'engineer') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const order = await storage.getOrder(req.params.id);
+      
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      // ECPs can only upload to their own orders
+      if (user.role === 'ecp' && order.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { fileContent, filename } = req.body;
+      
+      if (!fileContent || !filename) {
+        return res.status(400).json({ message: "File content and filename are required" });
+      }
+
+      // Validate OMA file
+      if (!isValidOMAFile(fileContent)) {
+        return res.status(400).json({ message: "Invalid OMA file format" });
+      }
+
+      // Parse OMA file
+      const parsedData = parseOMAFile(fileContent);
+
+      // Update order with OMA file data
+      const updatedOrder = await storage.updateOrder(req.params.id, {
+        omaFileContent: fileContent,
+        omaFilename: filename,
+        omaParsedData: parsedData as any,
+      });
+
+      if (!updatedOrder) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      res.json(updatedOrder);
+    } catch (error) {
+      console.error("Error uploading OMA file:", error);
+      res.status(500).json({ message: "Failed to upload OMA file" });
+    }
+  });
+
+  // Get OMA file endpoint
+  app.get('/api/orders/:id/oma', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Only ECPs, lab techs, and engineers can access OMA files
+      if (user.role !== 'ecp' && user.role !== 'lab_tech' && user.role !== 'engineer') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const order = await storage.getOrder(req.params.id);
+      
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      // ECPs can only access their own orders
+      if (user.role === 'ecp' && order.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (!order.omaFileContent) {
+        return res.status(404).json({ message: "No OMA file attached to this order" });
+      }
+
+      // Return OMA file data
+      res.json({
+        filename: order.omaFilename,
+        content: order.omaFileContent,
+        parsedData: order.omaParsedData,
+      });
+    } catch (error) {
+      console.error("Error fetching OMA file:", error);
+      res.status(500).json({ message: "Failed to fetch OMA file" });
+    }
+  });
+
+  // Delete OMA file endpoint
+  app.delete('/api/orders/:id/oma', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Only ECPs, lab techs, and engineers can delete OMA files
+      if (user.role !== 'ecp' && user.role !== 'lab_tech' && user.role !== 'engineer') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const order = await storage.getOrder(req.params.id);
+      
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      // ECPs can only delete from their own orders
+      if (user.role === 'ecp' && order.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Remove OMA file data
+      const updatedOrder = await storage.updateOrder(req.params.id, {
+        omaFileContent: null,
+        omaFilename: null,
+        omaParsedData: null,
+      });
+
+      if (!updatedOrder) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      res.json({ message: "OMA file deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting OMA file:", error);
+      res.status(500).json({ message: "Failed to delete OMA file" });
     }
   });
 

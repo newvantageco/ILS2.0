@@ -305,6 +305,16 @@ export class DbStorage implements IStorage {
     return order;
   }
 
+  async updateOrder(id: string, updates: Partial<Order>): Promise<Order | undefined> {
+    const [order] = await db
+      .update(orders)
+      .set(updates)
+      .where(eq(orders.id, id))
+      .returning();
+    
+    return order;
+  }
+
   async markOrderAsShipped(id: string, trackingNumber: string): Promise<OrderWithDetails | undefined> {
     const [order] = await db
       .update(orders)
