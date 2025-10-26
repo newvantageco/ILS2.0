@@ -34,7 +34,7 @@ export default function NewOrderPage() {
   const [formData, setFormData] = useState({
     patientName: "",
     patientDOB: "",
-    customerReference: "",
+    customerReferenceNumber: "",
     odSphere: "",
     odCylinder: "",
     odAxis: "",
@@ -110,7 +110,7 @@ export default function NewOrderPage() {
     const orderData = {
       patientName: formData.patientName,
       patientDOB: formData.patientDOB || undefined,
-      customerReference: formData.customerReference || undefined,
+      customerReferenceNumber: formData.customerReferenceNumber || undefined,
       odSphere: formData.odSphere || undefined,
       odCylinder: formData.odCylinder || undefined,
       odAxis: formData.odAxis || undefined,
@@ -178,8 +178,8 @@ export default function NewOrderPage() {
                 <Label htmlFor="customer-reference">Customer Reference</Label>
                 <Input
                   id="customer-reference"
-                  value={formData.customerReference}
-                  onChange={(e) => updateFormData("customerReference", e.target.value)}
+                  value={formData.customerReferenceNumber}
+                  onChange={(e) => updateFormData("customerReferenceNumber", e.target.value)}
                   placeholder="Enter your internal reference number (optional)"
                   data-testid="input-customer-reference"
                 />
@@ -413,7 +413,7 @@ export default function NewOrderPage() {
                 <div className="text-sm space-y-1">
                   <p><span className="text-muted-foreground">Name:</span> {formData.patientName}</p>
                   {formData.patientDOB && <p><span className="text-muted-foreground">DOB:</span> {formData.patientDOB}</p>}
-                  {formData.customerReference && <p><span className="text-muted-foreground">Customer Reference:</span> {formData.customerReference}</p>}
+                  {formData.customerReferenceNumber && <p><span className="text-muted-foreground">Customer Reference:</span> {formData.customerReferenceNumber}</p>}
                 </div>
               </div>
 
