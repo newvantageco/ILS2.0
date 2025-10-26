@@ -159,10 +159,11 @@ export function CreatePurchaseOrderDialog() {
       notes: notes || null,
       totalAmount: total.toFixed(2),
       lineItems: lineItems.map((item) => ({
-        materialSKU: item.materialSKU,
+        itemName: item.materialSKU,
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
+        totalPrice: (item.quantity * parseFloat(item.unitPrice || "0")).toFixed(2),
       })),
     });
   };

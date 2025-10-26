@@ -224,7 +224,7 @@ export function ConsultLogManager() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
         <CardTitle>Lab Consultations</CardTitle>
-        {orders && orders.length > 0 && <CreateConsultDialog orders={orders} />}
+        <CreateConsultDialog orders={orders || []} />
       </CardHeader>
       <CardContent>
         {isLoading ? (

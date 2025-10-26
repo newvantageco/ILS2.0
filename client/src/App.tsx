@@ -160,18 +160,8 @@ function AuthenticatedApp() {
         {userRole === "supplier" && (
           <>
             <Route path="/supplier/dashboard" component={SupplierDashboard} />
-            <Route path="/supplier/orders">
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-semibold">Purchase Orders</h2>
-                <p className="text-muted-foreground mt-2">Complete PO management</p>
-              </div>
-            </Route>
-            <Route path="/supplier/library">
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-semibold">Technical Library</h2>
-                <p className="text-muted-foreground mt-2">Spec sheets and material documentation</p>
-              </div>
-            </Route>
+            <Route path="/supplier/orders" component={SupplierDashboard} />
+            <Route path="/supplier/library" component={SupplierDashboard} />
           </>
         )}
 
