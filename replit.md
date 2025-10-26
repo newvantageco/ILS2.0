@@ -8,6 +8,17 @@ The application is built as a modern, cloud-native platform with a focus on data
 
 ## Recent Changes
 
+**October 26, 2025 - Phase 5 Complete: User Signup & Admin Dashboard**
+- Added "admin" role to user_role enum and account_status field (pending/active/suspended)
+- Built SignupPage for new users to register with role selection (ecp/lab_tech/engineer/supplier) and organization details
+- Implemented PendingApprovalPage for users awaiting admin approval
+- Created AccountSuspendedPage displaying suspension reason for suspended accounts
+- Built comprehensive AdminDashboard with user statistics, searchable user table, and management actions
+- Admin features: approve pending users, suspend/activate accounts, change user roles (including admin promotion)
+- Full admin API endpoints with admin-only authorization guards (/api/admin/users, /api/admin/stats)
+- App.tsx routing enforces account status checks before role-based dashboard access
+- End-to-end testing validated complete signup flow, role changes, and account status workflows
+
 **October 26, 2025 - Phase 4 Complete: Settings Management System**
 - Created comprehensive settings database schema with `organizationSettings` and `userPreferences` tables
 - Implemented organization settings: company info, contact details, address, order configuration (prefix, lead times)
@@ -96,10 +107,13 @@ Preferred communication style: Simple, everyday language.
 - Memoized OIDC configuration for performance
 
 **Role-Based Access Control:**
-- Four user roles: `ecp`, `lab_tech`, `engineer`, `supplier`
+- Five user roles: `ecp`, `lab_tech`, `engineer`, `supplier`, `admin`
+- Account status controls access: `pending` (awaiting approval), `active` (full access), `suspended` (blocked)
+- New users default to pending status and must be approved by admin before accessing the system
 - Role stored in user profile and enforced in API endpoints
-- Frontend routing and UI adapted based on user role
+- Frontend routing and UI adapted based on user role and account status
 - Middleware `isAuthenticated` ensures protected routes require valid sessions
+- Admin-only endpoints enforce admin role requirement for user management operations
 
 **Session Security:**
 - Sessions stored in PostgreSQL for persistence and scalability
@@ -115,11 +129,13 @@ Preferred communication style: Simple, everyday language.
 - **Connection Pooling**: Neon serverless with WebSocket support for serverless environments
 
 **Schema Design:**
-- `users`: User profiles with role, organization, Replit Auth fields, and supplier contact information (accountNumber, contactEmail, contactPhone, address as JSONB)
+- `users`: User profiles with role, organization, account status, Replit Auth fields, and supplier contact information (accountNumber, contactEmail, contactPhone, address as JSONB, statusReason for suspensions)
 - `patients`: Patient records linked to ECPs with optional customer reference field
 - `orders`: Lens orders with prescription data, status tracking, relationships, and optional customer reference field
+- `organizationSettings`: Global organization configuration (company info, contact details, order preferences)
+- `userPreferences`: Individual user preferences (theme, language, notification settings)
 - `sessions`: Express session storage table
-- PostgreSQL enums for controlled vocabularies (user_role, order_status)
+- PostgreSQL enums for controlled vocabularies (user_role, order_status, account_status)
 
 **Data Access Pattern:**
 - Repository pattern via IStorage interface in `server/storage.ts`
