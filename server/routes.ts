@@ -2,7 +2,15 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertOrderSchema, updateOrderStatusSchema } from "@shared/schema";
+import { 
+  insertOrderSchema, 
+  updateOrderStatusSchema,
+  insertConsultLogSchema,
+  insertPurchaseOrderSchema,
+  insertPOLineItemSchema,
+  insertTechnicalDocumentSchema,
+  updatePOStatusSchema
+} from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -188,6 +196,276 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching stats:", error);
       res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  // Consult Log routes (Phase 2)
+  app.post('/api/consult-logs', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can create consult logs" });
+      }
+
+      const validation = insertConsultLogSchema.safeParse(req.body);
+      if (!validation.success) {
+        const validationError = fromZodError(validation.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+
+      const log = await storage.createConsultLog({
+        ...validation.data,
+        ecpId: userId,
+      });
+
+      res.status(201).json(log);
+    } catch (error) {
+      console.error("Error creating consult log:", error);
+      res.status(500).json({ message: "Failed to create consult log" });
+    }
+  });
+
+  app.get('/api/orders/:orderId/consult-logs', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Only ECPs, lab techs, and engineers can view consult logs
+      if (user.role !== 'ecp' && user.role !== 'lab_tech' && user.role !== 'engineer') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const logs = await storage.getConsultLogs(req.params.orderId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching consult logs:", error);
+      res.status(500).json({ message: "Failed to fetch consult logs" });
+    }
+  });
+
+  app.patch('/api/consult-logs/:id/respond', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
+        return res.status(403).json({ message: "Only lab staff can respond to consult logs" });
+      }
+
+      const { response } = req.body;
+      if (!response || typeof response !== 'string') {
+        return res.status(400).json({ message: "Response is required" });
+      }
+
+      const log = await storage.respondToConsultLog(req.params.id, response);
+      
+      if (!log) {
+        return res.status(404).json({ message: "Consult log not found" });
+      }
+
+      res.json(log);
+    } catch (error) {
+      console.error("Error responding to consult log:", error);
+      res.status(500).json({ message: "Failed to respond to consult log" });
+    }
+  });
+
+  // Purchase Order routes (Phase 2)
+  app.post('/api/purchase-orders', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
+        return res.status(403).json({ message: "Only lab staff can create purchase orders" });
+      }
+
+      const { lineItems, ...poData } = req.body;
+      
+      if (!lineItems || !Array.isArray(lineItems) || lineItems.length === 0) {
+        return res.status(400).json({ message: "At least one line item is required" });
+      }
+
+      const poValidation = insertPurchaseOrderSchema.safeParse(poData);
+      if (!poValidation.success) {
+        const validationError = fromZodError(poValidation.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+
+      const po = await storage.createPurchaseOrder({
+        ...poValidation.data,
+        lineItems,
+      }, userId);
+
+      res.status(201).json(po);
+    } catch (error) {
+      console.error("Error creating purchase order:", error);
+      res.status(500).json({ message: "Failed to create purchase order" });
+    }
+  });
+
+  app.get('/api/purchase-orders', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { status, limit, offset } = req.query;
+      
+      const filters: any = {
+        status: status as string,
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
+      };
+
+      // Suppliers can only see their own POs
+      if (user.role === 'supplier') {
+        filters.supplierId = userId;
+      }
+
+      const pos = await storage.getPurchaseOrders(filters);
+      res.json(pos);
+    } catch (error) {
+      console.error("Error fetching purchase orders:", error);
+      res.status(500).json({ message: "Failed to fetch purchase orders" });
+    }
+  });
+
+  app.get('/api/purchase-orders/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const po = await storage.getPurchaseOrder(req.params.id);
+      
+      if (!po) {
+        return res.status(404).json({ message: "Purchase order not found" });
+      }
+      
+      // Suppliers can only see their own POs
+      if (user.role === 'supplier' && po.supplierId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      res.json(po);
+    } catch (error) {
+      console.error("Error fetching purchase order:", error);
+      res.status(500).json({ message: "Failed to fetch purchase order" });
+    }
+  });
+
+  app.patch('/api/purchase-orders/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const validation = updatePOStatusSchema.safeParse(req.body);
+      if (!validation.success) {
+        const validationError = fromZodError(validation.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+
+      const { status, trackingNumber, actualDeliveryDate } = validation.data;
+
+      const po = await storage.updatePOStatus(
+        req.params.id, 
+        status,
+        trackingNumber,
+        actualDeliveryDate ? new Date(actualDeliveryDate) : undefined
+      );
+      
+      if (!po) {
+        return res.status(404).json({ message: "Purchase order not found" });
+      }
+
+      res.json(po);
+    } catch (error) {
+      console.error("Error updating purchase order status:", error);
+      res.status(500).json({ message: "Failed to update purchase order status" });
+    }
+  });
+
+  // Technical Document routes (Phase 2)
+  app.post('/api/technical-documents', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'supplier') {
+        return res.status(403).json({ message: "Only suppliers can upload technical documents" });
+      }
+
+      const validation = insertTechnicalDocumentSchema.safeParse(req.body);
+      if (!validation.success) {
+        const validationError = fromZodError(validation.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+
+      const doc = await storage.createTechnicalDocument(validation.data, userId);
+
+      res.status(201).json(doc);
+    } catch (error) {
+      console.error("Error creating technical document:", error);
+      res.status(500).json({ message: "Failed to create technical document" });
+    }
+  });
+
+  app.get('/api/technical-documents', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Suppliers can only see their own documents
+      const supplierId = user.role === 'supplier' ? userId : undefined;
+      const docs = await storage.getTechnicalDocuments(supplierId);
+      
+      res.json(docs);
+    } catch (error) {
+      console.error("Error fetching technical documents:", error);
+      res.status(500).json({ message: "Failed to fetch technical documents" });
+    }
+  });
+
+  app.delete('/api/technical-documents/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'supplier') {
+        return res.status(403).json({ message: "Only suppliers can delete their own documents" });
+      }
+
+      const deleted = await storage.deleteTechnicalDocument(req.params.id, userId);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Technical document not found or access denied" });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting technical document:", error);
+      res.status(500).json({ message: "Failed to delete technical document" });
     }
   });
 
