@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Package, FileText, Truck, Plus, Edit, Trash2 } from "lucide-react";
+import { Package, FileText, Truck, Plus, Edit, Trash2, Printer, Mail } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -110,7 +110,7 @@ function UpdatePOStatusDialog({ po }: { po: PurchaseOrderWithDetails }) {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select value={status} onValueChange={setStatus}>
+              <Select value={status} onValueChange={(value) => setStatus(value as typeof po.status)}>
                 <SelectTrigger id="status" data-testid="select-po-status">
                   <SelectValue />
                 </SelectTrigger>
@@ -161,6 +161,18 @@ export default function SupplierDashboard() {
   const { data: technicalDocs, isLoading: docsLoading } = useQuery<any[]>({
     queryKey: ["/api/technical-documents"],
   });
+
+  const handlePrintPO = async (poId: string) => {
+    try {
+      window.open(`/api/purchase-orders/${poId}/pdf`, '_blank');
+    } catch (error) {
+      toast({
+        title: "Error printing PO",
+        description: "Failed to generate PDF",
+        variant: "destructive",
+      });
+    }
+  };
 
   const stats = {
     totalPOs: purchaseOrders?.length || 0,
@@ -266,7 +278,17 @@ export default function SupplierDashboard() {
                       {po.trackingNumber || "-"}
                     </TableCell>
                     <TableCell>
-                      <UpdatePOStatusDialog po={po} />
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handlePrintPO(po.id)}
+                          data-testid={`button-print-po-${po.id}`}
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                        <UpdatePOStatusDialog po={po} />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -29,9 +29,10 @@ interface OrderTableProps {
   orders: Order[];
   onViewDetails?: (orderId: string) => void;
   onUpdateStatus?: (orderId: string, status: OrderStatus) => void;
+  onShipOrder?: (orderId: string) => void;
 }
 
-export function OrderTable({ orders, onViewDetails, onUpdateStatus }: OrderTableProps) {
+export function OrderTable({ orders, onViewDetails, onUpdateStatus, onShipOrder }: OrderTableProps) {
   return (
     <div className="rounded-md border border-border bg-card">
       <Table>
@@ -91,7 +92,7 @@ export function OrderTable({ orders, onViewDetails, onUpdateStatus }: OrderTable
                       <DropdownMenuItem onClick={() => onUpdateStatus?.(order.id, "quality_check")}>
                         Move to QC
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onUpdateStatus?.(order.id, "shipped")}>
+                      <DropdownMenuItem onClick={() => onShipOrder?.(order.id)}>
                         Mark as Shipped
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onUpdateStatus?.(order.id, "on_hold")}>

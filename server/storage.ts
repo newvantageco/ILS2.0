@@ -53,7 +53,7 @@ export interface IStorage {
     completed: number;
   }>;
 
-  createConsultLog(log: InsertConsultLog): Promise<ConsultLog>;
+  createConsultLog(log: Omit<InsertConsultLog, 'ecpId'> & { ecpId: string }): Promise<ConsultLog>;
   getConsultLogs(orderId: string): Promise<ConsultLog[]>;
   getAllConsultLogs(ecpId?: string): Promise<ConsultLog[]>;
   respondToConsultLog(id: string, response: string): Promise<ConsultLog | undefined>;
@@ -120,7 +120,7 @@ export class DbStorage implements IStorage {
     const [order] = await db.insert(orders).values({
       ...insertOrder,
       orderNumber,
-    }).returning();
+    } as any).returning();
 
     return order;
   }
@@ -258,8 +258,8 @@ export class DbStorage implements IStorage {
     return stats || { total: 0, pending: 0, inProduction: 0, completed: 0 };
   }
 
-  async createConsultLog(insertLog: InsertConsultLog): Promise<ConsultLog> {
-    const [log] = await db.insert(consultLogs).values(insertLog).returning();
+  async createConsultLog(insertLog: Omit<InsertConsultLog, 'ecpId'> & { ecpId: string }): Promise<ConsultLog> {
+    const [log] = await db.insert(consultLogs).values(insertLog as any).returning();
     return log;
   }
 

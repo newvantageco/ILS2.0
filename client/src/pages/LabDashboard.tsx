@@ -3,13 +3,18 @@ import { OrderTable } from "@/components/OrderTable";
 import { SearchBar } from "@/components/SearchBar";
 import { FilterBar } from "@/components/FilterBar";
 import { CreatePurchaseOrderDialog } from "@/components/CreatePurchaseOrderDialog";
-import { Package, Clock, CheckCircle, TrendingUp } from "lucide-react";
+import { ShipOrderDialog } from "@/components/ShipOrderDialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Package, Clock, CheckCircle, TrendingUp, Printer, Mail } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
-import type { OrderWithDetails } from "@shared/schema";
+import { format } from "date-fns";
+import type { OrderWithDetails, PurchaseOrderWithDetails } from "@shared/schema";
 
 interface OrderStats {
   total: number;
@@ -22,6 +27,8 @@ export default function LabDashboard() {
   const [searchValue, setSearchValue] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [ecpFilter, setEcpFilter] = useState("");
+  const [shipDialogOpen, setShipDialogOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string>("");
   const { toast } = useToast();
 
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<OrderStats>({
@@ -37,6 +44,10 @@ export default function LabDashboard() {
 
   const { data: orders, isLoading: ordersLoading, error: ordersError } = useQuery<OrderWithDetails[]>({
     queryKey: ordersQueryKey,
+  });
+
+  const { data: purchaseOrders, isLoading: posLoading } = useQuery<PurchaseOrderWithDetails[]>({
+    queryKey: ["/api/purchase-orders"],
   });
 
   useEffect(() => {
@@ -95,6 +106,43 @@ export default function LabDashboard() {
   const handleUpdateStatus = (id: string, status: string) => {
     updateStatusMutation.mutate({ id, status });
   };
+
+  const handleShipOrder = (id: string) => {
+    setSelectedOrderId(id);
+    setShipDialogOpen(true);
+  };
+
+  const handlePrintPO = async (poId: string) => {
+    try {
+      window.open(`/api/purchase-orders/${poId}/pdf`, '_blank');
+    } catch (error) {
+      toast({
+        title: "Error printing PO",
+        description: "Failed to generate PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const emailPOMutation = useMutation({
+    mutationFn: async (poId: string) => {
+      const response = await apiRequest("POST", `/api/purchase-orders/${poId}/email`, {});
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Email sent",
+        description: "Purchase order has been emailed to the supplier.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error sending email",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const tableOrders = (orders || []).map((order: OrderWithDetails) => ({
     id: order.id,
@@ -186,9 +234,76 @@ export default function LabDashboard() {
             orders={tableOrders}
             onViewDetails={(id) => console.log(`View details for ${id}`)}
             onUpdateStatus={handleUpdateStatus}
+            onShipOrder={handleShipOrder}
           />
         )}
       </div>
+
+      {purchaseOrders && purchaseOrders.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Purchase Orders</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>PO Number</TableHead>
+                  <TableHead>Supplier</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {purchaseOrders.slice(0, 5).map((po) => (
+                  <TableRow key={po.id} data-testid={`row-po-${po.id}`}>
+                    <TableCell className="font-medium" data-testid={`text-po-number-${po.id}`}>
+                      {po.poNumber}
+                    </TableCell>
+                    <TableCell data-testid={`text-po-supplier-${po.id}`}>
+                      {po.supplier.organizationName || 'Unknown'}
+                    </TableCell>
+                    <TableCell data-testid={`text-po-date-${po.id}`}>
+                      {format(new Date(po.createdAt), "MMM dd, yyyy")}
+                    </TableCell>
+                    <TableCell data-testid={`text-po-total-${po.id}`}>
+                      ${parseFloat(po.totalAmount || "0").toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handlePrintPO(po.id)}
+                          data-testid={`button-print-po-${po.id}`}
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => emailPOMutation.mutate(po.id)}
+                          disabled={emailPOMutation.isPending}
+                          data-testid={`button-email-po-${po.id}`}
+                        >
+                          <Mail className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      <ShipOrderDialog
+        orderId={selectedOrderId}
+        open={shipDialogOpen}
+        onOpenChange={setShipDialogOpen}
+      />
     </div>
   );
 }
