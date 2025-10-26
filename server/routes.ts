@@ -11,7 +11,9 @@ import {
   insertTechnicalDocumentSchema,
   updatePOStatusSchema,
   insertSupplierSchema,
-  updateSupplierSchema
+  updateSupplierSchema,
+  updateOrganizationSettingsSchema,
+  updateUserPreferencesSchema
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { generatePurchaseOrderPDF } from "./pdfService";
@@ -745,6 +747,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error marking order as shipped:", error);
       res.status(500).json({ message: "Failed to mark order as shipped" });
+    }
+  });
+
+  // Settings routes
+  app.get('/api/settings/organization', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
+        return res.status(403).json({ message: "Only lab staff can view organization settings" });
+      }
+
+      const settings = await storage.getOrganizationSettings();
+      res.json(settings || {});
+    } catch (error) {
+      console.error("Error fetching organization settings:", error);
+      res.status(500).json({ message: "Failed to fetch organization settings" });
+    }
+  });
+
+  app.put('/api/settings/organization', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
+        return res.status(403).json({ message: "Only lab staff can update organization settings" });
+      }
+
+      const validation = updateOrganizationSettingsSchema.safeParse(req.body);
+      if (!validation.success) {
+        const validationError = fromZodError(validation.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+
+      const settings = await storage.updateOrganizationSettings(validation.data, userId);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error updating organization settings:", error);
+      res.status(500).json({ message: "Failed to update organization settings" });
+    }
+  });
+
+  app.get('/api/settings/preferences', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const preferences = await storage.getUserPreferences(userId);
+      res.json(preferences || {});
+    } catch (error) {
+      console.error("Error fetching user preferences:", error);
+      res.status(500).json({ message: "Failed to fetch user preferences" });
+    }
+  });
+
+  app.put('/api/settings/preferences', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const validation = updateUserPreferencesSchema.safeParse(req.body);
+      if (!validation.success) {
+        const validationError = fromZodError(validation.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+
+      const preferences = await storage.updateUserPreferences(userId, validation.data);
+      res.json(preferences);
+    } catch (error) {
+      console.error("Error updating user preferences:", error);
+      res.status(500).json({ message: "Failed to update user preferences" });
     }
   });
 
