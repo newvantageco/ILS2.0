@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, Clock, CheckCircle, TrendingUp, Printer, Mail } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +32,7 @@ export default function LabDashboard() {
   const [ecpFilter, setEcpFilter] = useState("");
   const [shipDialogOpen, setShipDialogOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string>("");
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<OrderStats>({
@@ -242,7 +244,7 @@ export default function LabDashboard() {
             ) : (
               <OrderTable
                 orders={tableOrders}
-                onViewDetails={(id) => console.log(`View details for ${id}`)}
+                onViewDetails={(id) => setLocation(`/order/${id}`)}
                 onUpdateStatus={handleUpdateStatus}
                 onShipOrder={handleShipOrder}
               />

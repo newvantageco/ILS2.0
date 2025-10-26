@@ -14,6 +14,7 @@ import ECPDashboard from "@/pages/ECPDashboard";
 import LabDashboard from "@/pages/LabDashboard";
 import SupplierDashboard from "@/pages/SupplierDashboard";
 import NewOrderPage from "@/pages/NewOrderPage";
+import OrderDetailsPage from "@/pages/OrderDetailsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import SignupPage from "@/pages/SignupPage";
 import PendingApprovalPage from "@/pages/PendingApprovalPage";
@@ -138,6 +139,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/dashboard" component={ECPDashboard} />
             <Route path="/ecp/new-order" component={NewOrderPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
+            <Route path="/order/:id" component={OrderDetailsPage} />
             <Route path="/ecp/returns">
               <div className="text-center py-12">
                 <h2 className="text-2xl font-semibold">Returns Management</h2>
@@ -150,6 +152,7 @@ function AuthenticatedApp() {
         {(userRole === "lab_tech" || userRole === "engineer") && (
           <>
             <Route path="/lab/dashboard" component={LabDashboard} />
+            <Route path="/order/:id" component={OrderDetailsPage} />
             <Route path="/lab/queue">
               <div className="text-center py-12">
                 <h2 className="text-2xl font-semibold">Order Queue</h2>

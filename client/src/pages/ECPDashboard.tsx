@@ -5,7 +5,7 @@ import { ConsultLogManager } from "@/components/ConsultLogManager";
 import { Button } from "@/components/ui/button";
 import { Package, Clock, CheckCircle, AlertCircle, Plus } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,7 @@ interface OrderStats {
 
 export default function ECPDashboard() {
   const [searchValue, setSearchValue] = useState("");
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<OrderStats>({
@@ -145,7 +146,7 @@ export default function ECPDashboard() {
                 orderDate={new Date(order.orderDate).toISOString().split('T')[0]}
                 lensType={order.lensType}
                 coating={order.coating}
-                onViewDetails={() => console.log(`View details for ${order.id}`)}
+                onViewDetails={() => setLocation(`/order/${order.id}`)}
               />
             ))}
           </div>
