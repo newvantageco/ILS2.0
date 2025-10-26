@@ -33,13 +33,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validation = insertOrderSchema.safeParse(req.body);
       if (!validation.success) {
         const validationError = fromZodError(validation.error);
-        return res.status(400).json({ message: validationError.message });
+        return res.status(400).json({ message: validationError.message, errors: validation.error.issues });
       }
 
-      const order = await storage.createOrder({
-        ...validation.data,
+      // Create patient record
+      const { patientName, patientDOB, ...orderData } = validation.data as any;
+      
+      const patient = await storage.createPatient({
+        name: patientName,
+        dateOfBirth: patientDOB || null,
         ecpId: userId,
       });
+
+      // Create order with patient ID and ECP ID
+      const order = await storage.createOrder({
+        ...orderData,
+        patientId: patient.id,
+        ecpId: userId,
+      } as any);
 
       res.status(201).json(order);
     } catch (error) {

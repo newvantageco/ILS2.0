@@ -61,19 +61,9 @@ export class DbStorage implements IStorage {
   async createOrder(insertOrder: InsertOrder): Promise<Order> {
     const orderNumber = `ORD-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
     
-    const { patientName, patientDOB, ecpId, ...orderData } = insertOrder;
-    
-    const [patient] = await db.insert(patients).values({
-      name: patientName,
-      dateOfBirth: patientDOB,
-      ecpId,
-    }).returning();
-
     const [order] = await db.insert(orders).values({
-      ...orderData,
+      ...insertOrder,
       orderNumber,
-      patientId: patient.id,
-      ecpId,
     }).returning();
 
     return order;

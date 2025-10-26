@@ -86,6 +86,8 @@ export const insertOrderSchema = createInsertSchema(orders).omit({
   orderNumber: true,
   orderDate: true,
   completedAt: true,
+  patientId: true,
+  ecpId: true,
 }).extend({
   patientName: z.string().min(1, "Patient name is required"),
   patientDOB: z.string().optional(),
