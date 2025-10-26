@@ -93,6 +93,8 @@ export const orders = pgTable("orders", {
   
   notes: text("notes"),
   traceFileUrl: text("trace_file_url"),
+  trackingNumber: text("tracking_number"),
+  shippedAt: timestamp("shipped_at"),
   
   orderDate: timestamp("order_date").defaultNow().notNull(),
   dueDate: timestamp("due_date"),
