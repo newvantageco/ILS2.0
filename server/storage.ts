@@ -7,6 +7,8 @@ import {
   purchaseOrders,
   poLineItems,
   technicalDocuments,
+  organizationSettings,
+  userPreferences,
   type UpsertUser, 
   type User, 
   type InsertPatient, 
@@ -23,7 +25,11 @@ import {
   type PurchaseOrderWithDetails,
   type InsertTechnicalDocument,
   type TechnicalDocument,
-  type TechnicalDocumentWithSupplier
+  type TechnicalDocumentWithSupplier,
+  type UpdateOrganizationSettings,
+  type OrganizationSettings,
+  type UpdateUserPreferences,
+  type UserPreferences
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql } from "drizzle-orm";
 
@@ -75,6 +81,12 @@ export interface IStorage {
   createTechnicalDocument(doc: InsertTechnicalDocument, supplierId: string): Promise<TechnicalDocument>;
   getTechnicalDocuments(supplierId?: string): Promise<TechnicalDocumentWithSupplier[]>;
   deleteTechnicalDocument(id: string, supplierId: string): Promise<boolean>;
+
+  getOrganizationSettings(): Promise<OrganizationSettings | undefined>;
+  updateOrganizationSettings(settings: UpdateOrganizationSettings, updatedById: string): Promise<OrganizationSettings>;
+  
+  getUserPreferences(userId: string): Promise<UserPreferences | undefined>;
+  updateUserPreferences(userId: string, preferences: UpdateUserPreferences): Promise<UserPreferences>;
 }
 
 export class DbStorage implements IStorage {
@@ -457,6 +469,9 @@ export class DbStorage implements IStorage {
           id: supplier?.id || po.supplierId,
           organizationName: supplier?.organizationName || null,
           email: supplier?.email || null,
+          accountNumber: supplier?.accountNumber || null,
+          contactEmail: supplier?.contactEmail || null,
+          contactPhone: supplier?.contactPhone || null,
         },
         createdBy: {
           id: createdBy?.id || po.createdById,
@@ -533,6 +548,80 @@ export class DbStorage implements IStorage {
       .returning();
     
     return result.length > 0;
+  }
+
+  async getOrganizationSettings(): Promise<OrganizationSettings | undefined> {
+    const [settings] = await db
+      .select()
+      .from(organizationSettings)
+      .limit(1);
+    
+    return settings;
+  }
+
+  async updateOrganizationSettings(settingsData: UpdateOrganizationSettings, updatedById: string): Promise<OrganizationSettings> {
+    const existing = await this.getOrganizationSettings();
+
+    if (existing) {
+      const [updated] = await db
+        .update(organizationSettings)
+        .set({
+          ...settingsData,
+          updatedAt: new Date(),
+          updatedById,
+        })
+        .where(eq(organizationSettings.id, existing.id))
+        .returning();
+      
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(organizationSettings)
+        .values({
+          ...settingsData,
+          updatedById,
+        })
+        .returning();
+      
+      return created;
+    }
+  }
+
+  async getUserPreferences(userId: string): Promise<UserPreferences | undefined> {
+    const [prefs] = await db
+      .select()
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userId))
+      .limit(1);
+    
+    return prefs;
+  }
+
+  async updateUserPreferences(userId: string, preferencesData: UpdateUserPreferences): Promise<UserPreferences> {
+    const existing = await this.getUserPreferences(userId);
+
+    if (existing) {
+      const [updated] = await db
+        .update(userPreferences)
+        .set({
+          ...preferencesData,
+          updatedAt: new Date(),
+        })
+        .where(eq(userPreferences.userId, userId))
+        .returning();
+      
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(userPreferences)
+        .values({
+          ...preferencesData,
+          userId,
+        })
+        .returning();
+      
+      return created;
+    }
   }
 }
 
