@@ -108,6 +108,10 @@ export const orders = pgTable("orders", {
   customerReferenceLabel: text("customer_reference_label"),
   customerReferenceNumber: text("customer_reference_number"),
   
+  omaFileContent: text("oma_file_content"),
+  omaFilename: text("oma_filename"),
+  omaParsedData: jsonb("oma_parsed_data"),
+  
   orderDate: timestamp("order_date").defaultNow().notNull(),
   dueDate: timestamp("due_date"),
   completedAt: timestamp("completed_at"),
