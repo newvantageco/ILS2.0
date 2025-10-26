@@ -18,6 +18,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { OMAFileUpload } from "@/components/OMAFileUpload";
 
 const steps = [
   { label: "Patient Info", description: "Basic details" },
@@ -50,6 +51,8 @@ export default function NewOrderPage() {
     coating: "",
     frameType: "",
     notes: "",
+    omaFileContent: "",
+    omaFilename: "",
   });
 
   const createOrderMutation = useMutation({
@@ -126,6 +129,8 @@ export default function NewOrderPage() {
       coating: formData.coating,
       frameType: formData.frameType || undefined,
       notes: formData.notes || undefined,
+      omaFileContent: formData.omaFileContent || undefined,
+      omaFilename: formData.omaFilename || undefined,
       status: "pending" as const,
     };
 
@@ -402,6 +407,20 @@ export default function NewOrderPage() {
                     <SelectItem value="Safety">Safety</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="pt-4 border-t">
+                <h3 className="font-semibold mb-2">OMA File (Optional)</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Upload an OMA file from your tracer for precise prescription and frame measurements.
+                </p>
+                <OMAFileUpload
+                  showInline={true}
+                  onFileSelect={(content, filename) => {
+                    updateFormData("omaFileContent", content);
+                    updateFormData("omaFilename", filename);
+                  }}
+                />
               </div>
             </div>
           )}

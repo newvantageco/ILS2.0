@@ -155,7 +155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create patient record
-      const { patientName, patientDOB, ...orderData } = validation.data as any;
+      const { patientName, patientDOB, omaFileContent, omaFilename, ...orderData } = validation.data as any;
       
       const patient = await storage.createPatient({
         name: patientName,
@@ -163,11 +163,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ecpId: userId,
       });
 
+      // Parse OMA file if provided
+      let omaParsedData = null;
+      if (omaFileContent && isValidOMAFile(omaFileContent)) {
+        omaParsedData = parseOMAFile(omaFileContent);
+      }
+
       // Create order with patient ID and ECP ID
       const order = await storage.createOrder({
         ...orderData,
         patientId: patient.id,
         ecpId: userId,
+        omaFileContent: omaFileContent || null,
+        omaFilename: omaFilename || null,
+        omaParsedData: omaParsedData as any,
       } as any);
 
       res.status(201).json(order);
