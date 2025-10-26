@@ -31,6 +31,9 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   getSuppliers(): Promise<User[]>;
+  createSupplier(supplier: any): Promise<User>;
+  updateSupplier(id: string, updates: any): Promise<User | undefined>;
+  deleteSupplier(id: string): Promise<boolean>;
   
   createPatient(patient: InsertPatient): Promise<Patient>;
   getPatient(id: string): Promise<Patient | undefined>;
@@ -102,6 +105,39 @@ export class DbStorage implements IStorage {
       .where(eq(users.role, 'supplier'))
       .orderBy(users.organizationName, users.lastName);
     return suppliers;
+  }
+
+  async createSupplier(supplier: any): Promise<User> {
+    const [newSupplier] = await db
+      .insert(users)
+      .values({
+        ...supplier,
+        role: 'supplier',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any)
+      .returning();
+    return newSupplier;
+  }
+
+  async updateSupplier(id: string, updates: any): Promise<User | undefined> {
+    const [updatedSupplier] = await db
+      .update(users)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(users.id, id), eq(users.role, 'supplier')))
+      .returning();
+    return updatedSupplier;
+  }
+
+  async deleteSupplier(id: string): Promise<boolean> {
+    const result = await db
+      .delete(users)
+      .where(and(eq(users.id, id), eq(users.role, 'supplier')))
+      .returning();
+    return result.length > 0;
   }
 
   async createPatient(insertPatient: InsertPatient): Promise<Patient> {

@@ -57,6 +57,10 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   role: userRoleEnum("role"),
   organizationName: text("organization_name"),
+  accountNumber: text("account_number"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  address: jsonb("address"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -65,6 +69,8 @@ export const patients = pgTable("patients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   dateOfBirth: text("date_of_birth"),
+  customerReferenceLabel: text("customer_reference_label"),
+  customerReferenceNumber: text("customer_reference_number"),
   ecpId: varchar("ecp_id").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -95,6 +101,9 @@ export const orders = pgTable("orders", {
   traceFileUrl: text("trace_file_url"),
   trackingNumber: text("tracking_number"),
   shippedAt: timestamp("shipped_at"),
+  
+  customerReferenceLabel: text("customer_reference_label"),
+  customerReferenceNumber: text("customer_reference_number"),
   
   orderDate: timestamp("order_date").defaultNow().notNull(),
   dueDate: timestamp("due_date"),
@@ -210,6 +219,23 @@ export const updatePOStatusSchema = z.object({
   actualDeliveryDate: z.string().optional(),
 });
 
+export const insertSupplierSchema = z.object({
+  organizationName: z.string().min(1, "Organization name is required"),
+  email: z.string().email("Valid email is required").optional(),
+  accountNumber: z.string().optional(),
+  contactEmail: z.string().email("Valid contact email required").optional(),
+  contactPhone: z.string().optional(),
+  address: z.object({
+    street: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zipCode: z.string().optional(),
+    country: z.string().optional(),
+  }).optional(),
+});
+
+export const updateSupplierSchema = insertSupplierSchema.partial();
+
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
 
@@ -261,3 +287,6 @@ export type TechnicalDocumentWithSupplier = TechnicalDocument & {
     organizationName: string | null;
   };
 };
+
+export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
+export type UpdateSupplier = z.infer<typeof updateSupplierSchema>;

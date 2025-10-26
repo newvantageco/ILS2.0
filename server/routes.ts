@@ -9,7 +9,9 @@ import {
   insertPurchaseOrderSchema,
   insertPOLineItemSchema,
   insertTechnicalDocumentSchema,
-  updatePOStatusSchema
+  updatePOStatusSchema,
+  insertSupplierSchema,
+  updateSupplierSchema
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { generatePurchaseOrderPDF } from "./pdfService";
@@ -213,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Suppliers route
+  // Suppliers routes
   app.get('/api/suppliers', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -228,6 +230,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching suppliers:", error);
       res.status(500).json({ message: "Failed to fetch suppliers" });
+    }
+  });
+
+  app.post('/api/suppliers', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
+        return res.status(403).json({ message: "Only lab staff can create suppliers" });
+      }
+
+      const validation = insertSupplierSchema.safeParse(req.body);
+      if (!validation.success) {
+        const validationError = fromZodError(validation.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+
+      const supplier = await storage.createSupplier(validation.data);
+      res.status(201).json(supplier);
+    } catch (error) {
+      console.error("Error creating supplier:", error);
+      res.status(500).json({ message: "Failed to create supplier" });
+    }
+  });
+
+  app.patch('/api/suppliers/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
+        return res.status(403).json({ message: "Only lab staff can update suppliers" });
+      }
+
+      const validation = updateSupplierSchema.safeParse(req.body);
+      if (!validation.success) {
+        const validationError = fromZodError(validation.error);
+        return res.status(400).json({ message: validationError.message });
+      }
+
+      const supplier = await storage.updateSupplier(req.params.id, validation.data);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      res.json(supplier);
+    } catch (error) {
+      console.error("Error updating supplier:", error);
+      res.status(500).json({ message: "Failed to update supplier" });
+    }
+  });
+
+  app.delete('/api/suppliers/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
+        return res.status(403).json({ message: "Only lab staff can delete suppliers" });
+      }
+
+      const deleted = await storage.deleteSupplier(req.params.id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+
+      res.json({ message: "Supplier deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting supplier:", error);
+      res.status(500).json({ message: "Failed to delete supplier" });
     }
   });
 
