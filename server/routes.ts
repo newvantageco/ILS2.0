@@ -118,10 +118,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User already has a role assigned" });
       }
 
-      const { role, organizationName } = req.body;
+      const { role, organizationName, adminSetupKey } = req.body;
       
-      if (!role || !['ecp', 'lab_tech', 'engineer', 'supplier'].includes(role)) {
+      if (!role || !['ecp', 'lab_tech', 'engineer', 'supplier', 'admin'].includes(role)) {
         return res.status(400).json({ message: "Valid role is required" });
+      }
+
+      // Handle admin signup with key verification
+      if (role === 'admin') {
+        const expectedKey = process.env.ADMIN_SETUP_KEY;
+        
+        if (!expectedKey) {
+          return res.status(500).json({ message: "Admin setup is not configured on this system" });
+        }
+        
+        if (!adminSetupKey || adminSetupKey !== expectedKey) {
+          return res.status(403).json({ message: "Invalid admin setup key" });
+        }
+
+        // Admin accounts are auto-approved
+        const updatedUser = await storage.updateUser(userId, {
+          role: 'admin',
+          organizationName: organizationName || null,
+          accountStatus: 'active'
+        });
+
+        return res.json(updatedUser);
       }
 
       // Update user with role and organization, set status to pending

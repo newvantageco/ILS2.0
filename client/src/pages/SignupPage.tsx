@@ -17,12 +17,13 @@ export default function SignupPage() {
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
-    role: "" as "ecp" | "lab_tech" | "engineer" | "supplier" | "",
+    role: "" as "ecp" | "lab_tech" | "engineer" | "supplier" | "admin" | "",
     organizationName: "",
+    adminSetupKey: "",
   });
 
   const signupMutation = useMutation({
-    mutationFn: async (data: { role: string; organizationName: string }) => {
+    mutationFn: async (data: { role: string; organizationName: string; adminSetupKey?: string }) => {
       const response = await apiRequest("POST", "/api/auth/complete-signup", data);
       return await response.json();
     },
@@ -52,7 +53,25 @@ export default function SignupPage() {
       });
       return;
     }
-    signupMutation.mutate(formData);
+    if (formData.role === "admin" && !formData.adminSetupKey) {
+      toast({
+        title: "Admin setup key required",
+        description: "Please enter the admin setup key to create an admin account",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const submitData: any = {
+      role: formData.role,
+      organizationName: formData.organizationName,
+    };
+    
+    if (formData.role === "admin") {
+      submitData.adminSetupKey = formData.adminSetupKey;
+    }
+    
+    signupMutation.mutate(submitData);
   };
 
   if (authLoading) {
@@ -136,12 +155,32 @@ export default function SignupPage() {
                   <SelectItem value="lab_tech">Lab Technician</SelectItem>
                   <SelectItem value="engineer">Engineer</SelectItem>
                   <SelectItem value="supplier">Supplier</SelectItem>
+                  <SelectItem value="admin">Administrator</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
                 Choose the role that best describes your position
               </p>
             </div>
+
+            {formData.role === "admin" && (
+              <div className="space-y-2">
+                <Label htmlFor="adminKey">Admin Setup Key *</Label>
+                <Input
+                  id="adminKey"
+                  type="password"
+                  value={formData.adminSetupKey}
+                  onChange={(e) =>
+                    setFormData({ ...formData, adminSetupKey: e.target.value })
+                  }
+                  placeholder="Enter admin setup key"
+                  data-testid="input-admin-key"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Required: Contact your system administrator for the admin setup key
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="orgName">Organization Name</Label>
@@ -175,9 +214,16 @@ export default function SignupPage() {
                   "Complete Registration"
                 )}
               </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                Your account will be reviewed by an administrator before activation
-              </p>
+              {formData.role !== "admin" && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Your account will be reviewed by an administrator before activation
+                </p>
+              )}
+              {formData.role === "admin" && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Admin accounts are activated immediately upon verification
+                </p>
+              )}
             </div>
           </form>
         </CardContent>
