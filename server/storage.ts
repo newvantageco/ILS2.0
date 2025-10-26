@@ -30,6 +30,7 @@ import { eq, desc, and, or, like, sql } from "drizzle-orm";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  getSuppliers(): Promise<User[]>;
   
   createPatient(patient: InsertPatient): Promise<Patient>;
   getPatient(id: string): Promise<Patient | undefined>;
@@ -89,6 +90,15 @@ export class DbStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  async getSuppliers(): Promise<User[]> {
+    const suppliers = await db
+      .select()
+      .from(users)
+      .where(eq(users.role, 'supplier'))
+      .orderBy(users.organizationName, users.lastName);
+    return suppliers;
   }
 
   async createPatient(insertPatient: InsertPatient): Promise<Patient> {

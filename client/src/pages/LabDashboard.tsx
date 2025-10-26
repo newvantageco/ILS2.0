@@ -2,6 +2,7 @@ import { StatCard } from "@/components/StatCard";
 import { OrderTable } from "@/components/OrderTable";
 import { SearchBar } from "@/components/SearchBar";
 import { FilterBar } from "@/components/FilterBar";
+import { CreatePurchaseOrderDialog } from "@/components/CreatePurchaseOrderDialog";
 import { Package, Clock, CheckCircle, TrendingUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -148,12 +149,13 @@ export default function LabDashboard() {
       )}
 
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-start">
           <SearchBar
             value={searchValue}
             onChange={setSearchValue}
             placeholder="Search orders, patients, or ECPs..."
           />
+          <CreatePurchaseOrderDialog />
         </div>
 
         <FilterBar

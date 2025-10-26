@@ -173,6 +173,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Suppliers route
+  app.get('/api/suppliers', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
+        return res.status(403).json({ message: "Only lab staff can view suppliers" });
+      }
+
+      const suppliers = await storage.getSuppliers();
+      res.json(suppliers);
+    } catch (error) {
+      console.error("Error fetching suppliers:", error);
+      res.status(500).json({ message: "Failed to fetch suppliers" });
+    }
+  });
+
   // Stats routes
   app.get('/api/stats', isAuthenticated, async (req: any, res) => {
     try {
