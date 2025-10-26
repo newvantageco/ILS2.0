@@ -1,6 +1,7 @@
 import { StatCard } from "@/components/StatCard";
 import { OrderCard } from "@/components/OrderCard";
 import { SearchBar } from "@/components/SearchBar";
+import { ConsultLogManager } from "@/components/ConsultLogManager";
 import { Button } from "@/components/ui/button";
 import { Package, Clock, CheckCircle, AlertCircle, Plus } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -150,6 +151,8 @@ export default function ECPDashboard() {
           </div>
         )}
       </div>
+
+      <ConsultLogManager />
     </div>
   );
 }

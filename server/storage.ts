@@ -54,6 +54,7 @@ export interface IStorage {
 
   createConsultLog(log: InsertConsultLog): Promise<ConsultLog>;
   getConsultLogs(orderId: string): Promise<ConsultLog[]>;
+  getAllConsultLogs(ecpId?: string): Promise<ConsultLog[]>;
   respondToConsultLog(id: string, response: string): Promise<ConsultLog | undefined>;
 
   createPurchaseOrder(po: InsertPurchaseOrder & { lineItems: InsertPOLineItem[] }, createdById: string): Promise<PurchaseOrderWithDetails>;
@@ -250,6 +251,18 @@ export class DbStorage implements IStorage {
       .from(consultLogs)
       .where(eq(consultLogs.orderId, orderId))
       .orderBy(desc(consultLogs.createdAt));
+  }
+
+  async getAllConsultLogs(ecpId?: string): Promise<ConsultLog[]> {
+    const query = db.select().from(consultLogs);
+    
+    if (ecpId) {
+      return await query
+        .where(eq(consultLogs.ecpId, ecpId))
+        .orderBy(desc(consultLogs.createdAt));
+    }
+    
+    return await query.orderBy(desc(consultLogs.createdAt));
   }
 
   async respondToConsultLog(id: string, response: string): Promise<ConsultLog | undefined> {

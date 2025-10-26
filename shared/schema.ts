@@ -42,6 +42,12 @@ export const documentTypeEnum = pgEnum("document_type", [
   "other"
 ]);
 
+export const consultPriorityEnum = pgEnum("consult_priority", [
+  "normal",
+  "high",
+  "urgent"
+]);
+
 // User storage table with Replit Auth fields
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -97,6 +103,7 @@ export const consultLogs = pgTable("consult_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderId: varchar("order_id").notNull().references(() => orders.id),
   ecpId: varchar("ecp_id").notNull().references(() => users.id),
+  priority: consultPriorityEnum("priority").notNull().default("normal"),
   subject: text("subject").notNull(),
   description: text("description").notNull(),
   status: text("status").notNull().default("open"),
@@ -172,6 +179,7 @@ export const insertConsultLogSchema = createInsertSchema(consultLogs).omit({
   respondedAt: true,
   labResponse: true,
   status: true,
+  ecpId: true,
 });
 
 export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({

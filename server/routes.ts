@@ -245,6 +245,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/consult-logs', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Only ECPs, lab techs, and engineers can view consult logs
+      if (user.role !== 'ecp' && user.role !== 'lab_tech' && user.role !== 'engineer') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const logs = await storage.getAllConsultLogs(user.role === 'ecp' ? userId : undefined);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching consult logs:", error);
+      res.status(500).json({ message: "Failed to fetch consult logs" });
+    }
+  });
+
   app.get('/api/orders/:orderId/consult-logs', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
