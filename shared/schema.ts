@@ -269,6 +269,9 @@ export type PurchaseOrderWithDetails = PurchaseOrder & {
     id: string;
     organizationName: string | null;
     email: string | null;
+    accountNumber: string | null;
+    contactEmail: string | null;
+    contactPhone: string | null;
   };
   createdBy: {
     id: string;
