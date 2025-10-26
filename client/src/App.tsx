@@ -22,6 +22,7 @@ import AccountSuspendedPage from "@/pages/AccountSuspendedPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import EmailLoginPage from "@/pages/EmailLoginPage";
 import EmailSignupPage from "@/pages/EmailSignupPage";
+import GitHubPushPage from "@/pages/github-push";
 import { LogOut } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -225,6 +226,7 @@ function AuthenticatedApp() {
         )}
 
         <Route path="/settings" component={SettingsPage} />
+        <Route path="/github-push" component={GitHubPushPage} />
         <Route path="/help">
           <div className="text-center py-12">
             <h2 className="text-2xl font-semibold">Help & Documentation</h2>

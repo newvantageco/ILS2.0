@@ -1283,6 +1283,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GitHub routes
+  app.get('/api/github/user', async (req, res) => {
+    try {
+      const { getAuthenticatedUser } = await import('./github-helper');
+      const user = await getAuthenticatedUser();
+      res.json(user);
+    } catch (error: any) {
+      console.error("Error fetching GitHub user:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch GitHub user" });
+    }
+  });
+
+  app.post('/api/github/create-repo', async (req, res) => {
+    try {
+      const { createGitHubRepo } = await import('./github-helper');
+      const { name, isPrivate, description } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ message: "Repository name is required" });
+      }
+
+      const repo = await createGitHubRepo(name, isPrivate || false, description);
+      res.json(repo);
+    } catch (error: any) {
+      console.error("Error creating GitHub repo:", error);
+      res.status(500).json({ message: error.message || "Failed to create repository" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
