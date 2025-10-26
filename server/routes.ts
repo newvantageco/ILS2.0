@@ -932,16 +932,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const targetUserId = req.params.id;
       const { role, accountStatus, statusReason } = req.body;
 
+      console.log('[ADMIN] Updating user:', targetUserId, 'with body:', req.body);
+
       // Validate updates
       const updates: any = {};
-      if (role !== undefined) {
+      if (role !== undefined && role !== null) {
         if (!['ecp', 'lab_tech', 'engineer', 'supplier'].includes(role)) {
+          console.log('[ADMIN] Invalid role:', role);
           return res.status(400).json({ message: "Invalid role" });
         }
         updates.role = role;
       }
-      if (accountStatus !== undefined) {
+      if (accountStatus !== undefined && accountStatus !== null) {
         if (!['pending', 'active', 'suspended'].includes(accountStatus)) {
+          console.log('[ADMIN] Invalid status:', accountStatus);
           return res.status(400).json({ message: "Invalid account status" });
         }
         updates.accountStatus = accountStatus;
@@ -950,11 +954,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.statusReason = statusReason;
       }
 
+      console.log('[ADMIN] Updates to apply:', updates);
+
       const updatedUser = await storage.updateUser(targetUserId, updates);
       if (!updatedUser) {
+        console.log('[ADMIN] User not found:', targetUserId);
         return res.status(404).json({ message: "User not found" });
       }
 
+      console.log('[ADMIN] User updated successfully:', updatedUser.id, 'role:', updatedUser.role, 'status:', updatedUser.accountStatus);
       res.json(updatedUser);
     } catch (error) {
       console.error("Error updating user:", error);
