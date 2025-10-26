@@ -18,6 +18,7 @@ import SettingsPage from "@/pages/SettingsPage";
 import SignupPage from "@/pages/SignupPage";
 import PendingApprovalPage from "@/pages/PendingApprovalPage";
 import AccountSuspendedPage from "@/pages/AccountSuspendedPage";
+import AdminDashboard from "@/pages/AdminDashboard";
 import { LogOut } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -193,6 +194,19 @@ function AuthenticatedApp() {
             <Route path="/supplier/dashboard" component={SupplierDashboard} />
             <Route path="/supplier/orders" component={SupplierDashboard} />
             <Route path="/supplier/library" component={SupplierDashboard} />
+          </>
+        )}
+
+        {userRole === "admin" && (
+          <>
+            <Route path="/admin/dashboard" component={AdminDashboard} />
+            <Route path="/admin/users" component={AdminDashboard} />
+            <Route path="/admin/platform">
+              <div className="text-center py-12">
+                <h2 className="text-2xl font-semibold">Platform Settings</h2>
+                <p className="text-muted-foreground mt-2">Configure platform-wide settings and restrictions</p>
+              </div>
+            </Route>
           </>
         )}
 

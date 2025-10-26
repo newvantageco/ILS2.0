@@ -37,6 +37,8 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
+  getUserStats(): Promise<{ total: number; pending: number; active: number; suspended: number }>;
   getSuppliers(): Promise<User[]>;
   createSupplier(supplier: any): Promise<User>;
   updateSupplier(id: string, updates: any): Promise<User | undefined>;
@@ -121,6 +123,27 @@ export class DbStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    const allUsers = await db
+      .select()
+      .from(users)
+      .orderBy(desc(users.createdAt));
+    return allUsers;
+  }
+
+  async getUserStats(): Promise<{ total: number; pending: number; active: number; suspended: number }> {
+    const allUsers = await this.getAllUsers();
+    
+    const stats = {
+      total: allUsers.length,
+      pending: allUsers.filter(u => u.accountStatus === 'pending').length,
+      active: allUsers.filter(u => u.accountStatus === 'active').length,
+      suspended: allUsers.filter(u => u.accountStatus === 'suspended').length,
+    };
+    
+    return stats;
   }
 
   async getSuppliers(): Promise<User[]> {
