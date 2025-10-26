@@ -8,7 +8,15 @@ The application is built as a modern, cloud-native platform with a focus on data
 
 ## Recent Changes
 
-**October 26, 2025 - Supplier Management System**
+**October 26, 2025 - Phase 3 Complete: Customer Reference & PO Enhancement**
+- Added `customerReferenceNumber` field to order creation form (NewOrderPage) for better order tracking
+- Enhanced PO PDF generation to display supplier contact details (account number, email, phone)
+- Updated PO email templates to include supplier account number
+- Extended `PurchaseOrderWithDetails` TypeScript type with supplier contact fields for type safety
+- Verified end-to-end flow: customer reference field → database → API with comprehensive testing
+- All changes handle null values gracefully and maintain backward compatibility
+
+**October 26, 2025 - Phase 2 Complete: Supplier Management System**
 - Extended `users` table with supplier contact fields: `accountNumber`, `contactEmail`, `contactPhone`, and `address` (JSONB)
 - Added customer reference fields to `patients` and `orders` tables for better tracking
 - Implemented full CRUD API for supplier management (`/api/suppliers`) with lab-tech/engineer role guards
