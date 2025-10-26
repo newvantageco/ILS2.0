@@ -19,6 +19,8 @@ import {
   HelpCircle,
   Beaker,
   LogOut,
+  Shield,
+  Users,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -28,7 +30,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getUserDisplayName, getUserInitials } from "@/lib/authUtils";
 
 interface AppSidebarProps {
-  userRole?: "ecp" | "lab_tech" | "supplier" | "engineer";
+  userRole?: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin";
 }
 
 const menuItems = {
@@ -55,6 +57,11 @@ const menuItems = {
     { title: "Equipment", url: "/lab/equipment", icon: Settings },
     { title: "R&D Projects", url: "/lab/rnd", icon: Beaker },
   ],
+  admin: [
+    { title: "Dashboard", url: "/admin/dashboard", icon: Home },
+    { title: "User Management", url: "/admin/users", icon: Users },
+    { title: "Platform Settings", url: "/admin/platform", icon: Shield },
+  ],
 };
 
 const roleLabels = {
@@ -62,6 +69,7 @@ const roleLabels = {
   lab_tech: "Lab Technician",
   supplier: "Supplier",
   engineer: "Principal Engineer",
+  admin: "Administrator",
 };
 
 export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {

@@ -36,6 +36,7 @@ import { eq, desc, and, or, like, sql } from "drizzle-orm";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
   getSuppliers(): Promise<User[]>;
   createSupplier(supplier: any): Promise<User>;
   updateSupplier(id: string, updates: any): Promise<User | undefined>;
@@ -106,6 +107,18 @@ export class DbStorage implements IStorage {
           updatedAt: new Date(),
         },
       })
+      .returning();
+    return user;
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
       .returning();
     return user;
   }

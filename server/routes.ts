@@ -45,6 +45,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      // Check if user needs to complete signup
+      if (!user.role) {
+        return res.json({
+          user,
+          redirectPath: '/signup',
+          requiresSetup: true
+        });
+      }
+
+      // Check account status
+      if (user.accountStatus === 'pending') {
+        return res.json({
+          user,
+          redirectPath: '/pending-approval',
+          isPending: true
+        });
+      }
+
+      if (user.accountStatus === 'suspended') {
+        return res.json({
+          user,
+          redirectPath: '/account-suspended',
+          isSuspended: true,
+          suspensionReason: user.statusReason
+        });
+      }
+
       // Determine redirect path based on user role
       let redirectPath = '/';
       switch (user.role) {
@@ -58,6 +85,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case 'supplier':
           redirectPath = '/supplier-dashboard';
           break;
+        case 'admin':
+          redirectPath = '/admin-dashboard';
+          break;
         default:
           redirectPath = '/';
       }
@@ -69,6 +99,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error in bootstrap:", error);
       res.status(500).json({ message: "Failed to bootstrap" });
+    }
+  });
+
+  // Complete signup endpoint
+  app.post('/api/auth/complete-signup', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if user already has a role
+      if (user.role) {
+        return res.status(400).json({ message: "User already has a role assigned" });
+      }
+
+      const { role, organizationName } = req.body;
+      
+      if (!role || !['ecp', 'lab_tech', 'engineer', 'supplier'].includes(role)) {
+        return res.status(400).json({ message: "Valid role is required" });
+      }
+
+      // Update user with role and organization, set status to pending
+      const updatedUser = await storage.updateUser(userId, {
+        role,
+        organizationName: organizationName || null,
+        accountStatus: 'pending'
+      });
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error completing signup:", error);
+      res.status(500).json({ message: "Failed to complete signup" });
     }
   });
 

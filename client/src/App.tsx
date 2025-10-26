@@ -15,10 +15,13 @@ import LabDashboard from "@/pages/LabDashboard";
 import SupplierDashboard from "@/pages/SupplierDashboard";
 import NewOrderPage from "@/pages/NewOrderPage";
 import SettingsPage from "@/pages/SettingsPage";
+import SignupPage from "@/pages/SignupPage";
+import PendingApprovalPage from "@/pages/PendingApprovalPage";
+import AccountSuspendedPage from "@/pages/AccountSuspendedPage";
 import { LogOut } from "lucide-react";
 import { useLocation } from "wouter";
 
-function AppLayout({ children, userRole }: { children: React.ReactNode; userRole: "ecp" | "lab_tech" | "supplier" | "engineer" }) {
+function AppLayout({ children, userRole }: { children: React.ReactNode; userRole: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" }) {
   const style = {
     "--sidebar-width": "16rem",
   };
@@ -74,7 +77,37 @@ function AuthenticatedApp() {
     return <Landing />;
   }
 
-  const userRole = user.role || "lab_tech";
+  // Handle users who need to complete signup
+  if (!user.role) {
+    return (
+      <Switch>
+        <Route path="/signup" component={SignupPage} />
+        <Route><Redirect to="/signup" /></Route>
+      </Switch>
+    );
+  }
+
+  // Handle pending approval status
+  if (user.accountStatus === 'pending') {
+    return (
+      <Switch>
+        <Route path="/pending-approval" component={PendingApprovalPage} />
+        <Route><Redirect to="/pending-approval" /></Route>
+      </Switch>
+    );
+  }
+
+  // Handle suspended accounts
+  if (user.accountStatus === 'suspended') {
+    return (
+      <Switch>
+        <Route path="/account-suspended" component={AccountSuspendedPage} />
+        <Route><Redirect to="/account-suspended" /></Route>
+      </Switch>
+    );
+  }
+
+  const userRole = user.role;
   
   const getRoleBasePath = () => {
     switch (userRole) {
@@ -85,6 +118,8 @@ function AuthenticatedApp() {
         return "/lab";
       case "supplier":
         return "/supplier";
+      case "admin":
+        return "/admin";
       default:
         return "/lab";
     }
