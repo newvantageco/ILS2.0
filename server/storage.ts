@@ -360,6 +360,9 @@ export class DbStorage implements IStorage {
         id: supplier?.id || po.supplierId,
         organizationName: supplier?.organizationName || null,
         email: supplier?.email || null,
+        accountNumber: supplier?.accountNumber || null,
+        contactEmail: supplier?.contactEmail || null,
+        contactPhone: supplier?.contactPhone || null,
       },
       createdBy: {
         id: createdBy?.id || createdById,
@@ -392,6 +395,9 @@ export class DbStorage implements IStorage {
         id: supplier?.id || po.supplierId,
         organizationName: supplier?.organizationName || null,
         email: supplier?.email || null,
+        accountNumber: supplier?.accountNumber || null,
+        contactEmail: supplier?.contactEmail || null,
+        contactPhone: supplier?.contactPhone || null,
       },
       createdBy: {
         id: createdBy?.id || po.createdById,

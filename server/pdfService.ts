@@ -19,6 +19,9 @@ interface PurchaseOrder {
   supplier: {
     organizationName: string | null;
     email: string | null;
+    accountNumber: string | null;
+    contactEmail: string | null;
+    contactPhone: string | null;
   };
   createdBy: {
     firstName: string | null;
@@ -50,11 +53,26 @@ export function generatePurchaseOrderPDF(po: PurchaseOrder): PDFKit.PDFDocument 
     .font("Helvetica-Bold")
     .text("SUPPLIER:", 50, 160);
 
+  let supplierY = 180;
   doc
     .fontSize(10)
     .font("Helvetica")
-    .text(po.supplier.organizationName || "N/A", 50, 180)
-    .text(po.supplier.email || "", 50, 195);
+    .text(po.supplier.organizationName || "N/A", 50, supplierY);
+  
+  supplierY += 15;
+  if (po.supplier.accountNumber) {
+    doc.text(`Account: ${po.supplier.accountNumber}`, 50, supplierY);
+    supplierY += 15;
+  }
+  
+  if (po.supplier.contactEmail) {
+    doc.text(po.supplier.contactEmail, 50, supplierY);
+    supplierY += 15;
+  }
+  
+  if (po.supplier.contactPhone) {
+    doc.text(po.supplier.contactPhone, 50, supplierY);
+  }
 
   // Lab Information
   doc
