@@ -31,6 +31,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bootstrap endpoint - returns user and role-based redirect path
+  app.get('/api/auth/bootstrap', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Determine redirect path based on user role
+      let redirectPath = '/';
+      switch (user.role) {
+        case 'ecp':
+          redirectPath = '/ecp-dashboard';
+          break;
+        case 'lab_tech':
+        case 'engineer':
+          redirectPath = '/lab-dashboard';
+          break;
+        case 'supplier':
+          redirectPath = '/supplier-dashboard';
+          break;
+        default:
+          redirectPath = '/';
+      }
+
+      res.json({
+        user,
+        redirectPath
+      });
+    } catch (error) {
+      console.error("Error in bootstrap:", error);
+      res.status(500).json({ message: "Failed to bootstrap" });
+    }
+  });
+
   // Order routes
   app.post('/api/orders', isAuthenticated, async (req: any, res) => {
     try {
