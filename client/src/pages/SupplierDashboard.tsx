@@ -1,102 +1,93 @@
-import { StatCard } from "@/components/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, TrendingUp, FileText, AlertCircle } from "lucide-react";
-import { StatusBadge } from "@/components/StatusBadge";
-import { Button } from "@/components/ui/button";
+import { Package, FileText, Truck, Archive } from "lucide-react";
 
 export default function SupplierDashboard() {
-  //todo: remove mock functionality
-  const purchaseOrders = [
-    {
-      id: "PO-2024-501",
-      material: "AR Coating - Premium",
-      quantity: "500 units",
-      status: "in_production" as const,
-      dueDate: "2024-10-30",
-    },
-    {
-      id: "PO-2024-502",
-      material: "Polycarbonate Blanks 1.59",
-      quantity: "1000 units",
-      status: "shipped" as const,
-      dueDate: "2024-10-25",
-    },
-    {
-      id: "PO-2024-503",
-      material: "High Index 1.67 Blanks",
-      quantity: "250 units",
-      status: "pending" as const,
-      dueDate: "2024-11-05",
-    },
-  ];
-
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Supplier Dashboard</h1>
+        <h1 className="text-2xl font-semibold" data-testid="text-supplier-dashboard-title">Supplier Portal</h1>
         <p className="text-muted-foreground mt-1">
-          Track purchase orders and manage your deliveries.
+          Purchase order management and material specifications.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Active Orders"
-          value="12"
-          icon={Package}
-        />
-        <StatCard
-          title="Delivered This Month"
-          value="38"
-          icon={TrendingUp}
-          trend={{ value: "+18% from last month", isPositive: true }}
-        />
-        <StatCard
-          title="Technical Docs"
-          value="156"
-          icon={FileText}
-        />
-        <StatCard
-          title="Pending Issues"
-          value="2"
-          icon={AlertCircle}
-        />
-      </div>
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="w-5 h-5" />
+            Phase 2 Feature
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground mb-4">
+            The Supplier Portal will be available in Phase 2 with the following capabilities:
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 rounded-md border border-border bg-card">
+              <div className="flex items-start gap-3">
+                <Package className="w-5 h-5 mt-1 text-primary" />
+                <div>
+                  <h4 className="font-semibold text-sm mb-1">Purchase Orders</h4>
+                  <p className="text-sm text-muted-foreground">
+                    View and manage lab purchase orders for lens blanks, coatings, and materials
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 rounded-md border border-border bg-card">
+              <div className="flex items-start gap-3">
+                <Truck className="w-5 h-5 mt-1 text-primary" />
+                <div>
+                  <h4 className="font-semibold text-sm mb-1">Delivery Tracking</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Update shipment status and provide delivery confirmations
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 rounded-md border border-border bg-card">
+              <div className="flex items-start gap-3">
+                <FileText className="w-5 h-5 mt-1 text-primary" />
+                <div>
+                  <h4 className="font-semibold text-sm mb-1">Technical Documentation</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Access material specifications, compliance certificates, and safety data sheets
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 rounded-md border border-border bg-card">
+              <div className="flex items-start gap-3">
+                <Archive className="w-5 h-5 mt-1 text-primary" />
+                <div>
+                  <h4 className="font-semibold text-sm mb-1">Inventory Management</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Monitor stock levels and receive low-inventory alerts
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Purchase Orders</CardTitle>
+          <CardTitle>Current Focus: Phase 1 MVP</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {purchaseOrders.map((po) => (
-              <div
-                key={po.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-md border border-border hover-elevate"
-                data-testid={`card-po-${po.id}`}
-              >
-                <div className="flex-1">
-                  <p className="font-semibold font-mono text-sm">{po.id}</p>
-                  <p className="text-sm mt-1">{po.material}</p>
-                  <p className="text-sm text-muted-foreground">Quantity: {po.quantity}</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-sm">
-                    <p className="text-muted-foreground">Due Date</p>
-                    <p className="font-medium">{po.dueDate}</p>
-                  </div>
-                  <StatusBadge status={po.status} />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    data-testid={`button-view-po-${po.id}`}
-                  >
-                    View Details
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <p className="text-muted-foreground">
+            Phase 1 focuses on establishing the core digital backbone for lab operations:
+          </p>
+          <ul className="list-disc list-inside mt-4 space-y-2 text-sm text-muted-foreground">
+            <li>ECP order entry and tracking system</li>
+            <li>Lab production queue management</li>
+            <li>Order status workflow automation</li>
+            <li>Role-based access control and authentication</li>
+          </ul>
+          <p className="text-muted-foreground mt-4">
+            Phase 2 will introduce supplier integration, purchase order management, and advanced inventory tracking.
+          </p>
         </CardContent>
       </Card>
     </div>

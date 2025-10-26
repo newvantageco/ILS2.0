@@ -57,6 +57,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      // Suppliers don't have access to order data in Phase 1
+      if (user.role === 'supplier') {
+        return res.status(403).json({ message: "Access denied. Purchase order functionality coming in Phase 2." });
+      }
+
       const { status, search, limit, offset } = req.query;
       
       const filters: any = {
@@ -81,17 +86,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/orders/:id', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Suppliers don't have access to order data in Phase 1
+      if (user.role === 'supplier') {
+        return res.status(403).json({ message: "Access denied. Purchase order functionality coming in Phase 2." });
+      }
+
       const order = await storage.getOrder(req.params.id);
       
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
-
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
       
       // ECPs can only see their own orders
-      if (user?.role === 'ecp' && order.ecpId !== userId) {
+      if (user.role === 'ecp' && order.ecpId !== userId) {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -107,8 +121,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Suppliers don't have access to order data in Phase 1
+      if (user.role === 'supplier') {
+        return res.status(403).json({ message: "Access denied. Purchase order functionality coming in Phase 2." });
+      }
+      
       // Only lab techs and engineers can update order status
-      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
+      if (user.role !== 'lab_tech' && user.role !== 'engineer') {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -139,6 +162,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
+      }
+
+      // Suppliers don't have access to order stats in Phase 1
+      if (user.role === 'supplier') {
+        return res.status(403).json({ message: "Access denied. Purchase order functionality coming in Phase 2." });
       }
 
       // ECPs get stats for their own orders
