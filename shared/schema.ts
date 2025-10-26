@@ -49,10 +49,11 @@ export const consultPriorityEnum = pgEnum("consult_priority", [
   "urgent"
 ]);
 
-// User storage table with Replit Auth fields
+// User storage table with Replit Auth fields and local auth support
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
+  password: text("password"), // For local email/password authentication
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),

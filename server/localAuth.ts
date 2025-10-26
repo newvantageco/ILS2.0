@@ -1,0 +1,72 @@
+import passport from "passport";
+import { Strategy as LocalStrategy } from "passport-local";
+import bcrypt from "bcrypt";
+import { storage } from "./storage";
+import type { User } from "@shared/schema";
+
+// Configure passport-local strategy for email/password authentication
+export function setupLocalAuth() {
+  passport.use('local', new LocalStrategy(
+    {
+      usernameField: 'email',
+      passwordField: 'password',
+    },
+    async (email, password, done) => {
+      try {
+        const user = await storage.getUserByEmail(email);
+        
+        if (!user) {
+          return done(null, false, { message: "Invalid email or password" });
+        }
+
+        if (!user.password) {
+          return done(null, false, { message: "This account uses Replit login. Please sign in with Replit." });
+        }
+
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        
+        if (!isValidPassword) {
+          return done(null, false, { message: "Invalid email or password" });
+        }
+
+        // Create session user object similar to Replit Auth
+        const sessionUser = {
+          claims: {
+            sub: user.id,
+            email: user.email,
+            first_name: user.firstName,
+            last_name: user.lastName,
+            profile_image_url: user.profileImageUrl,
+          },
+          local: true, // Flag to identify local auth users
+        };
+
+        return done(null, sessionUser);
+      } catch (error) {
+        return done(error);
+      }
+    }
+  ));
+}
+
+// Helper function to hash passwords
+export async function hashPassword(password: string): Promise<string> {
+  const saltRounds = 10;
+  return await bcrypt.hash(password, saltRounds);
+}
+
+// Middleware to check if user is authenticated (works with both Replit and local auth)
+export function isAuthenticatedLocal(req: any, res: any, next: any) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  
+  // For local auth users, no token refresh needed
+  if (req.user.local) {
+    return next();
+  }
+  
+  // For Replit auth users, check token expiration
+  // (This will be handled by the existing isAuthenticated middleware)
+  return next();
+}

@@ -2,6 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { hashPassword } from "./localAuth";
+import passport from "passport";
 import { 
   insertOrderSchema, 
   updateOrderStatusSchema,
@@ -158,6 +160,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error completing signup:", error);
       res.status(500).json({ message: "Failed to complete signup" });
     }
+  });
+
+  // Email/Password Signup
+  app.post('/api/auth/signup-email', async (req, res) => {
+    try {
+      const { email, password, firstName, lastName, role, organizationName, adminSetupKey } = req.body;
+
+      // Validation
+      if (!email || !password || !firstName || !lastName || !role) {
+        return res.status(400).json({ message: "Email, password, first name, last name, and role are required" });
+      }
+
+      if (!['ecp', 'lab_tech', 'engineer', 'supplier', 'admin'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+
+      if (password.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters long" });
+      }
+
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already registered" });
+      }
+
+      // Handle admin signup with key verification
+      let accountStatus: 'pending' | 'active' = 'pending';
+      if (role === 'admin') {
+        const expectedKey = process.env.ADMIN_SETUP_KEY;
+        
+        if (!expectedKey) {
+          return res.status(500).json({ message: "Admin setup is not configured on this system" });
+        }
+        
+        if (!adminSetupKey || adminSetupKey !== expectedKey) {
+          return res.status(403).json({ message: "Invalid admin setup key" });
+        }
+
+        // Admin accounts are auto-approved
+        accountStatus = 'active';
+      }
+
+      // Hash password
+      const hashedPassword = await hashPassword(password);
+
+      // Create user
+      const newUser = await storage.upsertUser({
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        role,
+        organizationName: organizationName || null,
+        accountStatus,
+      } as any);
+
+      // Create session
+      req.login({
+        claims: {
+          sub: newUser.id,
+          email: newUser.email,
+          first_name: newUser.firstName,
+          last_name: newUser.lastName,
+          profile_image_url: newUser.profileImageUrl,
+        },
+        local: true,
+      }, (err) => {
+        if (err) {
+          console.error("Session creation error:", err);
+          return res.status(500).json({ message: "Failed to create session" });
+        }
+        
+        res.status(201).json({
+          message: "Account created successfully",
+          user: {
+            id: newUser.id,
+            email: newUser.email,
+            firstName: newUser.firstName,
+            lastName: newUser.lastName,
+            role: newUser.role,
+            accountStatus: newUser.accountStatus,
+          }
+        });
+      });
+    } catch (error) {
+      console.error("Email signup error:", error);
+      res.status(500).json({ message: "Failed to create account" });
+    }
+  });
+
+  // Email/Password Login
+  app.post('/api/auth/login-email', (req, res, next) => {
+    passport.authenticate('local', (err: any, user: any, info: any) => {
+      if (err) {
+        console.error("Login error:", err);
+        return res.status(500).json({ message: "Internal server error" });
+      }
+      
+      if (!user) {
+        return res.status(401).json({ message: info?.message || "Invalid credentials" });
+      }
+
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error("Session error:", loginErr);
+          return res.status(500).json({ message: "Failed to create session" });
+        }
+
+        // Fetch full user from database
+        storage.getUser(user.claims.sub).then((dbUser) => {
+          if (!dbUser) {
+            return res.status(404).json({ message: "User not found" });
+          }
+
+          res.json({
+            message: "Login successful",
+            user: {
+              id: dbUser.id,
+              email: dbUser.email,
+              firstName: dbUser.firstName,
+              lastName: dbUser.lastName,
+              role: dbUser.role,
+              accountStatus: dbUser.accountStatus,
+            }
+          });
+        }).catch((dbErr) => {
+          console.error("Database error:", dbErr);
+          res.status(500).json({ message: "Failed to fetch user data" });
+        });
+      });
+    })(req, res, next);
+  });
+
+  // Logout (works for both Replit and local auth)
+  app.post('/api/auth/logout-local', (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({ message: "Failed to logout" });
+      }
+      res.json({ message: "Logged out successfully" });
+    });
   });
 
   // Order routes
