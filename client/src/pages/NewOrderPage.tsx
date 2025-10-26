@@ -34,6 +34,7 @@ export default function NewOrderPage() {
   const [formData, setFormData] = useState({
     patientName: "",
     patientDOB: "",
+    customerReference: "",
     odSphere: "",
     odCylinder: "",
     odAxis: "",
@@ -109,6 +110,7 @@ export default function NewOrderPage() {
     const orderData = {
       patientName: formData.patientName,
       patientDOB: formData.patientDOB || undefined,
+      customerReference: formData.customerReference || undefined,
       odSphere: formData.odSphere || undefined,
       odCylinder: formData.odCylinder || undefined,
       odAxis: formData.odAxis || undefined,
@@ -171,6 +173,19 @@ export default function NewOrderPage() {
                   onChange={(e) => updateFormData("patientDOB", e.target.value)}
                   data-testid="input-patient-dob"
                 />
+              </div>
+              <div>
+                <Label htmlFor="customer-reference">Customer Reference</Label>
+                <Input
+                  id="customer-reference"
+                  value={formData.customerReference}
+                  onChange={(e) => updateFormData("customerReference", e.target.value)}
+                  placeholder="Enter your internal reference number (optional)"
+                  data-testid="input-customer-reference"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Add your own reference number or ID to track this order in your system.
+                </p>
               </div>
             </div>
           )}
@@ -398,6 +413,7 @@ export default function NewOrderPage() {
                 <div className="text-sm space-y-1">
                   <p><span className="text-muted-foreground">Name:</span> {formData.patientName}</p>
                   {formData.patientDOB && <p><span className="text-muted-foreground">DOB:</span> {formData.patientDOB}</p>}
+                  {formData.customerReference && <p><span className="text-muted-foreground">Customer Reference:</span> {formData.customerReference}</p>}
                 </div>
               </div>
 
