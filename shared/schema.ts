@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, jsonb, index, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, jsonb, index, pgEnum, integer, decimal } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -23,6 +23,23 @@ export const orderStatusEnum = pgEnum("order_status", [
   "completed",
   "on_hold",
   "cancelled"
+]);
+
+export const poStatusEnum = pgEnum("po_status", [
+  "draft",
+  "sent",
+  "acknowledged",
+  "in_transit",
+  "delivered",
+  "cancelled"
+]);
+
+export const documentTypeEnum = pgEnum("document_type", [
+  "spec_sheet",
+  "certificate",
+  "sds",
+  "compliance",
+  "other"
 ]);
 
 // User storage table with Replit Auth fields
@@ -69,10 +86,62 @@ export const orders = pgTable("orders", {
   frameType: text("frame_type"),
   
   notes: text("notes"),
+  traceFileUrl: text("trace_file_url"),
   
   orderDate: timestamp("order_date").defaultNow().notNull(),
   dueDate: timestamp("due_date"),
   completedAt: timestamp("completed_at"),
+});
+
+export const consultLogs = pgTable("consult_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").notNull().references(() => orders.id),
+  ecpId: varchar("ecp_id").notNull().references(() => users.id),
+  subject: text("subject").notNull(),
+  description: text("description").notNull(),
+  status: text("status").notNull().default("open"),
+  labResponse: text("lab_response"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  respondedAt: timestamp("responded_at"),
+});
+
+export const purchaseOrders = pgTable("purchase_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  poNumber: text("po_number").notNull().unique(),
+  supplierId: varchar("supplier_id").notNull().references(() => users.id),
+  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  status: poStatusEnum("status").notNull().default("draft"),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+  expectedDeliveryDate: timestamp("expected_delivery_date"),
+  actualDeliveryDate: timestamp("actual_delivery_date"),
+  trackingNumber: text("tracking_number"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const poLineItems = pgTable("po_line_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  purchaseOrderId: varchar("purchase_order_id").notNull().references(() => purchaseOrders.id),
+  itemName: text("item_name").notNull(),
+  description: text("description"),
+  quantity: integer("quantity").notNull(),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const technicalDocuments = pgTable("technical_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id").notNull().references(() => users.id),
+  documentType: documentTypeEnum("document_type").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  fileUrl: text("file_url").notNull(),
+  fileName: text("file_name").notNull(),
+  fileSize: integer("file_size"),
+  materialName: text("material_name"),
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
 });
 
 export const upsertUserSchema = createInsertSchema(users);
@@ -97,6 +166,40 @@ export const updateOrderStatusSchema = z.object({
   status: z.enum(["pending", "in_production", "quality_check", "shipped", "completed", "on_hold", "cancelled"]),
 });
 
+export const insertConsultLogSchema = createInsertSchema(consultLogs).omit({
+  id: true,
+  createdAt: true,
+  respondedAt: true,
+  labResponse: true,
+  status: true,
+});
+
+export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({
+  id: true,
+  poNumber: true,
+  createdAt: true,
+  updatedAt: true,
+  createdById: true,
+});
+
+export const insertPOLineItemSchema = createInsertSchema(poLineItems).omit({
+  id: true,
+  createdAt: true,
+  purchaseOrderId: true,
+});
+
+export const insertTechnicalDocumentSchema = createInsertSchema(technicalDocuments).omit({
+  id: true,
+  uploadedAt: true,
+  supplierId: true,
+});
+
+export const updatePOStatusSchema = z.object({
+  status: z.enum(["draft", "sent", "acknowledged", "in_transit", "delivered", "cancelled"]),
+  trackingNumber: z.string().optional(),
+  actualDeliveryDate: z.string().optional(),
+});
+
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
 
@@ -112,6 +215,39 @@ export type OrderWithDetails = Order & {
     id: string;
     firstName: string | null;
     lastName: string | null;
+    organizationName: string | null;
+  };
+};
+
+export type InsertConsultLog = z.infer<typeof insertConsultLogSchema>;
+export type ConsultLog = typeof consultLogs.$inferSelect;
+
+export type InsertPurchaseOrder = z.infer<typeof insertPurchaseOrderSchema>;
+export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
+
+export type InsertPOLineItem = z.infer<typeof insertPOLineItemSchema>;
+export type POLineItem = typeof poLineItems.$inferSelect;
+
+export type PurchaseOrderWithDetails = PurchaseOrder & {
+  supplier: {
+    id: string;
+    organizationName: string | null;
+    email: string | null;
+  };
+  createdBy: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+  };
+  lineItems: POLineItem[];
+};
+
+export type InsertTechnicalDocument = z.infer<typeof insertTechnicalDocumentSchema>;
+export type TechnicalDocument = typeof technicalDocuments.$inferSelect;
+
+export type TechnicalDocumentWithSupplier = TechnicalDocument & {
+  supplier: {
+    id: string;
     organizationName: string | null;
   };
 };
