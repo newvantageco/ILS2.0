@@ -6,6 +6,16 @@ The Integrated Lens System (ILS) is an enterprise-grade web application designed
 
 The application is built as a modern, cloud-native platform with a focus on data clarity, professional presentation, and efficient workflows for information-dense enterprise operations.
 
+## Recent Changes
+
+**October 26, 2025 - Supplier Management System**
+- Extended `users` table with supplier contact fields: `accountNumber`, `contactEmail`, `contactPhone`, and `address` (JSONB)
+- Added customer reference fields to `patients` and `orders` tables for better tracking
+- Implemented full CRUD API for supplier management (`/api/suppliers`) with lab-tech/engineer role guards
+- Built comprehensive Supplier Management UI with dialog forms and table views
+- Reorganized Lab Dashboard with tabbed interface (Orders, Purchase Orders, Suppliers)
+- All supplier operations use Zod validation and proper error handling
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -88,9 +98,9 @@ Preferred communication style: Simple, everyday language.
 - **Connection Pooling**: Neon serverless with WebSocket support for serverless environments
 
 **Schema Design:**
-- `users`: User profiles with role, organization, and Replit Auth fields
-- `patients`: Patient records linked to ECPs
-- `orders`: Lens orders with prescription data, status tracking, and relationships
+- `users`: User profiles with role, organization, Replit Auth fields, and supplier contact information (accountNumber, contactEmail, contactPhone, address as JSONB)
+- `patients`: Patient records linked to ECPs with optional customer reference field
+- `orders`: Lens orders with prescription data, status tracking, relationships, and optional customer reference field
 - `sessions`: Express session storage table
 - PostgreSQL enums for controlled vocabularies (user_role, order_status)
 
