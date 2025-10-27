@@ -1,0 +1,915 @@
+================================================================================
+INTEGRATED LENS SYSTEM (ILS) - COMPLETE PROJECT OVERVIEW
+================================================================================
+
+PROJECT SUMMARY
+---------------
+The Integrated Lens System (ILS) is an enterprise-grade web application designed 
+to streamline optical lab operations. It provides a unified platform for managing 
+lens orders, production workflows, and quality control across multiple stakeholder 
+groups including Eye Care Professionals (ECPs), Lab Technicians, Engineers, 
+Suppliers, and Administrators.
+
+The system is built as a modern, cloud-native platform with a focus on data 
+clarity, professional presentation, and efficient workflows for information-dense 
+enterprise operations.
+
+================================================================================
+STAKEHOLDER GROUPS
+================================================================================
+
+1. EYE CARE PROFESSIONALS (ECPs)
+   - Submit new lens orders with patient information
+   - Track order status and history
+   - Request lab consultations for complex cases
+   - View order details and prescription information
+   - Upload and attach OMA files with prescription data
+
+2. LAB TECHNICIANS & ENGINEERS
+   - Manage production queues and workflow
+   - Update order statuses through production stages
+   - Create and manage purchase orders for materials
+   - Manage supplier relationships and contacts
+   - Respond to ECP consultation requests
+   - Ship completed orders with tracking
+
+3. SUPPLIERS
+   - Receive and acknowledge purchase orders
+   - Upload technical documentation (spec sheets, certificates, SDS, compliance)
+   - Manage their organization's contact information
+   - Track delivery status
+
+4. ADMINISTRATORS
+   - Approve or reject new user registrations
+   - Manage user accounts (activate, suspend)
+   - Assign and modify user roles
+   - Access comprehensive user statistics
+   - Monitor system-wide operations
+
+================================================================================
+TECHNICAL ARCHITECTURE
+================================================================================
+
+FRONTEND STACK
+--------------
+- React 18 with TypeScript
+- Vite (build tool and dev server with HMR)
+- Wouter (lightweight client-side routing)
+- TanStack Query v5 (server state management, caching, data fetching)
+- shadcn/ui components (built on Radix UI primitives)
+- Tailwind CSS (utility-first styling)
+- Lucide React (icons)
+- React Hook Form with Zod validation
+- Framer Motion (animations)
+
+BACKEND STACK
+-------------
+- Node.js with Express framework
+- TypeScript with ES Modules
+- PostgreSQL via Neon serverless (WebSocket support)
+- Drizzle ORM (type-safe database queries)
+- Passport.js (authentication middleware)
+- Express Session with PostgreSQL storage (connect-pg-simple)
+
+AUTHENTICATION & AUTHORIZATION
+------------------------------
+- Replit Auth (OpenID Connect/OAuth integration)
+- Local email/password authentication with bcrypt
+- Session-based authentication (7-day TTL)
+- Role-based access control (RBAC)
+- Account status workflow (pending → active/suspended)
+
+KEY LIBRARIES & SERVICES
+------------------------
+- Zod (runtime schema validation)
+- Drizzle-Zod (generate Zod schemas from Drizzle tables)
+- date-fns (date manipulation)
+- PDFKit (PDF generation for purchase orders)
+- Resend (email notification service)
+- OMA file parser (custom utility for optical data)
+
+================================================================================
+DATABASE SCHEMA
+================================================================================
+
+CORE TABLES
+-----------
+
+1. users
+   - User profiles with authentication data
+   - Fields: id, email, password, firstName, lastName, profileImageUrl
+   - Role: ecp | lab_tech | engineer | supplier | admin
+   - Account status: pending | active | suspended
+   - Organization: organizationName, accountNumber, contactEmail, contactPhone
+   - Address (JSONB): street, city, state, zipCode, country
+   - Timestamps: createdAt, updatedAt
+
+2. user_roles
+   - Junction table for multi-role support
+   - Fields: id, userId, role, assignedAt
+   - Allows users to have multiple roles simultaneously
+
+3. patients
+   - Patient demographic information
+   - Fields: id, name, dateOfBirth
+   - Customer reference: customerReferenceLabel, customerReferenceNumber
+   - Relationship: ecpId (references users.id)
+
+4. orders
+   - Lens orders with full prescription data
+   - Order tracking: orderNumber, status, orderDate, dueDate, completedAt
+   - Prescription fields: 
+     * OD: odSphere, odCylinder, odAxis, odAdd
+     * OS: osSphere, osCylinder, osAxis, osAdd
+     * pd (pupillary distance)
+   - Lens specifications: lensType, lensMaterial, coating, frameType
+   - Customer reference: customerReferenceLabel, customerReferenceNumber
+   - OMA file support: omaFileContent, omaFilename, omaParsedData (JSONB)
+   - Shipping: trackingNumber, shippedAt
+   - Relationships: patientId, ecpId
+
+5. consult_logs
+   - Lab consultation requests from ECPs
+   - Fields: orderId, ecpId, priority, subject, description
+   - Status tracking: status, labResponse, respondedAt
+   - Priority levels: normal | high | urgent
+
+6. purchase_orders
+   - Material purchase orders to suppliers
+   - Fields: poNumber, supplierId, createdById, status
+   - Financial: totalAmount (decimal)
+   - Delivery: expectedDeliveryDate, actualDeliveryDate, trackingNumber
+   - Status: draft | sent | acknowledged | in_transit | delivered | cancelled
+
+7. po_line_items
+   - Individual items in purchase orders
+   - Fields: purchaseOrderId, itemName, description
+   - Pricing: quantity, unitPrice, totalPrice
+
+8. technical_documents
+   - Supplier-uploaded documentation
+   - Fields: supplierId, documentType, title, description
+   - File data: fileUrl, fileName, fileSize
+   - Document types: spec_sheet | certificate | sds | compliance | other
+   - Material tracking: materialName
+
+9. organization_settings
+   - Global organization configuration
+   - Company info: companyName, logoUrl, contactEmail, contactPhone
+   - Address (JSONB)
+   - Order config: orderNumberPrefix, defaultLeadTimeDays
+   - Notifications: enableEmailNotifications (JSONB)
+   - Business hours (JSONB)
+
+10. user_preferences
+    - Individual user preferences
+    - Fields: userId, theme, language
+    - Notifications: emailNotifications (JSONB)
+    - Dashboard layout (JSONB)
+
+11. sessions
+    - Express session storage
+    - Fields: sid (session ID), sess (session data), expire
+
+================================================================================
+COMPLETED DEVELOPMENT PHASES
+================================================================================
+
+PHASE 1: CORE ORDER MANAGEMENT ✅
+----------------------------------
+- Order creation with patient information
+- Multi-step order form with prescription entry
+- Patient management (CRUD operations)
+- Lab dashboard with production workflow visualization
+- Order status tracking through production stages
+- Consult logging system for ECP-to-lab communication
+- Technical documentation library for suppliers
+- Role-based dashboards (ECP, Lab, Supplier)
+
+PHASE 2: SUPPLIER MANAGEMENT ✅
+-------------------------------
+- Extended users table with supplier contact fields
+- Full CRUD API for supplier management
+- Supplier contact information (account number, email, phone)
+- Address management (JSONB storage)
+- Supplier management UI with dialog forms
+- Reorganized Lab Dashboard with tabbed interface
+- Purchase order line item management
+
+PHASE 3: CUSTOMER REFERENCE & PO ENHANCEMENT ✅
+-----------------------------------------------
+- Customer reference fields in orders and patients
+- Enhanced PO PDF generation with supplier details
+- Supplier contact info in PDF documents
+- Updated email templates with account numbers
+- Type-safe PurchaseOrderWithDetails extension
+- Backward compatibility with null value handling
+
+PHASE 4: SETTINGS MANAGEMENT ✅
+-------------------------------
+- Organization settings database schema
+- User preferences system
+- Company info configuration (name, logo, contact)
+- Order configuration (prefix, lead times)
+- Theme selection (light/dark mode)
+- Language preferences
+- Email notification controls
+- Role-based access control for settings
+- Tabbed Settings UI with forms
+- Full CRUD API with Zod validation
+
+PHASE 5: USER MANAGEMENT & ADMIN DASHBOARD ✅
+---------------------------------------------
+- Multi-role user system with role switching
+- Account status workflow (pending/active/suspended)
+- User signup page with role selection
+- Pending approval page for new users
+- Account suspended page with reason display
+- Comprehensive admin dashboard
+- User statistics and analytics
+- Searchable user table with management actions
+- Admin-only API endpoints with authorization guards
+- Approve/suspend/activate user accounts
+- Role changes including admin promotion
+- ADMIN_SETUP_KEY for initial admin account creation
+
+PHASE 6: OMA FILE SUPPORT ✅
+----------------------------
+- Extended orders schema with OMA file fields
+- OMA parser utility (shared/omaParser.ts)
+- Parse prescription data from text-based OMA files
+- Extract frame tracing coordinates
+- OMAFileUpload component with drag-and-drop
+- Real-time parsing preview
+- OMAViewer component for visualization
+- Display prescription, frame measurements, tracing
+- Integrated upload in NewOrderPage (step 2)
+- Comprehensive OrderDetailsPage with OMA viewer
+- Role-based back navigation
+- API endpoints: upload, download, delete OMA files
+- Automatic parsing on order creation
+
+================================================================================
+APPLICATION ROUTES & PAGES
+================================================================================
+
+PUBLIC ROUTES
+-------------
+/ - Landing page (redirects based on auth status)
+
+AUTHENTICATION ROUTES
+---------------------
+/login - Replit Auth login (OAuth/OIDC)
+/email-login - Email/password login
+/email-signup - Email/password registration
+/signup - Complete user profile setup (role selection)
+/pending-approval - Holding page for pending users
+/account-suspended - Suspension notice with reason
+
+ECP ROUTES
+----------
+/ecp/dashboard - ECP dashboard with order overview
+/new-order - Multi-step order creation form
+/order/:id - Detailed order view with OMA support
+
+LAB ROUTES
+----------
+/lab/dashboard - Lab dashboard (Orders, POs, Suppliers tabs)
+/order/:id - Order details with production controls
+
+SUPPLIER ROUTES
+---------------
+/supplier/dashboard - Supplier dashboard with POs and documents
+
+ADMIN ROUTES
+------------
+/admin/dashboard - User management and statistics
+
+SHARED ROUTES
+-------------
+/settings - Organization settings and user preferences
+/role-switcher - Switch between assigned roles
+
+================================================================================
+API ENDPOINTS
+================================================================================
+
+AUTHENTICATION ENDPOINTS
+------------------------
+GET  /api/auth/user - Get current authenticated user
+GET  /api/auth/bootstrap - Get user and redirect path
+POST /api/auth/complete-signup - Complete user profile setup
+GET  /api/auth/available-roles - Get user's available roles
+POST /api/auth/add-role - Add role to user account
+POST /api/auth/switch-role - Switch active role
+
+ORDER ENDPOINTS
+---------------
+GET  /api/orders - List all orders (filtered by role)
+GET  /api/orders/:id - Get order details with relationships
+POST /api/orders - Create new order
+PATCH /api/orders/:id/status - Update order status
+POST /api/orders/:id/ship - Ship order with tracking
+PATCH /api/orders/:id/oma - Upload OMA file
+GET  /api/orders/:id/oma - Download OMA file
+DELETE /api/orders/:id/oma - Remove OMA file
+
+PATIENT ENDPOINTS
+-----------------
+GET  /api/patients - List patients for authenticated ECP
+POST /api/patients - Create new patient
+
+CONSULT ENDPOINTS
+-----------------
+GET  /api/consults - List consultation requests
+POST /api/consults - Create consultation request
+PATCH /api/consults/:id - Update consultation (lab response)
+
+PURCHASE ORDER ENDPOINTS
+------------------------
+GET  /api/purchase-orders - List purchase orders
+GET  /api/purchase-orders/:id - Get PO details with line items
+POST /api/purchase-orders - Create purchase order
+PATCH /api/purchase-orders/:id/status - Update PO status
+GET  /api/purchase-orders/:id/pdf - Generate and download PDF
+POST /api/purchase-orders/:id/email - Email PO to supplier
+
+SUPPLIER ENDPOINTS
+------------------
+GET  /api/suppliers - List all suppliers
+GET  /api/suppliers/:id - Get supplier details
+POST /api/suppliers - Create supplier account
+PATCH /api/suppliers/:id - Update supplier information
+DELETE /api/suppliers/:id - Delete supplier
+
+TECHNICAL DOCUMENT ENDPOINTS
+----------------------------
+GET  /api/technical-documents - List documents (filtered by supplier)
+POST /api/technical-documents - Upload document
+DELETE /api/technical-documents/:id - Delete document
+
+SETTINGS ENDPOINTS
+------------------
+GET  /api/settings/organization - Get organization settings
+PATCH /api/settings/organization - Update organization settings
+GET  /api/settings/preferences - Get user preferences
+PATCH /api/settings/preferences - Update user preferences
+
+ADMIN ENDPOINTS
+---------------
+GET  /api/admin/stats - Get user statistics
+GET  /api/admin/users - List all users with search/filter
+PATCH /api/admin/users/:id/approve - Approve pending user
+PATCH /api/admin/users/:id/suspend - Suspend user account
+PATCH /api/admin/users/:id/activate - Activate suspended account
+PATCH /api/admin/users/:id/role - Change user role
+
+HEALTH CHECK
+------------
+GET  /health - System health status (for deployment monitoring)
+
+================================================================================
+KEY UI COMPONENTS
+================================================================================
+
+REUSABLE COMPONENTS
+-------------------
+- AppSidebar - Main navigation sidebar with role-based menu
+- ThemeToggle - Light/dark mode switcher
+- StatCard - Dashboard statistics card
+- OrderCard - Order summary card for lists
+- OrderTable - Sortable, filterable order table
+- StatusBadge - Visual status indicator with colors
+- PrescriptionDisplay - Formatted Rx data display
+- ProgressStepper - Multi-step form progress indicator
+- SearchBar - Unified search input with icon
+- FilterBar - Multiple filter controls in toolbar
+- OMAFileUpload - Drag-and-drop OMA file uploader with preview
+- OMAViewer - Display parsed OMA prescription and tracing data
+- RoleSwitcherDropdown - Switch between available roles
+- ConsultLogManager - Consultation request interface
+- TechnicalDocumentManager - Document upload and management
+- CreatePurchaseOrderDialog - PO creation form
+- ShipOrderDialog - Order shipping form with tracking
+- SupplierManagementDialog - Supplier CRUD interface
+- SuppliersTable - Supplier listing with actions
+
+SHADCN/UI COMPONENTS
+--------------------
+Comprehensive library including:
+- Accordion, Alert, Avatar, Badge, Button, Card
+- Calendar, Carousel, Chart, Checkbox, Collapsible
+- Command, Context Menu, Dialog, Drawer, Dropdown Menu
+- Form, Hover Card, Input, Label, Menubar
+- Navigation Menu, Pagination, Popover, Progress
+- Radio Group, Resizable, Scroll Area, Select
+- Separator, Sheet, Sidebar, Skeleton, Slider
+- Switch, Table, Tabs, Textarea, Toast, Toggle
+- Tooltip
+
+CUSTOM HOOKS
+------------
+- useAuth - Authentication state and user data
+- useToast - Toast notification system
+- useMobile - Responsive mobile detection
+
+================================================================================
+DESIGN SYSTEM
+================================================================================
+
+DESIGN PHILOSOPHY
+-----------------
+Material Design with enterprise data focus. The system prioritizes:
+- Clarity and efficiency for information-dense workflows
+- Professional presentation for B2B context
+- Responsive, mobile-first design
+- Accessibility via Radix UI primitives
+
+TYPOGRAPHY
+----------
+- Primary Font: Inter (400, 500, 600, 700)
+- Monospace: JetBrains Mono (for technical data like Rx values)
+- Page Titles: 2xl (24px), semibold
+- Section Headers: xl (20px), semibold
+- Body Text: base (16px), normal
+- Labels: sm (14px), medium
+- Technical Data: sm (14px), mono
+- Helper Text: xs (12px)
+
+COLOR SYSTEM
+------------
+CSS custom properties for theme support:
+- Background hierarchy (background, card, popover, muted)
+- Foreground hierarchy (foreground, muted-foreground)
+- Primary, secondary, destructive, accent colors
+- Border colors with theme variants
+- Focus ring colors
+- Sidebar-specific color tokens
+- Chart color palette
+
+SPACING & LAYOUT
+----------------
+- Tailwind spacing units: 2, 4, 6, 8, 12, 16
+- Component padding: p-4 to p-6
+- Section spacing: space-y-6 to space-y-8
+- Grid gaps: gap-6
+- Max widths: Forms (max-w-4xl), Content (max-w-7xl)
+
+COMPONENT PATTERNS
+------------------
+- Rounded corners: rounded-md (small radius)
+- Shadows: Subtle elevation for cards and modals
+- Hover states: Subtle background color shifts
+- Focus states: Ring offset with theme color
+- Loading states: Skeleton loaders and spinners
+- Empty states: Centered illustrations with helpful text
+
+================================================================================
+DATA FLOW ARCHITECTURE
+================================================================================
+
+CLIENT-SIDE DATA MANAGEMENT
+---------------------------
+- TanStack Query for all server state
+- Aggressive caching (staleTime: Infinity)
+- Query keys organized hierarchically for invalidation
+- Automatic background refetching
+- Optimistic updates for better UX
+- Loading and error states handled per query
+
+FORM HANDLING
+-------------
+- React Hook Form for form state management
+- Zod schemas for validation
+- zodResolver integration
+- Controlled form components
+- Inline error messages
+- Multi-step forms with progress tracking
+
+API REQUEST FLOW
+----------------
+1. Client initiates action (user interaction)
+2. React Query mutation triggered
+3. Request sent to Express API endpoint
+4. Passport.js authentication middleware validates session
+5. Role-based authorization check
+6. Zod schema validation of request body
+7. Storage layer (Drizzle ORM) queries database
+8. Response sent back to client
+9. React Query updates cache
+10. UI re-renders with new data
+
+AUTHENTICATION FLOW
+-------------------
+1. User initiates login (Replit Auth or email/password)
+2. Passport.js handles OAuth/local strategy
+3. Session created and stored in PostgreSQL
+4. User claims stored in session
+5. Bootstrap endpoint determines user state:
+   - No role → redirect to /signup
+   - Pending status → redirect to /pending-approval
+   - Suspended → redirect to /account-suspended
+   - Active → redirect to role-based dashboard
+6. Protected routes enforce isAuthenticated middleware
+7. Frontend useAuth hook provides user context
+
+================================================================================
+FILE STRUCTURE
+================================================================================
+
+PROJECT ROOT
+------------
+attached_assets/        - User-uploaded attachments
+client/                 - Frontend React application
+  public/               - Static assets (favicon)
+  src/
+    components/         - Reusable UI components
+      ui/              - shadcn/ui component library
+      examples/        - Example component implementations
+      [various].tsx    - Application-specific components
+    hooks/             - Custom React hooks
+    lib/               - Utilities and helpers
+    pages/             - Page-level components
+      examples/        - Example page implementations
+      [various].tsx    - Application pages
+    App.tsx            - Root application component with routing
+    index.css          - Global styles and Tailwind config
+    main.tsx           - React entry point
+  index.html           - HTML template
+
+db/                     - Database connection setup
+  index.ts             - Drizzle client initialization
+
+server/                 - Backend Express application
+  db.ts                - Database connection
+  emailService.ts      - Email notification service
+  github-helper.ts     - GitHub integration utilities
+  index.ts             - Express server entry point
+  localAuth.ts         - Local authentication strategy
+  pdfService.ts        - PDF generation service
+  replitAuth.ts        - Replit Auth OIDC setup
+  routes.ts            - API route handlers (1400+ lines)
+  storage.ts           - Database access layer
+  vite.ts              - Vite middleware integration
+
+shared/                 - Shared types and utilities
+  omaParser.ts         - OMA file parsing utility
+  schema.ts            - Drizzle schema and Zod schemas
+
+Configuration Files
+-------------------
+components.json         - shadcn/ui configuration
+design_guidelines.md    - Design system documentation
+drizzle.config.ts       - Drizzle ORM configuration
+package.json            - NPM dependencies and scripts
+postcss.config.js       - PostCSS configuration
+README.md               - Project documentation
+replit.md               - Replit-specific project memory
+tailwind.config.ts      - Tailwind CSS configuration
+tsconfig.json           - TypeScript configuration
+vite.config.ts          - Vite build configuration
+
+================================================================================
+ENVIRONMENT VARIABLES
+================================================================================
+
+REQUIRED
+--------
+DATABASE_URL            - PostgreSQL connection string (Neon)
+SESSION_SECRET          - Express session secret key
+ADMIN_SETUP_KEY         - Secret key for first admin account setup
+
+AUTHENTICATION (OIDC)
+--------------------
+ISSUER_URL              - OpenID Connect issuer URL
+CLIENT_ID               - OAuth client ID
+CLIENT_SECRET           - OAuth client secret
+REDIRECT_URI            - OAuth callback URL
+
+OPTIONAL INTEGRATIONS
+--------------------
+RESEND_API_KEY          - Resend email service API key
+GITHUB_TOKEN            - GitHub API token (for integrations)
+
+================================================================================
+NPM SCRIPTS
+================================================================================
+
+Development
+-----------
+npm run dev             - Start development server (Vite + Express)
+npm run db:push         - Push schema changes to database
+npm run db:push --force - Force push schema (for data loss scenarios)
+
+Production
+----------
+npm run build           - Build frontend and backend for production
+npm start               - Start production server
+
+Database
+--------
+npm run db:generate     - Generate Drizzle migrations
+npm run db:migrate      - Run database migrations
+npm run db:studio       - Open Drizzle Studio (database GUI)
+
+================================================================================
+SECURITY FEATURES
+================================================================================
+
+AUTHENTICATION SECURITY
+-----------------------
+- bcrypt password hashing (10 rounds)
+- HTTP-only, secure session cookies
+- Session expiration (7 days)
+- CSRF protection via session tokens
+- Password validation with Zod schemas
+
+AUTHORIZATION
+-------------
+- Role-based access control (RBAC)
+- Account status checks (pending/active/suspended)
+- API endpoint guards for role enforcement
+- Admin-only routes for sensitive operations
+- Multi-role support with explicit role switching
+
+DATA PROTECTION
+---------------
+- SQL injection prevention via Drizzle ORM
+- XSS protection through React's built-in escaping
+- Zod validation on all user inputs
+- Secure session storage in PostgreSQL
+- Environment variable management for secrets
+
+================================================================================
+OMA FILE SUPPORT DETAILS
+================================================================================
+
+OMA PARSER CAPABILITIES
+-----------------------
+- Parse text-based OMA (Optical Manufacturer's Association) files
+- Extract prescription data (sphere, cylinder, axis, add, prism)
+- Extract frame measurements (A, B, DBL, ED)
+- Extract tracing coordinates (boxed and shaped)
+- Validate file format before processing
+- Handle both left and right eye data
+- Support for progressive lens data
+
+SUPPORTED DATA FIELDS
+---------------------
+Prescription:
+- Right Eye (OD): Sphere, Cylinder, Axis, Add, Prism
+- Left Eye (OS): Sphere, Cylinder, Axis, Add, Prism
+- Pupillary Distance (PD)
+
+Frame Measurements:
+- A measurement (lens width)
+- B measurement (lens height)
+- DBL (distance between lenses)
+- ED (effective diameter)
+
+Tracing Data:
+- Boxed tracing coordinates
+- Shaped tracing coordinates
+- Coordinate arrays for frame shape visualization
+
+OMA WORKFLOW
+------------
+1. ECP uploads .oma file during order creation
+2. File validated as valid OMA format
+3. File content parsed immediately
+4. Prescription data extracted and previewed
+5. Frame tracing data visualized in real-time
+6. All data stored in order record:
+   - omaFileContent: Original file text
+   - omaFilename: Original filename
+   - omaParsedData: Structured JSON data
+7. Order created with embedded OMA data
+8. Lab staff can view parsed data in OrderDetailsPage
+9. OMA viewer shows prescription and frame tracing
+
+================================================================================
+THIRD-PARTY INTEGRATIONS
+================================================================================
+
+CONFIGURED INTEGRATIONS
+-----------------------
+1. Replit Auth (javascript_log_in_with_replit==1.0.0)
+   - Status: NEEDS SETUP
+   - Purpose: OAuth/OIDC authentication
+   - Implementation: Complete in server/replitAuth.ts
+
+2. Database (javascript_database==1.0.0)
+   - Status: NEEDS SETUP
+   - Purpose: PostgreSQL database connection
+   - Implementation: Complete via Neon + Drizzle
+
+3. Resend (resend==1.0.0)
+   - Status: NEEDS SETUP
+   - Purpose: Transactional email notifications
+   - Implementation: Complete in server/emailService.ts
+
+4. GitHub (github==1.0.0)
+   - Status: NEEDS SETUP
+   - Purpose: Version control integration
+   - Implementation: Partial in server/github-helper.ts
+
+EXTERNAL SERVICES
+-----------------
+- Neon Database: Serverless PostgreSQL hosting
+- Replit Deployment: Cloud hosting with automatic HTTPS
+- Google Fonts API: Inter and JetBrains Mono fonts
+- Replit Vite Plugins: Development enhancements
+
+================================================================================
+DEPLOYMENT & HOSTING
+================================================================================
+
+PLATFORM
+--------
+- Hosted on Replit infrastructure
+- Automatic HTTPS certificates
+- WebSocket support for Neon database
+- Environment variable management
+- Continuous deployment from main branch
+
+BUILD PROCESS
+-------------
+1. TypeScript compilation (frontend and backend)
+2. Vite bundles frontend (React app)
+3. esbuild bundles backend (Express server)
+4. Static assets copied to dist/
+5. Production server serves from dist/
+
+DEPLOYMENT REQUIREMENTS
+-----------------------
+- All environment variables configured
+- Database schema pushed (npm run db:push)
+- Replit Auth integration setup
+- Admin setup key defined for first admin
+
+HEALTH MONITORING
+-----------------
+- /health endpoint for uptime monitoring
+- Returns: status, timestamp, environment
+- Used by deployment platform for health checks
+
+================================================================================
+TESTING & QUALITY ASSURANCE
+================================================================================
+
+END-TO-END TESTING COMPLETED
+----------------------------
+- User signup and role assignment flow
+- Account approval and suspension workflows
+- Order creation with OMA file upload
+- OMA file parsing and visualization
+- Purchase order PDF generation
+- Email notification delivery
+- Settings persistence and retrieval
+- Role-based access control enforcement
+- Multi-role switching functionality
+
+CODE QUALITY
+------------
+- TypeScript strict mode enabled
+- ESLint configuration for code style
+- Zod schemas for runtime type safety
+- Drizzle ORM for type-safe database queries
+- Shared types between frontend and backend
+- Consistent error handling patterns
+
+================================================================================
+KNOWN LIMITATIONS & FUTURE CONSIDERATIONS
+================================================================================
+
+CURRENT LIMITATIONS
+-------------------
+- Single organization per deployment
+- No real-time collaboration features
+- Limited analytics and reporting
+- No mobile native applications
+- Basic email template customization
+- No bulk operations for orders
+
+POTENTIAL ENHANCEMENTS
+---------------------
+- Real-time order updates via WebSockets
+- Advanced analytics dashboard
+- Batch order processing
+- Mobile apps (iOS/Android)
+- Multi-organization support
+- Custom report builder
+- Inventory management integration
+- Integration with lab equipment
+- Advanced notification preferences
+- Automated order routing
+- Machine learning for order optimization
+
+================================================================================
+DEVELOPMENT WORKFLOW
+================================================================================
+
+MAKING CODE CHANGES
+-------------------
+1. Read existing files to understand patterns
+2. Update shared/schema.ts if changing data model
+3. Run npm run db:push to sync database
+4. Update server/storage.ts for data access layer
+5. Update server/routes.ts for API endpoints
+6. Update client components and pages
+7. Test changes in development environment
+8. Verify role-based access control
+
+ADDING NEW FEATURES
+-------------------
+1. Design data model in shared/schema.ts
+2. Create Drizzle table definitions
+3. Generate insert/update schemas with Zod
+4. Implement storage interface methods
+5. Create API endpoints with validation
+6. Build frontend components
+7. Add to appropriate dashboard/page
+8. Test with multiple user roles
+9. Update documentation
+
+DATABASE MIGRATIONS
+-------------------
+1. Modify schema in shared/schema.ts
+2. Run: npm run db:push
+3. Review proposed changes
+4. Confirm or use --force if needed
+5. Never manually write SQL migrations
+6. Never change primary key types
+
+================================================================================
+SUPPORT & DOCUMENTATION
+================================================================================
+
+INTERNAL DOCUMENTATION
+---------------------
+- README.md: High-level project overview
+- replit.md: Project memory and recent changes
+- design_guidelines.md: Design system specifications
+- Code comments: Inline documentation throughout
+- TypeScript types: Self-documenting interfaces
+
+EXTERNAL RESOURCES
+------------------
+- Drizzle ORM: https://orm.drizzle.team/
+- TanStack Query: https://tanstack.com/query/
+- shadcn/ui: https://ui.shadcn.com/
+- Tailwind CSS: https://tailwindcss.com/
+- Radix UI: https://www.radix-ui.com/
+
+GETTING HELP
+------------
+For technical support or questions about the system, refer to the 
+comprehensive inline documentation and TypeScript type definitions 
+throughout the codebase.
+
+================================================================================
+VERSION HISTORY
+================================================================================
+
+Version 1.6 (October 26, 2025) - Phase 6 Complete
+- OMA file support with parsing and visualization
+- OrderDetailsPage with comprehensive order view
+- Role-based navigation improvements
+
+Version 1.5 (October 26, 2025) - Phase 5 Complete
+- Multi-role user system with role switching
+- Admin dashboard with user management
+- Account approval workflow
+
+Version 1.4 (October 26, 2025) - Phase 4 Complete
+- Organization settings management
+- User preferences system
+- Theme and notification controls
+
+Version 1.3 (October 26, 2025) - Phase 3 Complete
+- Customer reference tracking
+- Enhanced PO generation with supplier details
+- PDF and email improvements
+
+Version 1.2 (October 26, 2025) - Phase 2 Complete
+- Full supplier management system
+- Supplier contact information
+- Extended user schema
+
+Version 1.1 (Initial) - Phase 1 Complete
+- Core order management
+- Patient tracking
+- Lab workflow dashboard
+- Consultation system
+- Technical documentation
+
+================================================================================
+END OF PROJECT OVERVIEW
+================================================================================
+
+This document provides a comprehensive overview of the Integrated Lens System
+(ILS) as of October 27, 2025. The system represents a complete, production-ready
+enterprise application for optical lab operations management.
+
+For detailed implementation information, refer to the source code and inline
+documentation throughout the project.
