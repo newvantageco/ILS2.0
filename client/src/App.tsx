@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { RoleSwitcherDropdown } from "@/components/RoleSwitcherDropdown";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/Landing";
@@ -43,6 +44,7 @@ function AppLayout({ children, userRole }: { children: React.ReactNode; userRole
           <header className="flex items-center justify-between p-4 border-b border-border">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <div className="flex items-center gap-2">
+              <RoleSwitcherDropdown />
               <ThemeToggle />
               <Button 
                 variant="ghost" 

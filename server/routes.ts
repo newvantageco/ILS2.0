@@ -39,7 +39,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await storage.getUserWithRoles(userId);
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -51,7 +51,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/bootstrap', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await storage.getUserWithRoles(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -88,17 +88,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let redirectPath = '/';
       switch (user.role) {
         case 'ecp':
-          redirectPath = '/ecp-dashboard';
+          redirectPath = '/ecp/dashboard';
           break;
         case 'lab_tech':
         case 'engineer':
-          redirectPath = '/lab-dashboard';
+          redirectPath = '/lab/dashboard';
           break;
         case 'supplier':
-          redirectPath = '/supplier-dashboard';
+          redirectPath = '/supplier/dashboard';
           break;
         case 'admin':
-          redirectPath = '/admin-dashboard';
+          redirectPath = '/admin/dashboard';
           break;
         default:
           redirectPath = '/';
@@ -154,6 +154,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           accountStatus: 'active'
         });
 
+        // Initialize user roles
+        await storage.addUserRole(userId, 'admin');
+
         return res.json(updatedUser);
       }
 
@@ -164,10 +167,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accountStatus: 'pending'
       });
 
+      // Initialize user roles
+      await storage.addUserRole(userId, role);
+
       res.json(updatedUser);
     } catch (error) {
       console.error("Error completing signup:", error);
       res.status(500).json({ message: "Failed to complete signup" });
+    }
+  });
+
+  // Get user's available roles
+  app.get('/api/auth/available-roles', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const roles = await storage.getUserAvailableRoles(userId);
+      res.json({ roles });
+    } catch (error) {
+      console.error("Error fetching available roles:", error);
+      res.status(500).json({ message: "Failed to fetch available roles" });
+    }
+  });
+
+  // Add a role to user
+  app.post('/api/auth/add-role', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { role } = req.body;
+      
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Security check: only active users can add roles
+      if (user.accountStatus !== 'active') {
+        return res.status(403).json({ message: "Only active accounts can add additional roles" });
+      }
+
+      if (!role || !['ecp', 'lab_tech', 'engineer', 'supplier', 'admin'].includes(role)) {
+        return res.status(400).json({ message: "Valid role is required" });
+      }
+
+      // Only allow adding lab_tech/engineer or ecp roles
+      if (!['ecp', 'lab_tech', 'engineer'].includes(role)) {
+        return res.status(403).json({ message: "Cannot add this role type" });
+      }
+
+      // Check if user already has this role
+      const existingRoles = await storage.getUserAvailableRoles(userId);
+      if (existingRoles.includes(role)) {
+        return res.status(400).json({ message: "Role already assigned to this user" });
+      }
+
+      await storage.addUserRole(userId, role);
+      const updatedUser = await storage.getUserWithRoles(userId);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error adding role:", error);
+      res.status(500).json({ message: "Failed to add role" });
+    }
+  });
+
+  // Switch active role
+  app.post('/api/auth/switch-role', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { role } = req.body;
+
+      if (!role || !['ecp', 'lab_tech', 'engineer', 'supplier', 'admin'].includes(role)) {
+        return res.status(400).json({ message: "Valid role is required" });
+      }
+
+      const updatedUser = await storage.switchUserRole(userId, role);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error switching role:", error);
+      if (error instanceof Error && error.message.includes("does not have access")) {
+        res.status(403).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: "Failed to switch role" });
+      }
     }
   });
 

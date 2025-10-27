@@ -57,7 +57,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: userRoleEnum("role"),
+  role: userRoleEnum("role"), // Primary/active role for backward compatibility
   accountStatus: accountStatusEnum("account_status").default("pending").notNull(),
   statusReason: text("status_reason"),
   organizationName: text("organization_name"),
@@ -68,6 +68,16 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// Junction table to support multiple roles per user
+export const userRoles = pgTable("user_roles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  role: userRoleEnum("role").notNull(),
+  assignedAt: timestamp("assigned_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_user_roles_user_id").on(table.userId),
+]);
 
 export const patients = pgTable("patients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -352,3 +362,8 @@ export type OrganizationSettings = typeof organizationSettings.$inferSelect;
 
 export type UpdateUserPreferences = z.infer<typeof updateUserPreferencesSchema>;
 export type UserPreferences = typeof userPreferences.$inferSelect;
+
+export type UserRole = typeof userRoles.$inferSelect;
+export type UserWithRoles = User & {
+  availableRoles: string[];
+};

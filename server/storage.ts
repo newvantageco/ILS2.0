@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { 
   users, 
+  userRoles,
   patients, 
   orders,
   consultLogs,
@@ -11,6 +12,7 @@ import {
   userPreferences,
   type UpsertUser, 
   type User, 
+  type UserWithRoles,
   type InsertPatient, 
   type Patient, 
   type InsertOrder, 
@@ -35,6 +37,7 @@ import { eq, desc, and, or, like, sql } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
+  getUserWithRoles(id: string): Promise<UserWithRoles | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
@@ -44,6 +47,10 @@ export interface IStorage {
   createSupplier(supplier: any): Promise<User>;
   updateSupplier(id: string, updates: any): Promise<User | undefined>;
   deleteSupplier(id: string): Promise<boolean>;
+  getUserAvailableRoles(userId: string): Promise<string[]>;
+  addUserRole(userId: string, role: string): Promise<void>;
+  removeUserRole(userId: string, role: string): Promise<void>;
+  switchUserRole(userId: string, newRole: string): Promise<User | undefined>;
   
   createPatient(patient: InsertPatient): Promise<Patient>;
   getPatient(id: string): Promise<Patient | undefined>;
@@ -192,6 +199,66 @@ export class DbStorage implements IStorage {
       .where(and(eq(users.id, id), eq(users.role, 'supplier')))
       .returning();
     return result.length > 0;
+  }
+
+  async getUserWithRoles(id: string): Promise<UserWithRoles | undefined> {
+    const user = await this.getUser(id);
+    if (!user) return undefined;
+
+    const roles = await this.getUserAvailableRoles(id);
+    return {
+      ...user,
+      availableRoles: roles
+    };
+  }
+
+  async getUserAvailableRoles(userId: string): Promise<string[]> {
+    const roles = await db
+      .select()
+      .from(userRoles)
+      .where(eq(userRoles.userId, userId));
+    
+    // Return unique roles, including the current active role if not already in the list
+    const user = await this.getUser(userId);
+    const roleSet = new Set(roles.map(r => r.role));
+    if (user?.role) {
+      roleSet.add(user.role);
+    }
+    
+    return Array.from(roleSet);
+  }
+
+  async addUserRole(userId: string, role: string): Promise<void> {
+    // Check if role already exists
+    const existing = await db
+      .select()
+      .from(userRoles)
+      .where(and(eq(userRoles.userId, userId), eq(userRoles.role, role as any)));
+    
+    if (existing.length === 0) {
+      await db.insert(userRoles).values({
+        userId,
+        role: role as any,
+      });
+    }
+  }
+
+  async removeUserRole(userId: string, role: string): Promise<void> {
+    await db
+      .delete(userRoles)
+      .where(and(eq(userRoles.userId, userId), eq(userRoles.role, role as any)));
+  }
+
+  async switchUserRole(userId: string, newRole: string): Promise<User | undefined> {
+    // Verify the user has access to this role
+    const availableRoles = await this.getUserAvailableRoles(userId);
+    
+    if (!availableRoles.includes(newRole)) {
+      throw new Error(`User does not have access to role: ${newRole}`);
+    }
+
+    // Update the user's active role
+    return await this.updateUser(userId, { role: newRole as any });
   }
 
   async createPatient(insertPatient: InsertPatient): Promise<Patient> {

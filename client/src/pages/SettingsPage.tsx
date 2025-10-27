@@ -2,13 +2,15 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Building2, User, Bell } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Building2, User, Bell, Users, Beaker, Plus, Check } from "lucide-react";
 import type { OrganizationSettings, UserPreferences } from "@shared/schema";
 
 export default function SettingsPage() {
@@ -72,10 +74,14 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="organization" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2" data-testid="tabs-settings">
+        <TabsList className="grid w-full grid-cols-3" data-testid="tabs-settings">
           <TabsTrigger value="organization" data-testid="tab-organization">
             <Building2 className="mr-2 h-4 w-4" />
             Organization
+          </TabsTrigger>
+          <TabsTrigger value="roles" data-testid="tab-roles">
+            <Users className="mr-2 h-4 w-4" />
+            Roles
           </TabsTrigger>
           <TabsTrigger value="preferences" data-testid="tab-preferences">
             <User className="mr-2 h-4 w-4" />
@@ -90,6 +96,10 @@ export default function SettingsPage() {
             onSave={(data) => updateOrgMutation.mutate(data)}
             isSaving={updateOrgMutation.isPending}
           />
+        </TabsContent>
+
+        <TabsContent value="roles" className="space-y-6">
+          <RoleManagement />
         </TabsContent>
 
         <TabsContent value="preferences" className="space-y-6">
@@ -427,5 +437,130 @@ function UserPreferencesSettings({
         </CardContent>
       </Card>
     </form>
+  );
+}
+
+function RoleManagement() {
+  const { user, isLoading } = useAuth();
+  const { toast } = useToast();
+
+  const availableRoles = (user as any)?.availableRoles || [];
+
+  const addRoleMutation = useMutation({
+    mutationFn: async (role: string) => {
+      const response = await apiRequest("POST", "/api/auth/add-role", { role });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({
+        title: "Role added",
+        description: "The role has been added to your account successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error adding role",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const roles = [
+    {
+      id: "ecp",
+      name: "Eye Care Professional",
+      description: "Submit and track lens orders for your patients",
+      icon: Users,
+      color: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
+    },
+    {
+      id: "lab_tech",
+      name: "Lab Technician",
+      description: "Manage production queue and quality control",
+      icon: Beaker,
+      color: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
+    },
+  ];
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center p-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const hasRole = (roleId: string) => availableRoles.includes(roleId);
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Role Management</CardTitle>
+          <CardDescription>
+            Add additional roles to your account to access different features
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-4">
+            {roles.map((role) => {
+              const Icon = role.icon;
+              const hasThisRole = hasRole(role.id);
+
+              return (
+                <div
+                  key={role.id}
+                  className={`flex items-center justify-between p-4 rounded-md border ${role.color}`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="rounded-md bg-background p-2">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold">{role.name}</h3>
+                        {hasThisRole && (
+                          <Badge variant="outline" className="gap-1">
+                            <Check className="h-3 w-3" />
+                            Active
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">{role.description}</p>
+                    </div>
+                  </div>
+                  {!hasThisRole && (
+                    <Button
+                      size="sm"
+                      onClick={() => addRoleMutation.mutate(role.id)}
+                      disabled={addRoleMutation.isPending}
+                      data-testid={`button-add-role-${role.id}`}
+                    >
+                      {addRoleMutation.isPending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Role
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="pt-4 border-t">
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <Users className="h-4 w-4 mt-0.5" />
+              <p>
+                You currently have access to {availableRoles.length || 0} role(s). 
+                Use the role switcher in the header to switch between your roles.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
