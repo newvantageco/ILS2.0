@@ -31,11 +31,18 @@ export interface Notification {
     id: string;
   };
   createdAt?: Date;
+  read?: boolean;
+  readAt?: Date | null;
 }
 
 export interface NotificationService {
   sendNotification(notification: Omit<Notification, 'id' | 'createdAt'>): Promise<void>;
   subscribeToNotifications(userId: string, callback: (notification: Notification) => void): () => void;
+  getUserNotifications(userId: string, limit?: number): Promise<Notification[]>;
+  markNotificationAsRead(id: string): Promise<void>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
+  deleteNotification(id: string): Promise<void>;
+  clearNotifications(userId: string): Promise<void>;
 }
 
 // PDF Generation Service Types

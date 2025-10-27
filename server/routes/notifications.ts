@@ -1,9 +1,6 @@
 import { Router } from 'express';
 import { authenticateUser } from '../middleware/auth';
 import NotificationService from '../services/NotificationService';
-import { db } from '../db';
-import { eq } from 'drizzle-orm';
-import * as schema from '@shared/schema';
 
 const router = Router();
 const notificationService = NotificationService.getInstance();
@@ -33,12 +30,7 @@ router.post(
     try {
       const { id } = req.params;
 
-      await db.update(schema.notifications)
-        .set({
-          read: true,
-          readAt: new Date()
-        })
-        .where(eq(schema.notifications.id, id));
+      await notificationService.markNotificationAsRead(id);
 
       res.json({ message: 'Notification marked as read' });
     } catch (error) {
@@ -56,12 +48,7 @@ router.post(
     try {
       const userId = req.user.id;
 
-      await db.update(schema.notifications)
-        .set({
-          read: true,
-          readAt: new Date()
-        })
-        .where(eq(schema.notifications.target.users, [userId]));
+      await notificationService.markAllNotificationsAsRead(userId);
 
       res.json({ message: 'All notifications marked as read' });
     } catch (error) {
@@ -79,8 +66,7 @@ router.delete(
     try {
       const { id } = req.params;
 
-      await db.delete(schema.notifications)
-        .where(eq(schema.notifications.id, id));
+      await notificationService.deleteNotification(id);
 
       res.json({ message: 'Notification deleted' });
     } catch (error) {
@@ -98,8 +84,7 @@ router.delete(
     try {
       const userId = req.user.id;
 
-      await db.delete(schema.notifications)
-        .where(eq(schema.notifications.target.users, [userId]));
+      await notificationService.clearNotifications(userId);
 
       res.json({ message: 'All notifications cleared' });
     } catch (error) {

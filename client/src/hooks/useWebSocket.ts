@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from './useAuth';
 
-export const useWebSocket = (url: string) => {
+export const useWebSocket = (url: string | null) => {
   const { user } = useAuth();
   const [ws, setWs] = useState<WebSocket | null>(null);
   const reconnectTimeout = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !url) return;
 
     const connect = () => {
       const websocket = new WebSocket(url);

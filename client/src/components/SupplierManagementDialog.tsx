@@ -25,10 +25,17 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
+type SupplierRecord = User & {
+  accountNumber?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  address?: InsertSupplier["address"] | null;
+};
+
 interface SupplierManagementDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  supplier?: User | null;
+  supplier?: SupplierRecord | null;
 }
 
 export function SupplierManagementDialog({
@@ -65,7 +72,7 @@ export function SupplierManagementDialog({
         accountNumber: supplier.accountNumber || "",
         contactEmail: supplier.contactEmail || "",
         contactPhone: supplier.contactPhone || "",
-        address: supplier.address as any || {
+        address: supplier.address || {
           street: "",
           city: "",
           state: "",

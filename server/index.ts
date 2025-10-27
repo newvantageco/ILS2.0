@@ -14,6 +14,18 @@ declare module 'http' {
     rawBody: unknown
   }
 }
+// Configure CORS
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.json({
   verify: (req, _res, buf) => {
     req.rawBody = buf;
@@ -62,6 +74,20 @@ app.use((req, res, next) => {
 
     log("Starting server initialization...");
     
+    // Add health check endpoint
+    app.get('/health', (req, res) => {
+      res.json({ 
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        environment: app.get("env")
+      });
+    });
+
+    // Add root endpoint
+    app.get('/', (req, res) => {
+      res.send('ILS Server is running');
+    });
+    
     const server = await registerRoutes(app);
     log("Routes registered successfully");
 
@@ -84,16 +110,15 @@ app.use((req, res, next) => {
       log("Static file serving configured for production");
     }
 
-    // ALWAYS serve the app on the port specified in the environment variable PORT
-    // Other ports are firewalled. Default to 5000 if not specified.
-    // this serves both the API and the client.
-    // It is the only port that is not firewalled.
-    const port = parseInt(process.env.PORT || '5000', 10);
+    // Initialize server configuration
+    const port = parseInt(process.env.PORT || '3000', 10);
+    const host = process.env.HOST || '127.0.0.1';
     
-    server.listen(port, "localhost", () => {
+    server.listen(port, host, () => {
       log(`Server successfully started on port ${port}`);
       log(`Environment: ${app.get("env")}`);
-      log(`Ready to accept connections`);
+      log(`API server running at http://${host}:${port}`);
+      log(`Frontend available at http://localhost:${port}`);
     });
 
     // Handle server errors

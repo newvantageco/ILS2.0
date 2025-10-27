@@ -1,6 +1,8 @@
+import { analyticsEventTypeEnum } from '../../shared/schema';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { DataAggregationService } from '../services/DataAggregationService';
-import { analyticsEventTypeEnum } from '../../shared/schema';
+
+type AnalyticsMetric = (typeof analyticsEventTypeEnum.enumValues)[number];
 
 interface AnalyticsEventBody {
   eventType: typeof analyticsEventTypeEnum.enumValues[number];
@@ -111,7 +113,7 @@ export async function registerDataAggregationRoutes(
       }
     },
     handler: async (request, reply) => {
-      const { metric } = request.params as { metric: string };
+  const { metric } = request.params as { metric: AnalyticsMetric };
       const { timeframe, startTime, endTime, organizationId } = request.query as any;
 
       const filters = {
@@ -121,7 +123,7 @@ export async function registerDataAggregationRoutes(
       };
 
       const metrics = await dataAggregationService.getAggregatedMetrics(
-        metric,
+  metric,
         timeframe || 'daily',
         filters
       );

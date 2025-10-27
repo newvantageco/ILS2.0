@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useNavigate } from "react-router-dom"
+import { useLocation } from "wouter"
 
 type ViewRole = 'owner' | 'ecp' | 'lab-tech' | 'admin'
 
@@ -20,7 +20,7 @@ const RoleContext = React.createContext<RoleContext | undefined>(undefined)
 export function RoleProvider({ children }: { children: React.ReactNode }) {
   const [baseRole] = React.useState<ViewRole>('owner')
   const [currentRole, setCurrentRole] = React.useState<ViewRole>('owner')
-  const navigate = useNavigate()
+  const [, navigate] = useLocation()
 
   const switchRole = React.useCallback((role: ViewRole) => {
     setCurrentRole(role)

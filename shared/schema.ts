@@ -104,6 +104,21 @@ export const returns = pgTable("returns", {
   metadata: jsonb("metadata"),
 });
 
+export const createReturnSchema = z.object({
+  orderId: z.string().min(1, "Order ID is required"),
+  returnReason: z.string().min(1, "Return reason is required"),
+  returnType: z.string().min(1, "Return type is required"),
+  description: z.string().min(1, "Description is required"),
+  createdBy: z.string().min(1, "Creator ID is required"),
+  processingNotes: z.string().optional(),
+  metadata: z.record(z.any()).optional(),
+});
+
+export const updateReturnStatusSchema = z.object({
+  status: z.string().min(1, "Status is required"),
+  processingNotes: z.string().optional(),
+});
+
 export const nonAdapts = pgTable("non_adapts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderId: varchar("order_id")
@@ -121,6 +136,21 @@ export const nonAdapts = pgTable("non_adapts", {
   qualityIssueId: varchar("quality_issue_id").references(() => qualityIssues.id),
   replacementOrderId: varchar("replacement_order_id").references(() => orders.id),
   metadata: jsonb("metadata"),
+});
+
+export const createNonAdaptSchema = z.object({
+  orderId: z.string().min(1, "Order ID is required"),
+  reportedBy: z.string().min(1, "Reporter ID is required"),
+  patientFeedback: z.string().min(1, "Patient feedback is required"),
+  symptoms: z.array(z.string()).nonempty("At least one symptom is required"),
+  resolution: z.string().optional(),
+  resolutionType: z.string().optional(),
+  metadata: z.record(z.any()).optional(),
+});
+
+export const updateNonAdaptStatusSchema = z.object({
+  resolution: z.string().optional(),
+  resolutionType: z.string().optional(),
 });
 
 export const poStatusEnum = pgEnum("po_status", [
@@ -263,6 +293,8 @@ export const notifications = pgTable(
     message: text("message").notNull(),
     severity: notificationSeverityEnum("severity").notNull(),
     target: jsonb("target").notNull(),
+    read: boolean("read").default(false).notNull(),
+    readAt: timestamp("read_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [index("idx_notifications_created_at").on(table.createdAt)],
@@ -282,6 +314,10 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   role: roleEnum("role"),
   gocNumber: varchar("goc_number"), // General Optical Council registration number
+  accountNumber: varchar("account_number"),
+  contactEmail: varchar("contact_email"),
+  contactPhone: varchar("contact_phone"),
+  address: jsonb("address"),
   isActive: boolean("is_active").default(true),
   isVerified: boolean("is_verified").default(false),
   lastLoginAt: timestamp("last_login_at"),

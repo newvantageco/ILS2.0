@@ -29,6 +29,8 @@ export interface Notification {
     id: string;
   };
   createdAt?: Date;
+  read?: boolean;
+  readAt?: Date | null;
 }
 
 export interface NotificationService {

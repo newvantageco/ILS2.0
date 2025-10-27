@@ -3,7 +3,7 @@ import { authenticateUser, requireRole } from '../middleware/auth';
 import EquipmentDiscoveryService from '../services/EquipmentDiscoveryService';
 import { db } from '../db';
 import { eq } from 'drizzle-orm';
-import { equipment, roleEnum } from '@shared/schema';
+import { equipment } from '@shared/schema';
 
 const router = Router();
 const equipmentService = EquipmentDiscoveryService.getInstance();
@@ -127,9 +127,15 @@ router.post(
   }
 );
 
-async function testEquipmentConnection(equipment: any) {
+async function testEquipmentConnection(equipment: { protocol?: string; metadata?: Record<string, unknown> }) {
+  const protocol = equipment.protocol || (equipment.metadata?.protocol as string | undefined);
+
+  if (!protocol) {
+    throw new Error('Unsupported equipment protocol');
+  }
+
   // Implement protocol-specific connection tests
-  switch (equipment.protocol) {
+  switch (protocol) {
     case 'DICOM':
       // Test DICOM connection
       return { status: 'success', message: 'DICOM connection successful' };

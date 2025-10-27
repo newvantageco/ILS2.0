@@ -51,15 +51,6 @@ app.put('/api/notifications/:id/read', (req, res) => {
   res.json({ status: 'success' });
 });
 
-// Input validation middleware
-const validatePrescriptionInput = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const { patientName, patientId, prescription, doctorName, licenseNumber } = req.body;
-  if (!patientName || !patientId || !prescription || !doctorName || !licenseNumber) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
-  next();
-};
-
 // Error handling
 app.use((req, res) => {
   res.status(404).json({ error: 'Not Found' });

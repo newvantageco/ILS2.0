@@ -9,7 +9,7 @@ export default function AppSidebarExample() {
   return (
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex h-screen w-full">
-        <AppSidebar userRole="lab" />
+  <AppSidebar userRole="lab_tech" />
         <main className="flex-1 overflow-auto p-8">
           <h1 className="text-2xl font-semibold">Main Content Area</h1>
           <p className="text-muted-foreground mt-2">The sidebar navigation is on the left.</p>

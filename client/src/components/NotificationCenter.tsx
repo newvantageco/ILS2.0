@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Notification {
   id: string;
@@ -29,12 +30,14 @@ interface Notification {
 export const NotificationCenter: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const ws = useWebSocket(`ws://localhost:3000/ws?userId=${userId}`);
+  const { user } = useAuth();
+  const userId = user?.id;
+  const ws = useWebSocket(userId ? `ws://localhost:3000/ws?userId=${userId}` : null);
   const { toast } = useToast();
 
   useEffect(() => {
     // Fetch initial notifications
-    fetchNotifications();
+    void fetchNotifications();
   }, []);
 
   useEffect(() => {
@@ -46,26 +49,36 @@ export const NotificationCenter: React.FC = () => {
     }
   }, [ws]);
 
+  const hydrateNotification = (notification: Notification): Notification => ({
+    ...notification,
+    createdAt: new Date(notification.createdAt),
+  });
+
   const fetchNotifications = async () => {
     try {
       const response = await fetch('/api/notifications');
-      const data = await response.json();
-      setNotifications(data);
-      updateUnreadCount(data);
+      const data: Notification[] = await response.json();
+      const hydrated = data.map(hydrateNotification);
+      setNotifications(hydrated);
+      updateUnreadCount(hydrated);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
   };
 
   const handleNewNotification = (notification: Notification) => {
-    setNotifications(prev => [notification, ...prev]);
-    updateUnreadCount([notification, ...notifications]);
+    const hydrated = hydrateNotification(notification);
+    setNotifications(prev => {
+      const next = [hydrated, ...prev];
+      updateUnreadCount(next);
+      return next;
+    });
     
     // Show toast for new notification
     toast({
-      title: notification.title,
-      description: notification.message,
-      variant: notification.severity === 'error' ? 'destructive' : 'default'
+      title: hydrated.title,
+      description: hydrated.message,
+      variant: hydrated.severity === 'error' ? 'destructive' : 'default'
     });
   };
 
@@ -79,12 +92,13 @@ export const NotificationCenter: React.FC = () => {
         method: 'POST'
       });
       
-      setNotifications(prev =>
-        prev.map(n =>
-          n.id === id ? { ...n, read: true } : n
-        )
-      );
-      updateUnreadCount(notifications);
+      setNotifications(prev => {
+        const next = prev.map(n =>
+          n.id === id ? { ...n, read: true, readAt: new Date() } : n
+        );
+        updateUnreadCount(next);
+        return next;
+      });
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
@@ -96,10 +110,11 @@ export const NotificationCenter: React.FC = () => {
         method: 'POST'
       });
       
-      setNotifications(prev =>
-        prev.map(n => ({ ...n, read: true }))
-      );
-      setUnreadCount(0);
+      setNotifications(prev => {
+        const next = prev.map(n => ({ ...n, read: true, readAt: new Date() }));
+        updateUnreadCount(next);
+        return next;
+      });
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
     }
@@ -111,10 +126,11 @@ export const NotificationCenter: React.FC = () => {
         method: 'DELETE'
       });
       
-      setNotifications(prev =>
-        prev.filter(n => n.id !== id)
-      );
-      updateUnreadCount(notifications);
+      setNotifications(prev => {
+        const next = prev.filter(n => n.id !== id);
+        updateUnreadCount(next);
+        return next;
+      });
     } catch (error) {
       console.error('Error deleting notification:', error);
     }

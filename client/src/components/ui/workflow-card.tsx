@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 
 interface WorkflowCardProps extends React.HTMLAttributes<HTMLDivElement> {
-  role: 'ecp' | 'lab-tech' | 'admin'
+  role: 'owner' | 'ecp' | 'lab-tech' | 'admin'
   title: string
   loading?: boolean
   children: React.ReactNode
@@ -29,10 +29,11 @@ export function WorkflowCard({
 }: WorkflowCardProps) {
   // Role-specific styling
   const roleStyles = {
+    owner: 'border-l-4 border-l-primary',
     'ecp': 'border-l-4 border-l-info-base',
     'lab-tech': 'border-l-4 border-l-success-base',
     'admin': 'border-l-4 border-l-warning-base',
-  }
+  } as const
 
   return (
     <Card 

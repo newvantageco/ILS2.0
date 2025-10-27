@@ -1,6 +1,5 @@
-import { sql } from 'drizzle-orm';
+import { sql, desc, eq, and } from 'drizzle-orm';
 import { db } from '../db';
-import { desc, eq, and } from 'drizzle-orm/expressions';
 import * as schema from '../../shared/schema';
 import { analyticsEventTypeEnum } from '../../shared/schema';
 import { InferModel } from 'drizzle-orm';
@@ -104,18 +103,20 @@ export class DataAggregationServiceImpl implements DataAggregationService {
         conditions.push(eq(schema.analyticsEvents.organizationId, filters.organizationId));
       }
 
-      const query = conditions.length > 0
-        ? db
-            .select()
-            .from(schema.analyticsEvents)
-            .where(and(...conditions))
-            .orderBy(desc(schema.analyticsEvents.timestamp))
-        : db
-            .select()
-            .from(schema.analyticsEvents)
-            .orderBy(desc(schema.analyticsEvents.timestamp));
+      const baseQuery = db
+        .select()
+        .from(schema.analyticsEvents)
+        .orderBy(desc(schema.analyticsEvents.timestamp));
 
-      return await query;
+      if (conditions.length === 0) {
+        return await baseQuery;
+      }
+
+      if (conditions.length === 1) {
+        return await baseQuery.where(conditions[0]);
+      }
+
+      return await baseQuery.where(and(...conditions));
     } catch (error) {
       console.error('Error fetching analytics events:', error);
       throw error;
@@ -163,14 +164,17 @@ export class DataAggregationServiceImpl implements DataAggregationService {
           aggregated_data
         FROM time_series`;
 
-      const result = await db.execute<TimeSeriesMetricsRow>(query);
+      const result = await db.execute(query);
 
-      return result.rows.map(row => ({
-        timePeriod: row.time_period,
-        count: Number(row.event_count),
-        metrics: row.metrics,
-        data: row.aggregated_data
-      }));
+      return result.rows.map((rawRow) => {
+        const row = rawRow as unknown as TimeSeriesMetricsRow;
+        return {
+          timePeriod: row.time_period,
+          count: Number(row.event_count),
+          metrics: row.metrics,
+          data: row.aggregated_data
+        };
+      });
     } catch (error) {
       console.error('Error getting aggregated metrics:', error);
       throw error;
@@ -209,8 +213,8 @@ export class DataAggregationServiceImpl implements DataAggregationService {
           ) as top_issue_types
         FROM metrics`;
 
-      const result = await db.execute<QualityMetricsRow>(query);
-      const row = result.rows[0];
+  const result = await db.execute(query);
+  const row = result.rows[0] as unknown as QualityMetricsRow | undefined;
 
       if (!row) {
         return {

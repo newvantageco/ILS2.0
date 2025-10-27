@@ -19,14 +19,21 @@ import { useToast } from "@/hooks/use-toast";
 import { SupplierManagementDialog } from "./SupplierManagementDialog";
 import type { User } from "@shared/schema";
 
+type SupplierRecord = User & {
+  accountNumber?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  address?: Record<string, unknown> | null;
+};
+
 export function SuppliersTable() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedSupplier, setSelectedSupplier] = useState<User | null>(null);
+  const [selectedSupplier, setSelectedSupplier] = useState<SupplierRecord | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [supplierToDelete, setSupplierToDelete] = useState<User | null>(null);
+  const [supplierToDelete, setSupplierToDelete] = useState<SupplierRecord | null>(null);
   const { toast } = useToast();
 
-  const { data: suppliers, isLoading } = useQuery<User[]>({
+  const { data: suppliers, isLoading } = useQuery<SupplierRecord[]>({
     queryKey: ["/api/suppliers"],
   });
 
@@ -58,12 +65,12 @@ export function SuppliersTable() {
     setDialogOpen(true);
   };
 
-  const handleEdit = (supplier: User) => {
+  const handleEdit = (supplier: SupplierRecord) => {
     setSelectedSupplier(supplier);
     setDialogOpen(true);
   };
 
-  const handleDeleteClick = (supplier: User) => {
+  const handleDeleteClick = (supplier: SupplierRecord) => {
     setSupplierToDelete(supplier);
     setDeleteDialogOpen(true);
   };

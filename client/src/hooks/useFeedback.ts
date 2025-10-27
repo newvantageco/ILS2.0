@@ -10,11 +10,14 @@ import {
 const TOAST_TIMEOUT = 5000 // 5 seconds
 
 interface ToastMessage {
+  id: string
   title: string
   description?: string
   variant?: ToastProps["variant"]
   action?: ToastActionElement
 }
+
+type ToastPayload = Omit<ToastMessage, "id">;
 
 /**
  * Feedback System Hook
@@ -27,18 +30,22 @@ interface ToastMessage {
 export function useFeedback() {
   const [messages, setMessages] = React.useState<ToastMessage[]>([])
 
-  const showToast = React.useCallback(
-    ({ title, description, variant = "default", action }: ToastMessage) => {
-      const id = Math.random().toString(36).slice(2)
-      
-      setMessages((prev) => [...prev, { title, description, variant, action }])
+  const enqueueToast = React.useCallback((payload: ToastPayload) => {
+    const id = Math.random().toString(36).slice(2)
+    const message: ToastMessage = { id, ...payload }
 
-      // Auto-dismiss after timeout
-      setTimeout(() => {
-        setMessages((prev) => prev.filter((msg) => msg !== title))
-      }, TOAST_TIMEOUT)
+    setMessages((prev) => [...prev, message])
+
+    setTimeout(() => {
+      setMessages((prev) => prev.filter((msg) => msg.id !== id))
+    }, TOAST_TIMEOUT)
+  }, [])
+
+  const showToast = React.useCallback(
+    ({ title, description, variant = "default", action }: ToastPayload) => {
+      enqueueToast({ title, description, variant, action })
     },
-    []
+    [enqueueToast]
   )
 
   // Success feedback with technical detail
@@ -47,7 +54,7 @@ export function useFeedback() {
       showToast({
         title,
         description: technicalDetail,
-        variant: "success",
+        variant: "default",
       })
     },
     [showToast]
@@ -59,7 +66,7 @@ export function useFeedback() {
       showToast({
         title,
         description: typeof error === "string" ? error : error?.message,
-        variant: "error",
+        variant: "destructive",
       })
     },
     [showToast]
@@ -71,7 +78,7 @@ export function useFeedback() {
       showToast({
         title,
         description: context,
-        variant: "info",
+        variant: "default",
       })
     },
     [showToast]
@@ -83,7 +90,7 @@ export function useFeedback() {
       showToast({
         title,
         description,
-        variant: "warning",
+        variant: "default",
         action,
       })
     },

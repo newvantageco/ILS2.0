@@ -66,9 +66,8 @@
     }
   }
 }
-}
 
-  /* LIGHT MODE - Professional & Technical Design System */
+/* LIGHT MODE - Professional & Technical Design System */
 :root {
   /* Core Interactive States */
   --button-outline: rgba(0, 0, 0, .15);    /* Enhanced contrast for better visibility */

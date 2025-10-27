@@ -4,18 +4,22 @@ import dgram from 'dgram';
 import { db } from '../db';
 import { eq } from 'drizzle-orm';
 import * as schema from '@shared/schema';
+import { equipmentStatusEnum } from '@shared/schema';
+
+type EquipmentStatus = typeof equipmentStatusEnum.enumValues[number];
+type EquipmentProtocol = 'DICOM' | 'RS232' | 'TCP' | 'HTTP';
 
 interface EquipmentInfo {
   id: string;
-  type: string;
+  name: string;
   model: string;
-  manufacturer: string;
-  ipAddress: string;
-  port: number;
-  protocol: 'DICOM' | 'RS232' | 'TCP' | 'HTTP';
-  status: 'online' | 'offline' | 'error';
+  serialNumber: string;
+  status: EquipmentStatus;
   lastSeen: Date;
-  capabilities: string[];
+  protocol?: EquipmentProtocol;
+  ipAddress?: string;
+  port?: number;
+  metadata: Record<string, unknown>;
 }
 
 class EquipmentDiscoveryService extends EventEmitter {
@@ -53,22 +57,27 @@ class EquipmentDiscoveryService extends EventEmitter {
     try {
       const response = JSON.parse(msg.toString());
       const equipment: EquipmentInfo = {
-        id: response.id,
-        type: response.type,
-        model: response.model,
-        manufacturer: response.manufacturer,
+        id: response.id || `${rinfo.address}:${rinfo.port}`,
+        name: response.name || response.type || 'Unknown Device',
+        model: response.model || 'Unknown Model',
+        serialNumber: response.serialNumber || response.id || `${Date.now()}`,
+        status: this.mapStatus(response.status),
+        lastSeen: new Date(),
+        protocol: response.protocol,
         ipAddress: rinfo.address,
         port: rinfo.port,
-        protocol: response.protocol,
-        status: 'online',
-        lastSeen: new Date(),
-        capabilities: response.capabilities || []
+        metadata: {
+          manufacturer: response.manufacturer,
+          ipAddress: rinfo.address,
+          port: rinfo.port,
+          protocol: response.protocol,
+          capabilities: response.capabilities || []
+        }
       };
 
       this.knownEquipment.set(equipment.id, equipment);
       this.emit('equipmentFound', equipment);
 
-      // Update equipment in database
       await this.updateEquipmentStatus(equipment);
     } catch (error) {
       console.error('Error handling discovery response:', error);
@@ -80,23 +89,29 @@ class EquipmentDiscoveryService extends EventEmitter {
       await db.insert(schema.equipment)
         .values({
           id: equipment.id,
-          type: equipment.type,
+          name: equipment.name,
           model: equipment.model,
-          manufacturer: equipment.manufacturer,
-          ipAddress: equipment.ipAddress,
-          port: equipment.port,
-          protocol: equipment.protocol,
+          serialNumber: equipment.serialNumber,
           status: equipment.status,
-          lastSeen: equipment.lastSeen,
-          capabilities: equipment.capabilities
+          metadata: {
+            ...equipment.metadata,
+            protocol: equipment.protocol,
+            ipAddress: equipment.ipAddress,
+            port: equipment.port
+          },
+          updatedAt: equipment.lastSeen
         })
         .onConflictDoUpdate({
           target: schema.equipment.id,
           set: {
             status: equipment.status,
-            lastSeen: equipment.lastSeen,
-            ipAddress: equipment.ipAddress,
-            port: equipment.port
+            updatedAt: equipment.lastSeen,
+            metadata: {
+              ...equipment.metadata,
+              protocol: equipment.protocol,
+              ipAddress: equipment.ipAddress,
+              port: equipment.port
+            }
           }
         });
     } catch (error) {
@@ -147,20 +162,19 @@ class EquipmentDiscoveryService extends EventEmitter {
     try {
       const equipment = await db.select()
         .from(schema.equipment)
-        .where(eq(schema.equipment.status, 'online'))
         .execute();
 
       return equipment.map(e => ({
         id: e.id,
-        type: e.type,
+        name: e.name,
         model: e.model,
-        manufacturer: e.manufacturer,
-        ipAddress: e.ipAddress,
-        port: e.port,
-        protocol: e.protocol as EquipmentInfo['protocol'],
-        status: e.status as EquipmentInfo['status'],
-        lastSeen: e.lastSeen,
-        capabilities: e.capabilities
+        serialNumber: e.serialNumber,
+        status: e.status as EquipmentStatus,
+        lastSeen: e.updatedAt,
+        protocol: (e.metadata as Record<string, unknown> | null)?.protocol as EquipmentProtocol | undefined,
+        ipAddress: (e.metadata as Record<string, unknown> | null)?.ipAddress as string | undefined,
+        port: (e.metadata as Record<string, unknown> | null)?.port as number | undefined,
+        metadata: (e.metadata ?? {}) as Record<string, unknown>
       }));
     } catch (error) {
       console.error('Error fetching equipment:', error);
@@ -179,19 +193,33 @@ class EquipmentDiscoveryService extends EventEmitter {
 
       return {
         id: equipment.id,
-        type: equipment.type,
+        name: equipment.name,
         model: equipment.model,
-        manufacturer: equipment.manufacturer,
-        ipAddress: equipment.ipAddress,
-        port: equipment.port,
-        protocol: equipment.protocol as EquipmentInfo['protocol'],
-        status: equipment.status as EquipmentInfo['status'],
-        lastSeen: equipment.lastSeen,
-        capabilities: equipment.capabilities
+        serialNumber: equipment.serialNumber,
+        status: equipment.status as EquipmentStatus,
+        lastSeen: equipment.updatedAt,
+        protocol: (equipment.metadata as Record<string, unknown> | null)?.protocol as EquipmentProtocol | undefined,
+        ipAddress: (equipment.metadata as Record<string, unknown> | null)?.ipAddress as string | undefined,
+        port: (equipment.metadata as Record<string, unknown> | null)?.port as number | undefined,
+        metadata: (equipment.metadata ?? {}) as Record<string, unknown>
       };
     } catch (error) {
       console.error('Error fetching equipment:', error);
       return null;
+    }
+  }
+
+  private mapStatus(status: string | undefined): EquipmentStatus {
+    switch (status) {
+      case 'offline':
+        return 'offline';
+      case 'maintenance':
+        return 'maintenance';
+      case 'repair':
+      case 'error':
+        return 'repair';
+      default:
+        return 'operational';
     }
   }
 }

@@ -30,11 +30,45 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("@mui")) {
+              return "vendor-mui";
+            }
+            if (id.includes("@radix-ui")) {
+              return "vendor-radix";
+            }
+            if (id.includes("@tanstack/react-query")) {
+              return "vendor-react-query";
+            }
+            if (/node_modules\/react(-dom)?\//.test(id)) {
+              return "vendor-react";
+            }
+          }
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1024,
   },
   server: {
     fs: {
-      strict: true,
-      deny: ["**/.*"],
+      strict: false,
+      allow: ['..'],
     },
+    host: '127.0.0.1',
+    port: 3000,
+    strictPort: true,
+    hmr: {
+      port: 3001,
+    },
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   },
 });

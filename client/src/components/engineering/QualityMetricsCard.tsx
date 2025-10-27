@@ -3,7 +3,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Grid,
   Box,
   CircularProgress
 } from '@mui/material';
@@ -46,32 +45,39 @@ export const QualityMetricsCard: React.FC<QualityMetricsProps> = ({ metrics }) =
           Quality Metrics (Last 30 Days)
         </Typography>
         
-        <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid item xs={4}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+            gap: 2,
+            mb: 2
+          }}
+        >
+          <Box>
             <Typography variant="subtitle2" color="textSecondary">
               Total Failures
             </Typography>
             <Typography variant="h4">
               {metrics.totalFailures}
             </Typography>
-          </Grid>
-          <Grid item xs={4}>
+          </Box>
+          <Box>
             <Typography variant="subtitle2" color="textSecondary">
               Critical Failures
             </Typography>
             <Typography variant="h4" color="error">
               {metrics.criticalFailures}
             </Typography>
-          </Grid>
-          <Grid item xs={4}>
+          </Box>
+          <Box>
             <Typography variant="subtitle2" color="textSecondary">
               Rework Rate
             </Typography>
             <Typography variant="h4">
               {metrics.reworkRatePercent}%
             </Typography>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
 
         <Typography variant="subtitle1" gutterBottom>
           Failure Distribution

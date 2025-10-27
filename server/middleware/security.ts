@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { createHmac } from 'crypto';
+import type { TLSSocket } from 'tls';
 import { AuthenticatedRequest } from './auth';
-import { db } from '../db';
 import { eq } from 'drizzle-orm';
 import * as schema from '@shared/schema';
+import { db } from '../db';
 
 // Constants for security requirements
 const REQUIRED_TLS_VERSION = 'TLSv1.3';
@@ -32,8 +33,9 @@ export const enforceTLS = (req: Request, res: Response, next: NextFunction) => {
   }
   
   // Check TLS version
-  const tlsVersion = req.socket.getTLSVersion?.();
-  if (tlsVersion && tlsVersion !== REQUIRED_TLS_VERSION) {
+  const tlsSocket = req.socket as TLSSocket;
+  const negotiatedProtocol = typeof tlsSocket.getProtocol === 'function' ? tlsSocket.getProtocol() : null;
+  if (negotiatedProtocol && negotiatedProtocol !== REQUIRED_TLS_VERSION) {
     return res.status(403).json({ error: `TLS ${REQUIRED_TLS_VERSION} required` });
   }
   
@@ -57,38 +59,27 @@ export const anonymizeData = (data: any) => {
 // Audit logging middleware
 export const auditLog = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const startTime = Date.now();
-  
-  // Capture the original end function
-  const originalEnd = res.end;
-  
-  // Override the end function to log after response is sent
-  res.end = function(chunk?: any, encoding?: string, callback?: () => void) {
-    const endTime = Date.now();
-    const duration = endTime - startTime;
-    
-    // Log the activity
+
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+
     const logEntry = {
       timestamp: new Date(),
-      userId: req.user?.id,
-      userRole: req.user?.role,
+      userId: req.user?.id ?? null,
+      userRole: req.user?.role ?? null,
       method: req.method,
       path: req.path,
       statusCode: res.statusCode,
       duration,
       ipAddress: req.ip,
-      userAgent: req.get('user-agent')
+      userAgent: req.get('user-agent') ?? null
     };
-    
-    // Store audit log
-    db.insert(schema.auditLogs)
-      .values(logEntry)
-      .execute()
-      .catch(err => console.error('Failed to store audit log:', err));
-    
-    // Call original end function
-    return originalEnd.call(this, chunk, encoding, callback);
-  };
-  
+
+    if (process.env.NODE_ENV !== 'test') {
+      console.info('request.audit', logEntry);
+    }
+  });
+
   next();
 };
 
