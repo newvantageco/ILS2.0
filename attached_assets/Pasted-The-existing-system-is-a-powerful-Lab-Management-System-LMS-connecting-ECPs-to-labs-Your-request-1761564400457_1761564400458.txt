@@ -1,0 +1,148 @@
+The existing system is a powerful Lab Management System (LMS), connecting ECPs to labs. Your request expands the application into a full-fledged Practice Management System (PMS) for the ECP (optometrist), integrating their clinical and retail operations directly with the lab ordering workflow.
+
+Here is a plan to enhance the project by adding these features, structured as a new development phase.
+
+Proposed Enhancement: Phase 7 - ECP Clinical & Retail Module
+This phase focuses on building clinic-centric tools for the Eye Care Professional (ECP) stakeholder group, integrating them seamlessly with the existing order management and lab communication features.
+
+1. Clinical Eye Test Module (UK Optometrist Focus)
+This module adds a full Electronic Health Record (EHR) component for conducting and storing eye examinations, with templates pre-configured for UK standards.
+
+Database Schema (New & Modified Tables)
+patients (Modified):
+
+Add email (for sending prescriptions).
+
+Add nhsNumber (for UK-specific identification).
+
+Add fullAddress (JSONB, for clinical records).
+
+eye_examinations (New Table):
+
+Fields: id, patientId (links to patients), ecpId (links to users), examinationDate, status (in_progress, finalized).
+
+Clinical Data (JSONB): Store complex, structured data for:
+
+reasonForVisit: (e.g., "Routine check-up", "Headaches").
+
+medicalHistory: (e.g., "Diabetes", "Hypertension").
+
+visualAcuity: (e.g., "OD: 6/6, OS: 6/7.5").
+
+refraction: (Subjective, Objective, Cycloplegic).
+
+binocularVision: (Cover test, motility).
+
+eyeHealth: (Slit lamp, IOPs, Ophthalmoscopy).
+
+UK-Specific Fields:
+
+gosFormType: (e.g., "GOS1", "GOS3").
+
+nhsVoucherCode: (If applicable).
+
+prescriptions (New Table):
+
+Fields: id, examinationId (links to eye_examinations), patientId, ecpId, issueDate, expiryDate.
+
+
+Prescription Data: odSphere, odCylinder, odAxis, odAdd, osSphere, osCylinder, osAxis, osAdd, pd (similar to orders table ).
+
+Signature: isSigned (boolean), signedByEcId (links to users), digitalSignature (TEXT/BLOB), signedAt (timestamp).
+
+API Endpoints (New)
+GET /api/ecp/examinations: List all examinations for the ECP.
+
+GET /api/ecp/patients/:id/examinations: Get full examination history for a patient.
+
+POST /api/ecp/examinations: Create a new eye test record.
+
+PATCH /api/ecp/examinations/:id: Save or update an in-progress examination.
+
+POST /api/ecp/examinations/:id/finalize: Finalize and lock an examination, creating a new prescriptions record.
+
+UI Components & Pages (New)
+Page: /ecp/patient/:id/test: A new multi-tab interface for conducting an eye exam.
+
+
+Component: EyeTestForm: A comprehensive form using React Hook Form and Zod  with tabs for:
+
+History & Vitals
+
+Refraction
+
+Eye Health
+
+UK Forms (GOS templates)
+
+Final Prescription & Notes
+
+Integration: After finalizing a test, the UI will prompt: "Create Lab Order from this Prescription?" This would pre-populate the /new-order page  with the patient and prescription data.
+
+2. Digital Signature & Prescription Delivery
+This feature leverages the new prescriptions table to allow ECPs to digitally sign and distribute prescriptions.
+
+Backend Services (New & Modified)
+pdfService.ts (Modified):
+
+Extend the existing PDFKit service  to include a new function: generatePrescriptionPDF(prescriptionId).
+
+This function will fetch data from the prescriptions, patients, and users tables to populate a legally compliant prescription PDF template.
+
+emailService.ts (Modified):
+
+Extend the existing Resend service  with a new function: sendPrescriptionToPatient(prescriptionId, patientEmail).
+
+This will attach the generated PDF to an email and send it to the patient.
+
+API Endpoints (New)
+POST /api/prescriptions/:id/sign: Allows the authenticated ECP to apply their digital signature (this could be a stored signature image or a simple cryptographic confirmation).
+
+GET /api/prescriptions/:id/pdf: Downloads the generated prescription PDF.
+
+POST /api/prescriptions/:id/email: Triggers the email service to send the PDF to the patient's stored email address.
+
+UI Components & Pages (New)
+Component: DigitalSignatureDialog: A modal where the ECP confirms their identity (perhaps by re-entering their password) to apply their signature.
+
+Page: /ecp/prescriptions: A new dashboard for ECPs to manage all historical prescriptions (signed and unsigned).
+
+On EyeTestForm: After finalization, "Sign Prescription" and "Send to Patient" buttons will become active.
+
+3. Point of Sale (POS) Module
+This module adds a retail component, allowing the ECP to manage inventory (frames, contact lenses) and charge for services (eye tests) and products (lenses, frames).
+
+Database Schema (New Tables)
+products:
+
+Fields: id, ecpId (inventory is per-clinic), productType (frame, contact_lens, solution, service), sku, brand, model, stockQuantity, unitPrice.
+
+invoices:
+
+Fields: id, patientId, ecpId, invoiceNumber, status (draft, paid, void), totalAmount, amountPaid, invoiceDate.
+
+invoice_line_items:
+
+Fields: id, invoiceId, productId (optional), description, quantity, unitPrice, totalPrice.
+
+API Endpoints (New)
+GET /api/pos/products: List all inventory products for the ECP.
+
+POST /api/pos/products: Add a new inventory item.
+
+GET /api/pos/invoices: List all invoices.
+
+POST /api/pos/checkout: Create a new invoice from a "cart" of services and products.
+
+POST /api/pos/invoices/:id/payment: Record a payment against an invoice.
+
+UI Components & Pages (New)
+Page: /ecp/pos: A dedicated Point of Sale interface for searching inventory and adding items to a patient's bill.
+
+Page: /ecp/inventory: A CRUD interface for managing practice inventory (products table).
+
+Integration:
+
+On the /ecp/patient/:id/test page, a button "Bill for Eye Test" adds the "Eye Test" service to the POS cart.
+
+On the /new-order page, when an ECP selects lenses, a button "Add Lenses to Invoice" can push the lens cost to the POS system.
