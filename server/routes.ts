@@ -15,7 +15,13 @@ import {
   insertSupplierSchema,
   updateSupplierSchema,
   updateOrganizationSettingsSchema,
-  updateUserPreferencesSchema
+  updateUserPreferencesSchema,
+  insertEyeExaminationSchema,
+  insertPrescriptionSchema,
+  insertProductSchema,
+  insertInvoiceSchema,
+  insertInvoiceLineItemSchema,
+  insertPatientSchema
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { generatePurchaseOrderPDF } from "./pdfService";
@@ -1375,6 +1381,655 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating user:", error);
       res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // ==================== Phase 7: ECP Clinical & Retail Module ====================
+  
+  // Patient routes
+  app.get('/api/patients', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can view patients" });
+      }
+
+      const patients = await storage.getPatients(userId);
+      res.json(patients);
+    } catch (error) {
+      console.error("Error fetching patients:", error);
+      res.status(500).json({ message: "Failed to fetch patients" });
+    }
+  });
+
+  app.get('/api/patients/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can view patients" });
+      }
+
+      const patient = await storage.getPatient(req.params.id);
+      
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+      
+      if (patient.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      res.json(patient);
+    } catch (error) {
+      console.error("Error fetching patient:", error);
+      res.status(500).json({ message: "Failed to fetch patient" });
+    }
+  });
+
+  app.patch('/api/patients/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can update patients" });
+      }
+
+      const patient = await storage.getPatient(req.params.id);
+      
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+      
+      if (patient.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const updatedPatient = await storage.updatePatient(req.params.id, req.body);
+      res.json(updatedPatient);
+    } catch (error) {
+      console.error("Error updating patient:", error);
+      res.status(500).json({ message: "Failed to update patient" });
+    }
+  });
+
+  // Eye Examination routes
+  app.get('/api/examinations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can view examinations" });
+      }
+
+      const examinations = await storage.getEyeExaminations(userId);
+      res.json(examinations);
+    } catch (error) {
+      console.error("Error fetching examinations:", error);
+      res.status(500).json({ message: "Failed to fetch examinations" });
+    }
+  });
+
+  app.get('/api/examinations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can view examinations" });
+      }
+
+      const examination = await storage.getEyeExamination(req.params.id);
+      
+      if (!examination) {
+        return res.status(404).json({ message: "Examination not found" });
+      }
+      
+      if (examination.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      res.json(examination);
+    } catch (error) {
+      console.error("Error fetching examination:", error);
+      res.status(500).json({ message: "Failed to fetch examination" });
+    }
+  });
+
+  app.get('/api/patients/:id/examinations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can view examinations" });
+      }
+
+      const patient = await storage.getPatient(req.params.id);
+      
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+      
+      if (patient.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const examinations = await storage.getPatientExaminations(req.params.id);
+      res.json(examinations);
+    } catch (error) {
+      console.error("Error fetching patient examinations:", error);
+      res.status(500).json({ message: "Failed to fetch patient examinations" });
+    }
+  });
+
+  app.post('/api/examinations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can create examinations" });
+      }
+
+      const validation = insertEyeExaminationSchema.safeParse(req.body);
+      if (!validation.success) {
+        const validationError = fromZodError(validation.error);
+        return res.status(400).json({ message: validationError.message, errors: validation.error.issues });
+      }
+
+      const examination = await storage.createEyeExamination(validation.data, userId);
+      res.status(201).json(examination);
+    } catch (error) {
+      console.error("Error creating examination:", error);
+      res.status(500).json({ message: "Failed to create examination" });
+    }
+  });
+
+  app.patch('/api/examinations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can update examinations" });
+      }
+
+      const examination = await storage.getEyeExamination(req.params.id);
+      
+      if (!examination) {
+        return res.status(404).json({ message: "Examination not found" });
+      }
+      
+      if (examination.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const updatedExamination = await storage.updateEyeExamination(req.params.id, req.body);
+      res.json(updatedExamination);
+    } catch (error) {
+      console.error("Error updating examination:", error);
+      res.status(500).json({ message: "Failed to update examination" });
+    }
+  });
+
+  app.post('/api/examinations/:id/finalize', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can finalize examinations" });
+      }
+
+      const examination = await storage.getEyeExamination(req.params.id);
+      
+      if (!examination) {
+        return res.status(404).json({ message: "Examination not found" });
+      }
+      
+      if (examination.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (examination.status === 'finalized') {
+        return res.status(400).json({ message: "Examination is already finalized" });
+      }
+
+      const finalizedExamination = await storage.finalizeExamination(req.params.id, userId);
+      res.json(finalizedExamination);
+    } catch (error) {
+      console.error("Error finalizing examination:", error);
+      res.status(500).json({ message: "Failed to finalize examination" });
+    }
+  });
+
+  // Prescription routes
+  app.get('/api/prescriptions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can view prescriptions" });
+      }
+
+      const prescriptions = await storage.getPrescriptions(userId);
+      res.json(prescriptions);
+    } catch (error) {
+      console.error("Error fetching prescriptions:", error);
+      res.status(500).json({ message: "Failed to fetch prescriptions" });
+    }
+  });
+
+  app.get('/api/prescriptions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can view prescriptions" });
+      }
+
+      const prescription = await storage.getPrescription(req.params.id);
+      
+      if (!prescription) {
+        return res.status(404).json({ message: "Prescription not found" });
+      }
+      
+      if (prescription.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      res.json(prescription);
+    } catch (error) {
+      console.error("Error fetching prescription:", error);
+      res.status(500).json({ message: "Failed to fetch prescription" });
+    }
+  });
+
+  app.post('/api/prescriptions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can create prescriptions" });
+      }
+
+      const validation = insertPrescriptionSchema.safeParse(req.body);
+      if (!validation.success) {
+        const validationError = fromZodError(validation.error);
+        return res.status(400).json({ message: validationError.message, errors: validation.error.issues });
+      }
+
+      const prescription = await storage.createPrescription(validation.data, userId);
+      res.status(201).json(prescription);
+    } catch (error) {
+      console.error("Error creating prescription:", error);
+      res.status(500).json({ message: "Failed to create prescription" });
+    }
+  });
+
+  app.post('/api/prescriptions/:id/sign', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can sign prescriptions" });
+      }
+
+      const prescription = await storage.getPrescription(req.params.id);
+      
+      if (!prescription) {
+        return res.status(404).json({ message: "Prescription not found" });
+      }
+      
+      if (prescription.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (prescription.isSigned) {
+        return res.status(400).json({ message: "Prescription is already signed" });
+      }
+
+      const { signature } = req.body;
+      if (!signature) {
+        return res.status(400).json({ message: "Signature is required" });
+      }
+
+      const signedPrescription = await storage.signPrescription(req.params.id, userId, signature);
+      res.json(signedPrescription);
+    } catch (error) {
+      console.error("Error signing prescription:", error);
+      res.status(500).json({ message: "Failed to sign prescription" });
+    }
+  });
+
+  app.get('/api/prescriptions/:id/pdf', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can download prescriptions" });
+      }
+
+      const prescription = await storage.getPrescription(req.params.id);
+      
+      if (!prescription) {
+        return res.status(404).json({ message: "Prescription not found" });
+      }
+      
+      if (prescription.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { generatePrescriptionPDF } = await import('./pdfService');
+      const pdfBuffer = await generatePrescriptionPDF(prescription);
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="prescription-${prescription.id}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating prescription PDF:", error);
+      res.status(500).json({ message: "Failed to generate prescription PDF" });
+    }
+  });
+
+  app.post('/api/prescriptions/:id/email', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can email prescriptions" });
+      }
+
+      const prescription = await storage.getPrescription(req.params.id);
+      
+      if (!prescription) {
+        return res.status(404).json({ message: "Prescription not found" });
+      }
+      
+      if (prescription.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (!prescription.patient.email) {
+        return res.status(400).json({ message: "Patient email not found" });
+      }
+
+      const { sendPrescriptionEmail } = await import('./emailService');
+      await sendPrescriptionEmail(prescription);
+
+      res.json({ message: "Prescription sent successfully" });
+    } catch (error) {
+      console.error("Error sending prescription:", error);
+      res.status(500).json({ message: "Failed to send prescription" });
+    }
+  });
+
+  // Product routes
+  app.get('/api/products', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can view products" });
+      }
+
+      const products = await storage.getProducts(userId);
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+
+  app.get('/api/products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can view products" });
+      }
+
+      const product = await storage.getProduct(req.params.id);
+      
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      if (product.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      res.json(product);
+    } catch (error) {
+      console.error("Error fetching product:", error);
+      res.status(500).json({ message: "Failed to fetch product" });
+    }
+  });
+
+  app.post('/api/products', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can create products" });
+      }
+
+      const validation = insertProductSchema.safeParse(req.body);
+      if (!validation.success) {
+        const validationError = fromZodError(validation.error);
+        return res.status(400).json({ message: validationError.message, errors: validation.error.issues });
+      }
+
+      const product = await storage.createProduct(validation.data, userId);
+      res.status(201).json(product);
+    } catch (error) {
+      console.error("Error creating product:", error);
+      res.status(500).json({ message: "Failed to create product" });
+    }
+  });
+
+  app.patch('/api/products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can update products" });
+      }
+
+      const product = await storage.getProduct(req.params.id);
+      
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      if (product.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const updatedProduct = await storage.updateProduct(req.params.id, req.body);
+      res.json(updatedProduct);
+    } catch (error) {
+      console.error("Error updating product:", error);
+      res.status(500).json({ message: "Failed to update product" });
+    }
+  });
+
+  app.delete('/api/products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can delete products" });
+      }
+
+      const product = await storage.getProduct(req.params.id);
+      
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      if (product.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const deleted = await storage.deleteProduct(req.params.id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      res.json({ message: "Product deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      res.status(500).json({ message: "Failed to delete product" });
+    }
+  });
+
+  // Invoice routes
+  app.get('/api/invoices', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can view invoices" });
+      }
+
+      const invoices = await storage.getInvoices(userId);
+      res.json(invoices);
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      res.status(500).json({ message: "Failed to fetch invoices" });
+    }
+  });
+
+  app.get('/api/invoices/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can view invoices" });
+      }
+
+      const invoice = await storage.getInvoice(req.params.id);
+      
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      if (invoice.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      res.json(invoice);
+    } catch (error) {
+      console.error("Error fetching invoice:", error);
+      res.status(500).json({ message: "Failed to fetch invoice" });
+    }
+  });
+
+  app.post('/api/invoices', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can create invoices" });
+      }
+
+      const { lineItems, ...invoiceData } = req.body;
+
+      if (!lineItems || !Array.isArray(lineItems) || lineItems.length === 0) {
+        return res.status(400).json({ message: "Invoice must have at least one line item" });
+      }
+
+      const invoice = await storage.createInvoice({ ...invoiceData, lineItems }, userId);
+      res.status(201).json(invoice);
+    } catch (error) {
+      console.error("Error creating invoice:", error);
+      res.status(500).json({ message: "Failed to create invoice" });
+    }
+  });
+
+  app.patch('/api/invoices/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can update invoice status" });
+      }
+
+      const invoice = await storage.getInvoice(req.params.id);
+      
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      if (invoice.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { status } = req.body;
+      if (!status || !['draft', 'paid', 'void'].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      const updatedInvoice = await storage.updateInvoiceStatus(req.params.id, status);
+      res.json(updatedInvoice);
+    } catch (error) {
+      console.error("Error updating invoice status:", error);
+      res.status(500).json({ message: "Failed to update invoice status" });
+    }
+  });
+
+  app.post('/api/invoices/:id/payment', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can record payments" });
+      }
+
+      const invoice = await storage.getInvoice(req.params.id);
+      
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      if (invoice.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { amount } = req.body;
+      if (!amount || parseFloat(amount) <= 0) {
+        return res.status(400).json({ message: "Invalid payment amount" });
+      }
+
+      const updatedInvoice = await storage.recordPayment(req.params.id, amount);
+      res.json(updatedInvoice);
+    } catch (error) {
+      console.error("Error recording payment:", error);
+      res.status(500).json({ message: "Failed to record payment" });
     }
   });
 

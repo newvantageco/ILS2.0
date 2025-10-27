@@ -10,6 +10,11 @@ import {
   technicalDocuments,
   organizationSettings,
   userPreferences,
+  eyeExaminations,
+  prescriptions,
+  products,
+  invoices,
+  invoiceLineItems,
   type UpsertUser, 
   type User, 
   type UserWithRoles,
@@ -31,7 +36,20 @@ import {
   type UpdateOrganizationSettings,
   type OrganizationSettings,
   type UpdateUserPreferences,
-  type UserPreferences
+  type UserPreferences,
+  type InsertEyeExamination,
+  type EyeExamination,
+  type EyeExaminationWithDetails,
+  type InsertPrescription,
+  type Prescription,
+  type PrescriptionWithDetails,
+  type InsertProduct,
+  type Product,
+  type InsertInvoice,
+  type Invoice,
+  type InvoiceWithDetails,
+  type InsertInvoiceLineItem,
+  type InvoiceLineItem
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql } from "drizzle-orm";
 
@@ -98,6 +116,33 @@ export interface IStorage {
   
   getUserPreferences(userId: string): Promise<UserPreferences | undefined>;
   updateUserPreferences(userId: string, preferences: UpdateUserPreferences): Promise<UserPreferences>;
+
+  getPatients(ecpId: string): Promise<Patient[]>;
+  updatePatient(id: string, updates: Partial<Patient>): Promise<Patient | undefined>;
+
+  createEyeExamination(examination: InsertEyeExamination, ecpId: string): Promise<EyeExamination>;
+  getEyeExamination(id: string): Promise<EyeExaminationWithDetails | undefined>;
+  getEyeExaminations(ecpId: string): Promise<EyeExaminationWithDetails[]>;
+  getPatientExaminations(patientId: string): Promise<EyeExaminationWithDetails[]>;
+  updateEyeExamination(id: string, updates: Partial<EyeExamination>): Promise<EyeExamination | undefined>;
+  finalizeExamination(id: string, ecpId: string): Promise<EyeExamination | undefined>;
+
+  createPrescription(prescription: InsertPrescription, ecpId: string): Promise<Prescription>;
+  getPrescription(id: string): Promise<PrescriptionWithDetails | undefined>;
+  getPrescriptions(ecpId: string): Promise<PrescriptionWithDetails[]>;
+  signPrescription(id: string, ecpId: string, signature: string): Promise<Prescription | undefined>;
+
+  createProduct(product: InsertProduct, ecpId: string): Promise<Product>;
+  getProduct(id: string): Promise<Product | undefined>;
+  getProducts(ecpId: string): Promise<Product[]>;
+  updateProduct(id: string, updates: Partial<Product>): Promise<Product | undefined>;
+  deleteProduct(id: string): Promise<boolean>;
+
+  createInvoice(invoice: InsertInvoice & { lineItems: InsertInvoiceLineItem[] }, ecpId: string): Promise<InvoiceWithDetails>;
+  getInvoice(id: string): Promise<InvoiceWithDetails | undefined>;
+  getInvoices(ecpId: string): Promise<InvoiceWithDetails[]>;
+  updateInvoiceStatus(id: string, status: Invoice["status"]): Promise<Invoice | undefined>;
+  recordPayment(id: string, amount: string): Promise<Invoice | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -741,6 +786,402 @@ export class DbStorage implements IStorage {
       
       return created;
     }
+  }
+
+  async getPatients(ecpId: string): Promise<Patient[]> {
+    return await db
+      .select()
+      .from(patients)
+      .where(eq(patients.ecpId, ecpId))
+      .orderBy(desc(patients.createdAt));
+  }
+
+  async updatePatient(id: string, updates: Partial<Patient>): Promise<Patient | undefined> {
+    const [patient] = await db
+      .update(patients)
+      .set(updates)
+      .where(eq(patients.id, id))
+      .returning();
+    
+    return patient;
+  }
+
+  async createEyeExamination(insertExamination: InsertEyeExamination, ecpId: string): Promise<EyeExamination> {
+    const [examination] = await db.insert(eyeExaminations).values({
+      ...insertExamination,
+      ecpId,
+    } as any).returning();
+    return examination;
+  }
+
+  async getEyeExamination(id: string): Promise<EyeExaminationWithDetails | undefined> {
+    const result = await db
+      .select({
+        examination: eyeExaminations,
+        patient: patients,
+        ecp: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        },
+      })
+      .from(eyeExaminations)
+      .innerJoin(patients, eq(eyeExaminations.patientId, patients.id))
+      .innerJoin(users, eq(eyeExaminations.ecpId, users.id))
+      .where(eq(eyeExaminations.id, id))
+      .limit(1);
+
+    if (!result.length) return undefined;
+
+    return {
+      ...result[0].examination,
+      patient: result[0].patient,
+      ecp: result[0].ecp,
+    };
+  }
+
+  async getEyeExaminations(ecpId: string): Promise<EyeExaminationWithDetails[]> {
+    const results = await db
+      .select({
+        examination: eyeExaminations,
+        patient: patients,
+        ecp: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        },
+      })
+      .from(eyeExaminations)
+      .innerJoin(patients, eq(eyeExaminations.patientId, patients.id))
+      .innerJoin(users, eq(eyeExaminations.ecpId, users.id))
+      .where(eq(eyeExaminations.ecpId, ecpId))
+      .orderBy(desc(eyeExaminations.examinationDate));
+
+    return results.map(r => ({
+      ...r.examination,
+      patient: r.patient,
+      ecp: r.ecp,
+    }));
+  }
+
+  async getPatientExaminations(patientId: string): Promise<EyeExaminationWithDetails[]> {
+    const results = await db
+      .select({
+        examination: eyeExaminations,
+        patient: patients,
+        ecp: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        },
+      })
+      .from(eyeExaminations)
+      .innerJoin(patients, eq(eyeExaminations.patientId, patients.id))
+      .innerJoin(users, eq(eyeExaminations.ecpId, users.id))
+      .where(eq(eyeExaminations.patientId, patientId))
+      .orderBy(desc(eyeExaminations.examinationDate));
+
+    return results.map(r => ({
+      ...r.examination,
+      patient: r.patient,
+      ecp: r.ecp,
+    }));
+  }
+
+  async updateEyeExamination(id: string, updates: Partial<EyeExamination>): Promise<EyeExamination | undefined> {
+    const [examination] = await db
+      .update(eyeExaminations)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(eyeExaminations.id, id))
+      .returning();
+    
+    return examination;
+  }
+
+  async finalizeExamination(id: string, ecpId: string): Promise<EyeExamination | undefined> {
+    const [examination] = await db
+      .update(eyeExaminations)
+      .set({
+        status: 'finalized',
+        updatedAt: new Date(),
+      })
+      .where(and(eq(eyeExaminations.id, id), eq(eyeExaminations.ecpId, ecpId)))
+      .returning();
+    
+    return examination;
+  }
+
+  async createPrescription(insertPrescription: InsertPrescription, ecpId: string): Promise<Prescription> {
+    const [prescription] = await db.insert(prescriptions).values({
+      ...insertPrescription,
+      ecpId,
+    } as any).returning();
+    return prescription;
+  }
+
+  async getPrescription(id: string): Promise<PrescriptionWithDetails | undefined> {
+    const result = await db
+      .select({
+        prescription: prescriptions,
+        patient: patients,
+        ecp: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        },
+        examination: eyeExaminations,
+      })
+      .from(prescriptions)
+      .innerJoin(patients, eq(prescriptions.patientId, patients.id))
+      .innerJoin(users, eq(prescriptions.ecpId, users.id))
+      .leftJoin(eyeExaminations, eq(prescriptions.examinationId, eyeExaminations.id))
+      .where(eq(prescriptions.id, id))
+      .limit(1);
+
+    if (!result.length) return undefined;
+
+    return {
+      ...result[0].prescription,
+      patient: result[0].patient,
+      ecp: result[0].ecp,
+      examination: result[0].examination || undefined,
+    };
+  }
+
+  async getPrescriptions(ecpId: string): Promise<PrescriptionWithDetails[]> {
+    const results = await db
+      .select({
+        prescription: prescriptions,
+        patient: patients,
+        ecp: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        },
+        examination: eyeExaminations,
+      })
+      .from(prescriptions)
+      .innerJoin(patients, eq(prescriptions.patientId, patients.id))
+      .innerJoin(users, eq(prescriptions.ecpId, users.id))
+      .leftJoin(eyeExaminations, eq(prescriptions.examinationId, eyeExaminations.id))
+      .where(eq(prescriptions.ecpId, ecpId))
+      .orderBy(desc(prescriptions.issueDate));
+
+    return results.map(r => ({
+      ...r.prescription,
+      patient: r.patient,
+      ecp: r.ecp,
+      examination: r.examination || undefined,
+    }));
+  }
+
+  async signPrescription(id: string, ecpId: string, signature: string): Promise<Prescription | undefined> {
+    const [prescription] = await db
+      .update(prescriptions)
+      .set({
+        isSigned: true,
+        signedByEcpId: ecpId,
+        digitalSignature: signature,
+        signedAt: new Date(),
+      })
+      .where(eq(prescriptions.id, id))
+      .returning();
+    
+    return prescription;
+  }
+
+  async createProduct(insertProduct: InsertProduct, ecpId: string): Promise<Product> {
+    const [product] = await db.insert(products).values({
+      ...insertProduct,
+      ecpId,
+    }).returning();
+    return product;
+  }
+
+  async getProduct(id: string): Promise<Product | undefined> {
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(eq(products.id, id))
+      .limit(1);
+    
+    return product;
+  }
+
+  async getProducts(ecpId: string): Promise<Product[]> {
+    return await db
+      .select()
+      .from(products)
+      .where(eq(products.ecpId, ecpId))
+      .orderBy(products.productType, products.brand, products.model);
+  }
+
+  async updateProduct(id: string, updates: Partial<Product>): Promise<Product | undefined> {
+    const [product] = await db
+      .update(products)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(products.id, id))
+      .returning();
+    
+    return product;
+  }
+
+  async deleteProduct(id: string): Promise<boolean> {
+    const result = await db
+      .delete(products)
+      .where(eq(products.id, id))
+      .returning();
+    
+    return result.length > 0;
+  }
+
+  async createInvoice(invoiceData: InsertInvoice & { lineItems: InsertInvoiceLineItem[] }, ecpId: string): Promise<InvoiceWithDetails> {
+    const invoiceNumber = `INV-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
+    
+    const { lineItems, ...invoiceFields } = invoiceData;
+
+    const [invoice] = await db.insert(invoices).values({
+      ...invoiceFields,
+      invoiceNumber,
+      ecpId,
+    }).returning();
+
+    const insertedLineItems = await db.insert(invoiceLineItems).values(
+      lineItems.map(item => ({
+        ...item,
+        invoiceId: invoice.id,
+      }))
+    ).returning();
+
+    let patient: Patient | undefined = undefined;
+    if (invoice.patientId) {
+      patient = await this.getPatient(invoice.patientId);
+    }
+
+    const ecp = await this.getUser(ecpId);
+
+    return {
+      ...invoice,
+      patient: patient,
+      ecp: {
+        id: ecp?.id || ecpId,
+        firstName: ecp?.firstName || null,
+        lastName: ecp?.lastName || null,
+      },
+      lineItems: insertedLineItems,
+    };
+  }
+
+  async getInvoice(id: string): Promise<InvoiceWithDetails | undefined> {
+    const [invoice] = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.id, id));
+
+    if (!invoice) return undefined;
+
+    const items = await db
+      .select()
+      .from(invoiceLineItems)
+      .where(eq(invoiceLineItems.invoiceId, id));
+
+    let patient: Patient | undefined = undefined;
+    if (invoice.patientId) {
+      patient = await this.getPatient(invoice.patientId);
+    }
+
+    const ecp = await this.getUser(invoice.ecpId);
+
+    return {
+      ...invoice,
+      patient: patient,
+      ecp: {
+        id: ecp?.id || invoice.ecpId,
+        firstName: ecp?.firstName || null,
+        lastName: ecp?.lastName || null,
+      },
+      lineItems: items,
+    };
+  }
+
+  async getInvoices(ecpId: string): Promise<InvoiceWithDetails[]> {
+    const invoicesList = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.ecpId, ecpId))
+      .orderBy(desc(invoices.invoiceDate));
+
+    const invoicesWithDetails = await Promise.all(
+      invoicesList.map(async (invoice) => {
+        const items = await db
+          .select()
+          .from(invoiceLineItems)
+          .where(eq(invoiceLineItems.invoiceId, invoice.id));
+
+        let patient: Patient | undefined = undefined;
+        if (invoice.patientId) {
+          patient = await this.getPatient(invoice.patientId);
+        }
+
+        const ecp = await this.getUser(ecpId);
+
+        return {
+          ...invoice,
+          patient: patient,
+          ecp: {
+            id: ecp?.id || ecpId,
+            firstName: ecp?.firstName || null,
+            lastName: ecp?.lastName || null,
+          },
+          lineItems: items,
+        };
+      })
+    );
+
+    return invoicesWithDetails;
+  }
+
+  async updateInvoiceStatus(id: string, status: Invoice["status"]): Promise<Invoice | undefined> {
+    const [invoice] = await db
+      .update(invoices)
+      .set({
+        status,
+        updatedAt: new Date(),
+      })
+      .where(eq(invoices.id, id))
+      .returning();
+    
+    return invoice;
+  }
+
+  async recordPayment(id: string, amount: string): Promise<Invoice | undefined> {
+    const invoice = await this.getInvoice(id);
+    if (!invoice) return undefined;
+
+    const currentPaid = parseFloat(invoice.amountPaid);
+    const paymentAmount = parseFloat(amount);
+    const newAmountPaid = (currentPaid + paymentAmount).toFixed(2);
+    const total = parseFloat(invoice.totalAmount);
+
+    const newStatus = parseFloat(newAmountPaid) >= total ? 'paid' : 'draft';
+
+    const [updated] = await db
+      .update(invoices)
+      .set({
+        amountPaid: newAmountPaid,
+        status: newStatus as Invoice["status"],
+        updatedAt: new Date(),
+      })
+      .where(eq(invoices.id, id))
+      .returning();
+    
+    return updated;
   }
 }
 

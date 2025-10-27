@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, jsonb, index, pgEnum, integer, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, jsonb, index, pgEnum, integer, decimal, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -49,6 +49,24 @@ export const consultPriorityEnum = pgEnum("consult_priority", [
   "urgent"
 ]);
 
+export const examinationStatusEnum = pgEnum("examination_status", [
+  "in_progress",
+  "finalized"
+]);
+
+export const invoiceStatusEnum = pgEnum("invoice_status", [
+  "draft",
+  "paid",
+  "void"
+]);
+
+export const productTypeEnum = pgEnum("product_type", [
+  "frame",
+  "contact_lens",
+  "solution",
+  "service"
+]);
+
 // User storage table with Replit Auth fields and local auth support
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -83,6 +101,9 @@ export const patients = pgTable("patients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   dateOfBirth: text("date_of_birth"),
+  email: varchar("email"),
+  nhsNumber: varchar("nhs_number"),
+  fullAddress: jsonb("full_address"),
   customerReferenceLabel: text("customer_reference_label"),
   customerReferenceNumber: text("customer_reference_number"),
   ecpId: varchar("ecp_id").notNull().references(() => users.id),
@@ -205,6 +226,85 @@ export const userPreferences = pgTable("user_preferences", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const eyeExaminations = pgTable("eye_examinations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  patientId: varchar("patient_id").notNull().references(() => patients.id),
+  ecpId: varchar("ecp_id").notNull().references(() => users.id),
+  examinationDate: timestamp("examination_date").defaultNow().notNull(),
+  status: examinationStatusEnum("status").notNull().default("in_progress"),
+  reasonForVisit: text("reason_for_visit"),
+  medicalHistory: jsonb("medical_history"),
+  visualAcuity: jsonb("visual_acuity"),
+  refraction: jsonb("refraction"),
+  binocularVision: jsonb("binocular_vision"),
+  eyeHealth: jsonb("eye_health"),
+  gosFormType: text("gos_form_type"),
+  nhsVoucherCode: text("nhs_voucher_code"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const prescriptions = pgTable("prescriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  examinationId: varchar("examination_id").references(() => eyeExaminations.id),
+  patientId: varchar("patient_id").notNull().references(() => patients.id),
+  ecpId: varchar("ecp_id").notNull().references(() => users.id),
+  issueDate: timestamp("issue_date").defaultNow().notNull(),
+  expiryDate: timestamp("expiry_date"),
+  odSphere: text("od_sphere"),
+  odCylinder: text("od_cylinder"),
+  odAxis: text("od_axis"),
+  odAdd: text("od_add"),
+  osSphere: text("os_sphere"),
+  osCylinder: text("os_cylinder"),
+  osAxis: text("os_axis"),
+  osAdd: text("os_add"),
+  pd: text("pd"),
+  isSigned: boolean("is_signed").default(false).notNull(),
+  signedByEcpId: varchar("signed_by_ecp_id").references(() => users.id),
+  digitalSignature: text("digital_signature"),
+  signedAt: timestamp("signed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const products = pgTable("products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ecpId: varchar("ecp_id").notNull().references(() => users.id),
+  productType: productTypeEnum("product_type").notNull(),
+  sku: text("sku"),
+  brand: text("brand"),
+  model: text("model"),
+  stockQuantity: integer("stock_quantity").default(0).notNull(),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const invoices = pgTable("invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceNumber: text("invoice_number").notNull().unique(),
+  patientId: varchar("patient_id").references(() => patients.id),
+  ecpId: varchar("ecp_id").notNull().references(() => users.id),
+  status: invoiceStatusEnum("status").notNull().default("draft"),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }).default("0").notNull(),
+  invoiceDate: timestamp("invoice_date").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const invoiceLineItems = pgTable("invoice_line_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceId: varchar("invoice_id").notNull().references(() => invoices.id),
+  productId: varchar("product_id").references(() => products.id),
+  description: text("description").notNull(),
+  quantity: integer("quantity").notNull(),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const upsertUserSchema = createInsertSchema(users);
 export const insertPatientSchema = createInsertSchema(patients).omit({
   id: true,
@@ -299,6 +399,44 @@ export const updateUserPreferencesSchema = createInsertSchema(userPreferences).o
   updatedAt: true,
 });
 
+export const insertEyeExaminationSchema = createInsertSchema(eyeExaminations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  ecpId: true,
+});
+
+export const insertPrescriptionSchema = createInsertSchema(prescriptions).omit({
+  id: true,
+  createdAt: true,
+  ecpId: true,
+  isSigned: true,
+  signedByEcpId: true,
+  digitalSignature: true,
+  signedAt: true,
+});
+
+export const insertProductSchema = createInsertSchema(products).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  ecpId: true,
+});
+
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({
+  id: true,
+  invoiceNumber: true,
+  createdAt: true,
+  updatedAt: true,
+  ecpId: true,
+});
+
+export const insertInvoiceLineItemSchema = createInsertSchema(invoiceLineItems).omit({
+  id: true,
+  createdAt: true,
+  invoiceId: true,
+});
+
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
 
@@ -366,4 +504,48 @@ export type UserPreferences = typeof userPreferences.$inferSelect;
 export type UserRole = typeof userRoles.$inferSelect;
 export type UserWithRoles = User & {
   availableRoles: string[];
+};
+
+export type InsertEyeExamination = z.infer<typeof insertEyeExaminationSchema>;
+export type EyeExamination = typeof eyeExaminations.$inferSelect;
+
+export type EyeExaminationWithDetails = EyeExamination & {
+  patient: Patient;
+  ecp: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+  };
+};
+
+export type InsertPrescription = z.infer<typeof insertPrescriptionSchema>;
+export type Prescription = typeof prescriptions.$inferSelect;
+
+export type PrescriptionWithDetails = Prescription & {
+  patient: Patient;
+  ecp: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+  };
+  examination?: EyeExamination;
+};
+
+export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type Product = typeof products.$inferSelect;
+
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type Invoice = typeof invoices.$inferSelect;
+
+export type InsertInvoiceLineItem = z.infer<typeof insertInvoiceLineItemSchema>;
+export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
+
+export type InvoiceWithDetails = Invoice & {
+  patient?: Patient;
+  ecp: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+  };
+  lineItems: InvoiceLineItem[];
 };

@@ -24,6 +24,11 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import EmailLoginPage from "@/pages/EmailLoginPage";
 import EmailSignupPage from "@/pages/EmailSignupPage";
 import GitHubPushPage from "@/pages/github-push";
+import PatientsPage from "@/pages/PatientsPage";
+import PrescriptionsPage from "@/pages/PrescriptionsPage";
+import InventoryPage from "@/pages/InventoryPage";
+import POSPage from "@/pages/POSPage";
+import EyeTestPage from "@/pages/EyeTestPage";
 import { LogOut } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -151,6 +156,11 @@ function AuthenticatedApp() {
         {userRole === "ecp" && (
           <>
             <Route path="/ecp/dashboard" component={ECPDashboard} />
+            <Route path="/ecp/patients" component={PatientsPage} />
+            <Route path="/ecp/patient/:id/test" component={EyeTestPage} />
+            <Route path="/ecp/prescriptions" component={PrescriptionsPage} />
+            <Route path="/ecp/inventory" component={InventoryPage} />
+            <Route path="/ecp/pos" component={POSPage} />
             <Route path="/ecp/new-order" component={NewOrderPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/order/:id" component={OrderDetailsPage} />

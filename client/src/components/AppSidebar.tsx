@@ -21,6 +21,10 @@ import {
   LogOut,
   Shield,
   Users,
+  UserCircle,
+  FileText,
+  ShoppingCart,
+  Archive,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -36,6 +40,10 @@ interface AppSidebarProps {
 const menuItems = {
   ecp: [
     { title: "Dashboard", url: "/ecp/dashboard", icon: Home },
+    { title: "Patients", url: "/ecp/patients", icon: UserCircle },
+    { title: "Prescriptions", url: "/ecp/prescriptions", icon: FileText },
+    { title: "Inventory", url: "/ecp/inventory", icon: Archive },
+    { title: "Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
     { title: "New Order", url: "/ecp/new-order", icon: Package },
     { title: "My Orders", url: "/ecp/orders", icon: ClipboardList },
     { title: "Returns", url: "/ecp/returns", icon: TrendingUp },

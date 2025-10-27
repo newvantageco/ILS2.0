@@ -104,3 +104,60 @@ export async function sendShipmentNotificationEmail(
     `,
   });
 }
+
+interface PrescriptionEmailData {
+  id: string;
+  patient: {
+    name: string;
+    email: string | null;
+  };
+  ecp: {
+    firstName: string | null;
+    lastName: string | null;
+  };
+}
+
+export async function sendPrescriptionEmail(prescription: PrescriptionEmailData): Promise<void> {
+  const { client, fromEmail } = await getResendClient();
+
+  if (!prescription.patient.email) {
+    throw new Error('Patient email is required');
+  }
+
+  const { generatePrescriptionPDF } = await import('./pdfService');
+  const pdfBuffer = await generatePrescriptionPDF(prescription as any);
+
+  const ecpName = `${prescription.ecp.firstName || ""} ${prescription.ecp.lastName || ""}`.trim() || "Your Eye Care Professional";
+
+  await client.emails.send({
+    from: fromEmail,
+    to: prescription.patient.email,
+    subject: `Your Optical Prescription - ${prescription.patient.name}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #A76111;">Your Optical Prescription</h2>
+        <p>Dear ${prescription.patient.name},</p>
+        <p>Please find attached your optical prescription from <strong>${ecpName}</strong>.</p>
+        <p>This prescription has been prepared based on your recent eye examination.</p>
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p style="margin: 0; font-size: 14px;"><strong>Important Notes:</strong></p>
+          <ul style="margin: 10px 0; padding-left: 20px; font-size: 14px;">
+            <li>This prescription is valid for the period specified in the document</li>
+            <li>Keep this prescription for your records</li>
+            <li>Contact us if you have any questions or concerns</li>
+          </ul>
+        </div>
+        <p>If you need clarification or would like to discuss your prescription, please contact our practice.</p>
+        <br/>
+        <p>Best regards,<br/>
+        <strong>${ecpName}</strong></p>
+      </div>
+    `,
+    attachments: [
+      {
+        filename: `prescription-${prescription.id}.pdf`,
+        content: pdfBuffer,
+      }
+    ],
+  });
+}

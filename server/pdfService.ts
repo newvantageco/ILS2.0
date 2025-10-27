@@ -209,3 +209,196 @@ export function generatePurchaseOrderPDF(po: PurchaseOrder): PDFKit.PDFDocument 
   doc.end();
   return doc;
 }
+
+interface PrescriptionData {
+  id: string;
+  issueDate: Date;
+  expiryDate: Date | null;
+  odSphere: string | null;
+  odCylinder: string | null;
+  odAxis: string | null;
+  odAdd: string | null;
+  osSphere: string | null;
+  osCylinder: string | null;
+  osAxis: string | null;
+  osAdd: string | null;
+  pd: string | null;
+  isSigned: boolean;
+  signedAt: Date | null;
+  patient: {
+    name: string;
+    dateOfBirth: string | null;
+    nhsNumber: string | null;
+  };
+  ecp: {
+    firstName: string | null;
+    lastName: string | null;
+  };
+}
+
+export async function generatePrescriptionPDF(prescription: PrescriptionData): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 50, size: "LETTER" });
+    const chunks: Buffer[] = [];
+
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    // Header
+    doc
+      .fontSize(24)
+      .font("Helvetica-Bold")
+      .text("OPTICAL PRESCRIPTION", 50, 50);
+
+    // Issue Date and Expiry
+    doc
+      .fontSize(10)
+      .font("Helvetica")
+      .text(`Issue Date: ${new Date(prescription.issueDate).toLocaleDateString()}`, 50, 90);
+    
+    if (prescription.expiryDate) {
+      doc.text(`Expiry Date: ${new Date(prescription.expiryDate).toLocaleDateString()}`, 50, 105);
+    }
+
+    // Patient Information
+    doc
+      .fontSize(12)
+      .font("Helvetica-Bold")
+      .text("PATIENT INFORMATION:", 50, 140);
+
+    let patientY = 160;
+    doc
+      .fontSize(10)
+      .font("Helvetica")
+      .text(`Name: ${prescription.patient.name}`, 50, patientY);
+    
+    patientY += 15;
+    if (prescription.patient.dateOfBirth) {
+      doc.text(`Date of Birth: ${prescription.patient.dateOfBirth}`, 50, patientY);
+      patientY += 15;
+    }
+    
+    if (prescription.patient.nhsNumber) {
+      doc.text(`NHS Number: ${prescription.patient.nhsNumber}`, 50, patientY);
+      patientY += 15;
+    }
+
+    // Prescription Details
+    const prescriptionTop = patientY + 20;
+    doc
+      .fontSize(12)
+      .font("Helvetica-Bold")
+      .text("PRESCRIPTION DETAILS:", 50, prescriptionTop);
+
+    // Prescription Table
+    const tableTop = prescriptionTop + 30;
+    const headers = ["", "Sphere", "Cylinder", "Axis", "Add"];
+    const columnWidths = [60, 90, 90, 90, 90];
+    const columnPositions = [50, 110, 200, 290, 380];
+
+    // Table Header
+    doc
+      .fontSize(10)
+      .font("Helvetica-Bold")
+      .fillColor("#000000");
+
+    headers.forEach((header, i) => {
+      doc.text(header, columnPositions[i], tableTop, {
+        width: columnWidths[i],
+        align: i === 0 ? "left" : "center",
+      });
+    });
+
+    // Table Header Line
+    doc
+      .moveTo(50, tableTop + 15)
+      .lineTo(470, tableTop + 15)
+      .stroke();
+
+    // Right Eye (OD)
+    let yPosition = tableTop + 25;
+    doc
+      .font("Helvetica-Bold")
+      .text("OD (Right)", columnPositions[0], yPosition, { width: columnWidths[0] });
+
+    doc
+      .font("Helvetica")
+      .text(prescription.odSphere || "-", columnPositions[1], yPosition, { width: columnWidths[1], align: "center" })
+      .text(prescription.odCylinder || "-", columnPositions[2], yPosition, { width: columnWidths[2], align: "center" })
+      .text(prescription.odAxis || "-", columnPositions[3], yPosition, { width: columnWidths[3], align: "center" })
+      .text(prescription.odAdd || "-", columnPositions[4], yPosition, { width: columnWidths[4], align: "center" });
+
+    // Left Eye (OS)
+    yPosition += 25;
+    doc
+      .font("Helvetica-Bold")
+      .text("OS (Left)", columnPositions[0], yPosition, { width: columnWidths[0] });
+
+    doc
+      .font("Helvetica")
+      .text(prescription.osSphere || "-", columnPositions[1], yPosition, { width: columnWidths[1], align: "center" })
+      .text(prescription.osCylinder || "-", columnPositions[2], yPosition, { width: columnWidths[2], align: "center" })
+      .text(prescription.osAxis || "-", columnPositions[3], yPosition, { width: columnWidths[3], align: "center" })
+      .text(prescription.osAdd || "-", columnPositions[4], yPosition, { width: columnWidths[4], align: "center" });
+
+    // PD (Pupillary Distance)
+    yPosition += 30;
+    doc
+      .fontSize(10)
+      .font("Helvetica-Bold")
+      .text("PD (Pupillary Distance):", 50, yPosition);
+
+    doc
+      .font("Helvetica")
+      .text(prescription.pd || "Not specified", 200, yPosition);
+
+    // Prescriber Information
+    yPosition += 50;
+    doc
+      .fontSize(12)
+      .font("Helvetica-Bold")
+      .text("PRESCRIBER INFORMATION:", 50, yPosition);
+
+    yPosition += 20;
+    doc
+      .fontSize(10)
+      .font("Helvetica")
+      .text(`Prescribed by: ${prescription.ecp.firstName || ""} ${prescription.ecp.lastName || ""}`, 50, yPosition);
+
+    if (prescription.isSigned && prescription.signedAt) {
+      yPosition += 15;
+      doc.text(`Signed on: ${new Date(prescription.signedAt).toLocaleDateString()}`, 50, yPosition);
+    }
+
+    // Signature status
+    yPosition += 30;
+    if (prescription.isSigned) {
+      doc
+        .fontSize(10)
+        .font("Helvetica-Bold")
+        .fillColor("#008000")
+        .text("✓ Digitally Signed", 50, yPosition);
+    } else {
+      doc
+        .fontSize(10)
+        .font("Helvetica")
+        .fillColor("#ff0000")
+        .text("⚠ Not Signed", 50, yPosition);
+    }
+
+    // Footer
+    doc
+      .fontSize(8)
+      .font("Helvetica")
+      .fillColor("#666666")
+      .text(
+        "This prescription is valid for the period specified above. Please consult your eye care professional if you have any questions.",
+        50,
+        750,
+        { align: "center", width: 520 }
+      );
+
+    doc.end();
+  });
+}
