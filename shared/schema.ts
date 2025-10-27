@@ -3,6 +3,9 @@ import { pgTable, text, varchar, timestamp, jsonb, index, pgEnum, integer, decim
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Enums
+export const roleEnum = pgEnum("role", ["ecp", "admin", "lab_tech", "engineer", "supplier"]);
+
 // Session storage table for Replit Auth
 export const sessions = pgTable(
   "sessions",
@@ -25,6 +28,96 @@ export const orderStatusEnum = pgEnum("order_status", [
   "on_hold",
   "cancelled"
 ]);
+
+export const analyticsEventTypeEnum = pgEnum("analytics_event_type", [
+  "order_created",
+  "order_updated",
+  "quality_issue",
+  "equipment_status",
+  "material_usage",
+  "return_created",
+  "non_adapt_reported"
+]);
+
+export const qualityIssueTypeEnum = pgEnum("quality_issue_type", [
+  "surface_defect",
+  "coating_defect",
+  "measurement_error",
+  "material_defect",
+  "processing_error",
+  "other"
+]);
+
+// Tables for Analytics and Quality Control
+export const analyticsEvents = pgTable("analytics_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventType: analyticsEventTypeEnum("event_type").notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  sourceId: varchar("source_id").notNull(),
+  sourceType: varchar("source_type").notNull(),
+  data: jsonb("data").notNull(),
+  metadata: jsonb("metadata"),
+  organizationId: varchar("organization_id").notNull(),
+});
+
+export const qualityIssues = pgTable("quality_issues", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  issueType: qualityIssueTypeEnum("issue_type").notNull(),
+  orderId: varchar("order_id")
+    .references(() => orders.id)
+    .notNull(),
+  description: text("description").notNull(),
+  severity: integer("severity").notNull(),
+  detectedAt: timestamp("detected_at").defaultNow().notNull(),
+  detectedBy: varchar("detected_by")
+    .references(() => users.id)
+    .notNull(),
+  status: varchar("status").notNull().default("open"),
+  resolution: text("resolution"),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: varchar("resolved_by").references(() => users.id),
+  rootCause: text("root_cause"),
+  preventiveActions: text("preventive_actions"),
+  metadata: jsonb("metadata"),
+});
+
+export const returns = pgTable("returns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id")
+    .references(() => orders.id)
+    .notNull(),
+  returnReason: varchar("return_reason").notNull(),
+  returnType: varchar("return_type").notNull(),
+  description: text("description").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdBy: varchar("created_by")
+    .references(() => users.id)
+    .notNull(),
+  status: varchar("status").notNull().default("pending"),
+  processingNotes: text("processing_notes"),
+  replacementOrderId: varchar("replacement_order_id").references(() => orders.id),
+  qualityIssueId: varchar("quality_issue_id").references(() => qualityIssues.id),
+  metadata: jsonb("metadata"),
+});
+
+export const nonAdapts = pgTable("non_adapts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id")
+    .references(() => orders.id)
+    .notNull(),
+  reportedBy: varchar("reported_by")
+    .references(() => users.id)
+    .notNull(),
+  patientFeedback: text("patient_feedback").notNull(),
+  symptoms: jsonb("symptoms").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  resolution: text("resolution"),
+  resolutionType: varchar("resolution_type"),
+  resolvedAt: timestamp("resolved_at"),
+  qualityIssueId: varchar("quality_issue_id").references(() => qualityIssues.id),
+  replacementOrderId: varchar("replacement_order_id").references(() => orders.id),
+  metadata: jsonb("metadata"),
+});
 
 export const poStatusEnum = pgEnum("po_status", [
   "draft",
@@ -67,22 +160,58 @@ export const productTypeEnum = pgEnum("product_type", [
   "service"
 ]);
 
+// Notification Enums
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "info",
+  "warning",
+  "error",
+  "success",
+]);
+
+export const notificationSeverityEnum = pgEnum("notification_severity", [
+  "low",
+  "medium",
+  "high",
+]);
+
+export const notificationTargetTypeEnum = pgEnum("notification_target_type", [
+  "user",
+  "role",
+  "organization",
+]);
+
+// Notification Table
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    type: notificationTypeEnum("type").notNull(),
+    title: text("title").notNull(),
+    message: text("message").notNull(),
+    severity: notificationSeverityEnum("severity").notNull(),
+    target: jsonb("target").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("idx_notifications_created_at").on(table.createdAt)],
+);
+
 // User storage table with Replit Auth fields and local auth support
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  accountStatus: accountStatusEnum("account_status").notNull().default("pending"),
+  statusReason: text("status_reason"),
+  organizationId: varchar("organization_id"),
+  organizationName: text("organization_name"),
   email: varchar("email").unique(),
-  password: text("password"), // For local email/password authentication
+  password: varchar("password"),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: userRoleEnum("role"), // Primary/active role for backward compatibility
-  accountStatus: accountStatusEnum("account_status").default("pending").notNull(),
-  statusReason: text("status_reason"),
-  organizationName: text("organization_name"),
-  accountNumber: text("account_number"),
-  contactEmail: text("contact_email"),
-  contactPhone: text("contact_phone"),
-  address: jsonb("address"),
+  role: roleEnum("role"),
+  gocNumber: varchar("goc_number"), // General Optical Council registration number
+  isActive: boolean("is_active").default(true),
+  isVerified: boolean("is_verified").default(false),
+  lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -238,6 +367,7 @@ export const eyeExaminations = pgTable("eye_examinations", {
   refraction: jsonb("refraction"),
   binocularVision: jsonb("binocular_vision"),
   eyeHealth: jsonb("eye_health"),
+  equipmentReadings: jsonb("equipment_readings"), // Store equipment measurement data
   gosFormType: text("gos_form_type"),
   nhsVoucherCode: text("nhs_voucher_code"),
   notes: text("notes"),
@@ -530,6 +660,23 @@ export type PrescriptionWithDetails = Prescription & {
   };
   examination?: EyeExamination;
 };
+
+
+
+
+
+// Types for the new tables
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+export type InsertAnalyticsEvent = typeof analyticsEvents.$inferInsert;
+
+export type QualityIssue = typeof qualityIssues.$inferSelect;
+export type InsertQualityIssue = typeof qualityIssues.$inferInsert;
+
+export type Return = typeof returns.$inferSelect;
+export type InsertReturn = typeof returns.$inferInsert;
+
+export type NonAdapt = typeof nonAdapts.$inferSelect;
+export type InsertNonAdapt = typeof nonAdapts.$inferInsert;
 
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;

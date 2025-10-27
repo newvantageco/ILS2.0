@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
-import { hashPassword } from "./localAuth";
+import { setupAuth as setupReplitAuth, isAuthenticated } from "./replitAuth";
+import { setupLocalAuth, hashPassword } from "./localAuth";
 import passport from "passport";
 import { 
   insertOrderSchema, 
@@ -39,7 +39,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  await setupAuth(app);
+  if (process.env.NODE_ENV === 'development') {
+    setupLocalAuth();
+  } else {
+    await setupReplitAuth(app);
+  }
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -322,10 +326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.login({
         claims: {
           sub: newUser.id,
-          email: newUser.email,
-          first_name: newUser.firstName,
-          last_name: newUser.lastName,
-          profile_image_url: newUser.profileImageUrl,
+          id: newUser.id // Using id instead of email
         },
         local: true,
       }, (err) => {

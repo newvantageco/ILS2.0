@@ -1,6 +1,11 @@
+import * as dotenv from "dotenv";
+// Load environment variables from .env file
+dotenv.config();
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { setupLocalAuth } from "./localAuth";
 
 const app = express();
 
@@ -85,11 +90,7 @@ app.use((req, res, next) => {
     // It is the only port that is not firewalled.
     const port = parseInt(process.env.PORT || '5000', 10);
     
-    server.listen({
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    }, () => {
+    server.listen(port, "localhost", () => {
       log(`Server successfully started on port ${port}`);
       log(`Environment: ${app.get("env")}`);
       log(`Ready to accept connections`);

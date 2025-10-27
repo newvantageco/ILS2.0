@@ -1,6 +1,10 @@
-import { drizzle } from "drizzle-orm/neon-serverless";
-import ws from "ws";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import * as schema from "../shared/schema";
+import * as dotenv from "dotenv";
+
+// Load environment variables from .env file
+dotenv.config();
 
 if (!process.env.DATABASE_URL) {
   console.error("FATAL: DATABASE_URL environment variable is not set");
@@ -16,10 +20,10 @@ if (!process.env.DATABASE_URL) {
 
 console.log("Initializing database connection...");
 
-export const db = drizzle({
-  connection: process.env.DATABASE_URL,
-  schema,
-  ws: ws,
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
 });
+
+export const db = drizzle(pool, { schema });
 
 console.log("Database connection initialized successfully");

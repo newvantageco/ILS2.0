@@ -5,13 +5,53 @@ export default {
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
+      // Modern, consistent border radius system
       borderRadius: {
-        lg: ".5625rem", /* 9px */
-        md: ".375rem", /* 6px */
-        sm: ".1875rem", /* 3px */
+        sm: ".125rem",  /* 2px */
+        md: ".25rem",   /* 4px */
+        lg: ".5rem",    /* 8px */
+        xl: "1rem",     /* 16px */
+        "2xl": "1.5rem", /* 24px */
+      },
+      // Enhanced box shadow system
+      boxShadow: {
+        sm: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        md: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        lg: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        xl: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+      },
+      // Systematic spacing scale
+      spacing: {
+        '4xs': '0.125rem',  /* 2px */
+        '3xs': '0.25rem',   /* 4px */
+        '2xs': '0.375rem',  /* 6px */
+        xs: '0.5rem',       /* 8px */
+        sm: '0.75rem',      /* 12px */
+        md: '1rem',         /* 16px */
+        lg: '1.5rem',       /* 24px */
+        xl: '2rem',         /* 32px */
+        '2xl': '2.5rem',    /* 40px */
+        '3xl': '3rem',      /* 48px */
+      },
+      // Smooth animation presets
+      transitionTimingFunction: {
+        'ease-spring': 'cubic-bezier(0.25, 0.1, 0.25, 1.0)',
+        'ease-out-soft': 'cubic-bezier(0.2, 0.8, 0.4, 1)',
+      },
+      // Animation durations
+      transitionDuration: {
+        50: '50ms',
+        150: '150ms',
+        250: '250ms',
+        350: '350ms',
+      },
+      // Scale transforms
+      scale: {
+        98: '0.98',
+        102: '1.02',
       },
       colors: {
-        // Flat / base colors (regular buttons)
+        // System colors using HSL for precise control
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",
         border: "hsl(var(--border) / <alpha-value>)",
