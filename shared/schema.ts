@@ -11,10 +11,14 @@ export const sessions = pgTable(
   "sessions",
   {
     sid: varchar("sid").primaryKey(),
+    userId: varchar("user_id").references(() => users.id).notNull(),
     sess: jsonb("sess").notNull(),
     expire: timestamp("expire").notNull(),
   },
-  (table) => [index("IDX_session_expire").on(table.expire)],
+  (table) => [
+    index("IDX_session_expire").on(table.expire),
+    index("IDX_session_user").on(table.userId),
+  ],
 );
 
 export const userRoleEnum = pgEnum("user_role", ["ecp", "lab_tech", "engineer", "supplier", "admin"]);
@@ -146,6 +150,75 @@ export const examinationStatusEnum = pgEnum("examination_status", [
   "in_progress",
   "finalized"
 ]);
+
+// Equipment and maintenance related enums
+export const equipmentStatusEnum = pgEnum("equipment_status", [
+  "operational",
+  "maintenance",
+  "repair",
+  "offline"
+]);
+
+export const maintenanceTypeEnum = pgEnum("maintenance_type", [
+  "routine",
+  "repair",
+  "upgrade",
+  "emergency"
+]);
+
+// Equipment management tables
+export const equipment = pgTable("equipment", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  model: varchar("model").notNull(),
+  serialNumber: varchar("serial_number").notNull(),
+  status: equipmentStatusEnum("status").notNull().default("operational"),
+  lastMaintenance: timestamp("last_maintenance"),
+  nextMaintenance: timestamp("next_maintenance"),
+  specifications: jsonb("specifications"),
+  location: varchar("location"),
+  purchaseDate: timestamp("purchase_date"),
+  warrantyExpiration: timestamp("warranty_expiration"),
+  maintenanceHistory: jsonb("maintenance_history").default('[]'),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Notification system table is defined below with proper types
+
+export const orderTimeline = pgTable("order_timeline", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").references(() => orders.id).notNull(),
+  status: varchar("status").notNull(),
+  details: text("details"),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  metadata: jsonb("metadata"),
+});
+
+// DICOM tables
+export const dicomReadings = pgTable(
+  "dicom_readings",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    examinationId: varchar("examination_id").references(() => eyeExaminations.id).notNull(),
+    studyInstanceUID: varchar("study_instance_uid").notNull(),
+    seriesInstanceUID: varchar("series_instance_uid").notNull(),
+    imageInstanceUID: varchar("image_instance_uid").notNull(),
+    modality: varchar("modality").notNull(),
+    equipmentId: varchar("equipment_id").references(() => equipment.id).notNull(),
+    manufacturer: varchar("manufacturer"),
+    modelName: varchar("model_name"),
+    measurements: jsonb("measurements"),
+    rawData: text("raw_data").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_dicom_readings_examination").on(table.examinationId),
+    index("idx_dicom_readings_equipment").on(table.equipmentId)
+  ]
+);
 
 export const invoiceStatusEnum = pgEnum("invoice_status", [
   "draft",

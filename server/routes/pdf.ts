@@ -9,7 +9,7 @@ const pdfService = PDFGenerationService.getInstance();
 router.get(
   '/api/prescriptions/:examinationId/pdf',
   authenticateUser,
-  requireRole(['ecp', 'lab_tech']),
+  requireRole(['ecp', 'lab_tech'] as const),
   async (req, res) => {
     try {
       const { examinationId } = req.params;
@@ -50,7 +50,7 @@ router.get(
 router.get(
   '/api/examinations/:examinationId/pdf',
   authenticateUser,
-  requireRole(['ecp', 'lab_tech']),
+  requireRole(['ecp', 'lab_tech'] as const),
   async (req, res) => {
     try {
       const { examinationId } = req.params;

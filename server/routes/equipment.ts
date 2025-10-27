@@ -3,7 +3,7 @@ import { authenticateUser, requireRole } from '../middleware/auth';
 import EquipmentDiscoveryService from '../services/EquipmentDiscoveryService';
 import { db } from '../db';
 import { eq } from 'drizzle-orm';
-import * as schema from '@shared/schema';
+import { equipment, roleEnum } from '@shared/schema';
 
 const router = Router();
 const equipmentService = EquipmentDiscoveryService.getInstance();
@@ -12,7 +12,7 @@ const equipmentService = EquipmentDiscoveryService.getInstance();
 router.post(
   '/api/equipment/discovery/start',
   authenticateUser,
-  requireRole(['admin', 'engineer']),
+  requireRole(['admin', 'engineer'] as const),
   (req, res) => {
     try {
       equipmentService.startDiscovery();
@@ -28,7 +28,7 @@ router.post(
 router.post(
   '/api/equipment/discovery/stop',
   authenticateUser,
-  requireRole(['admin', 'engineer']),
+  requireRole(['admin', 'engineer'] as const),
   (req, res) => {
     try {
       equipmentService.stopDiscovery();
@@ -44,7 +44,7 @@ router.post(
 router.get(
   '/api/equipment',
   authenticateUser,
-  requireRole(['admin', 'engineer', 'lab_tech']),
+  requireRole(['admin', 'engineer', 'lab_tech'] as const),
   async (req, res) => {
     try {
       const equipment = await equipmentService.getKnownEquipment();
@@ -60,7 +60,7 @@ router.get(
 router.get(
   '/api/equipment/:id',
   authenticateUser,
-  requireRole(['admin', 'engineer', 'lab_tech']),
+  requireRole(['admin', 'engineer', 'lab_tech'] as const),
   async (req, res) => {
     try {
       const equipment = await equipmentService.getEquipmentById(req.params.id);
@@ -79,19 +79,23 @@ router.get(
 router.post(
   '/api/equipment/:id/configure',
   authenticateUser,
-  requireRole(['admin', 'engineer']),
+  requireRole(['admin', 'engineer'] as const),
   async (req, res) => {
     try {
       const { id } = req.params;
       const { configuration } = req.body;
 
+      if (!id || !configuration || typeof configuration !== 'object') {
+        return res.status(400).json({ error: 'Missing or invalid configuration data' });
+      }
+
       // Update equipment configuration
-      await db.update(schema.equipment)
+      await db.update(equipment)
         .set({
-          ...configuration,
-          updatedAt: new Date()
+          specifications: configuration,
+          updatedAt: new Date(),
         })
-        .where(eq(schema.equipment.id, id));
+        .where(eq(equipment.id, id));
 
       res.json({ message: 'Equipment configuration updated' });
     } catch (error) {
@@ -105,7 +109,7 @@ router.post(
 router.post(
   '/api/equipment/:id/test',
   authenticateUser,
-  requireRole(['admin', 'engineer', 'lab_tech']),
+  requireRole(['admin', 'engineer', 'lab_tech'] as const),
   async (req, res) => {
     try {
       const equipment = await equipmentService.getEquipmentById(req.params.id);

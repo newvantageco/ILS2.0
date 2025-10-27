@@ -1,5 +1,7 @@
-import { DicomMessage, DicomDict } from 'dicom-parser';
-import { Equipment } from '../shared/schema';
+import dicomParser from 'dicom-parser';
+import { db } from '../db';
+import { dicomReadings } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
 interface DicomEquipmentReading {
   studyInstanceUID: string;
@@ -32,55 +34,63 @@ class DicomService {
    */
   public async parseDicomData(buffer: Buffer): Promise<DicomEquipmentReading> {
     try {
-      const dicomData = new DicomMessage(buffer);
-      const dicomDict = new DicomDict(dicomData);
+      const byteArray = new Uint8Array(buffer);
+      const dataSet = dicomParser.parseDicom(byteArray);
 
       return {
-        studyInstanceUID: dicomDict.string('x0020000d'),
-        seriesInstanceUID: dicomDict.string('x0020000e'),
-        imageInstanceUID: dicomDict.string('x00080018'),
-        modality: dicomDict.string('x00080060'),
-        equipmentId: dicomDict.string('x00181000'),
-        manufacturer: dicomDict.string('x00080070'),
-        modelName: dicomDict.string('x00081090'),
-        measurements: this.extractMeasurements(dicomDict),
+        studyInstanceUID: this.getString(dataSet, 'x0020000d'),
+        seriesInstanceUID: this.getString(dataSet, 'x0020000e'),
+        imageInstanceUID: this.getString(dataSet, 'x00080018'),
+        modality: this.getString(dataSet, 'x00080060'),
+        equipmentId: this.getString(dataSet, 'x00181000'),
+        manufacturer: this.getString(dataSet, 'x00080070'),
+        modelName: this.getString(dataSet, 'x00081090'),
+        measurements: this.extractMeasurements(dataSet),
         rawData: buffer
       };
     } catch (error) {
-      throw new Error(`Failed to parse DICOM data: ${error.message}`);
+      if (error instanceof Error) {
+        throw new Error(`Failed to parse DICOM data: ${error.message}`);
+      }
+      throw new Error('Failed to parse DICOM data: Unknown error');
     }
+  }
+
+  private getString(dataSet: dicomParser.DataSet, tag: string): string {
+    const element = dataSet.elements[tag];
+    return element ? dataSet.string(tag) || '' : '';
   }
 
   /**
    * Extract relevant measurements from DICOM data
-   * @param dicomDict DICOM dictionary
+   * @param dataSet DICOM dataset
    * @returns Structured measurements
    */
-  private extractMeasurements(dicomDict: DicomDict): Record<string, any> {
+  private extractMeasurements(dataSet: dicomParser.DataSet): Record<string, any> {
     const measurements: Record<string, any> = {};
 
     // Extract common ophthalmic measurements
     // Keratometry
-    if (dicomDict.exists('x00460044')) {
+    if (dataSet.elements['x00460044']) {
       measurements.keratometryReadings = {
-        rightEye: this.parseKeratometryData(dicomDict, 'RIGHT'),
-        leftEye: this.parseKeratometryData(dicomDict, 'LEFT')
+        rightEye: this.parseKeratometryData(dataSet, 'RIGHT'),
+        leftEye: this.parseKeratometryData(dataSet, 'LEFT')
       };
     }
 
     // Autorefractor
-    if (dicomDict.exists('x00460040')) {
+    if (dataSet.elements['x00460040']) {
       measurements.autorefraction = {
-        rightEye: this.parseAutoRefractionData(dicomDict, 'RIGHT'),
-        leftEye: this.parseAutoRefractionData(dicomDict, 'LEFT')
+        rightEye: this.parseAutoRefractionData(dataSet, 'RIGHT'),
+        leftEye: this.parseAutoRefractionData(dataSet, 'LEFT')
       };
     }
 
     // Tonometry
-    if (dicomDict.exists('x00460048')) {
+    if (dataSet.elements['x00460048']) {
       measurements.tonometry = {
-        rightEye: this.parseTonometryData(dicomDict, 'RIGHT'),
-        leftEye: this.parseTonometryData(dicomDict, 'LEFT')
+        rightEye: this.parseTonometryData(dataSet, 'RIGHT'),
+        leftEye: this.parseTonometryData(dataSet, 'LEFT')
       };
     }
 
@@ -90,58 +100,91 @@ class DicomService {
   /**
    * Parse keratometry data for specified eye
    */
-  private parseKeratometryData(dicomDict: DicomDict, eye: 'RIGHT' | 'LEFT'): Record<string, number> {
+  private parseKeratometryData(dataSet: dicomParser.DataSet, eye: 'RIGHT' | 'LEFT'): Record<string, number> {
     // Implementation specific to keratometry data format
     return {
-      k1: 0,
-      k2: 0,
-      axis: 0
+      k1: this.getFloat(dataSet, 'x00460044') || 0,
+      k2: this.getFloat(dataSet, 'x00460045') || 0,
+      axis: this.getFloat(dataSet, 'x00460046') || 0
     };
   }
 
   /**
    * Parse autorefraction data for specified eye
    */
-  private parseAutoRefractionData(dicomDict: DicomDict, eye: 'RIGHT' | 'LEFT'): Record<string, number> {
+  private parseAutoRefractionData(dataSet: dicomParser.DataSet, eye: 'RIGHT' | 'LEFT'): Record<string, number> {
     // Implementation specific to autorefraction data format
     return {
-      sphere: 0,
-      cylinder: 0,
-      axis: 0
+      sphere: this.getFloat(dataSet, 'x00460040') || 0,
+      cylinder: this.getFloat(dataSet, 'x00460041') || 0,
+      axis: this.getFloat(dataSet, 'x00460042') || 0
     };
   }
 
   /**
    * Parse tonometry data for specified eye
    */
-  private parseTonometryData(dicomDict: DicomDict, eye: 'RIGHT' | 'LEFT'): number {
-    // Implementation specific to tonometry data format
-    return 0;
+  private parseTonometryData(dataSet: dicomParser.DataSet, eye: 'RIGHT' | 'LEFT'): number {
+    return this.getFloat(dataSet, 'x00460048') || 0;
+  }
+
+  private getFloat(dataSet: dicomParser.DataSet, tag: string): number | undefined {
+    const element = dataSet.elements[tag];
+    if (!element) return undefined;
+    const stringValue = dataSet.string(tag);
+    if (!stringValue) return undefined;
+    return parseFloat(stringValue);
   }
 
   /**
-   * Store DICOM reading in examination record
+   * Store DICOM reading in database
    * @param examinationId Examination ID
    * @param reading DICOM reading
    */
   public async storeReading(examinationId: string, reading: DicomEquipmentReading): Promise<void> {
     try {
-      // Store the reading in the examination record
-      // Implementation will depend on your database access method
-      await prisma.eyeExamination.update({
-        where: { id: examinationId },
-        data: {
-          equipmentReadings: {
-            push: {
-              timestamp: new Date(),
-              ...reading
-            }
-          }
-        }
-      });
+      await db.insert(dicomReadings)
+        .values({
+          examinationId,
+          studyInstanceUID: reading.studyInstanceUID,
+          seriesInstanceUID: reading.seriesInstanceUID,
+          imageInstanceUID: reading.imageInstanceUID,
+          modality: reading.modality,
+          equipmentId: reading.equipmentId,
+          manufacturer: reading.manufacturer,
+          modelName: reading.modelName,
+          measurements: reading.measurements,
+          rawData: reading.rawData.toString('base64')
+        });
     } catch (error) {
-      throw new Error(`Failed to store DICOM reading: ${error.message}`);
+      if (error instanceof Error) {
+        throw new Error(`Failed to store DICOM reading: ${error.message}`);
+      }
+      throw new Error('Failed to store DICOM reading: Unknown error');
     }
+  }
+
+  /**
+   * Get stored DICOM readings for an examination
+   * @param examinationId Examination ID
+   */
+  public async getReadings(examinationId: string): Promise<DicomEquipmentReading[]> {
+    const readings = await db
+      .select()
+      .from(dicomReadings)
+      .where(eq(dicomReadings.examinationId, examinationId));
+
+    return readings.map(reading => ({
+      studyInstanceUID: reading.studyInstanceUID,
+      seriesInstanceUID: reading.seriesInstanceUID,
+      imageInstanceUID: reading.imageInstanceUID,
+      modality: reading.modality,
+      equipmentId: reading.equipmentId,
+      manufacturer: reading.manufacturer || '',
+      modelName: reading.modelName || '',
+      measurements: reading.measurements as Record<string, any>,
+      rawData: Buffer.from(reading.rawData, 'base64')
+    }));
   }
 
   /**
@@ -150,16 +193,13 @@ class DicomService {
    * @returns Validation result
    */
   public validateReading(reading: DicomEquipmentReading): boolean {
-    // Implement validation logic
-    const requiredFields = [
-      'studyInstanceUID',
-      'seriesInstanceUID',
-      'imageInstanceUID',
-      'modality',
-      'equipmentId'
-    ];
-
-    return requiredFields.every(field => reading[field] !== undefined);
+    return !!(
+      reading.studyInstanceUID &&
+      reading.seriesInstanceUID &&
+      reading.imageInstanceUID &&
+      reading.modality &&
+      reading.equipmentId
+    );
   }
 }
 

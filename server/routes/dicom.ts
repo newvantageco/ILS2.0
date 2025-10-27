@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import multer from 'multer';
 import DicomService from '../services/DicomService';
-import { prisma } from '../db';
+import { db } from '../db';
+import { eyeExaminations } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 import { authenticateUser, requireRole } from '../middleware/auth';
 
 const router = Router();
@@ -12,7 +14,7 @@ const dicomService = DicomService.getInstance();
 router.post(
   '/api/examinations/:examinationId/dicom',
   authenticateUser,
-  requireRole(['ecp']),
+  requireRole(['ecp'] as const),
   upload.single('dicomFile'),
   async (req, res) => {
     try {
@@ -34,12 +36,11 @@ router.post(
       await dicomService.storeReading(examinationId, dicomReading);
 
       // Update examination status
-      await prisma.eyeExamination.update({
-        where: { id: examinationId },
-        data: {
+      await db.update(eyeExaminations)
+        .set({
           updatedAt: new Date()
-        }
-      });
+        })
+        .where(eq(eyeExaminations.id, examinationId));
 
       res.status(200).json({
         message: 'DICOM data processed successfully',
@@ -56,21 +57,24 @@ router.post(
 router.get(
   '/api/examinations/:examinationId/dicom',
   authenticateUser,
-  requireRole(['ecp', 'lab_tech']),
+  requireRole(['ecp', 'lab_tech'] as const),
   async (req, res) => {
     try {
       const { examinationId } = req.params;
-
-      const examination = await prisma.eyeExamination.findUnique({
-        where: { id: examinationId },
-        select: { equipmentReadings: true }
-      });
+      
+      const [examination] = await db
+        .select()
+        .from(eyeExaminations)
+        .where(eq(eyeExaminations.id, examinationId))
+        .limit(1);
 
       if (!examination) {
         return res.status(404).json({ error: 'Examination not found' });
       }
 
-      res.status(200).json(examination.equipmentReadings);
+      const readings = await dicomService.getReadings(examinationId);
+      
+      res.json(readings);
     } catch (error) {
       console.error('Error fetching DICOM readings:', error);
       res.status(500).json({ error: 'Failed to fetch DICOM readings' });

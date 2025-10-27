@@ -1,20 +1,19 @@
-import { Request, Response, NextFunction } from 'express';
-import { prisma } from '../db';
-import { userRoleEnum } from '../../shared/schema';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+import { db } from '../db';
+import { users, sessions, roleEnum } from '../../shared/schema';
+import { eq, and } from 'drizzle-orm';
 
-export interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    role: typeof userRoleEnum.enumValues[number];
-  };
+export interface AuthenticatedUser {
+  id: string;
+  email: string;
+  role: typeof roleEnum.enumValues[number];
 }
 
-export const authenticateUser = async (
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export interface AuthenticatedRequest extends Request {
+  user?: AuthenticatedUser;
+}
+
+export const authenticateUser: RequestHandler = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     
@@ -24,15 +23,17 @@ export const authenticateUser = async (
 
     const token = authHeader.split(' ')[1];
     
-    // Verify and decode the token
-    // This implementation will depend on your authentication method (JWT, session, etc.)
     const user = await validateToken(token);
     
-    if (!user) {
+    if (!user || !user.email || !user.role) {
       return res.status(401).json({ error: 'Invalid authentication token' });
     }
 
-    req.user = user;
+    (req as AuthenticatedRequest).user = {
+      id: user.id,
+      email: user.email,
+      role: user.role
+    };
     next();
   } catch (error) {
     console.error('Authentication error:', error);
@@ -40,40 +41,38 @@ export const authenticateUser = async (
   }
 };
 
-export const requireRole = (allowedRoles: typeof userRoleEnum.enumValues[number][]) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    if (!req.user) {
+export const requireRole = (allowedRoles: typeof roleEnum.enumValues[number][]) => {
+  return ((req: Request, res: Response, next: NextFunction) => {
+    const authReq = req as AuthenticatedRequest;
+    if (!authReq.user) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!allowedRoles.includes(authReq.user.role)) {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
     next();
-  };
+  }) as RequestHandler;
 };
 
 async function validateToken(token: string) {
   try {
-    // Implement token validation logic here
-    // This will depend on your authentication method
-    
-    // Example using database sessions:
-    const session = await prisma.sessions.findUnique({
-      where: { sid: token },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            role: true
-          }
-        }
-      }
-    });
+    const [session] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        role: users.role
+      })
+      .from(sessions)
+      .innerJoin(users, eq(sessions.userId, users.id))
+      .where(and(
+        eq(sessions.sid, token),
+        eq(users.isActive, true),
+        eq(users.isVerified, true)
+      ));
 
-    return session?.user;
+    return session || null;
   } catch (error) {
     console.error('Token validation error:', error);
     return null;
