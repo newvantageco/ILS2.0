@@ -24,6 +24,15 @@ import { z } from "zod";
 import { parseOMAFile, isValidOMAFile } from "@shared/omaParser";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoint for deployment monitoring
+  app.get('/health', (_req, res) => {
+    res.status(200).json({ 
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development'
+    });
+  });
+
   await setupAuth(app);
 
   // Auth routes
