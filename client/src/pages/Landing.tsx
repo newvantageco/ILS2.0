@@ -1,6 +1,23 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Glasses, Package, Users, TrendingUp, CheckCircle2, Zap, Shield, BarChart3, Mail } from "lucide-react";
+import {
+  Glasses,
+  Package,
+  Users,
+  TrendingUp,
+  CheckCircle2,
+  Zap,
+  Shield,
+  BarChart3,
+  Mail,
+  ArrowRight,
+  Clock,
+  Compass,
+  Layers,
+  LogIn,
+  UserPlus,
+  Sparkles,
+} from "lucide-react";
 import { useLocation } from "wouter";
 import { SiReplit } from "react-icons/si";
 
@@ -21,9 +38,9 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-background to-muted/20">
-      <header className="border-b border-border backdrop-blur-sm bg-background/80 sticky top-0 z-50">
+      <header className="border-b border-border/60 backdrop-blur-sm bg-background/85 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4 gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-[200px]">
             <div className="w-11 h-11 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
               <span className="text-primary-foreground font-bold text-xl">ILS</span>
             </div>
@@ -32,6 +49,20 @@ export default function Landing() {
               <p className="text-xs text-muted-foreground">Enterprise Lens Management</p>
             </div>
           </div>
+          <nav className="flex items-center gap-5 text-sm text-muted-foreground flex-wrap">
+            <a href="#overview" className="hover:text-foreground transition-colors" data-testid="nav-overview">
+              Overview
+            </a>
+            <a href="#features" className="hover:text-foreground transition-colors" data-testid="nav-features">
+              Features
+            </a>
+            <a href="#experience" className="hover:text-foreground transition-colors" data-testid="nav-experience">
+              Experience
+            </a>
+            <a href="#workflow" className="hover:text-foreground transition-colors" data-testid="nav-workflow">
+              Workflow
+            </a>
+          </nav>
           <div className="flex items-center gap-2 flex-wrap">
             <Button onClick={handleEmailLogin} variant="outline" data-testid="button-email-login">
               <Mail className="h-4 w-4 mr-2" />
@@ -46,45 +77,87 @@ export default function Landing() {
       </header>
 
       <main className="flex-1">
-        <section className="relative py-20 px-6 overflow-hidden">
+        <section id="overview" className="relative py-20 px-6 overflow-hidden">
           <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
           <div className="max-w-7xl mx-auto relative">
-            <div className="text-center space-y-6 max-w-4xl mx-auto">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary mb-4">
-                <Zap className="h-4 w-4" />
-                Streamline Your Lens Production Workflow
-              </div>
-              <h2 className="text-5xl md:text-6xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                Welcome to the Future of Lens Management
-              </h2>
-              <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-                A unified platform for managing lens orders, production workflows, and quality control across eye care professionals, labs, and suppliers.
-              </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6">
-                <Button size="lg" onClick={handleEmailSignup} data-testid="button-signup-cta" className="shadow-lg text-lg px-8 h-12">
-                  <Mail className="h-5 w-5 mr-2" />
-                  Sign Up with Email
-                </Button>
-                <Button size="lg" variant="outline" onClick={handleReplitLogin} className="text-lg px-8 h-12 shadow-md" data-testid="button-replit-cta">
-                  <SiReplit className="h-5 w-5 mr-2" />
-                  Sign Up with Replit
-                </Button>
-              </div>
-              <div className="text-sm text-muted-foreground pt-2">
-                Already have an account? <button onClick={handleEmailLogin} className="text-primary hover:underline font-medium" data-testid="link-email-login">Sign in with email</button> or <button onClick={handleReplitLogin} className="text-primary hover:underline font-medium" data-testid="link-replit-login">Replit</button>
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-6 pt-8 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  Real-time Tracking
+            <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-12 items-center">
+              <div className="space-y-6 text-center lg:text-left max-w-3xl mx-auto lg:mx-0">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary mb-4">
+                  <Zap className="h-4 w-4" />
+                  Streamline Your Lens Production Workflow
                 </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  Quality Control
+                <h2 className="text-5xl md:text-6xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent">
+                  One Console for Every Lens Partner
+                </h2>
+                <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed">
+                  Whether you are launching a new practice or scaling a national lab network, ILS centralizes lens orders, quality assurance, and collaboration in a single, trusted platform.
+                </p>
+                <div className="grid sm:grid-cols-2 gap-3 pt-2">
+                  <Button size="lg" onClick={handleEmailSignup} data-testid="button-signup-cta" className="shadow-lg text-lg px-8 h-12">
+                    <UserPlus className="h-5 w-5 mr-2" />
+                    Create a New Account
+                  </Button>
+                  <Button size="lg" variant="outline" onClick={handleEmailLogin} className="text-lg px-8 h-12 shadow-md" data-testid="button-returning-signin">
+                    <LogIn className="h-5 w-5 mr-2" />
+                    I&apos;m Already Using ILS
+                  </Button>
                 </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  Secure & Compliant
+                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    SOC 2 aligned controls
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    Built-in audit trails
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    24/7 observability
+                  </div>
+                </div>
+              </div>
+              <div className="bg-background/80 border border-border/60 rounded-2xl shadow-xl p-6 space-y-5 backdrop-blur">
+                <div className="space-y-2">
+                  <span className="text-xs uppercase tracking-widest text-muted-foreground">Personalized Journeys</span>
+                  <h3 className="text-2xl font-semibold">Pick the path that fits you</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Tailored onboarding, dashboards, and workflows make sure returning teams speed through their day, while newcomers ramp up with confidence.
+                  </p>
+                </div>
+                <div className="grid gap-3">
+                  <Card className="border-primary/30 bg-primary/5">
+                    <CardContent className="p-4 flex items-start gap-3">
+                      <Sparkles className="h-5 w-5 text-primary mt-1" />
+                      <div>
+                        <p className="font-medium">New to ILS</p>
+                        <p className="text-xs text-muted-foreground">
+                          Guided configuration, ready-to-use templates, and a success manager for your launch.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-border/60 hover:border-primary/40 transition-colors">
+                    <CardContent className="p-4 flex items-start gap-3">
+                      <Clock className="h-5 w-5 text-primary mt-1" />
+                      <div>
+                        <p className="font-medium">Existing Teams</p>
+                        <p className="text-xs text-muted-foreground">
+                          SSO-ready login, continuity dashboards, and smart alerts so you never miss a beat.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={handleReplitLogin} size="sm" variant="secondary" className="gap-2" data-testid="button-replit-cta">
+                    <SiReplit className="h-4 w-4" />
+                    Continue with Replit
+                  </Button>
+                  <Button onClick={handleEmailLogin} size="sm" variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground" data-testid="link-email-login">
+                    Resume via Email
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </div>
@@ -160,6 +233,159 @@ export default function Landing() {
           </div>
         </section>
 
+        <section id="experience" className="py-20 px-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid lg:grid-cols-[0.75fr_1.25fr] gap-12 items-center">
+              <div className="space-y-6">
+                <h3 className="text-3xl md:text-4xl font-bold">A differentiated experience for every entry point</h3>
+                <p className="text-lg text-muted-foreground leading-relaxed">
+                  Teams moving from spreadsheets get guided automation. Enterprise labs tap into extensible APIs and governance. Each persona lands in the view that matters most the moment they sign in.
+                </p>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-4 p-4 rounded-xl border border-border/60 bg-muted/40">
+                    <Compass className="h-6 w-6 text-primary mt-1" />
+                    <div>
+                      <p className="font-semibold">Guided onboarding playbooks</p>
+                      <p className="text-sm text-muted-foreground">
+                        Pre-built checklists, sample orders, and contextual tips help new clinics publish their first workflow in under 30 minutes.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4 p-4 rounded-xl border border-border/60 bg-muted/40">
+                    <Layers className="h-6 w-6 text-primary mt-1" />
+                    <div>
+                      <p className="font-semibold">Continuity for returning teams</p>
+                      <p className="text-sm text-muted-foreground">
+                        Role-aware dashboards cache your last actions, surface overdue tasks, and pick up in-flight returns instantly.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4 p-4 rounded-xl border border-border/60 bg-muted/40">
+                    <BarChart3 className="h-6 w-6 text-primary mt-1" />
+                    <div>
+                      <p className="font-semibold">Growth insights out of the box</p>
+                      <p className="text-sm text-muted-foreground">
+                        Benchmark metrics and production KPIs are ready on day one—no BI team required.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="grid gap-6 md:grid-cols-2">
+                <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-primary">
+                      <Sparkles className="h-4 w-4" />
+                      New Practices
+                    </div>
+                    <h4 className="text-xl font-semibold">Launch with confidence</h4>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li>• Done-for-you data import from legacy systems</li>
+                      <li>• Workflow templates curated by industry experts</li>
+                      <li>• Concierge onboarding with a success engineer</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+                <Card className="border-2 border-border/60 hover:border-primary/30 transition-colors">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      Established Labs
+                    </div>
+                    <h4 className="text-xl font-semibold">Scale without friction</h4>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li>• SOC 2 aligned permissions with SSO and MFA</li>
+                      <li>• Custom analytics feeds for equipment health</li>
+                      <li>• Dedicated support with 4-hour response</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+                <Card className="border-2 border-border/60">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
+                      <Users className="h-4 w-4" />
+                      Shared Success
+                    </div>
+                    <h4 className="text-xl font-semibold">Collaborate in one space</h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Invite suppliers, engineers, and customer service stakeholders with granular permissions and shared review queues.
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card className="border-2 border-border/60">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
+                      <Package className="h-4 w-4" />
+                      Measurable Impact
+                    </div>
+                    <h4 className="text-xl font-semibold">Proof in 90 days</h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Standard engagements report 35% faster order turnaround and 20% fewer reworks after the first quarter.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="workflow" className="py-20 px-6 bg-muted/20">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <h3 className="text-3xl md:text-4xl font-bold mb-4">Your next session, mapped</h3>
+              <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+                Returning users jump straight into prioritized tasks while new teams get a structured path to full production readiness.
+              </p>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="h-full border-2 border-border/60">
+                <CardContent className="p-6 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                    01
+                  </div>
+                  <h4 className="font-semibold text-lg">Sign in your way</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Email, SSO, or partner credentials all route through the same secure gateway with contextual guidance.
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="h-full border-2 border-border/60">
+                <CardContent className="p-6 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                    02
+                  </div>
+                  <h4 className="font-semibold text-lg">Resume or launch</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Personalized start screens surface your saved work, upcoming approvals, or guided setup checklist.
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="h-full border-2 border-border/60">
+                <CardContent className="p-6 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                    03
+                  </div>
+                  <h4 className="font-semibold text-lg">Operate with clarity</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Dynamic queues, quality checkpoints, and collaborative notes keep workstreams aligned minute-by-minute.
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="h-full border-2 border-border/60">
+                <CardContent className="p-6 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                    04
+                  </div>
+                  <h4 className="font-semibold text-lg">Measure the win</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Reports and alerts automatically share progress with stakeholders, proving value every cycle.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
         <section className="py-20 px-6">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-16">
@@ -205,19 +431,26 @@ export default function Landing() {
 
         <section className="py-20 px-6 bg-gradient-to-b from-primary/5 to-background border-y border-border">
           <div className="max-w-4xl mx-auto text-center space-y-6">
-            <h3 className="text-3xl md:text-4xl font-bold">Ready to Transform Your Workflow?</h3>
+            <h3 className="text-3xl md:text-4xl font-bold">Ready to transform your workflow?</h3>
             <p className="text-lg text-muted-foreground">
-              Join leading lens manufacturers and eye care professionals who trust ILS for their production management.
+              New to ILS? Spin up a guided sandbox. Already a partner? Jump back to your live operations without missing context.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Button size="lg" onClick={handleEmailSignup} className="shadow-lg text-lg px-10 h-12" data-testid="button-signup-bottom">
                 <Mail className="h-5 w-5 mr-2" />
-                Create Account
+                Launch a Guided Trial
               </Button>
-              <Button size="lg" variant="outline" onClick={handleReplitLogin} className="text-lg px-10 h-12 shadow-md" data-testid="button-replit-bottom">
-                <SiReplit className="h-5 w-5 mr-2" />
-                Sign In with Replit
+              <Button size="lg" variant="outline" onClick={handleEmailLogin} className="text-lg px-10 h-12 shadow-md" data-testid="button-returning-bottom">
+                <LogIn className="h-5 w-5 mr-2" />
+                Continue Managing Orders
               </Button>
+            </div>
+            <div className="text-sm text-muted-foreground flex flex-col sm:flex-row items-center justify-center gap-2">
+              <span>Prefer a walkthrough?</span>
+              <button onClick={handleReplitLogin} className="text-primary hover:underline font-medium flex items-center gap-1" data-testid="button-replit-bottom">
+                Meet us in partner space
+                <ArrowRight className="h-4 w-4" />
+              </button>
             </div>
           </div>
         </section>

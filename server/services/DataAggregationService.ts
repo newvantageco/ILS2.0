@@ -39,7 +39,7 @@ export interface QualityMetrics {
 }
 
 export interface DataAggregationService {
-  recordEvent(event: Omit<AnalyticsEvent, 'id' | 'timestamp'>): Promise<void>;
+  recordEvent(event: Omit<AnalyticsEvent, 'id' | 'timestamp'>): Promise<AnalyticsEvent>;
   getEvents(filters: {
     startTime?: Date;
     endTime?: Date;
@@ -61,12 +61,18 @@ export interface DataAggregationService {
 }
 
 export class DataAggregationServiceImpl implements DataAggregationService {
-  async recordEvent(event: Omit<AnalyticsEvent, 'id' | 'timestamp'>): Promise<void> {
+  async recordEvent(event: Omit<AnalyticsEvent, 'id' | 'timestamp'>): Promise<AnalyticsEvent> {
     try {
-      await db.insert(schema.analyticsEvents).values({
+      const [created] = await db.insert(schema.analyticsEvents).values({
         ...event,
         timestamp: new Date()
-      });
+      }).returning();
+
+      if (!created) {
+        throw new Error('Failed to persist analytics event');
+      }
+
+      return created as AnalyticsEvent;
     } catch (error) {
       console.error('Error recording analytics event:', error);
       throw error;

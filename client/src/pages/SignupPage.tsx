@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation } from "@tanstack/react-query";
@@ -8,11 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Crown, Printer } from "lucide-react";
 
 export default function SignupPage() {
   const { user, isLoading: authLoading } = useAuth();
+
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -20,10 +23,29 @@ export default function SignupPage() {
     role: "" as "ecp" | "lab_tech" | "engineer" | "supplier" | "admin" | "",
     organizationName: "",
     adminSetupKey: "",
+    subscriptionPlan: "" as "full" | "free_ecp" | "",
   });
 
+  useEffect(() => {
+    setFormData(prev => {
+      if (!prev.role) {
+        return prev.subscriptionPlan === "" ? prev : { ...prev, subscriptionPlan: "" };
+      }
+      const enforcedPlan = prev.role === "ecp" ? "free_ecp" : "full";
+      if (prev.subscriptionPlan === enforcedPlan) {
+        return prev;
+      }
+      return { ...prev, subscriptionPlan: enforcedPlan };
+    });
+  }, [formData.role]);
+
+  const hasRole = formData.role.length > 0;
+  const isEcp = formData.role === "ecp";
+  const fullPlanDisabled = !hasRole || isEcp;
+  const freePlanDisabled = !hasRole || !isEcp;
+
   const signupMutation = useMutation({
-    mutationFn: async (data: { role: string; organizationName: string; adminSetupKey?: string }) => {
+    mutationFn: async (data: { role: string; organizationName: string; adminSetupKey?: string; subscriptionPlan: "full" | "free_ecp" }) => {
       const response = await apiRequest("POST", "/api/auth/complete-signup", data);
       return await response.json();
     },
@@ -64,10 +86,32 @@ export default function SignupPage() {
       });
       return;
     }
+
+    const allowedPlan = formData.role === "ecp" ? "free_ecp" : "full";
+    const selectedPlan = formData.subscriptionPlan || allowedPlan;
+
+    if (!selectedPlan) {
+      toast({
+        title: "Select subscription plan",
+        description: "Choose the subscription option that matches your role",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedPlan !== allowedPlan) {
+      toast({
+        title: "Plan not available",
+        description: "The selected plan is not available for the chosen role",
+        variant: "destructive",
+      });
+      return;
+    }
     
     const submitData: any = {
       role: formData.role,
       organizationName: formData.organizationName,
+      subscriptionPlan: selectedPlan,
     };
     
     if (formData.role === "admin") {
@@ -163,6 +207,74 @@ export default function SignupPage() {
               </Select>
               <p className="text-sm text-muted-foreground">
                 Choose the role that best describes your position
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Subscription Plan</Label>
+              <RadioGroup
+                value={formData.subscriptionPlan}
+                onValueChange={(value) =>
+                  setFormData(prev => ({ ...prev, subscriptionPlan: value as "full" | "free_ecp" }))
+                }
+                className="grid gap-3"
+              >
+                <Label
+                  htmlFor="plan-full"
+                  className={cn(
+                    "flex items-start gap-3 rounded-lg border p-4 transition focus-within:ring-2 focus-within:ring-primary/40",
+                    formData.subscriptionPlan === "full" && "border-primary ring-2 ring-primary/40 bg-primary/5",
+                    fullPlanDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:border-primary/50"
+                  )}
+                >
+                  <RadioGroupItem
+                    id="plan-full"
+                    value="full"
+                    disabled={fullPlanDisabled || signupMutation.isPending}
+                    className="mt-1"
+                  />
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Crown className="h-4 w-4 text-primary" />
+                      <span className="font-semibold">Full Experience</span>
+                      <span className="text-sm text-muted-foreground">£199/month</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Access every module in ILS including patient care, clinical records, analytics, and retail operations.
+                    </p>
+                  </div>
+                </Label>
+
+                <Label
+                  htmlFor="plan-free"
+                  className={cn(
+                    "flex items-start gap-3 rounded-lg border p-4 transition focus-within:ring-2 focus-within:ring-primary/40",
+                    formData.subscriptionPlan === "free_ecp" && "border-primary ring-2 ring-primary/40 bg-primary/5",
+                    freePlanDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:border-primary/50"
+                  )}
+                >
+                  <RadioGroupItem
+                    id="plan-free"
+                    value="free_ecp"
+                    disabled={freePlanDisabled || signupMutation.isPending}
+                    className="mt-1"
+                  />
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Printer className="h-4 w-4 text-primary" />
+                      <span className="font-semibold">ECP Records (Free)</span>
+                      <span className="text-sm text-muted-foreground">£0/month</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Create lens orders and download purchase order records. Upgrade anytime for full clinical and retail capabilities.
+                    </p>
+                  </div>
+                </Label>
+              </RadioGroup>
+              <p className="text-xs text-muted-foreground">
+                {isEcp
+                  ? "ECP accounts start on the free plan so you can submit orders immediately."
+                  : "All non-ECP roles require the Full Experience subscription."}
               </p>
             </div>
 

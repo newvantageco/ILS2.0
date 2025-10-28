@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Lock, User, Building2, ArrowLeft, Key, AlertCircle } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { cn } from "@/lib/utils";
+import { Mail, Lock, User, Building2, ArrowLeft, Key, AlertCircle, Crown, Printer } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function EmailSignupPage() {
@@ -21,12 +23,26 @@ export default function EmailSignupPage() {
     role: "",
     organizationName: "",
     adminSetupKey: "",
+    subscriptionPlan: "",
   });
   const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  useEffect(() => {
+    setFormData(prev => {
+      if (!prev.role) {
+        return prev.subscriptionPlan === "" ? prev : { ...prev, subscriptionPlan: "" };
+      }
+      const enforcedPlan = prev.role === "ecp" ? "free_ecp" : "full";
+      if (prev.subscriptionPlan === enforcedPlan) {
+        return prev;
+      }
+      return { ...prev, subscriptionPlan: enforcedPlan };
+    });
+  }, [formData.role]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +75,31 @@ export default function EmailSignupPage() {
       return;
     }
 
+    const allowedPlan = formData.role === 'ecp'
+      ? 'free_ecp'
+      : formData.role
+        ? 'full'
+        : '';
+    const selectedPlan = formData.subscriptionPlan || allowedPlan;
+
+    if (!selectedPlan) {
+      toast({
+        title: "Select subscription plan",
+        description: "Please choose a subscription option to continue",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (allowedPlan && selectedPlan !== allowedPlan) {
+      toast({
+        title: "Plan not available",
+        description: "The selected plan is not available for the chosen role",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -70,6 +111,7 @@ export default function EmailSignupPage() {
         role: formData.role,
         organizationName: formData.organizationName || null,
         adminSetupKey: formData.role === 'admin' ? formData.adminSetupKey : undefined,
+        subscriptionPlan: selectedPlan,
       });
 
       const data = await response.json() as { message: string; user: any };
@@ -98,6 +140,11 @@ export default function EmailSignupPage() {
       setIsLoading(false);
     }
   };
+
+  const hasRole = formData.role.length > 0;
+  const isEcp = formData.role === 'ecp';
+  const fullPlanDisabled = !hasRole || isEcp;
+  const freePlanDisabled = !hasRole || !isEcp;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 p-4">
@@ -233,6 +280,72 @@ export default function EmailSignupPage() {
                   <SelectItem value="admin">Administrator</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Subscription Plan</Label>
+              <RadioGroup
+                value={formData.subscriptionPlan}
+                onValueChange={(value) => handleInputChange('subscriptionPlan', value)}
+                className="grid gap-3"
+              >
+                <Label
+                  htmlFor="plan-full"
+                  className={cn(
+                    "flex items-start gap-3 rounded-lg border p-4 transition focus-within:ring-2 focus-within:ring-primary/40",
+                    formData.subscriptionPlan === 'full' && "border-primary ring-2 ring-primary/40 bg-primary/5",
+                    fullPlanDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:border-primary/50"
+                  )}
+                >
+                  <RadioGroupItem
+                    id="plan-full"
+                    value="full"
+                    disabled={fullPlanDisabled || isLoading}
+                    className="mt-1"
+                  />
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Crown className="h-4 w-4 text-primary" />
+                      <span className="font-semibold">Full Experience</span>
+                      <span className="text-sm text-muted-foreground">£199/month</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Complete platform access including patient management, examinations, prescriptions, inventory, and retail tools.
+                    </p>
+                  </div>
+                </Label>
+
+                <Label
+                  htmlFor="plan-free"
+                  className={cn(
+                    "flex items-start gap-3 rounded-lg border p-4 transition focus-within:ring-2 focus-within:ring-primary/40",
+                    formData.subscriptionPlan === 'free_ecp' && "border-primary ring-2 ring-primary/40 bg-primary/5",
+                    freePlanDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:border-primary/50"
+                  )}
+                >
+                  <RadioGroupItem
+                    id="plan-free"
+                    value="free_ecp"
+                    disabled={freePlanDisabled || isLoading}
+                    className="mt-1"
+                  />
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Printer className="h-4 w-4 text-primary" />
+                      <span className="font-semibold">ECP Records (Free)</span>
+                      <span className="text-sm text-muted-foreground">£0/month</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Submit orders and download purchase order records. Advanced clinical and retail modules require the Full Experience plan.
+                    </p>
+                  </div>
+                </Label>
+              </RadioGroup>
+              <p className="text-xs text-muted-foreground">
+                {isEcp
+                  ? "ECP accounts default to the free plan. Upgrade later to unlock clinical and retail workflows."
+                  : "Lab, engineering, supplier, and admin roles require the Full Experience subscription."}
+              </p>
             </div>
 
             <div className="space-y-2">

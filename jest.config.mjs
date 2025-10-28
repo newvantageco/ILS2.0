@@ -17,6 +17,7 @@ export default {
         esModuleInterop: true,
         module: 'commonjs',
         moduleResolution: 'node',
+        types: ['jest', 'node'],
         baseUrl: '.',
         paths: {
           '@/*': ['src/*'],

@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth as setupReplitAuth, isAuthenticated } from "./replitAuth";
@@ -21,7 +21,8 @@ import {
   insertProductSchema,
   insertInvoiceSchema,
   insertInvoiceLineItemSchema,
-  insertPatientSchema
+  insertPatientSchema,
+  User
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { generatePurchaseOrderPDF } from "./pdfService";
@@ -42,6 +43,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   if (process.env.NODE_ENV !== 'development') {
     await setupReplitAuth(app);
   }
+
+  const FULL_PLAN = "full" as const;
+  const FREE_ECP_PLAN = "free_ecp" as const;
+
+  const isFreeEcpPlan = (user?: User | null) => user?.role === "ecp" && user.subscriptionPlan === FREE_ECP_PLAN;
+
+  const denyFreePlanAccess = (user: User | undefined, res: Response, feature: string) => {
+    if (isFreeEcpPlan(user)) {
+      res.status(403).json({
+        message: `Upgrade to the Full Experience plan to access ${feature}.`,
+        requiredPlan: FULL_PLAN,
+      });
+      return true;
+    }
+    return false;
+  };
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -137,10 +154,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User already has a role assigned" });
       }
 
-      const { role, organizationName, adminSetupKey } = req.body;
+  const { role, organizationName, adminSetupKey, subscriptionPlan } = req.body;
       
       if (!role || !['ecp', 'lab_tech', 'engineer', 'supplier', 'admin'].includes(role)) {
         return res.status(400).json({ message: "Valid role is required" });
+      }
+
+      const normalizedPlan = typeof subscriptionPlan === 'string' ? subscriptionPlan : undefined;
+      if (normalizedPlan && normalizedPlan !== FULL_PLAN && normalizedPlan !== FREE_ECP_PLAN) {
+        return res.status(400).json({ message: "Invalid subscription plan" });
+      }
+
+      const allowedPlan = role === 'ecp' ? FREE_ECP_PLAN : FULL_PLAN;
+      const chosenPlan = normalizedPlan || allowedPlan;
+
+      if (chosenPlan !== allowedPlan) {
+        return res.status(400).json({
+          message: role === 'ecp'
+            ? "ECP accounts start on the free plan. Upgrade after activation to unlock advanced modules."
+            : "This role requires the Full Experience plan.",
+          allowedPlan,
+        });
       }
 
       // Handle admin signup with key verification
@@ -159,7 +193,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const updatedUser = await storage.updateUser(userId, {
           role: 'admin',
           organizationName: organizationName || null,
-          accountStatus: 'active'
+          accountStatus: 'active',
+          subscriptionPlan: chosenPlan,
         });
 
         // Initialize user roles
@@ -172,7 +207,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedUser = await storage.updateUser(userId, {
         role,
         organizationName: organizationName || null,
-        accountStatus: 'pending'
+        accountStatus: 'pending',
+        subscriptionPlan: chosenPlan,
       });
 
       // Initialize user roles
@@ -268,7 +304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Email/Password Signup
   app.post('/api/auth/signup-email', async (req, res) => {
     try {
-      const { email, password, firstName, lastName, role, organizationName, adminSetupKey } = req.body;
+      const { email, password, firstName, lastName, role, organizationName, adminSetupKey, subscriptionPlan } = req.body;
 
       // Validation
       if (!email || !password || !firstName || !lastName || !role) {
@@ -277,6 +313,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!['ecp', 'lab_tech', 'engineer', 'supplier', 'admin'].includes(role)) {
         return res.status(400).json({ message: "Invalid role" });
+      }
+
+      const normalizedPlan = typeof subscriptionPlan === 'string' ? subscriptionPlan : undefined;
+      if (normalizedPlan && normalizedPlan !== FULL_PLAN && normalizedPlan !== FREE_ECP_PLAN) {
+        return res.status(400).json({ message: "Invalid subscription plan" });
+      }
+
+      const allowedPlan = role === 'ecp' ? FREE_ECP_PLAN : FULL_PLAN;
+      const chosenPlan = normalizedPlan || allowedPlan;
+
+      if (chosenPlan !== allowedPlan) {
+        return res.status(400).json({
+          message: role === 'ecp'
+            ? "ECP accounts start on the free plan. Upgrade after activation to unlock advanced modules."
+            : "This role requires the Full Experience plan.",
+          allowedPlan,
+        });
       }
 
       if (password.length < 8) {
@@ -318,6 +371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role,
         organizationName: organizationName || null,
         accountStatus,
+        subscriptionPlan: chosenPlan,
       } as any);
 
       // Create session
@@ -342,6 +396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lastName: newUser.lastName,
             role: newUser.role,
             accountStatus: newUser.accountStatus,
+            subscriptionPlan: newUser.subscriptionPlan,
           }
         });
       });
@@ -384,6 +439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               lastName: dbUser.lastName,
               role: dbUser.role,
               accountStatus: dbUser.accountStatus,
+              subscriptionPlan: dbUser.subscriptionPlan,
             }
           });
         }).catch((dbErr) => {
@@ -830,6 +886,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can create consult logs" });
       }
 
+      if (denyFreePlanAccess(user, res, "lab consultations")) {
+        return;
+      }
+
       const validation = insertConsultLogSchema.safeParse(req.body);
       if (!validation.success) {
         const validationError = fromZodError(validation.error);
@@ -862,6 +922,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
+      if (user.role === 'ecp' && denyFreePlanAccess(user, res, "lab consultations")) {
+        return;
+      }
+
       const logs = await storage.getAllConsultLogs(user.role === 'ecp' ? userId : undefined);
       res.json(logs);
     } catch (error) {
@@ -882,6 +946,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Only ECPs, lab techs, and engineers can view consult logs
       if (user.role !== 'ecp' && user.role !== 'lab_tech' && user.role !== 'engineer') {
         return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (user.role === 'ecp' && denyFreePlanAccess(user, res, "lab consultations")) {
+        return;
       }
 
       const logs = await storage.getConsultLogs(req.params.orderId);
@@ -1395,6 +1463,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can view patients" });
       }
 
+      if (denyFreePlanAccess(user, res, "patient records")) {
+        return;
+      }
+
       const patients = await storage.getPatients(userId);
       res.json(patients);
     } catch (error) {
@@ -1410,6 +1482,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view patients" });
+      }
+
+      if (denyFreePlanAccess(user, res, "patient records")) {
+        return;
       }
 
       const patient = await storage.getPatient(req.params.id);
@@ -1436,6 +1512,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can update patients" });
+      }
+
+      if (denyFreePlanAccess(user, res, "patient records")) {
+        return;
       }
 
       const patient = await storage.getPatient(req.params.id);
@@ -1466,6 +1546,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can view examinations" });
       }
 
+      if (denyFreePlanAccess(user, res, "clinical examinations")) {
+        return;
+      }
+
       const examinations = await storage.getEyeExaminations(userId);
       res.json(examinations);
     } catch (error) {
@@ -1481,6 +1565,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view examinations" });
+      }
+
+      if (denyFreePlanAccess(user, res, "clinical examinations")) {
+        return;
       }
 
       const examination = await storage.getEyeExamination(req.params.id);
@@ -1507,6 +1595,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view examinations" });
+      }
+
+      if (denyFreePlanAccess(user, res, "clinical examinations")) {
+        return;
       }
 
       const patient = await storage.getPatient(req.params.id);
@@ -1536,6 +1628,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can create examinations" });
       }
 
+      if (denyFreePlanAccess(user, res, "clinical examinations")) {
+        return;
+      }
+
       const validation = insertEyeExaminationSchema.safeParse(req.body);
       if (!validation.success) {
         const validationError = fromZodError(validation.error);
@@ -1557,6 +1653,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can update examinations" });
+      }
+
+      if (denyFreePlanAccess(user, res, "clinical examinations")) {
+        return;
       }
 
       const examination = await storage.getEyeExamination(req.params.id);
@@ -1584,6 +1684,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can finalize examinations" });
+      }
+
+      if (denyFreePlanAccess(user, res, "clinical examinations")) {
+        return;
       }
 
       const examination = await storage.getEyeExamination(req.params.id);
@@ -1618,6 +1722,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can view prescriptions" });
       }
 
+      if (denyFreePlanAccess(user, res, "digital prescriptions")) {
+        return;
+      }
+
       const prescriptions = await storage.getPrescriptions(userId);
       res.json(prescriptions);
     } catch (error) {
@@ -1633,6 +1741,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view prescriptions" });
+      }
+
+      if (denyFreePlanAccess(user, res, "digital prescriptions")) {
+        return;
       }
 
       const prescription = await storage.getPrescription(req.params.id);
@@ -1661,6 +1773,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can create prescriptions" });
       }
 
+      if (denyFreePlanAccess(user, res, "digital prescriptions")) {
+        return;
+      }
+
       const validation = insertPrescriptionSchema.safeParse(req.body);
       if (!validation.success) {
         const validationError = fromZodError(validation.error);
@@ -1682,6 +1798,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can sign prescriptions" });
+      }
+
+      if (denyFreePlanAccess(user, res, "digital prescriptions")) {
+        return;
       }
 
       const prescription = await storage.getPrescription(req.params.id);
@@ -1720,6 +1840,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can download prescriptions" });
       }
 
+      if (denyFreePlanAccess(user, res, "digital prescriptions")) {
+        return;
+      }
+
       const prescription = await storage.getPrescription(req.params.id);
       
       if (!prescription) {
@@ -1749,6 +1873,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can email prescriptions" });
+      }
+
+      if (denyFreePlanAccess(user, res, "digital prescriptions")) {
+        return;
       }
 
       const prescription = await storage.getPrescription(req.params.id);
@@ -1785,6 +1913,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can view products" });
       }
 
+      if (denyFreePlanAccess(user, res, "practice inventory")) {
+        return;
+      }
+
       const products = await storage.getProducts(userId);
       res.json(products);
     } catch (error) {
@@ -1800,6 +1932,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view products" });
+      }
+
+      if (denyFreePlanAccess(user, res, "practice inventory")) {
+        return;
       }
 
       const product = await storage.getProduct(req.params.id);
@@ -1828,6 +1964,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can create products" });
       }
 
+      if (denyFreePlanAccess(user, res, "practice inventory")) {
+        return;
+      }
+
       const validation = insertProductSchema.safeParse(req.body);
       if (!validation.success) {
         const validationError = fromZodError(validation.error);
@@ -1849,6 +1989,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can update products" });
+      }
+
+      if (denyFreePlanAccess(user, res, "practice inventory")) {
+        return;
       }
 
       const product = await storage.getProduct(req.params.id);
@@ -1876,6 +2020,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can delete products" });
+      }
+
+      if (denyFreePlanAccess(user, res, "practice inventory")) {
+        return;
       }
 
       const product = await storage.getProduct(req.params.id);
@@ -1911,6 +2059,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can view invoices" });
       }
 
+      if (denyFreePlanAccess(user, res, "point of sale billing")) {
+        return;
+      }
+
       const invoices = await storage.getInvoices(userId);
       res.json(invoices);
     } catch (error) {
@@ -1926,6 +2078,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view invoices" });
+      }
+
+      if (denyFreePlanAccess(user, res, "point of sale billing")) {
+        return;
       }
 
       const invoice = await storage.getInvoice(req.params.id);
@@ -1954,6 +2110,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can create invoices" });
       }
 
+      if (denyFreePlanAccess(user, res, "point of sale billing")) {
+        return;
+      }
+
       const { lineItems, ...invoiceData } = req.body;
 
       if (!lineItems || !Array.isArray(lineItems) || lineItems.length === 0) {
@@ -1975,6 +2135,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can update invoice status" });
+      }
+
+      if (denyFreePlanAccess(user, res, "point of sale billing")) {
+        return;
       }
 
       const invoice = await storage.getInvoice(req.params.id);
@@ -2007,6 +2171,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can record payments" });
+      }
+
+      if (denyFreePlanAccess(user, res, "point of sale billing")) {
+        return;
       }
 
       const invoice = await storage.getInvoice(req.params.id);

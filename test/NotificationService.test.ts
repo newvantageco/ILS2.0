@@ -1,6 +1,68 @@
 import { NotificationServiceImpl } from '../server/services/NotificationService';
 import type { Notification } from '../shared/types/services';
 
+type InsertValues = {
+  title?: string;
+  message?: string;
+  type?: string;
+  severity?: string;
+  target?: { type: string; id?: string };
+  createdAt?: Date;
+};
+
+jest.mock('../server/db', () => {
+  const validTargetTypes = new Set(['user', 'role', 'organization']);
+
+  const buildReturning = (values: InsertValues) => {
+    if (!values.title || !values.message || !values.type || !values.target) {
+      return jest.fn(() => Promise.reject(new Error('Invalid notification data')));
+    }
+
+    if (!validTargetTypes.has(values.target.type)) {
+      return jest.fn(() => Promise.reject(new Error('Invalid notification target')));
+    }
+
+    const createdAt = values.createdAt ?? new Date();
+
+    return jest.fn(() => Promise.resolve([
+      {
+        id: 'mock-notification-id',
+        ...values,
+        createdAt,
+        read: false,
+        readAt: null
+      }
+    ]));
+  };
+
+  return {
+    db: {
+      insert: jest.fn(() => ({
+        values: jest.fn((values: InsertValues) => ({
+          returning: buildReturning(values)
+        }))
+      })),
+      select: jest.fn(() => ({
+        from: jest.fn(() => ({
+          where: jest.fn(() => ({
+            orderBy: jest.fn(() => ({
+              limit: jest.fn(() => Promise.resolve([]))
+            }))
+          }))
+        }))
+      })),
+      update: jest.fn(() => ({
+        set: jest.fn(() => ({
+          where: jest.fn(() => Promise.resolve())
+        }))
+      })),
+      delete: jest.fn(() => ({
+        where: jest.fn(() => Promise.resolve())
+      }))
+    }
+  };
+});
+
 describe('NotificationService', () => {
   let service: NotificationServiceImpl;
   let mockWebSocket: jest.Mock;

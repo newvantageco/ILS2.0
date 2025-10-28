@@ -13,10 +13,19 @@ jest.mock('../../db', () => ({
 
 describe('NotificationServiceImpl', () => {
   let notificationService: NotificationServiceImpl;
+  let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
     notificationService = new NotificationServiceImpl();
+  });
+
+  beforeAll(() => {
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  afterAll(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   describe('sendNotification', () => {

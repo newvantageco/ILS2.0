@@ -5,6 +5,7 @@ import { z } from "zod";
 
 // Enums
 export const roleEnum = pgEnum("role", ["ecp", "admin", "lab_tech", "engineer", "supplier"]);
+export const subscriptionPlanEnum = pgEnum("subscription_plan", ["full", "free_ecp"]);
 
 // Session storage table for Replit Auth
 export const sessions = pgTable(
@@ -313,6 +314,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: roleEnum("role"),
+  subscriptionPlan: subscriptionPlanEnum("subscription_plan").notNull().default("full"),
   gocNumber: varchar("goc_number"), // General Optical Council registration number
   accountNumber: varchar("account_number"),
   contactEmail: varchar("contact_email"),
