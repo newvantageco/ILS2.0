@@ -25,6 +25,9 @@ import {
   FileText,
   ShoppingCart,
   Archive,
+  Brain,
+  Building2,
+  BarChart3,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -47,28 +50,43 @@ const menuItems = {
     { title: "New Order", url: "/ecp/new-order", icon: Package },
     { title: "My Orders", url: "/ecp/orders", icon: ClipboardList },
     { title: "Returns", url: "/ecp/returns", icon: TrendingUp },
+    { title: "AI Assistant", url: "/ecp/ai-assistant", icon: Brain },
+    { title: "BI Dashboard", url: "/ecp/bi-dashboard", icon: BarChart3 },
+    { title: "Company", url: "/ecp/company", icon: Building2 },
   ],
   lab_tech: [
     { title: "Dashboard", url: "/lab/dashboard", icon: Home },
     { title: "Order Queue", url: "/lab/queue", icon: ClipboardList },
     { title: "Production", url: "/lab/production", icon: Package },
     { title: "Quality Control", url: "/lab/quality", icon: Beaker },
+    { title: "AI Assistant", url: "/lab/ai-assistant", icon: Brain },
+    { title: "BI Dashboard", url: "/lab/bi-dashboard", icon: BarChart3 },
+    { title: "Company", url: "/lab/company", icon: Building2 },
   ],
   supplier: [
     { title: "Dashboard", url: "/supplier/dashboard", icon: Home },
     { title: "Purchase Orders", url: "/supplier/orders", icon: ClipboardList },
     { title: "Technical Library", url: "/supplier/library", icon: Package },
+    { title: "AI Assistant", url: "/supplier/ai-assistant", icon: Brain },
+    { title: "BI Dashboard", url: "/supplier/bi-dashboard", icon: BarChart3 },
+    { title: "Company", url: "/supplier/company", icon: Building2 },
   ],
   engineer: [
     { title: "Dashboard", url: "/lab/dashboard", icon: Home },
     { title: "Analytics Hub", url: "/lab/analytics", icon: TrendingUp },
     { title: "Equipment", url: "/lab/equipment", icon: Settings },
     { title: "R&D Projects", url: "/lab/rnd", icon: Beaker },
+    { title: "AI Assistant", url: "/lab/ai-assistant", icon: Brain },
+    { title: "BI Dashboard", url: "/lab/bi-dashboard", icon: BarChart3 },
+    { title: "Company", url: "/lab/company", icon: Building2 },
   ],
   admin: [
     { title: "Dashboard", url: "/admin/dashboard", icon: Home },
     { title: "User Management", url: "/admin/users", icon: Users },
     { title: "Platform Settings", url: "/admin/platform", icon: Shield },
+    { title: "AI Assistant", url: "/admin/ai-assistant", icon: Brain },
+    { title: "BI Dashboard", url: "/admin/bi-dashboard", icon: BarChart3 },
+    { title: "Company", url: "/admin/company", icon: Building2 },
   ],
 };
 

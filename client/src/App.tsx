@@ -30,6 +30,9 @@ import PrescriptionsPage from "@/pages/PrescriptionsPage";
 import InventoryPage from "@/pages/InventoryPage";
 import POSPage from "@/pages/POSPage";
 import EyeTestPage from "@/pages/EyeTestPage";
+import AIAssistantPage from "@/pages/AIAssistantPage";
+import CompanyManagementPage from "@/pages/CompanyManagementPage";
+import BIDashboardPage from "@/pages/BIDashboardPage";
 import { LogOut } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -168,6 +171,9 @@ function AuthenticatedApp() {
             <Route path="/ecp/pos" component={POSPage} />
             <Route path="/ecp/new-order" component={NewOrderPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
+            <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
+            <Route path="/ecp/company" component={CompanyManagementPage} />
+            <Route path="/ecp/bi-dashboard" component={BIDashboardPage} />
             <Route path="/order/:id" component={OrderDetailsPage} />
             <Route path="/ecp/returns">
               <div className="text-center py-12">
@@ -182,6 +188,9 @@ function AuthenticatedApp() {
           <>
             <Route path="/lab/dashboard" component={LabDashboard} />
             <Route path="/order/:id" component={OrderDetailsPage} />
+            <Route path="/lab/ai-assistant" component={AIAssistantPage} />
+            <Route path="/lab/company" component={CompanyManagementPage} />
+            <Route path="/lab/bi-dashboard" component={BIDashboardPage} />
             <Route path="/lab/queue">
               <div className="text-center py-12">
                 <h2 className="text-2xl font-semibold">Order Queue</h2>
@@ -226,6 +235,9 @@ function AuthenticatedApp() {
             <Route path="/supplier/dashboard" component={SupplierDashboard} />
             <Route path="/supplier/orders" component={SupplierDashboard} />
             <Route path="/supplier/library" component={SupplierDashboard} />
+            <Route path="/supplier/ai-assistant" component={AIAssistantPage} />
+            <Route path="/supplier/company" component={CompanyManagementPage} />
+            <Route path="/supplier/bi-dashboard" component={BIDashboardPage} />
           </>
         )}
 
@@ -233,6 +245,9 @@ function AuthenticatedApp() {
           <>
             <Route path="/admin/dashboard" component={AdminDashboard} />
             <Route path="/admin/users" component={AdminDashboard} />
+            <Route path="/admin/ai-assistant" component={AIAssistantPage} />
+            <Route path="/admin/company" component={CompanyManagementPage} />
+            <Route path="/admin/bi-dashboard" component={BIDashboardPage} />
             <Route path="/admin/platform">
               <div className="text-center py-12">
                 <h2 className="text-2xl font-semibold">Platform Settings</h2>
