@@ -5,6 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -26,6 +34,8 @@ import {
   Trash2,
   CreditCard,
   Package,
+  Banknote,
+  Receipt,
 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -54,6 +64,9 @@ interface CartItem {
 export default function POSPage() {
   const [selectedPatientId, setSelectedPatientId] = useState<string>("");
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card">("cash");
+  const [cashReceived, setCashReceived] = useState<string>("");
   const { toast } = useToast();
 
   const { data: patients } = useQuery<Patient[]>({
@@ -67,21 +80,28 @@ export default function POSPage() {
   const createInvoiceMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await apiRequest("POST", "/api/invoices", data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to create invoice");
+      }
       return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       setCart([]);
       setSelectedPatientId("");
+      setIsPaymentDialogOpen(false);
+      setPaymentMethod("cash");
+      setCashReceived("");
       toast({
         title: "Sale Completed",
-        description: "Invoice has been created successfully.",
+        description: "Invoice has been created and payment recorded successfully.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to create invoice. Please try again.",
+        description: error.message || "Failed to create invoice. Please try again.",
         variant: "destructive",
       });
     },
@@ -159,6 +179,26 @@ export default function POSPage() {
       return;
     }
 
+    // Open payment dialog instead of immediately creating invoice
+    setIsPaymentDialogOpen(true);
+  };
+
+  const handleCompletePayment = () => {
+    const total = calculateTotal();
+
+    // Validate cash payment
+    if (paymentMethod === "cash") {
+      const received = parseFloat(cashReceived);
+      if (!cashReceived || isNaN(received) || received < total) {
+        toast({
+          title: "Invalid Cash Amount",
+          description: `Cash received must be at least £${total.toFixed(2)}`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     const lineItems = cart.map((item) => ({
       productId: item.productId,
       quantity: item.quantity,
@@ -168,9 +208,18 @@ export default function POSPage() {
 
     createInvoiceMutation.mutate({
       patientId: selectedPatientId,
-      totalAmount: calculateTotal().toFixed(2),
+      totalAmount: total.toFixed(2),
+      paymentMethod,
+      status: "paid",
       lineItems,
     });
+  };
+
+  const calculateChange = () => {
+    if (paymentMethod !== "cash" || !cashReceived) return 0;
+    const received = parseFloat(cashReceived);
+    const total = calculateTotal();
+    return Math.max(0, received - total);
   };
 
   const total = calculateTotal();
@@ -348,14 +397,111 @@ export default function POSPage() {
                   disabled={createInvoiceMutation.isPending || !selectedPatientId}
                   data-testid="button-checkout"
                 >
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  {createInvoiceMutation.isPending ? "Processing..." : "Complete Sale"}
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Proceed to Payment
                 </Button>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Payment Dialog */}
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Complete Payment</DialogTitle>
+            <DialogDescription>
+              Select payment method and complete the transaction
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+              <span className="text-sm font-medium">Total Amount:</span>
+              <span className="text-2xl font-bold">£{calculateTotal().toFixed(2)}</span>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="paymentMethod">Payment Method *</Label>
+              <Select value={paymentMethod} onValueChange={(value: "cash" | "card") => {
+                setPaymentMethod(value);
+                setCashReceived("");
+              }}>
+                <SelectTrigger data-testid="select-payment-method">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">
+                    <div className="flex items-center gap-2">
+                      <Banknote className="h-4 w-4" />
+                      <span>Cash</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="card">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4" />
+                      <span>Card</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {paymentMethod === "cash" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="cashReceived">Cash Received *</Label>
+                  <Input
+                    id="cashReceived"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Enter amount received"
+                    value={cashReceived}
+                    onChange={(e) => setCashReceived(e.target.value)}
+                    data-testid="input-cash-received"
+                  />
+                </div>
+
+                {cashReceived && parseFloat(cashReceived) >= calculateTotal() && (
+                  <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <span className="text-sm font-medium text-green-700 dark:text-green-400">Change to Give:</span>
+                    <span className="text-xl font-bold text-green-700 dark:text-green-400">
+                      £{calculateChange().toFixed(2)}
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+
+            {paymentMethod === "card" && (
+              <div className="p-4 bg-muted rounded-lg text-sm text-muted-foreground">
+                <p>Process card payment using your card terminal and confirm below.</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsPaymentDialogOpen(false)}
+              disabled={createInvoiceMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCompletePayment}
+              disabled={createInvoiceMutation.isPending}
+              data-testid="button-complete-payment"
+            >
+              {createInvoiceMutation.isPending ? "Processing..." : "Complete Sale"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

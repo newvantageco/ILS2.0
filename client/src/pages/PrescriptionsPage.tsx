@@ -56,13 +56,16 @@ export default function PrescriptionsPage() {
   const downloadPdfMutation = useMutation({
     mutationFn: async (id: string) => {
       const response = await fetch(`/api/prescriptions/${id}/pdf`, {
+        method: "GET",
+        credentials: "include",
         headers: {
-          "Content-Type": "application/json",
+          "Accept": "application/pdf",
         },
       });
       
       if (!response.ok) {
-        throw new Error("Failed to download PDF");
+        const errorData = await response.json().catch(() => ({ message: "Failed to download PDF" }));
+        throw new Error(errorData.message || "Failed to download PDF");
       }
 
       const blob = await response.blob();
@@ -81,10 +84,10 @@ export default function PrescriptionsPage() {
         description: "The prescription PDF has been downloaded.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to download PDF. Please try again.",
+        description: error.message || "Failed to download PDF. Please try again.",
         variant: "destructive",
       });
     },

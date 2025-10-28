@@ -15,6 +15,13 @@ import {
   products,
   invoices,
   invoiceLineItems,
+  companies,
+  companySupplierRelationships,
+  aiConversations,
+  aiMessages,
+  aiKnowledgeBase,
+  aiLearningData,
+  aiFeedback,
   type UpsertUser, 
   type User, 
   type UserWithRoles,
@@ -49,7 +56,21 @@ import {
   type Invoice,
   type InvoiceWithDetails,
   type InsertInvoiceLineItem,
-  type InvoiceLineItem
+  type InvoiceLineItem,
+  type Company,
+  type InsertCompany,
+  type CompanySupplierRelationship,
+  type InsertCompanySupplierRelationship,
+  type AiConversation,
+  type InsertAiConversation,
+  type AiMessage,
+  type InsertAiMessage,
+  type AiKnowledgeBase,
+  type InsertAiKnowledgeBase,
+  type AiLearningData,
+  type InsertAiLearningData,
+  type AiFeedback,
+  type InsertAiFeedback
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
@@ -150,6 +171,41 @@ export interface IStorage {
   getInvoices(ecpId: string): Promise<InvoiceWithDetails[]>;
   updateInvoiceStatus(id: string, status: Invoice["status"]): Promise<Invoice | undefined>;
   recordPayment(id: string, amount: string): Promise<Invoice | undefined>;
+
+  // ============== COMPANY & MULTI-TENANT METHODS ==============
+  createCompany(company: InsertCompany): Promise<Company>;
+  getCompany(id: string): Promise<Company | undefined>;
+  getCompanies(filters?: { type?: string; status?: string }): Promise<Company[]>;
+  updateCompany(id: string, updates: Partial<Company>): Promise<Company | undefined>;
+  updateCompanyAiProgress(id: string, progress: number): Promise<void>;
+  
+  createCompanySupplierRelationship(relationship: InsertCompanySupplierRelationship): Promise<CompanySupplierRelationship>;
+  getCompanySupplierRelationships(companyId: string): Promise<CompanySupplierRelationship[]>;
+  updateSupplierRelationshipStatus(id: string, status: string, approvedBy?: string): Promise<CompanySupplierRelationship | undefined>;
+
+  // ============== AI ASSISTANT METHODS ==============
+  createAiConversation(conversation: InsertAiConversation): Promise<AiConversation>;
+  getAiConversation(id: string): Promise<AiConversation | undefined>;
+  getAiConversations(companyId: string, userId?: string): Promise<AiConversation[]>;
+  updateAiConversation(id: string, updates: Partial<AiConversation>): Promise<AiConversation | undefined>;
+
+  createAiMessage(message: InsertAiMessage): Promise<AiMessage>;
+  getAiMessages(conversationId: string): Promise<AiMessage[]>;
+
+  createAiKnowledgeBase(knowledge: InsertAiKnowledgeBase): Promise<AiKnowledgeBase>;
+  getAiKnowledgeBase(id: string): Promise<AiKnowledgeBase | undefined>;
+  getAiKnowledgeBaseByCompany(companyId: string): Promise<AiKnowledgeBase[]>;
+  updateAiKnowledgeBase(id: string, updates: Partial<AiKnowledgeBase>): Promise<AiKnowledgeBase | undefined>;
+  deleteAiKnowledgeBase(id: string): Promise<boolean>;
+
+  createAiLearningData(learning: InsertAiLearningData): Promise<AiLearningData>;
+  getAiLearningDataByCompany(companyId: string): Promise<AiLearningData[]>;
+  updateAiLearningData(id: string, updates: Partial<AiLearningData>): Promise<AiLearningData | undefined>;
+  incrementAiLearningUseCount(id: string): Promise<void>;
+
+  createAiFeedback(feedback: InsertAiFeedback): Promise<AiFeedback>;
+  getAiFeedbackByMessage(messageId: string): Promise<AiFeedback[]>;
+  getAiFeedbackByCompany(companyId: string): Promise<AiFeedback[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -1216,6 +1272,254 @@ export class DbStorage implements IStorage {
       .returning();
     
     return updated;
+  }
+
+  // ============== COMPANY & MULTI-TENANT METHODS ==============
+
+  async createCompany(company: InsertCompany): Promise<Company> {
+    const [created] = await db
+      .insert(companies)
+      .values(company)
+      .returning();
+    return created;
+  }
+
+  async getCompany(id: string): Promise<Company | undefined> {
+    const [company] = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, id))
+      .limit(1);
+    return company;
+  }
+
+  async getCompanies(filters?: { type?: string; status?: string }): Promise<Company[]> {
+    let query = db.select().from(companies);
+    
+    const conditions = [];
+    if (filters?.type) {
+      conditions.push(eq(companies.type, filters.type as any));
+    }
+    if (filters?.status) {
+      conditions.push(eq(companies.status, filters.status as any));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    return await query;
+  }
+
+  async updateCompany(id: string, updates: Partial<Company>): Promise<Company | undefined> {
+    const [updated] = await db
+      .update(companies)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(companies.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateCompanyAiProgress(id: string, progress: number): Promise<void> {
+    await db
+      .update(companies)
+      .set({ 
+        aiLearningProgress: progress,
+        updatedAt: new Date() 
+      })
+      .where(eq(companies.id, id));
+  }
+
+  async createCompanySupplierRelationship(relationship: InsertCompanySupplierRelationship): Promise<CompanySupplierRelationship> {
+    const [created] = await db
+      .insert(companySupplierRelationships)
+      .values(relationship)
+      .returning();
+    return created;
+  }
+
+  async getCompanySupplierRelationships(companyId: string): Promise<CompanySupplierRelationship[]> {
+    return await db
+      .select()
+      .from(companySupplierRelationships)
+      .where(eq(companySupplierRelationships.companyId, companyId));
+  }
+
+  async updateSupplierRelationshipStatus(
+    id: string, 
+    status: string, 
+    approvedBy?: string
+  ): Promise<CompanySupplierRelationship | undefined> {
+    const [updated] = await db
+      .update(companySupplierRelationships)
+      .set({ 
+        status,
+        approvedBy,
+        approvedAt: status === 'approved' ? new Date() : undefined
+      })
+      .where(eq(companySupplierRelationships.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ============== AI ASSISTANT METHODS ==============
+
+  async createAiConversation(conversation: InsertAiConversation): Promise<AiConversation> {
+    const [created] = await db
+      .insert(aiConversations)
+      .values(conversation)
+      .returning();
+    return created;
+  }
+
+  async getAiConversation(id: string): Promise<AiConversation | undefined> {
+    const [conversation] = await db
+      .select()
+      .from(aiConversations)
+      .where(eq(aiConversations.id, id))
+      .limit(1);
+    return conversation;
+  }
+
+  async getAiConversations(companyId: string, userId?: string): Promise<AiConversation[]> {
+    const conditions = [eq(aiConversations.companyId, companyId)];
+    if (userId) {
+      conditions.push(eq(aiConversations.userId, userId));
+    }
+    
+    return await db
+      .select()
+      .from(aiConversations)
+      .where(and(...conditions))
+      .orderBy(desc(aiConversations.updatedAt));
+  }
+
+  async updateAiConversation(id: string, updates: Partial<AiConversation>): Promise<AiConversation | undefined> {
+    const [updated] = await db
+      .update(aiConversations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(aiConversations.id, id))
+      .returning();
+    return updated;
+  }
+
+  async createAiMessage(message: InsertAiMessage): Promise<AiMessage> {
+    const [created] = await db
+      .insert(aiMessages)
+      .values(message)
+      .returning();
+    return created;
+  }
+
+  async getAiMessages(conversationId: string): Promise<AiMessage[]> {
+    return await db
+      .select()
+      .from(aiMessages)
+      .where(eq(aiMessages.conversationId, conversationId))
+      .orderBy(aiMessages.createdAt);
+  }
+
+  async createAiKnowledgeBase(knowledge: InsertAiKnowledgeBase): Promise<AiKnowledgeBase> {
+    const [created] = await db
+      .insert(aiKnowledgeBase)
+      .values(knowledge)
+      .returning();
+    return created;
+  }
+
+  async getAiKnowledgeBase(id: string): Promise<AiKnowledgeBase | undefined> {
+    const [knowledge] = await db
+      .select()
+      .from(aiKnowledgeBase)
+      .where(eq(aiKnowledgeBase.id, id))
+      .limit(1);
+    return knowledge;
+  }
+
+  async getAiKnowledgeBaseByCompany(companyId: string): Promise<AiKnowledgeBase[]> {
+    return await db
+      .select()
+      .from(aiKnowledgeBase)
+      .where(and(
+        eq(aiKnowledgeBase.companyId, companyId),
+        eq(aiKnowledgeBase.isActive, true)
+      ))
+      .orderBy(desc(aiKnowledgeBase.createdAt));
+  }
+
+  async updateAiKnowledgeBase(id: string, updates: Partial<AiKnowledgeBase>): Promise<AiKnowledgeBase | undefined> {
+    const [updated] = await db
+      .update(aiKnowledgeBase)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(aiKnowledgeBase.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteAiKnowledgeBase(id: string): Promise<boolean> {
+    const result = await db
+      .delete(aiKnowledgeBase)
+      .where(eq(aiKnowledgeBase.id, id));
+    return true;
+  }
+
+  async createAiLearningData(learning: InsertAiLearningData): Promise<AiLearningData> {
+    const [created] = await db
+      .insert(aiLearningData)
+      .values(learning)
+      .returning();
+    return created;
+  }
+
+  async getAiLearningDataByCompany(companyId: string): Promise<AiLearningData[]> {
+    return await db
+      .select()
+      .from(aiLearningData)
+      .where(eq(aiLearningData.companyId, companyId))
+      .orderBy(desc(aiLearningData.confidence), desc(aiLearningData.useCount));
+  }
+
+  async updateAiLearningData(id: string, updates: Partial<AiLearningData>): Promise<AiLearningData | undefined> {
+    const [updated] = await db
+      .update(aiLearningData)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(aiLearningData.id, id))
+      .returning();
+    return updated;
+  }
+
+  async incrementAiLearningUseCount(id: string): Promise<void> {
+    await db
+      .update(aiLearningData)
+      .set({ 
+        useCount: sql`${aiLearningData.useCount} + 1`,
+        lastUsed: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(aiLearningData.id, id));
+  }
+
+  async createAiFeedback(feedback: InsertAiFeedback): Promise<AiFeedback> {
+    const [created] = await db
+      .insert(aiFeedback)
+      .values(feedback)
+      .returning();
+    return created;
+  }
+
+  async getAiFeedbackByMessage(messageId: string): Promise<AiFeedback[]> {
+    return await db
+      .select()
+      .from(aiFeedback)
+      .where(eq(aiFeedback.messageId, messageId));
+  }
+
+  async getAiFeedbackByCompany(companyId: string): Promise<AiFeedback[]> {
+    return await db
+      .select()
+      .from(aiFeedback)
+      .where(eq(aiFeedback.companyId, companyId))
+      .orderBy(desc(aiFeedback.createdAt));
   }
 }
 

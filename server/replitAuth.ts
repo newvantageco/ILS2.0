@@ -88,7 +88,11 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
-      res.redirect("/");
+      // Redirect to home page - use full URL to ensure proper navigation
+      const protocol = req.protocol;
+      const host = req.get('host');
+      const homeUrl = `${protocol}://${host}/`;
+      res.redirect(homeUrl);
     });
   });
 }

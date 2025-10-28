@@ -10,6 +10,7 @@ import { RoleSwitcherDropdown } from "@/components/RoleSwitcherDropdown";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/Landing";
+import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 import ECPDashboard from "@/pages/ECPDashboard";
 import LabDashboard from "@/pages/LabDashboard";
@@ -75,6 +76,10 @@ function AuthenticatedApp() {
   const [location] = useLocation();
 
   // Public routes (accessible without auth)
+  if (location === '/login') {
+    return <Login />;
+  }
+
   if (location === '/email-login') {
     return <EmailLoginPage />;
   }

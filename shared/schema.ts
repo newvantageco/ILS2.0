@@ -257,6 +257,12 @@ export const invoiceStatusEnum = pgEnum("invoice_status", [
   "void"
 ]);
 
+export const paymentMethodEnum = pgEnum("payment_method", [
+  "cash",
+  "card",
+  "mixed"
+]);
+
 export const productTypeEnum = pgEnum("product_type", [
   "frame",
   "contact_lens",
@@ -301,13 +307,209 @@ export const notifications = pgTable(
   (table) => [index("idx_notifications_created_at").on(table.createdAt)],
 );
 
+// ============== MULTI-TENANT COMPANY SYSTEM ==============
+
+export const companyTypeEnum = pgEnum("company_type", [
+  "ecp", // Eye Care Professional practice
+  "lab", // Lens manufacturing lab
+  "supplier", // Material/equipment supplier
+  "hybrid" // Multiple capabilities
+]);
+
+export const companyStatusEnum = pgEnum("company_status", [
+  "active",
+  "suspended",
+  "pending_approval",
+  "deactivated"
+]);
+
+// Companies/Organizations table for multi-tenancy
+export const companies = pgTable("companies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  type: companyTypeEnum("type").notNull(),
+  status: companyStatusEnum("status").notNull().default("pending_approval"),
+  email: varchar("email").notNull(),
+  phone: varchar("phone"),
+  website: varchar("website"),
+  address: jsonb("address"),
+  
+  // Registration details
+  registrationNumber: varchar("registration_number"), // Company registration
+  gocNumber: varchar("goc_number"), // GOC number for ECPs
+  taxId: varchar("tax_id"),
+  
+  // Subscription and billing
+  subscriptionPlan: subscriptionPlanEnum("subscription_plan").notNull().default("free_ecp"),
+  subscriptionStartDate: timestamp("subscription_start_date"),
+  subscriptionEndDate: timestamp("subscription_end_date"),
+  billingEmail: varchar("billing_email"),
+  
+  // Settings and preferences
+  settings: jsonb("settings").default(sql`'{}'::jsonb`),
+  preferences: jsonb("preferences").default(sql`'{}'::jsonb`),
+  
+  // AI settings
+  aiEnabled: boolean("ai_enabled").default(true),
+  aiModel: varchar("ai_model").default("gpt-4"),
+  useExternalAi: boolean("use_external_ai").default(true), // Initially uses external, learns over time
+  aiLearningProgress: integer("ai_learning_progress").default(0), // 0-100%
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_companies_status").on(table.status),
+  index("idx_companies_type").on(table.type),
+]);
+
+// Supplier approval/relationship table
+export const companySupplierRelationships = pgTable("company_supplier_relationships", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  supplierId: varchar("supplier_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  status: varchar("status").notNull().default("pending"), // pending, approved, rejected
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_company_supplier_company").on(table.companyId),
+  index("idx_company_supplier_supplier").on(table.supplierId),
+]);
+
+// ============== AI ASSISTANT SYSTEM ==============
+
+export const aiConversationStatusEnum = pgEnum("ai_conversation_status", [
+  "active",
+  "resolved",
+  "archived"
+]);
+
+export const aiMessageRoleEnum = pgEnum("ai_message_role", [
+  "user",
+  "assistant",
+  "system"
+]);
+
+// AI Conversations - chat sessions with the AI assistant
+export const aiConversations = pgTable("ai_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  status: aiConversationStatusEnum("status").notNull().default("active"),
+  context: jsonb("context"), // Store context about the conversation
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ai_conversations_company").on(table.companyId),
+  index("idx_ai_conversations_user").on(table.userId),
+]);
+
+// AI Messages - individual messages in conversations
+export const aiMessages = pgTable("ai_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => aiConversations.id, { onDelete: 'cascade' }),
+  role: aiMessageRoleEnum("role").notNull(),
+  content: text("content").notNull(),
+  usedExternalAi: boolean("used_external_ai").default(true), // Track if external AI was used
+  confidence: decimal("confidence", { precision: 3, scale: 2 }), // AI confidence score 0-1
+  metadata: jsonb("metadata"), // Store tokens used, model version, etc.
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ai_messages_conversation").on(table.conversationId),
+]);
+
+// AI Knowledge Base - documents and data uploaded by companies
+export const aiKnowledgeBase = pgTable("ai_knowledge_base", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id),
+  
+  // Document details
+  filename: text("filename").notNull(),
+  fileType: varchar("file_type").notNull(), // pdf, docx, csv, json, etc.
+  fileSize: integer("file_size"), // bytes
+  fileUrl: text("file_url"), // Storage URL
+  
+  // Processed content
+  content: text("content"), // Extracted text content
+  summary: text("summary"), // AI-generated summary
+  tags: jsonb("tags"), // Extracted tags/keywords
+  embeddings: jsonb("embeddings"), // Vector embeddings for semantic search
+  
+  // Metadata
+  category: varchar("category"), // pricing, procedures, policies, etc.
+  isActive: boolean("is_active").default(true),
+  processingStatus: varchar("processing_status").default("pending"), // pending, processing, completed, failed
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ai_knowledge_company").on(table.companyId),
+  index("idx_ai_knowledge_category").on(table.category),
+]);
+
+// AI Learning Data - track what the AI learns over time
+export const aiLearningData = pgTable("ai_learning_data", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  
+  // Learning source
+  sourceType: varchar("source_type").notNull(), // conversation, document, feedback, manual
+  sourceId: varchar("source_id"), // Reference to source
+  
+  // Learned information
+  question: text("question"),
+  answer: text("answer"),
+  context: jsonb("context"),
+  category: varchar("category"),
+  
+  // Quality metrics
+  useCount: integer("use_count").default(0), // How many times this learning was used
+  successRate: decimal("success_rate", { precision: 3, scale: 2 }).default("1.00"), // User feedback
+  lastUsed: timestamp("last_used"),
+  
+  // Confidence and validation
+  confidence: decimal("confidence", { precision: 3, scale: 2 }).default("0.50"),
+  isValidated: boolean("is_validated").default(false),
+  validatedBy: varchar("validated_by").references(() => users.id),
+  validatedAt: timestamp("validated_at"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ai_learning_company").on(table.companyId),
+  index("idx_ai_learning_category").on(table.category),
+  index("idx_ai_learning_confidence").on(table.confidence),
+]);
+
+// AI Feedback - user feedback on AI responses
+export const aiFeedback = pgTable("ai_feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  messageId: varchar("message_id").notNull().references(() => aiMessages.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  
+  rating: integer("rating").notNull(), // 1-5 stars
+  helpful: boolean("helpful"),
+  accurate: boolean("accurate"),
+  comments: text("comments"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ai_feedback_message").on(table.messageId),
+  index("idx_ai_feedback_company").on(table.companyId),
+]);
+
 // User storage table with Replit Auth fields and local auth support
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }), // Multi-tenant link
   accountStatus: accountStatusEnum("account_status").notNull().default("pending"),
   statusReason: text("status_reason"),
-  organizationId: varchar("organization_id"),
-  organizationName: text("organization_name"),
+  organizationId: varchar("organization_id"), // Legacy field
+  organizationName: text("organization_name"), // Legacy field
   email: varchar("email").unique(),
   password: varchar("password"),
   firstName: varchar("first_name"),
@@ -534,6 +736,7 @@ export const invoices = pgTable("invoices", {
   patientId: varchar("patient_id").references(() => patients.id),
   ecpId: varchar("ecp_id").notNull().references(() => users.id),
   status: invoiceStatusEnum("status").notNull().default("draft"),
+  paymentMethod: paymentMethodEnum("payment_method"),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }).default("0").notNull(),
   invoiceDate: timestamp("invoice_date").defaultNow().notNull(),
@@ -1234,4 +1437,52 @@ export type ClinicalNotesInput = z.infer<typeof clinicalNotesInputSchema>;
 export type AiAnalysisRequest = z.infer<typeof aiAnalysisRequestSchema>;
 export type RecommendationTier = z.infer<typeof recommendationTierSchema>;
 export type AiRecommendationResponse = z.infer<typeof aiRecommendationResponseSchema>;
+
+// ============== COMPANY & AI SYSTEM SCHEMAS ==============
+
+// Company schemas
+export const insertCompanySchema = createInsertSchema(companies);
+export const updateCompanySchema = insertCompanySchema.partial();
+
+export type Company = typeof companies.$inferSelect;
+export type InsertCompany = typeof companies.$inferInsert;
+
+// Company-Supplier relationship schemas
+export const insertCompanySupplierRelationshipSchema = createInsertSchema(companySupplierRelationships);
+
+export type CompanySupplierRelationship = typeof companySupplierRelationships.$inferSelect;
+export type InsertCompanySupplierRelationship = typeof companySupplierRelationships.$inferInsert;
+
+// AI Conversation schemas
+export const insertAiConversationSchema = createInsertSchema(aiConversations);
+export const updateAiConversationSchema = insertAiConversationSchema.partial();
+
+export type AiConversation = typeof aiConversations.$inferSelect;
+export type InsertAiConversation = typeof aiConversations.$inferInsert;
+
+// AI Message schemas
+export const insertAiMessageSchema = createInsertSchema(aiMessages);
+
+export type AiMessage = typeof aiMessages.$inferSelect;
+export type InsertAiMessage = typeof aiMessages.$inferInsert;
+
+// AI Knowledge Base schemas
+export const insertAiKnowledgeBaseSchema = createInsertSchema(aiKnowledgeBase);
+export const updateAiKnowledgeBaseSchema = insertAiKnowledgeBaseSchema.partial();
+
+export type AiKnowledgeBase = typeof aiKnowledgeBase.$inferSelect;
+export type InsertAiKnowledgeBase = typeof aiKnowledgeBase.$inferInsert;
+
+// AI Learning Data schemas
+export const insertAiLearningDataSchema = createInsertSchema(aiLearningData);
+export const updateAiLearningDataSchema = insertAiLearningDataSchema.partial();
+
+export type AiLearningData = typeof aiLearningData.$inferSelect;
+export type InsertAiLearningData = typeof aiLearningData.$inferInsert;
+
+// AI Feedback schemas
+export const insertAiFeedbackSchema = createInsertSchema(aiFeedback);
+
+export type AiFeedback = typeof aiFeedback.$inferSelect;
+export type InsertAiFeedback = typeof aiFeedback.$inferInsert;
 

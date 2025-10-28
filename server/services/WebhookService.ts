@@ -1,5 +1,6 @@
 import { IStorage } from "../storage";
 import { createLogger, type Logger } from "../utils/logger";
+import { websocketService } from "../websocket";
 
 export interface LimsWebhookPayload {
   jobId: string;
@@ -150,22 +151,51 @@ export class WebhookService {
 
   /**
    * Emit real-time status update event
-   * This would be broadcast to connected WebSocket clients
+   * Broadcast to WebSocket clients in real-time
    */
-  private emitStatusUpdateEvent(data: {
+  private async emitStatusUpdateEvent(data: {
     orderId: string;
     jobId: string;
     status: string;
     progress?: number;
     estimatedCompletion?: string;
     errorMessage?: string;
-  }): void {
+  }): Promise<void> {
     this.logger.debug("Status update event emitted", {
       orderId: data.orderId,
       status: data.status,
     });
 
-    // TODO: Broadcast to WebSocket clients
-    // Example: io.to(`order:${data.orderId}`).emit('statusUpdate', data);
+    // Get order to determine organization for room-based broadcasting
+    try {
+      const order = await this.storage.getOrder(data.orderId);
+      if (order) {
+        // Broadcast order status update to organization room
+        websocketService.broadcastOrderStatus(
+          data.orderId,
+          data.status,
+          order.ecpId, // organizationId
+          {
+            orderNumber: order.orderNumber,
+            progress: data.progress || 0,
+            estimatedCompletion: data.estimatedCompletion,
+            errorMessage: data.errorMessage,
+            updatedAt: new Date().toISOString(),
+          }
+        );
+
+        // Broadcast LIMS sync event
+        websocketService.broadcastLimsSync(
+          data.jobId,
+          data.status,
+          data.orderId,
+          order.ecpId
+        );
+      }
+    } catch (error) {
+      this.logger.error("Failed to broadcast status update", error as Error, {
+        orderId: data.orderId,
+      });
+    }
   }
 }

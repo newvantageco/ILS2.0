@@ -31,6 +31,10 @@ import { z } from "zod";
 import { parseOMAFile, isValidOMAFile } from "@shared/omaParser";
 import { normalizeEmail } from "./utils/normalizeEmail";
 import { registerAiEngineRoutes } from "./routes/aiEngine";
+import { registerAiIntelligenceRoutes } from "./routes/aiIntelligence";
+import { registerAiAssistantRoutes } from "./routes/aiAssistant";
+import { registerMetricsRoutes } from "./routes/metrics";
+import { websocketService } from "./websocket";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for deployment monitoring
@@ -48,6 +52,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register AI Engine routes
   registerAiEngineRoutes(app);
+  
+  // Register AI Intelligence routes (demand forecasting, anomaly detection, bottleneck prevention)
+  registerAiIntelligenceRoutes(app);
+  
+  // Register AI Assistant routes (progressive learning assistant)
+  registerAiAssistantRoutes(app);
+  
+  // Register Metrics Dashboard routes
+  registerMetricsRoutes(app);
 
   const FULL_PLAN = "full" as const;
   const FREE_ECP_PLAN = "free_ecp" as const;
@@ -1222,9 +1235,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Content-Disposition', `attachment; filename="PO-${po.poNumber}.pdf"`);
       
       pdfDoc.pipe(res);
+      pdfDoc.on('error', (error) => {
+        console.error("PDF generation error:", error);
+        if (!res.headersSent) {
+          res.status(500).json({ message: "Failed to generate PDF" });
+        }
+      });
     } catch (error) {
       console.error("Error generating PDF:", error);
-      res.status(500).json({ message: "Failed to generate PDF" });
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Failed to generate PDF" });
+      }
     }
   });
 
@@ -2129,13 +2150,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      const { lineItems, ...invoiceData } = req.body;
+      const { lineItems, paymentMethod, ...invoiceData } = req.body;
 
       if (!lineItems || !Array.isArray(lineItems) || lineItems.length === 0) {
         return res.status(400).json({ message: "Invoice must have at least one line item" });
       }
 
-      const invoice = await storage.createInvoice({ ...invoiceData, lineItems }, userId);
+      // If status is 'paid', set amountPaid to totalAmount and require payment method
+      const invoicePayload: any = { ...invoiceData, lineItems };
+      
+      if (invoiceData.status === 'paid') {
+        if (!paymentMethod || !['cash', 'card', 'mixed'].includes(paymentMethod)) {
+          return res.status(400).json({ message: "Valid payment method required for paid invoices" });
+        }
+        invoicePayload.paymentMethod = paymentMethod;
+        invoicePayload.amountPaid = invoiceData.totalAmount;
+      }
+
+      const invoice = await storage.createInvoice(invoicePayload, userId);
       res.status(201).json(invoice);
     } catch (error) {
       console.error("Error creating invoice:", error);
@@ -2509,5 +2541,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  
+  // Initialize WebSocket server for real-time updates
+  websocketService.initialize(httpServer);
+  
   return httpServer;
 }

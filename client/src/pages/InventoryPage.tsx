@@ -58,6 +58,10 @@ export default function InventoryPage() {
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await apiRequest("POST", "/api/products", data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to create product");
+      }
       return await res.json();
     },
     onSuccess: () => {
@@ -68,10 +72,10 @@ export default function InventoryPage() {
         description: "The product has been added to inventory.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to create product. Please try again.",
+        description: error.message || "Failed to create product. Please try again.",
         variant: "destructive",
       });
     },
@@ -80,6 +84,10 @@ export default function InventoryPage() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       const res = await apiRequest("PATCH", `/api/products/${id}`, data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update product");
+      }
       return await res.json();
     },
     onSuccess: () => {
@@ -90,10 +98,10 @@ export default function InventoryPage() {
         description: "The product has been updated successfully.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to update product. Please try again.",
+        description: error.message || "Failed to update product. Please try again.",
         variant: "destructive",
       });
     },
