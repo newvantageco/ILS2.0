@@ -44,17 +44,17 @@ export default function EmailLoginPage() {
         // Active user - redirect to appropriate dashboard
         switch (user.role) {
           case 'ecp':
-            setLocation('/ecp-dashboard');
+            setLocation('/ecp/dashboard');
             break;
           case 'lab_tech':
           case 'engineer':
-            setLocation('/lab-dashboard');
+            setLocation('/lab/dashboard');
             break;
           case 'supplier':
-            setLocation('/supplier-dashboard');
+            setLocation('/supplier/dashboard');
             break;
           case 'admin':
-            setLocation('/admin-dashboard');
+            setLocation('/admin/dashboard');
             break;
           default:
             setLocation('/');

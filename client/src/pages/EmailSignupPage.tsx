@@ -132,7 +132,7 @@ export default function EmailSignupPage() {
         setLocation('/pending-approval');
       } else {
         // Active user (admin) - redirect to dashboard
-        setLocation('/admin-dashboard');
+        setLocation('/admin/dashboard');
       }
     } catch (error: any) {
       toast({
