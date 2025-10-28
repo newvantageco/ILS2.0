@@ -81,11 +81,10 @@ export async function setupAuth(app: Express) {
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
-  // Setup local email/password authentication
-  setupLocalAuth();
-
-  // Setup local authentication only
-  setupLocalAuth();
+  // Setup local email/password authentication for environments without Replit auth
+  if (!process.env.REPLIT_DOMAINS) {
+    setupLocalAuth();
+  }
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {

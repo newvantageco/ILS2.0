@@ -3,6 +3,8 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import passport from "passport";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupLocalAuth } from "./localAuth";
@@ -32,6 +34,27 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: false }));
+
+if (process.env.NODE_ENV === "development") {
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) {
+    log("SESSION_SECRET is not set. Generating temporary secret for development.", "express");
+  }
+
+  app.use(session({
+    secret: sessionSecret || "dev-session-secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: false,
+    },
+  }));
+
+  app.use(passport.initialize());
+  app.use(passport.session());
+  setupLocalAuth();
+}
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -83,8 +106,12 @@ app.use((req, res, next) => {
       });
     });
 
-    // Add root endpoint
-    app.get('/', (req, res) => {
+    // Let Vite serve the SPA shell in development, otherwise return a basic status message
+    app.get('/', (req, res, next) => {
+      if (app.get("env") === "development") {
+        return next();
+      }
+
       res.send('ILS Server is running');
     });
     

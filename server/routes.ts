@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth as setupReplitAuth, isAuthenticated } from "./replitAuth";
-import { setupLocalAuth, hashPassword } from "./localAuth";
+import { hashPassword } from "./localAuth";
 import passport from "passport";
 import { 
   insertOrderSchema, 
@@ -39,9 +39,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  if (process.env.NODE_ENV === 'development') {
-    setupLocalAuth();
-  } else {
+  if (process.env.NODE_ENV !== 'development') {
     await setupReplitAuth(app);
   }
 
