@@ -970,3 +970,268 @@ export type UpdatePrescriptionAlert = z.infer<typeof updatePrescriptionAlertSche
 export type CreateBIRecommendation = z.infer<typeof createBIRecommendationSchema>;
 export type UpdateBIRecommendation = z.infer<typeof updateBIRecommendationSchema>;
 
+// ============================================================
+// CLINICAL AI ENGINE: AI DISPENSING ASSISTANT
+// ============================================================
+// The "Three-Legged" AI Model System:
+// Leg 1: LIMS Manufacturing & Clinical Model (trained on anonymized job data)
+// Leg 2: Optom NLP Intent Model (reads clinical notes and extracts clinical context)
+// Leg 3: ECP Business Model (reads ECP's CSV catalog for inventory and pricing)
+// ============================================================
+
+// Enum for NLP Intent Tags extracted from clinical notes
+export const nlpIntentTagEnum = pgEnum("nlp_intent_tag", [
+  "first_time_pal",
+  "first_time_progressive",
+  "cvs_syndrome",
+  "computer_heavy_use",
+  "night_driving_complaint",
+  "glare_complaint",
+  "near_work_focus",
+  "occupational_hazard",
+  "sports_activity",
+  "high_prescription",
+  "presbyopia_onset",
+  "astigmatism_high",
+  "anisometropia",
+  "monovision_candidate",
+  "light_sensitive",
+  "blue_light_concern",
+  "uv_protection_needed",
+  "anti_reflective_needed",
+  "scratch_resistant_needed",
+  "impact_resistant_needed"
+]);
+
+// Table: LIMS Clinical Analytics - stores patterns and outcomes
+export const limsClinicalAnalytics = pgTable("lims_clinical_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  lensType: text("lens_type").notNull(),
+  lensMaterial: text("lens_material").notNull(),
+  coating: text("coating").notNull(),
+  frameWrapAngle: decimal("frame_wrap_angle", { precision: 5, scale: 2 }),
+  prescriptionPower: jsonb("prescription_power"), // { odSphere, osCylinder, etc }
+  
+  // Clinical outcomes from anonymized LIMS data
+  totalOrdersAnalyzed: integer("total_orders_analyzed").default(0).notNull(),
+  nonAdaptCount: integer("non_adapt_count").default(0).notNull(),
+  remakeCount: integer("remake_count").default(0).notNull(),
+  successRate: decimal("success_rate", { precision: 5, scale: 4 }).default("0").notNull(), // 0-1
+  nonAdaptRate: decimal("non_adapt_rate", { precision: 5, scale: 4 }).default("0").notNull(),
+  remakeRate: decimal("remake_rate", { precision: 5, scale: 4 }).default("0").notNull(),
+  
+  // Pattern insights for specific clinical scenarios
+  patternInsights: jsonb("pattern_insights"), // { axis_90_high_cylinder: { nonAdaptRate: 0.15, count: 150 }, ... }
+  clinicalContext: jsonb("clinical_context"), // { bestFor: ["first_time_progressive"], worstFor: ["high_wrap"] }
+  
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  metadata: jsonb("metadata"),
+});
+
+// Table: NLP Clinical Notes Analysis
+export const nlpClinicalAnalysis = pgTable("nlp_clinical_analysis", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").references(() => orders.id).notNull(),
+  
+  // Original clinical notes
+  rawClinicalNotes: text("raw_clinical_notes").notNull(),
+  
+  // Extracted intent tags
+  intentTags: jsonb("intent_tags").notNull(), // [{ tag: "first_time_progressive", confidence: 0.95 }, ...]
+  
+  // Clinical context extraction
+  patientLifestyle: text("patient_lifestyle"), // "heavy computer use", "outdoor sports", etc
+  patientComplaints: jsonb("patient_complaints"), // ["glare during night driving", "eye strain"]
+  clinicalFlags: jsonb("clinical_flags"), // ["high_rx", "new_wearer", "high_astigmatism"]
+  
+  // Summarized clinical intent
+  clinicalSummary: text("clinical_summary"),
+  recommendedLensCharacteristics: jsonb("recommended_lens_characteristics"), // { softDesign: true, blueLight: true }
+  
+  analyzedAt: timestamp("analyzed_at").defaultNow().notNull(),
+  confidence: decimal("confidence", { precision: 5, scale: 4 }).default("0.8").notNull(),
+  metadata: jsonb("metadata"),
+}, (table) => [
+  index("idx_nlp_analysis_order").on(table.orderId),
+]);
+
+// Table: ECP Catalog Integration - parsed from uploaded CSV
+export const ecpCatalogData = pgTable("ecp_catalog_data", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ecpId: varchar("ecp_id").references(() => users.id).notNull(),
+  
+  // Product information
+  productSku: text("product_sku").notNull(),
+  productName: text("product_name").notNull(),
+  brand: text("brand"),
+  category: text("category"), // "lens", "frame", "coating", "material"
+  
+  // Lens specifications (if applicable)
+  lensType: text("lens_type"),
+  lensMaterial: text("lens_material"),
+  coating: text("coating"),
+  designFeatures: jsonb("design_features"), // { softDesign: true, antiGlare: true }
+  
+  // Business data
+  retailPrice: decimal("retail_price", { precision: 10, scale: 2 }).notNull(),
+  wholesalePrice: decimal("wholesale_price", { precision: 10, scale: 2 }),
+  stockQuantity: integer("stock_quantity").default(0).notNull(),
+  isInStock: boolean("is_in_stock").default(true).notNull(),
+  
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  metadata: jsonb("metadata"),
+}, (table) => [
+  index("idx_ecp_catalog_ecp_id").on(table.ecpId),
+  index("idx_ecp_catalog_sku").on(table.productSku),
+]);
+
+// Table: AI Dispensing Recommendations - Good/Better/Best
+export const aiDispensingRecommendations = pgTable("ai_dispensing_recommendations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").references(() => orders.id).notNull(),
+  ecpId: varchar("ecp_id").references(() => users.id).notNull(),
+  nlpAnalysisId: varchar("nlp_analysis_id").references(() => nlpClinicalAnalysis.id),
+  
+  // Original prescription and clinical context
+  rxData: jsonb("rx_data").notNull(), // { odSphere, odCylinder, ... }
+  clinicalIntentTags: jsonb("clinical_intent_tags").notNull(), // Extracted from NLP
+  clinicalNotesSummary: text("clinical_notes_summary"),
+  
+  // The three-tiered recommendation
+  recommendations: jsonb("recommendations").notNull(), // [{ tier: "BEST", recommendation: {...} }, ...]
+  
+  // Recommendation structure for each tier:
+  // {
+  //   tier: "BEST" | "BETTER" | "GOOD",
+  //   lens: { type, material, design },
+  //   coating: { name, features },
+  //   retailPrice: number,
+  //   matchScore: number,
+  //   clinicalJustification: string,
+  //   lifeStyleJustification: string,
+  //   clincialContext: { tag: "first_time_progressive", justification: "..." }
+  // }
+  
+  // Analysis metadata
+  limsPatternMatch: jsonb("lims_pattern_match"), // Links to LIMS analytics
+  clinicalConfidenceScore: decimal("clinical_confidence_score", { precision: 5, scale: 4 }).notNull(),
+  
+  // Recommendation status
+  recommendationStatus: text("recommendation_status").default("pending"), // pending, accepted, rejected, customized
+  acceptedRecommation: jsonb("accepted_recommendation"), // If ECP selected one
+  acceptedAt: timestamp("accepted_at"),
+  customizationApplied: text("customization_applied"),
+  customizedAt: timestamp("customized_at"),
+  
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+  metadata: jsonb("metadata"),
+}, (table) => [
+  index("idx_ai_recommendations_order").on(table.orderId),
+  index("idx_ai_recommendations_ecp").on(table.ecpId),
+  index("idx_ai_recommendations_status").on(table.recommendationStatus),
+]);
+
+// Validation Schemas for AI Engine
+
+// Prescription data (from order)
+export const prescriptionDataSchema = z.object({
+  odSphere: z.string().optional(),
+  odCylinder: z.string().optional(),
+  odAxis: z.string().optional(),
+  odAdd: z.string().optional(),
+  osSphere: z.string().optional(),
+  osCylinder: z.string().optional(),
+  osAxis: z.string().optional(),
+  osAdd: z.string().optional(),
+  pd: z.string().optional(),
+});
+
+// Clinical notes input for NLP analysis
+export const clinicalNotesInputSchema = z.object({
+  rawNotes: z.string().min(10, "Clinical notes must be at least 10 characters"),
+  patientAge: z.number().optional(),
+  occupation: z.string().optional(),
+});
+
+// ECP catalog CSV upload schema
+export const ecpCatalogUploadSchema = z.object({
+  ecpId: z.string().min(1, "ECP ID required"),
+  csvData: z.array(z.object({
+    sku: z.string().min(1),
+    name: z.string().min(1),
+    brand: z.string().optional(),
+    category: z.string().optional(),
+    lensType: z.string().optional(),
+    lensMaterial: z.string().optional(),
+    coating: z.string().optional(),
+    retailPrice: z.number().positive(),
+    wholesalePrice: z.number().optional(),
+    stockQuantity: z.number().nonnegative(),
+  })),
+});
+
+// AI Analysis Request
+export const aiAnalysisRequestSchema = z.object({
+  orderId: z.string().min(1, "Order ID required"),
+  ecpId: z.string().min(1, "ECP ID required"),
+  prescription: prescriptionDataSchema,
+  clinicalNotes: clinicalNotesInputSchema,
+  frameData: z.object({
+    wrapAngle: z.number().optional(),
+    type: z.string().optional(),
+  }).optional(),
+});
+
+// Response schema for recommendations
+export const recommendationTierSchema = z.object({
+  tier: z.enum(["BEST", "BETTER", "GOOD"]),
+  lens: z.object({
+    type: z.string(),
+    material: z.string(),
+    design: z.string().optional(),
+  }),
+  coating: z.object({
+    name: z.string(),
+    features: z.array(z.string()),
+  }),
+  retailPrice: z.number(),
+  matchScore: z.number().min(0).max(1),
+  clinicalJustification: z.string(),
+  lifeStyleJustification: z.string(),
+  clinicalContext: z.array(z.object({
+    tag: z.string(),
+    justification: z.string(),
+  })),
+});
+
+export const aiRecommendationResponseSchema = z.object({
+  orderId: z.string(),
+  recommendations: z.array(recommendationTierSchema),
+  clinicalConfidenceScore: z.number().min(0).max(1),
+  analysisMetadata: z.object({
+    nlpConfidence: z.number().min(0).max(1),
+    limsMatchCount: z.number(),
+    patternMatches: z.array(z.string()),
+  }),
+});
+
+// Types for AI Engine
+export type LimsClinicalAnalytic = typeof limsClinicalAnalytics.$inferSelect;
+export type InsertLimsClinicialAnalytic = typeof limsClinicalAnalytics.$inferInsert;
+
+export type NlpClinicalAnalysis = typeof nlpClinicalAnalysis.$inferSelect;
+export type InsertNlpClinicalAnalysis = typeof nlpClinicalAnalysis.$inferInsert;
+
+export type EcpCatalogData = typeof ecpCatalogData.$inferSelect;
+export type InsertEcpCatalogData = typeof ecpCatalogData.$inferInsert;
+
+export type AiDispensingRecommendation = typeof aiDispensingRecommendations.$inferSelect;
+export type InsertAiDispensingRecommendation = typeof aiDispensingRecommendations.$inferInsert;
+
+export type PrescriptionData = z.infer<typeof prescriptionDataSchema>;
+export type ClinicalNotesInput = z.infer<typeof clinicalNotesInputSchema>;
+export type AiAnalysisRequest = z.infer<typeof aiAnalysisRequestSchema>;
+export type RecommendationTier = z.infer<typeof recommendationTierSchema>;
+export type AiRecommendationResponse = z.infer<typeof aiRecommendationResponseSchema>;
+

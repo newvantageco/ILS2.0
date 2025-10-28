@@ -17,6 +17,14 @@ import {
   LogIn,
   UserPlus,
   Sparkles,
+  Brain,
+  Cpu,
+  Database,
+  GitBranch,
+  Gauge,
+  AlertCircle,
+  Cloud,
+  Lock,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { SiReplit } from "react-icons/si";
@@ -87,10 +95,10 @@ export default function Landing() {
                   Streamline Your Lens Production Workflow
                 </div>
                 <h2 className="text-5xl md:text-6xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent">
-                  One Console for Every Lens Partner
+                  Enterprise-Grade Lens Management, Powered by AI Intelligence
                 </h2>
                 <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed">
-                  Whether you are launching a new practice or scaling a national lab network, ILS centralizes lens orders, quality assurance, and collaboration in a single, trusted platform.
+                  Scale from startup to 10,000+ daily orders. ILS unifies order processing, quality control, and real-time LIMS integration with an intelligent system that learns, predicts, and optimizes your entire production workflow.
                 </p>
                 <div className="grid sm:grid-cols-2 gap-3 pt-2">
                   <Button size="lg" onClick={handleEmailSignup} data-testid="button-signup-cta" className="shadow-lg text-lg px-8 h-12">
@@ -105,45 +113,45 @@ export default function Landing() {
                 <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-primary" />
-                    SOC 2 aligned controls
+                    AI-Powered Insights
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-primary" />
-                    Built-in audit trails
+                    Real-time LIMS Sync
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-primary" />
-                    24/7 observability
+                    Enterprise Scale Ready
                   </div>
                 </div>
               </div>
               <div className="bg-background/80 border border-border/60 rounded-2xl shadow-xl p-6 space-y-5 backdrop-blur">
                 <div className="space-y-2">
-                  <span className="text-xs uppercase tracking-widest text-muted-foreground">Personalized Journeys</span>
-                  <h3 className="text-2xl font-semibold">Pick the path that fits you</h3>
+                  <span className="text-xs uppercase tracking-widest text-muted-foreground">Intelligent Features</span>
+                  <h3 className="text-2xl font-semibold">Next-Gen Manufacturing Insights</h3>
                   <p className="text-sm text-muted-foreground">
-                    Tailored onboarding, dashboards, and workflows make sure returning teams speed through their day, while newcomers ramp up with confidence.
+                    AI engines predict demand, optimize inventory, detect anomalies, and surface actionable intelligence in real-time.
                   </p>
                 </div>
                 <div className="grid gap-3">
                   <Card className="border-primary/30 bg-primary/5">
                     <CardContent className="p-4 flex items-start gap-3">
-                      <Sparkles className="h-5 w-5 text-primary mt-1" />
+                      <Brain className="h-5 w-5 text-primary mt-1" />
                       <div>
-                        <p className="font-medium">New to ILS</p>
+                        <p className="font-medium">Predictive Analytics</p>
                         <p className="text-xs text-muted-foreground">
-                          Guided configuration, ready-to-use templates, and a success manager for your launch.
+                          Anticipate bottlenecks, forecast demand, optimize staffing automatically.
                         </p>
                       </div>
                     </CardContent>
                   </Card>
                   <Card className="border-border/60 hover:border-primary/40 transition-colors">
                     <CardContent className="p-4 flex items-start gap-3">
-                      <Clock className="h-5 w-5 text-primary mt-1" />
+                      <Cpu className="h-5 w-5 text-primary mt-1" />
                       <div>
-                        <p className="font-medium">Existing Teams</p>
+                        <p className="font-medium">Anomaly Detection</p>
                         <p className="text-xs text-muted-foreground">
-                          SSO-ready login, continuity dashboards, and smart alerts so you never miss a beat.
+                          Spot quality issues, equipment failures, and process deviations instantly.
                         </p>
                       </div>
                     </CardContent>
@@ -227,6 +235,95 @@ export default function Landing() {
                       Manage purchase orders and maintain a comprehensive technical documentation library.
                     </p>
                   </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        <section className="py-20 px-6 bg-gradient-to-r from-primary/5 via-background to-primary/5">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary mb-4">
+                <Sparkles className="h-4 w-4" />
+                Enterprise Intelligence
+              </div>
+              <h3 className="text-3xl md:text-4xl font-bold mb-4">AI-Powered Architecture</h3>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Next-generation microservices built for scale, intelligence, and real-time LIMS integration
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Card className="border-2 hover:shadow-lg transition-all duration-300">
+                <CardContent className="p-6 space-y-4">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Brain className="h-6 w-6 text-primary" />
+                  </div>
+                  <h4 className="font-bold text-lg">Intelligent Predictions</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    AI models predict demand patterns, identify bottlenecks, and recommend optimizations before problems occur.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 hover:shadow-lg transition-all duration-300">
+                <CardContent className="p-6 space-y-4">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Database className="h-6 w-6 text-primary" />
+                  </div>
+                  <h4 className="font-bold text-lg">LIMS Integration Hub</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Real-time bidirectional sync with your LIMS. Orders validate instantly, status updates push automatically.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 hover:shadow-lg transition-all duration-300">
+                <CardContent className="p-6 space-y-4">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Cloud className="h-6 w-6 text-primary" />
+                  </div>
+                  <h4 className="font-bold text-lg">Kubernetes Scale</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Enterprise-grade Kubernetes orchestration handles 10,000+ orders daily with automatic scaling and failover.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 hover:shadow-lg transition-all duration-300">
+                <CardContent className="p-6 space-y-4">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Cpu className="h-6 w-6 text-primary" />
+                  </div>
+                  <h4 className="font-bold text-lg">Anomaly Detection</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    ML-powered monitoring detects quality issues, equipment failures, and process deviations in real-time.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 hover:shadow-lg transition-all duration-300">
+                <CardContent className="p-6 space-y-4">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Gauge className="h-6 w-6 text-primary" />
+                  </div>
+                  <h4 className="font-bold text-lg">Live Performance Metrics</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Real-time dashboards track KPIs, production efficiency, and cost metrics across all workflows.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 hover:shadow-lg transition-all duration-300">
+                <CardContent className="p-6 space-y-4">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Lock className="h-6 w-6 text-primary" />
+                  </div>
+                  <h4 className="font-bold text-lg">Enterprise Security</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    SOC 2 aligned controls, audit trails, MFA, SSO, and compliance-ready infrastructure built-in.
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -391,28 +488,38 @@ export default function Landing() {
             <div className="text-center mb-16">
               <h3 className="text-3xl md:text-4xl font-bold mb-4">Why Choose ILS?</h3>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Powerful features designed to streamline your entire lens production workflow
+                Purpose-built for lens manufacturers at every scale—from boutique practices to national networks
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               <div className="text-center space-y-4">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                  <Zap className="h-8 w-8 text-primary" />
+                  <Brain className="h-8 w-8 text-primary" />
                 </div>
-                <h4 className="font-bold text-xl">Lightning Fast</h4>
+                <h4 className="font-bold text-xl">Intelligent Automation</h4>
                 <p className="text-muted-foreground leading-relaxed">
-                  Real-time updates and instant notifications keep everyone in sync across your entire operation.
+                  AI engines handle complex logic, reducing manual work by 60% while improving accuracy and consistency.
                 </p>
               </div>
 
               <div className="text-center space-y-4">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                  <Shield className="h-8 w-8 text-primary" />
+                  <Zap className="h-8 w-8 text-primary" />
                 </div>
-                <h4 className="font-bold text-xl">Secure & Reliable</h4>
+                <h4 className="font-bold text-xl">Lightning Fast Sync</h4>
                 <p className="text-muted-foreground leading-relaxed">
-                  Enterprise-grade security with role-based access control and comprehensive audit trails.
+                  Real-time LIMS integration means instant validation, status updates within 1 second, zero delays.
+                </p>
+              </div>
+
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                  <Cloud className="h-8 w-8 text-primary" />
+                </div>
+                <h4 className="font-bold text-xl">Unlimited Scale</h4>
+                <p className="text-muted-foreground leading-relaxed">
+                  Kubernetes-native architecture handles 10,000+ daily orders with zero performance degradation.
                 </p>
               </div>
 
@@ -420,9 +527,29 @@ export default function Landing() {
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
                   <BarChart3 className="h-8 w-8 text-primary" />
                 </div>
-                <h4 className="font-bold text-xl">Data-Driven Insights</h4>
+                <h4 className="font-bold text-xl">Actionable Insights</h4>
                 <p className="text-muted-foreground leading-relaxed">
-                  Advanced analytics and reporting help you make informed decisions and optimize production.
+                  Predictive analytics surface trends, bottlenecks, and opportunities in real-time dashboards.
+                </p>
+              </div>
+
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                  <Shield className="h-8 w-8 text-primary" />
+                </div>
+                <h4 className="font-bold text-xl">Enterprise Grade</h4>
+                <p className="text-muted-foreground leading-relaxed">
+                  SOC 2 aligned, audit trails, MFA, SSO, and 99.9% uptime SLA built into the platform.
+                </p>
+              </div>
+
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                  <AlertCircle className="h-8 w-8 text-primary" />
+                </div>
+                <h4 className="font-bold text-xl">Smart Alerts</h4>
+                <p className="text-muted-foreground leading-relaxed">
+                  Anomaly detection spots issues before they impact production, with intelligent, actionable alerts.
                 </p>
               </div>
             </div>
@@ -431,24 +558,24 @@ export default function Landing() {
 
         <section className="py-20 px-6 bg-gradient-to-b from-primary/5 to-background border-y border-border">
           <div className="max-w-4xl mx-auto text-center space-y-6">
-            <h3 className="text-3xl md:text-4xl font-bold">Ready to transform your workflow?</h3>
+            <h3 className="text-3xl md:text-4xl font-bold">Transform Your Operations Today</h3>
             <p className="text-lg text-muted-foreground">
-              New to ILS? Spin up a guided sandbox. Already a partner? Jump back to your live operations without missing context.
+              Join manufacturers who've already scaled to enterprise levels. Get instant LIMS validation, predictive insights, and the confidence to handle 10,000+ daily orders.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Button size="lg" onClick={handleEmailSignup} className="shadow-lg text-lg px-10 h-12" data-testid="button-signup-bottom">
                 <Mail className="h-5 w-5 mr-2" />
-                Launch a Guided Trial
+                Start Your AI-Powered Trial
               </Button>
               <Button size="lg" variant="outline" onClick={handleEmailLogin} className="text-lg px-10 h-12 shadow-md" data-testid="button-returning-bottom">
                 <LogIn className="h-5 w-5 mr-2" />
-                Continue Managing Orders
+                Return to Your Dashboard
               </Button>
             </div>
             <div className="text-sm text-muted-foreground flex flex-col sm:flex-row items-center justify-center gap-2">
-              <span>Prefer a walkthrough?</span>
+              <span>Want to see it in action?</span>
               <button onClick={handleReplitLogin} className="text-primary hover:underline font-medium flex items-center gap-1" data-testid="button-replit-bottom">
-                Meet us in partner space
+                Book a personalized demo
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>

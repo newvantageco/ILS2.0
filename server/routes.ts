@@ -30,6 +30,7 @@ import { sendPurchaseOrderEmail, sendShipmentNotificationEmail } from "./emailSe
 import { z } from "zod";
 import { parseOMAFile, isValidOMAFile } from "@shared/omaParser";
 import { normalizeEmail } from "./utils/normalizeEmail";
+import { registerAiEngineRoutes } from "./routes/aiEngine";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for deployment monitoring
@@ -44,6 +45,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   if (process.env.NODE_ENV !== 'development') {
     await setupReplitAuth(app);
   }
+
+  // Register AI Engine routes
+  registerAiEngineRoutes(app);
 
   const FULL_PLAN = "full" as const;
   const FREE_ECP_PLAN = "free_ecp" as const;
