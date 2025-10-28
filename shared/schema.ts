@@ -384,6 +384,12 @@ export const orders = pgTable("orders", {
   omaFilename: text("oma_filename"),
   omaParsedData: jsonb("oma_parsed_data"),
   
+  // LIMS Integration Fields (Phase 1)
+  jobId: varchar("job_id"),
+  jobStatus: varchar("job_status"),
+  sentToLabAt: timestamp("sent_to_lab_at"),
+  jobErrorMessage: text("job_error_message"),
+  
   orderDate: timestamp("order_date").defaultNow().notNull(),
   dueDate: timestamp("due_date"),
   completedAt: timestamp("completed_at"),
@@ -545,6 +551,98 @@ export const invoiceLineItems = pgTable("invoice_line_items", {
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// Enums for new features
+export const adaptAlertSeverityEnum = pgEnum("adapt_alert_severity", [
+  "info",
+  "warning",
+  "critical"
+]);
+
+// Predictive Non-Adapt Alert System Tables
+export const rxFrameLensAnalytics = pgTable("rx_frame_lens_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  lensType: text("lens_type").notNull(),
+  lensMaterial: text("lens_material").notNull(),
+  frameType: text("frame_type").notNull(),
+  totalOrders: integer("total_orders").default(0).notNull(),
+  nonAdaptCount: integer("non_adapt_count").default(0).notNull(),
+  nonAdaptRate: decimal("non_adapt_rate", { precision: 5, scale: 4 }).default("0").notNull(), // 0-1 range
+  remakeRate: decimal("remake_rate", { precision: 5, scale: 4 }).default("0").notNull(),
+  averageRemakeDays: decimal("average_remake_days", { precision: 8, scale: 2 }).default("0"),
+  historicalDataPoints: jsonb("historical_data_points").default('[]'),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  metadata: jsonb("metadata"),
+});
+
+export const prescriptionAlerts = pgTable("prescription_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").references(() => orders.id).notNull(),
+  ecpId: varchar("ecp_id").references(() => users.id).notNull(),
+  severity: adaptAlertSeverityEnum("severity").notNull(),
+  alertType: text("alert_type").notNull(), // "high_wrap", "high_add", "high_power_progressive", etc.
+  riskScore: decimal("risk_score", { precision: 5, scale: 4 }).notNull(), // 0-1 range
+  historicalNonAdaptRate: decimal("historical_non_adapt_rate", { precision: 5, scale: 4 }),
+  recommendedLensType: text("recommended_lens_type"),
+  recommendedMaterial: text("recommended_material"),
+  recommendedCoating: text("recommended_coating"),
+  explanation: text("explanation").notNull(),
+  dismissedAt: timestamp("dismissed_at"),
+  dismissedBy: varchar("dismissed_by").references(() => users.id),
+  actionTaken: text("action_taken"),
+  actionTakenAt: timestamp("action_taken_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  metadata: jsonb("metadata"),
+}, (table) => [
+  index("idx_prescription_alerts_order").on(table.orderId),
+  index("idx_prescription_alerts_ecp").on(table.ecpId),
+  index("idx_prescription_alerts_severity").on(table.severity),
+]);
+
+// Business Intelligence & Purchasing Recommendations Tables
+export const eciProductSalesAnalytics = pgTable("ecp_product_sales_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ecpId: varchar("ecp_id").references(() => users.id).notNull(),
+  productType: text("product_type").notNull(), // "frame", "lens", "contact_lens", etc.
+  productBrand: text("product_brand"),
+  productModel: text("product_model"),
+  totalSalesCount: integer("total_sales_count").default(0).notNull(),
+  totalRevenue: decimal("total_revenue", { precision: 12, scale: 2 }).default("0").notNull(),
+  averageOrderValue: decimal("average_order_value", { precision: 10, scale: 2 }).default("0"),
+  monthlyTrend: jsonb("monthly_trend").default('{}'), // { "2025-10": 120, "2025-09": 115 }
+  topPairings: jsonb("top_pairings").default('[]'), // [{ item1: "frame", item2: "lens", count: 45 }]
+  lastAnalyzed: timestamp("last_analyzed").defaultNow().notNull(),
+  metadata: jsonb("metadata"),
+}, (table) => [
+  index("idx_ecp_sales_analytics_ecp").on(table.ecpId),
+]);
+
+export const biRecommendations = pgTable("bi_recommendations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ecpId: varchar("ecp_id").references(() => users.id).notNull(),
+  recommendationType: text("recommendation_type").notNull(), // "stocking", "upsell", "cross_sell", "breakage_reduction", "error_reduction"
+  priority: text("priority").notNull().default("medium"), // "low", "medium", "high"
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  impact: text("impact").notNull(), // Business impact statement
+  actionItems: jsonb("action_items").default('[]'), // [{ action: string, details: string }]
+  dataSource: jsonb("data_source").notNull(), // { posData: [...], limsData: [...] }
+  estimatedRevenueLift: decimal("estimated_revenue_lift", { precision: 12, scale: 2 }),
+  estimatedErrorReduction: decimal("estimated_error_reduction", { precision: 5, scale: 4 }), // 0-1 range
+  acknowledged: boolean("acknowledged").default(false).notNull(),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  acknowledgedBy: varchar("acknowledged_by").references(() => users.id),
+  implementationStartedAt: timestamp("implementation_started_at"),
+  implementationCompletedAt: timestamp("implementation_completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  metadata: jsonb("metadata"),
+}, (table) => [
+  index("idx_bi_recommendations_ecp").on(table.ecpId),
+  index("idx_bi_recommendations_type").on(table.recommendationType),
+  index("idx_bi_recommendations_priority").on(table.priority),
+]);
 
 export const upsertUserSchema = createInsertSchema(users);
 export const insertPatientSchema = createInsertSchema(patients).omit({
@@ -807,3 +905,68 @@ export type InvoiceWithDetails = Invoice & {
   };
   lineItems: InvoiceLineItem[];
 };
+
+// Schema validations for new features
+export const createPrescriptionAlertSchema = z.object({
+  orderId: z.string().min(1, "Order ID is required"),
+  ecpId: z.string().min(1, "ECP ID is required"),
+  severity: z.enum(["info", "warning", "critical"]),
+  alertType: z.string().min(1, "Alert type is required"),
+  riskScore: z.number().min(0).max(1),
+  historicalNonAdaptRate: z.number().min(0).max(1).optional(),
+  recommendedLensType: z.string().optional(),
+  recommendedMaterial: z.string().optional(),
+  recommendedCoating: z.string().optional(),
+  explanation: z.string().min(1, "Explanation is required"),
+  metadata: z.record(z.any()).optional(),
+});
+
+export const updatePrescriptionAlertSchema = z.object({
+  dismissedAt: z.date().optional(),
+  dismissedBy: z.string().optional(),
+  actionTaken: z.string().optional(),
+  actionTakenAt: z.date().optional(),
+});
+
+export const createBIRecommendationSchema = z.object({
+  ecpId: z.string().min(1, "ECP ID is required"),
+  recommendationType: z.enum(["stocking", "upsell", "cross_sell", "breakage_reduction", "error_reduction"]),
+  priority: z.enum(["low", "medium", "high"]).optional(),
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+  impact: z.string().min(1, "Impact statement is required"),
+  actionItems: z.array(z.object({
+    action: z.string(),
+    details: z.string().optional(),
+  })).optional(),
+  dataSource: z.record(z.any()),
+  estimatedRevenueLift: z.number().optional(),
+  estimatedErrorReduction: z.number().min(0).max(1).optional(),
+  metadata: z.record(z.any()).optional(),
+});
+
+export const updateBIRecommendationSchema = z.object({
+  acknowledged: z.boolean().optional(),
+  acknowledgedBy: z.string().optional(),
+  implementationStartedAt: z.date().optional(),
+  implementationCompletedAt: z.date().optional(),
+});
+
+// Types for new features
+export type RxFrameLensAnalytic = typeof rxFrameLensAnalytics.$inferSelect;
+export type InsertRxFrameLensAnalytic = typeof rxFrameLensAnalytics.$inferInsert;
+
+export type PrescriptionAlert = typeof prescriptionAlerts.$inferSelect;
+export type InsertPrescriptionAlert = typeof prescriptionAlerts.$inferInsert;
+
+export type EcpProductSalesAnalytic = typeof eciProductSalesAnalytics.$inferSelect;
+export type InsertEcpProductSalesAnalytic = typeof eciProductSalesAnalytics.$inferInsert;
+
+export type BIRecommendation = typeof biRecommendations.$inferSelect;
+export type InsertBIRecommendation = typeof biRecommendations.$inferInsert;
+
+export type CreatePrescriptionAlert = z.infer<typeof createPrescriptionAlertSchema>;
+export type UpdatePrescriptionAlert = z.infer<typeof updatePrescriptionAlertSchema>;
+export type CreateBIRecommendation = z.infer<typeof createBIRecommendationSchema>;
+export type UpdateBIRecommendation = z.infer<typeof updateBIRecommendationSchema>;
+

@@ -1,0 +1,163 @@
+# Default Helm values for Integrated Lens System
+
+replicaCount: 3
+
+image:
+  repository: "ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/ils-app"
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: "ils-app"
+
+serviceAccount:
+  create: true
+  name: ils-app
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "5000"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+service:
+  type: ClusterIP
+  port: 5000
+  targetPort: 5000
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:REGION:ACCOUNT:certificate/CERT_ID"
+  hosts:
+    - host: "api.lens-system.com"
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 5000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 5000
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+env:
+  - name: NODE_ENV
+    value: "production"
+  - name: LOG_LEVEL
+    value: "info"
+  - name: PORT
+    value: "5000"
+  - name: CORS_ORIGINS
+    value: "https://api.lens-system.com"
+
+envFrom:
+  - configMapRef:
+      name: ils-config
+  - secretRef:
+      name: ils-secrets
+
+volumeMounts:
+  - name: tmp
+    mountPath: /tmp
+  - name: cache
+    mountPath: /app/.cache
+
+volumes:
+  - name: tmp
+    emptyDir: {}
+  - name: cache
+    emptyDir: {}
+
+nodeSelector:
+  kubernetes.io/arch: amd64
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - ils-app
+          topologyKey: kubernetes.io/hostname
+
+# Monitoring
+monitoring:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
+
+# Backup and persistence
+persistence:
+  enabled: false
+
+# Database configuration
+database:
+  host: "RDS_ENDPOINT"
+  port: 5432
+  name: "ilsdb"
+  user: "postgres"
+  sslMode: "require"
+
+# Redis configuration
+redis:
+  host: "REDIS_ENDPOINT"
+  port: 6379
+  tlsEnabled: true
+
+# AWS configuration
+aws:
+  region: "us-east-1"
+  accountId: "ACCOUNT_ID"

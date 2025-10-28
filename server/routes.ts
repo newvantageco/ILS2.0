@@ -2240,6 +2240,270 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // LIMS Webhook routes (Flow 2: Status updates from LIMS)
+  app.post('/api/webhooks/lims-status', async (req, res) => {
+    try {
+      const { WebhookService } = await import('./services/WebhookService');
+      
+      const webhookSecret = process.env.LIMS_WEBHOOK_SECRET || 'default-secret';
+      const webhookService = new WebhookService(storage, {
+        secret: webhookSecret,
+      });
+
+      // Verify webhook signature
+      const signature = req.headers['x-lims-signature'] as string;
+      const payload = JSON.stringify(req.body);
+
+      if (!webhookService.verifyWebhookSignature(payload, signature)) {
+        console.warn('Invalid webhook signature');
+        return res.status(401).json({ message: 'Invalid signature' });
+      }
+
+      // Process the status update
+      const success = await webhookService.handleStatusUpdate(req.body);
+
+      if (success) {
+        res.json({ message: 'Webhook processed successfully' });
+      } else {
+        res.status(400).json({ message: 'Failed to process webhook' });
+      }
+    } catch (error) {
+      console.error('Error processing LIMS webhook:', error);
+      res.status(500).json({ 
+        message: 'Failed to process webhook',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // ============================================================
+  // PREDICTIVE NON-ADAPT ALERT API ENDPOINTS (Feature 1)
+  // ============================================================
+
+  // Get active prescription alerts for ECP
+  app.get('/api/alerts/prescriptions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can access prescription alerts" });
+      }
+
+      const { PredictiveNonAdaptService } = await import('./services/PredictiveNonAdaptService');
+      const alertService = PredictiveNonAdaptService.getInstance();
+
+      const alerts = await alertService.getActiveAlerts(userId);
+      res.json(alerts);
+    } catch (error) {
+      console.error('Error fetching prescription alerts:', error);
+      res.status(500).json({ message: 'Failed to fetch alerts' });
+    }
+  });
+
+  // Dismiss a prescription alert
+  app.post('/api/alerts/prescriptions/:id/dismiss', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can manage alerts" });
+      }
+
+      const { actionTaken } = req.body;
+
+      const { PredictiveNonAdaptService } = await import('./services/PredictiveNonAdaptService');
+      const alertService = PredictiveNonAdaptService.getInstance();
+
+      await alertService.dismissAlert(req.params.id, userId, actionTaken);
+      res.json({ message: 'Alert dismissed successfully' });
+    } catch (error) {
+      console.error('Error dismissing alert:', error);
+      res.status(500).json({ message: 'Failed to dismiss alert' });
+    }
+  });
+
+  // Analyze order for non-adapt risk (called during order creation)
+  app.post('/api/orders/analyze-risk', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can analyze orders" });
+      }
+
+      const {
+        lensType,
+        lensMaterial,
+        frameType,
+        coating,
+        odSphere,
+        odCylinder,
+        odAxis,
+        odAdd,
+        osSphere,
+        osCylinder,
+        osAxis,
+        osAdd,
+        pd,
+      } = req.body;
+
+      if (!lensType || !lensMaterial || !odSphere || !osSphere) {
+        return res.status(400).json({ message: 'Missing required prescription fields' });
+      }
+
+      const { PredictiveNonAdaptService } = await import('./services/PredictiveNonAdaptService');
+      const alertService = PredictiveNonAdaptService.getInstance();
+
+      const analysis = await alertService.analyzeOrderForRisk({
+        orderId: 'temp-' + Date.now(),
+        ecpId: userId,
+        lensType,
+        lensMaterial,
+        frameType,
+        coating,
+        rxProfile: {
+          odSphere: parseFloat(odSphere),
+          odCylinder: parseFloat(odCylinder || 0),
+          odAxis: parseFloat(odAxis || 0),
+          odAdd: parseFloat(odAdd || 0),
+          osSphere: parseFloat(osSphere),
+          osCylinder: parseFloat(osCylinder || 0),
+          osAxis: parseFloat(osAxis || 0),
+          osAdd: parseFloat(osAdd || 0),
+          pd: parseFloat(pd || 62),
+        },
+      });
+
+      res.json({ analysis });
+    } catch (error) {
+      console.error('Error analyzing order risk:', error);
+      res.status(500).json({ message: 'Failed to analyze order risk' });
+    }
+  });
+
+  // ============================================================
+  // INTELLIGENT PURCHASING ASSISTANT API ENDPOINTS (Feature 2)
+  // ============================================================
+
+  // Get active BI recommendations for ECP
+  app.get('/api/recommendations/bi', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can access BI recommendations" });
+      }
+
+      const { IntelligentPurchasingAssistantService } = await import('./services/IntelligentPurchasingAssistantService');
+      const biService = IntelligentPurchasingAssistantService.getInstance();
+
+      const recommendations = await biService.getActiveRecommendations(userId);
+      res.json(recommendations);
+    } catch (error) {
+      console.error('Error fetching BI recommendations:', error);
+      res.status(500).json({ message: 'Failed to fetch recommendations' });
+    }
+  });
+
+  // Trigger BI analysis for an ECP
+  app.post('/api/recommendations/bi/analyze', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can trigger BI analysis" });
+      }
+
+      const { IntelligentPurchasingAssistantService } = await import('./services/IntelligentPurchasingAssistantService');
+      const biService = IntelligentPurchasingAssistantService.getInstance();
+
+      const recommendations = await biService.analyzeEcpForRecommendations(userId);
+
+      // Create recommendations in database
+      const created = [];
+      for (const rec of recommendations) {
+        const createdRec = await biService.createRecommendation(userId, rec);
+        created.push(createdRec);
+      }
+
+      res.status(201).json({
+        message: `Created ${created.length} new recommendations`,
+        recommendations: created,
+      });
+    } catch (error) {
+      console.error('Error running BI analysis:', error);
+      res.status(500).json({ message: 'Failed to run BI analysis' });
+    }
+  });
+
+  // Acknowledge a BI recommendation
+  app.post('/api/recommendations/bi/:id/acknowledge', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can acknowledge recommendations" });
+      }
+
+      const { IntelligentPurchasingAssistantService } = await import('./services/IntelligentPurchasingAssistantService');
+      const biService = IntelligentPurchasingAssistantService.getInstance();
+
+      await biService.acknowledgeRecommendation(req.params.id, userId);
+      res.json({ message: 'Recommendation acknowledged' });
+    } catch (error) {
+      console.error('Error acknowledging recommendation:', error);
+      res.status(500).json({ message: 'Failed to acknowledge recommendation' });
+    }
+  });
+
+  // Start implementation of a BI recommendation
+  app.post('/api/recommendations/bi/:id/start-implementation', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can start implementations" });
+      }
+
+      const { IntelligentPurchasingAssistantService } = await import('./services/IntelligentPurchasingAssistantService');
+      const biService = IntelligentPurchasingAssistantService.getInstance();
+
+      await biService.startImplementation(req.params.id);
+      res.json({ message: 'Implementation started' });
+    } catch (error) {
+      console.error('Error starting implementation:', error);
+      res.status(500).json({ message: 'Failed to start implementation' });
+    }
+  });
+
+  // Complete implementation of a BI recommendation
+  app.post('/api/recommendations/bi/:id/complete-implementation', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can complete implementations" });
+      }
+
+      const { IntelligentPurchasingAssistantService } = await import('./services/IntelligentPurchasingAssistantService');
+      const biService = IntelligentPurchasingAssistantService.getInstance();
+
+      await biService.completeImplementation(req.params.id);
+      res.json({ message: 'Implementation completed' });
+    } catch (error) {
+      console.error('Error completing implementation:', error);
+      res.status(500).json({ message: 'Failed to complete implementation' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -84,6 +84,12 @@ export interface IStorage {
     offset?: number;
   }): Promise<OrderWithDetails[]>;
   updateOrderStatus(id: string, status: Order["status"]): Promise<Order | undefined>;
+  updateOrderWithLimsJob(id: string, limsData: {
+    jobId: string;
+    jobStatus: string;
+    sentToLabAt: Date;
+    jobErrorMessage?: string | null;
+  }): Promise<Order | undefined>;
   markOrderAsShipped(id: string, trackingNumber: string): Promise<OrderWithDetails | undefined>;
   getOrderStats(ecpId?: string): Promise<{
     total: number;
@@ -423,6 +429,27 @@ export class DbStorage implements IStorage {
       .set({ 
         status,
         completedAt: status === "completed" ? new Date() : undefined,
+      })
+      .where(eq(orders.id, id))
+      .returning();
+    
+    return order;
+  }
+
+  async updateOrderWithLimsJob(id: string, limsData: {
+    jobId: string;
+    jobStatus: string;
+    sentToLabAt: Date;
+    jobErrorMessage?: string | null;
+  }): Promise<Order | undefined> {
+    const [order] = await db
+      .update(orders)
+      .set({
+        jobId: limsData.jobId,
+        jobStatus: limsData.jobStatus,
+        sentToLabAt: limsData.sentToLabAt,
+        jobErrorMessage: limsData.jobErrorMessage || null,
+        status: "in_production",
       })
       .where(eq(orders.id, id))
       .returning();
