@@ -131,7 +131,10 @@ router.patch('/returns/:id/status',
   async (req, res) => {
     try {
       const validatedData = returnStatusUpdateSchema.parse(req.body);
-      const [updated] = await service.updateReturnStatus(req.params.id, validatedData.status);
+      const updated = await service.updateReturnStatus(req.params.id, {
+        status: validatedData.status,
+        processingNotes: validatedData.processingNotes,
+      });
       if (!updated) {
         return res.status(404).json({ error: 'Return not found' });
       }
@@ -218,11 +221,10 @@ router.patch('/non-adapts/:id/resolution',
   async (req, res) => {
     try {
       const validatedData = nonAdaptStatusUpdateSchema.parse(req.body);
-      const [updated] = await service.updateNonAdaptResolution(
-        req.params.id,
-        validatedData.processingNotes || '',
-        validatedData.status === 'completed' ? 'completed' : undefined
-      );
+      const updated = await service.updateNonAdaptStatus(req.params.id, {
+        resolution: validatedData.processingNotes,
+        resolutionType: validatedData.status,
+      });
       if (!updated) {
         return res.status(404).json({ error: 'Non-adapt not found' });
       }

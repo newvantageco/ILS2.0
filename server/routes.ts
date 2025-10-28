@@ -29,6 +29,7 @@ import { generatePurchaseOrderPDF } from "./pdfService";
 import { sendPurchaseOrderEmail, sendShipmentNotificationEmail } from "./emailService";
 import { z } from "zod";
 import { parseOMAFile, isValidOMAFile } from "@shared/omaParser";
+import { normalizeEmail } from "./utils/normalizeEmail";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for deployment monitoring
@@ -311,6 +312,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email, password, first name, last name, and role are required" });
       }
 
+      const normalizedEmail = normalizeEmail(email);
+
       if (!['ecp', 'lab_tech', 'engineer', 'supplier', 'admin'].includes(role)) {
         return res.status(400).json({ message: "Invalid role" });
       }
@@ -337,7 +340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if email already exists
-      const existingUser = await storage.getUserByEmail(email);
+      const existingUser = await storage.getUserByEmail(normalizedEmail);
       if (existingUser) {
         return res.status(400).json({ message: "Email already registered" });
       }
@@ -364,7 +367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create user
       const newUser = await storage.upsertUser({
-        email,
+        email: normalizedEmail,
         password: hashedPassword,
         firstName,
         lastName,
@@ -408,6 +411,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Email/Password Login
   app.post('/api/auth/login-email', (req, res, next) => {
+    const { email, password } = req.body ?? {};
+
+    if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    req.body.email = normalizeEmail(email);
+
     passport.authenticate('local', (err: any, user: any, info: any) => {
       if (err) {
         console.error("Login error:", err);

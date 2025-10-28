@@ -7,7 +7,7 @@ import postcssNesting from 'postcss-nesting'
 /** @type {import('postcss').Config} */
 export default {
   plugins: [
-    tailwindcssNesting(postcssNesting()),
+  tailwindcssNesting(postcssNesting),
     tailwindcss,
     autoprefixer,
   ],

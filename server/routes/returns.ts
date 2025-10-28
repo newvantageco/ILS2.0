@@ -8,6 +8,7 @@ import {
   updateNonAdaptStatusSchema
 } from '@shared/schema';
 import { fromZodError } from 'zod-validation-error';
+import { ZodError } from 'zod';
 
 const router = Router();
 const service = ReturnsAndNonAdaptService.getInstance();
@@ -30,7 +31,7 @@ router.post('/returns',
       const result = await service.createReturn(validatedData);
       res.status(201).json(result);
     } catch (error) {
-      if (error instanceof Error) {
+      if (error instanceof ZodError) {
         res.status(400).json({ error: fromZodError(error).message });
       } else {
         res.status(500).json({ error: 'Internal server error' });
@@ -80,7 +81,7 @@ router.patch('/returns/:id/status',
       }
       res.json(updated);
     } catch (error) {
-      if (error instanceof Error) {
+      if (error instanceof ZodError) {
         res.status(400).json({ error: fromZodError(error).message });
       } else {
         res.status(500).json({ error: 'Internal server error' });
@@ -99,7 +100,7 @@ router.post('/non-adapts',
       const result = await service.createNonAdapt(validatedData);
       res.status(201).json(result);
     } catch (error) {
-      if (error instanceof Error) {
+      if (error instanceof ZodError) {
         res.status(400).json({ error: fromZodError(error).message });
       } else {
         res.status(500).json({ error: 'Internal server error' });
@@ -149,7 +150,7 @@ router.patch('/non-adapts/:id/status',
       }
       res.json(updated);
     } catch (error) {
-      if (error instanceof Error) {
+      if (error instanceof ZodError) {
         res.status(400).json({ error: fromZodError(error).message });
       } else {
         res.status(500).json({ error: 'Internal server error' });

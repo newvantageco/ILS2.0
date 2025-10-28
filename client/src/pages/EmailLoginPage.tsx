@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +11,9 @@ import { apiRequest } from "@/lib/queryClient";
 
 export default function EmailLoginPage() {
   const [, setLocation] = useLocation();
+
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -22,6 +25,8 @@ export default function EmailLoginPage() {
     try {
       const response = await apiRequest("POST", "/api/auth/login-email", { email, password });
       const data = await response.json() as { message: string; user: any };
+
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
 
       toast({
         title: "Login successful",

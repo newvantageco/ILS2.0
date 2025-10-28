@@ -52,6 +52,7 @@ import {
   type InvoiceLineItem
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql } from "drizzle-orm";
+import { normalizeEmail } from "./utils/normalizeEmail";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -152,18 +153,24 @@ export class DbStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
+    const normalizedEmail = normalizeEmail(email);
+    const [user] = await db.select().from(users).where(eq(users.email, normalizedEmail));
     return user;
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    const payload: UpsertUser = {
+      ...userData,
+      email: userData.email ? normalizeEmail(userData.email) : userData.email,
+    };
+
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values(payload)
       .onConflictDoUpdate({
         target: users.email,
         set: {
-          ...userData,
+          ...payload,
           updatedAt: new Date(),
         },
       })

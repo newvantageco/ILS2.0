@@ -8,6 +8,7 @@ import passport from "passport";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupLocalAuth } from "./localAuth";
+import { ensureMasterUser } from "./masterUser";
 
 const app = express();
 
@@ -95,7 +96,9 @@ app.use((req, res, next) => {
       process.exit(1);
     }
 
-    log("Starting server initialization...");
+  log("Starting server initialization...");
+
+  await ensureMasterUser();
     
     // Add health check endpoint
     app.get('/health', (req, res) => {

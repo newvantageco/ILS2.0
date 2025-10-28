@@ -1,6 +1,5 @@
-import { sql } from 'drizzle-orm';
+import { sql, desc, eq, and } from 'drizzle-orm';
 import { db } from '../db';
-import { desc, eq, and } from 'drizzle-orm/expressions';
 import * as schema from '../../shared/schema';
 import { InferModel } from 'drizzle-orm';
 

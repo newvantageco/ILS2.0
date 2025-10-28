@@ -3,9 +3,24 @@ import { Strategy as LocalStrategy } from "passport-local";
 import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import type { User } from "@shared/schema";
+import { normalizeEmail } from "./utils/normalizeEmail";
+
+let sessionSerializationConfigured = false;
+
+function ensurePassportSerialization() {
+  if (sessionSerializationConfigured) {
+    return;
+  }
+
+  passport.serializeUser((user: any, done) => done(null, user));
+  passport.deserializeUser((user: any, done) => done(null, user));
+  sessionSerializationConfigured = true;
+}
 
 // Configure passport-local strategy for email/password authentication
 export function setupLocalAuth() {
+  ensurePassportSerialization();
+
   passport.use('local', new LocalStrategy(
     {
       usernameField: 'email',
@@ -13,7 +28,17 @@ export function setupLocalAuth() {
     },
     async (email, password, done) => {
       try {
-        const user = await storage.getUserByEmail(email);
+        if (typeof email !== "string" || typeof password !== "string") {
+          return done(null, false, { message: "Invalid email or password" });
+        }
+
+        const trimmedEmail = email.trim();
+        if (!trimmedEmail || !password) {
+          return done(null, false, { message: "Invalid email or password" });
+        }
+
+        const normalizedEmail = normalizeEmail(trimmedEmail);
+        const user = await storage.getUserByEmail(normalizedEmail);
         
         if (!user) {
           return done(null, false, { message: "Invalid email or password" });

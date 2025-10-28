@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { and, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { 
   returns,
   orders,
@@ -79,6 +79,22 @@ export class ReturnsAndNonAdaptService {
     });
   }
 
+  async getAllReturns() {
+    return await db
+      .select()
+      .from(returns)
+      .orderBy(desc(returns.createdAt));
+  }
+
+  async getReturnById(id: string) {
+    const [record] = await db
+      .select()
+      .from(returns)
+      .where(eq(returns.id, id));
+
+    return record ?? null;
+  }
+
   async createNonAdapt({
     orderId,
     reportedBy,
@@ -133,6 +149,22 @@ export class ReturnsAndNonAdaptService {
 
       return nonAdaptRecord;
     });
+  }
+
+  async getAllNonAdapts() {
+    return await db
+      .select()
+      .from(nonAdapts)
+      .orderBy(desc(nonAdapts.createdAt));
+  }
+
+  async getNonAdaptById(id: string) {
+    const [record] = await db
+      .select()
+      .from(nonAdapts)
+      .where(eq(nonAdapts.id, id));
+
+    return record ?? null;
   }
 
   async getReturnsByDateRange(startDate: Date, endDate: Date) {
@@ -214,23 +246,43 @@ export class ReturnsAndNonAdaptService {
     }, {} as Record<string, number>);
   }
 
-  async updateReturnStatus(returnId: string, status: string) {
-    return await db.update(returns)
-      .set({ status })
+  async updateReturnStatus(returnId: string, update: { status: string; processingNotes?: string }) {
+    const updateData: Partial<typeof returns.$inferInsert> = {
+      status: update.status,
+    };
+
+    if (update.processingNotes !== undefined) {
+      updateData.processingNotes = update.processingNotes;
+    }
+
+    const [record] = await db
+      .update(returns)
+      .set(updateData)
       .where(eq(returns.id, returnId))
       .returning();
+
+    return record ?? null;
   }
 
-  async updateNonAdaptResolution(nonAdaptId: string, resolution: string, resolutionType?: string) {
-    const now = new Date();
-    return await db.update(nonAdapts)
-      .set({ 
-        resolution,
-        resolutionType,
-        resolvedAt: now
-      })
+  async updateNonAdaptStatus(nonAdaptId: string, update: { resolution?: string; resolutionType?: string }) {
+    const updateData: Partial<typeof nonAdapts.$inferInsert> = {};
+
+    if (update.resolution !== undefined) {
+      updateData.resolution = update.resolution;
+      updateData.resolvedAt = new Date();
+    }
+
+    if (update.resolutionType !== undefined) {
+      updateData.resolutionType = update.resolutionType;
+    }
+
+    const [record] = await db
+      .update(nonAdapts)
+      .set(updateData)
       .where(eq(nonAdapts.id, nonAdaptId))
       .returning();
+
+    return record ?? null;
   }
 
   async linkQualityIssue(entityId: string, entityType: 'return' | 'non_adapt', qualityIssueId: string) {

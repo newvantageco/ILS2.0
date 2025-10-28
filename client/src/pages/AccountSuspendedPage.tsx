@@ -9,7 +9,7 @@ export default function AccountSuspendedPage() {
   const reason = searchParams.get('reason');
 
   const handleLogout = () => {
-    window.location.href = '/api/auth/logout';
+    window.location.href = '/api/logout';
   };
 
   return (

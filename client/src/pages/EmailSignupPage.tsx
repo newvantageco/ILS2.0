@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 export default function EmailSignupPage() {
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     email: "",
@@ -115,6 +117,8 @@ export default function EmailSignupPage() {
       });
 
       const data = await response.json() as { message: string; user: any };
+
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
 
       toast({
         title: "Account created",

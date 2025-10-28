@@ -4,7 +4,7 @@ import { Clock, LogOut } from "lucide-react";
 
 export default function PendingApprovalPage() {
   const handleLogout = () => {
-    window.location.href = '/api/auth/logout';
+    window.location.href = '/api/logout';
   };
 
   return (

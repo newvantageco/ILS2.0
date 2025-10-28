@@ -1,71 +1,131 @@
-import { WebSocket } from 'ws';
+import { WebSocket } from "ws";
 import type {
   Notification,
   NotificationService,
-  NotificationType,
   NotificationSeverity,
-  NotificationTarget
-} from '@/types/services';
+  NotificationType,
+} from "@/types/services";
+
+const GLOBAL_TARGET_ID = "global";
+
+function serialize(notification: Notification): string {
+  return JSON.stringify({
+    ...notification,
+    createdAt: notification.createdAt?.toISOString(),
+  });
+}
 
 export class NotificationServiceImpl implements NotificationService {
-  private notifications: Map<string, Notification>;
-  private connections: Map<string, WebSocket>;
-
-  constructor() {
-    this.notifications = new Map();
-    this.connections = new Map();
-  }
+  private notifications = new Map<string, Notification>();
+  private connections = new Map<string, Set<WebSocket>>();
 
   public handleConnection(ws: WebSocket, { userId }: { userId: string }): void {
-    this.connections.set(userId, ws);
+    if (!this.connections.has(userId)) {
+      this.connections.set(userId, new Set());
+    }
+
+    this.connections.get(userId)!.add(ws);
+
+    ws.on("close", () => {
+      this.connections.get(userId)?.delete(ws);
+      if ((this.connections.get(userId)?.size ?? 0) === 0) {
+        this.connections.delete(userId);
+      }
+    });
   }
 
   public handleDisconnection({ userId }: { userId: string }): void {
     this.connections.delete(userId);
   }
 
-  public async sendNotification(notification: Omit<Notification, 'id' | 'createdAt'>): Promise<void> {
+  public async sendNotification(notification: Omit<Notification, "id" | "createdAt">): Promise<void> {
     const id = crypto.randomUUID();
+    const createdAt = new Date();
     const fullNotification: Notification = {
       ...notification,
       id,
-      createdAt: new Date()
+      createdAt,
     };
 
     this.notifications.set(id, fullNotification);
-
-    if (notification.userId) {
-      const ws = this.connections.get(notification.userId);
-      if (ws) {
-        ws.send(JSON.stringify(fullNotification));
-      }
-    }
+    this.dispatch(fullNotification);
   }
 
   public async broadcastNotification(notification: { type: string; message: string; broadcast: boolean }): Promise<void> {
+    const normalizedType: NotificationType = ["info", "warning", "error", "success"].includes(notification.type as NotificationType)
+      ? (notification.type as NotificationType)
+      : "info";
+
     const id = crypto.randomUUID();
+    const createdAt = new Date();
+
     const fullNotification: Notification = {
       id,
-      type: 'system_alert' as NotificationType,
-      title: 'System Notification',
+      title: "System Notification",
       message: notification.message,
-      severity: 'info' as NotificationSeverity,
-      target: 'all' as NotificationTarget,
-      createdAt: new Date()
+      type: normalizedType,
+      severity: "low" as NotificationSeverity,
+      target: { type: "organization", id: GLOBAL_TARGET_ID },
+      createdAt,
     };
 
     this.notifications.set(id, fullNotification);
-    this.connections.forEach(ws => ws.send(JSON.stringify(fullNotification)));
+    this.dispatch(fullNotification);
   }
 
   public async getNotificationHistory(userId: string): Promise<Notification[]> {
     return Array.from(this.notifications.values())
-      .filter(n => n.userId === userId || n.target === 'all')
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .filter((notification) => {
+        if (!notification.target) {
+          return false;
+        }
+
+        if (notification.target.type === "user") {
+          return notification.target.id === userId;
+        }
+
+        // Deliver role/organization/global notifications to all connected users for now.
+        return true;
+      })
+      .sort((a, b) => {
+        const aTime = a.createdAt ? a.createdAt.getTime() : 0;
+        const bTime = b.createdAt ? b.createdAt.getTime() : 0;
+        return bTime - aTime;
+      })
       .slice(0, 100);
   }
 
   public getConnectedClients(): string[] {
     return Array.from(this.connections.keys());
+  }
+
+  private dispatch(notification: Notification): void {
+    if (notification.target?.type === "user") {
+      this.sendToUser(notification.target.id, notification);
+      return;
+    }
+
+    const payload = serialize(notification);
+    this.connections.forEach((sockets) => {
+      sockets.forEach((ws) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(payload);
+        }
+      });
+    });
+  }
+
+  private sendToUser(userId: string, notification: Notification): void {
+    const sockets = this.connections.get(userId);
+    if (!sockets || sockets.size === 0) {
+      return;
+    }
+
+    const payload = serialize(notification);
+    sockets.forEach((ws) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(payload);
+      }
+    });
   }
 }

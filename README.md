@@ -140,6 +140,20 @@ The application uses Replit Auth (OpenID Connect) for authentication with the fo
 
 New users must be approved by an administrator before gaining access to the system.
 
+### Bootstrap Master User (optional)
+
+For secure operational access you can pre-provision a "master" account that automatically receives every role. Set the following environment variables before starting the server:
+
+```
+MASTER_USER_EMAIL=master@example.com
+MASTER_USER_PASSWORD=changeMeToSomethingStrong
+MASTER_USER_FIRST_NAME=Master
+MASTER_USER_LAST_NAME=Admin
+MASTER_USER_ORGANIZATION=Platform Control
+```
+
+The password must be at least 12 characters. On startup the server hashes the password, marks the account as active/verified, and assigns all available roles so you can switch contexts without separate logins. Leave these variables empty to skip creating the master account.
+
 ## Development
 
 ### Running Tests

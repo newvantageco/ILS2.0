@@ -3,7 +3,8 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import * as schema from '@shared/schema';
 import { authenticateUser, requireRole } from '../middleware/auth';
-import OrderTrackingService from '../services/OrderTrackingService';
+import orderTrackingService from '../services/OrderTrackingService';
+import { storage } from '../storage';
 
 const router = Router();
 
@@ -15,16 +16,13 @@ router.get(
     try {
       const { orderId } = req.params;
 
-      const order = await db.select()
-        .from(schema.orders)
-        .where(eq(schema.orders.id, orderId))
-        .execute();
+      const order = await storage.getOrder(orderId);
 
-      if (!order || order.length === 0) {
+      if (!order) {
         return res.status(404).json({ error: 'Order not found' });
       }
 
-      res.json(order[0]);
+      res.json(order);
     } catch (error) {
       console.error('Error fetching order status:', error);
       res.status(500).json({ error: 'Failed to fetch order status' });
@@ -42,7 +40,7 @@ router.post(
       const { orderId } = req.params;
       const { status, details } = req.body;
 
-      const update = await OrderTrackingService.updateOrderStatus(orderId, status, details);
+  const update = await orderTrackingService.updateOrderStatus(orderId, status, details);
       res.json(update);
     } catch (error) {
       console.error('Error updating order status:', error);
