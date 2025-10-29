@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RoleSwitcherDropdown } from "@/components/RoleSwitcherDropdown";
 import { FloatingAiChat } from "@/components/FloatingAiChat";
+import { PageTransition } from "@/components/ui/PageTransition";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/Landing";
@@ -67,7 +68,9 @@ function AppLayout({ children, userRole }: { children: React.ReactNode; userRole
             </div>
           </header>
           <main className="flex-1 overflow-auto p-6 md:p-8">
-            {children}
+            <PageTransition>
+              {children}
+            </PageTransition>
           </main>
         </div>
       </div>
