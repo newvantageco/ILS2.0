@@ -27,6 +27,34 @@ export interface InvoiceData {
   paymentTerms?: string;
 }
 
+export interface OrderSheetData {
+  orderNumber: string;
+  orderDate: string;
+  patientName: string;
+  patientDOB?: string;
+  ecpName: string;
+  status: string;
+  lensType: string;
+  lensMaterial: string;
+  coating: string;
+  frameType?: string;
+  rightEye: {
+    sphere?: string;
+    cylinder?: string;
+    axis?: string;
+    add?: string;
+  };
+  leftEye: {
+    sphere?: string;
+    cylinder?: string;
+    axis?: string;
+    add?: string;
+  };
+  pd?: string;
+  notes?: string;
+  customerReferenceNumber?: string;
+}
+
 export class PDFService {
   private logger: Logger;
 
@@ -354,6 +382,141 @@ export class PDFService {
         doc.end();
       } catch (error) {
         this.logger.error("Error generating receipt PDF", error as Error);
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Generate order sheet PDF
+   */
+  async generateOrderSheetPDF(data: OrderSheetData): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ margin: 50 });
+        const buffers: Buffer[] = [];
+
+        doc.on("data", buffers.push.bind(buffers));
+        doc.on("end", () => {
+          const pdfBuffer = Buffer.concat(buffers);
+          resolve(pdfBuffer);
+        });
+
+        // Header
+        doc.fontSize(20).text("LENS ORDER SHEET", { align: "center" });
+        doc.moveDown(0.5);
+        doc.fontSize(10).text(`Order #: ${data.orderNumber}`, { align: "center" });
+        doc.text(`Date: ${data.orderDate}`, { align: "center" });
+        doc.moveDown(1);
+
+        // Status Badge
+        doc.fontSize(12)
+          .fillColor("#4F46E5")
+          .text(`Status: ${data.status.toUpperCase()}`, { align: "center" });
+        doc.fillColor("#000000");
+        doc.moveDown(1.5);
+
+        // Patient Information
+        doc.fontSize(14).text("Patient Information", { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(10);
+        doc.text(`Name: ${data.patientName}`);
+        if (data.patientDOB) {
+          doc.text(`Date of Birth: ${data.patientDOB}`);
+        }
+        doc.moveDown(1);
+
+        // Provider Information
+        doc.fontSize(14).text("Eye Care Provider", { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(10);
+        doc.text(`Provider: ${data.ecpName}`);
+        if (data.customerReferenceNumber) {
+          doc.text(`Reference #: ${data.customerReferenceNumber}`);
+        }
+        doc.moveDown(1);
+
+        // Prescription Details
+        doc.fontSize(14).text("Prescription Details", { underline: true });
+        doc.moveDown(0.5);
+        
+        const tableTop = doc.y;
+        const col1X = 50;
+        const col2X = 150;
+        const col3X = 250;
+        const col4X = 350;
+        const col5X = 450;
+
+        // Table headers
+        doc.fontSize(10).font("Helvetica-Bold");
+        doc.text("Eye", col1X, tableTop);
+        doc.text("Sphere", col2X, tableTop);
+        doc.text("Cylinder", col3X, tableTop);
+        doc.text("Axis", col4X, tableTop);
+        doc.text("Add", col5X, tableTop);
+
+        // Right Eye
+        doc.font("Helvetica");
+        let currentY = tableTop + 20;
+        doc.text("OD (Right)", col1X, currentY);
+        doc.text(data.rightEye.sphere || "—", col2X, currentY);
+        doc.text(data.rightEye.cylinder || "—", col3X, currentY);
+        doc.text(data.rightEye.axis || "—", col4X, currentY);
+        doc.text(data.rightEye.add || "—", col5X, currentY);
+
+        // Left Eye
+        currentY += 20;
+        doc.text("OS (Left)", col1X, currentY);
+        doc.text(data.leftEye.sphere || "—", col2X, currentY);
+        doc.text(data.leftEye.cylinder || "—", col3X, currentY);
+        doc.text(data.leftEye.axis || "—", col4X, currentY);
+        doc.text(data.leftEye.add || "—", col5X, currentY);
+
+        doc.moveDown(2);
+
+        // PD
+        if (data.pd) {
+          doc.text(`Pupillary Distance (PD): ${data.pd} mm`);
+          doc.moveDown(0.5);
+        }
+
+        // Lens Specifications
+        doc.moveDown(1);
+        doc.fontSize(14).font("Helvetica-Bold").text("Lens Specifications", { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(10).font("Helvetica");
+        doc.text(`Lens Type: ${data.lensType}`);
+        doc.text(`Material: ${data.lensMaterial}`);
+        doc.text(`Coating: ${data.coating}`);
+        if (data.frameType) {
+          doc.text(`Frame Type: ${data.frameType}`);
+        }
+        doc.moveDown(1);
+
+        // Notes
+        if (data.notes) {
+          doc.fontSize(14).font("Helvetica-Bold").text("Additional Notes", { underline: true });
+          doc.moveDown(0.5);
+          doc.fontSize(10).font("Helvetica");
+          doc.text(data.notes, {
+            width: 500,
+            align: "left",
+          });
+          doc.moveDown(1);
+        }
+
+        // Footer
+        doc.moveDown(2);
+        doc.fontSize(8)
+          .fillColor("#666666")
+          .text("This order sheet was generated by Integrated Lens System", {
+            align: "center",
+          });
+        doc.text(`Generated on ${new Date().toLocaleString()}`, { align: "center" });
+
+        doc.end();
+      } catch (error) {
+        this.logger.error("Error generating order sheet PDF", error as Error);
         reject(error);
       }
     });

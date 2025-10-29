@@ -1,12 +1,14 @@
 import { useRoute } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Download, Mail } from "lucide-react";
 import { Link } from "wouter";
 import { OMAViewer } from "@/components/OMAViewer";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 type Order = {
   id: string;
@@ -47,6 +49,7 @@ export default function OrderDetailsPage() {
   const [, params] = useRoute<{ id: string }>("/order/:id");
   const orderId = params?.id;
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const { data: order, isLoading } = useQuery<Order>({
     queryKey: ['/api/orders', orderId],
@@ -58,6 +61,70 @@ export default function OrderDetailsPage() {
       return response.json();
     },
     enabled: !!orderId,
+  });
+
+  const downloadPdfMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/orders/${id}/pdf`, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Accept": "application/pdf",
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Failed to download PDF" }));
+        throw new Error(errorData.message || "Failed to download PDF");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `order-${orderId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    },
+    onSuccess: () => {
+      toast({
+        title: "PDF Downloaded",
+        description: "The order sheet PDF has been downloaded.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to download PDF. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const emailMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("POST", `/api/orders/${id}/email`);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to send email");
+      }
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Email Sent",
+        description: "The order sheet has been emailed successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send email. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   if (!orderId) {
@@ -109,7 +176,7 @@ export default function OrderDetailsPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <Link href={getBackPath()}>
             <Button variant="ghost" size="icon" data-testid="button-back">
@@ -123,9 +190,31 @@ export default function OrderDetailsPage() {
             </p>
           </div>
         </div>
-        <Badge className={statusColors[order.status] || ""} data-testid="badge-order-status">
-          {order.status.toUpperCase()}
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Badge className={statusColors[order.status] || ""} data-testid="badge-order-status">
+            {order.status.toUpperCase()}
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => downloadPdfMutation.mutate(orderId)}
+            disabled={downloadPdfMutation.isPending}
+            data-testid="button-download-pdf"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Download PDF
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => emailMutation.mutate(orderId)}
+            disabled={emailMutation.isPending}
+            data-testid="button-email-order"
+          >
+            <Mail className="h-4 w-4 mr-2" />
+            Email Order
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

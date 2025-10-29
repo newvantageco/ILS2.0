@@ -27,6 +27,8 @@ import {
 import { fromZodError } from "zod-validation-error";
 import { generatePurchaseOrderPDF } from "./pdfService";
 import { sendPurchaseOrderEmail, sendShipmentNotificationEmail } from "./emailService";
+import { pdfService, type OrderSheetData } from "./services/PDFService";
+import { emailService } from "./services/EmailService";
 import { z } from "zod";
 import { parseOMAFile, isValidOMAFile } from "@shared/omaParser";
 import { normalizeEmail } from "./utils/normalizeEmail";
@@ -788,6 +790,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating order status:", error);
       res.status(500).json({ message: "Failed to update order status" });
+    }
+  });
+
+  // Generate order sheet PDF
+  app.get('/api/orders/:id/pdf', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const order = await storage.getOrder(req.params.id);
+      
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      // Check access - ECPs can view their own orders, lab techs and engineers can view all
+      if (user.role === 'ecp' && order.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const orderData: OrderSheetData = {
+        orderNumber: order.orderNumber || order.id.slice(-8).toUpperCase(),
+        orderDate: order.orderDate.toISOString().split('T')[0],
+        patientName: order.patient?.name || 'Unknown Patient',
+        patientDOB: order.patient?.dateOfBirth || undefined,
+        ecpName: order.ecp?.organizationName || user.organizationName || 'Unknown Provider',
+        status: order.status,
+        lensType: order.lensType,
+        lensMaterial: order.lensMaterial,
+        coating: order.coating,
+        frameType: order.frameType || undefined,
+        rightEye: {
+          sphere: order.odSphere || undefined,
+          cylinder: order.odCylinder || undefined,
+          axis: order.odAxis || undefined,
+          add: order.odAdd || undefined,
+        },
+        leftEye: {
+          sphere: order.osSphere || undefined,
+          cylinder: order.osCylinder || undefined,
+          axis: order.osAxis || undefined,
+          add: order.osAdd || undefined,
+        },
+        pd: order.pd || undefined,
+        notes: order.notes || undefined,
+        customerReferenceNumber: order.customerReferenceNumber || undefined,
+      };
+
+      const pdfBuffer = await pdfService.generateOrderSheetPDF(orderData);
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="order-${orderData.orderNumber}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating order sheet PDF:", error);
+      res.status(500).json({ message: "Failed to generate order sheet PDF" });
+    }
+  });
+
+  // Email order sheet
+  app.post('/api/orders/:id/email', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const order = await storage.getOrder(req.params.id);
+      
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      // Check access - ECPs can email their own orders
+      if (user.role === 'ecp' && order.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Get recipient email from request body or use patient email
+      const { recipientEmail } = req.body;
+      const toEmail = recipientEmail || order.patient?.email;
+
+      if (!toEmail) {
+        return res.status(400).json({ message: "No email address available for this order" });
+      }
+
+      const orderData: OrderSheetData = {
+        orderNumber: order.orderNumber || order.id.slice(-8).toUpperCase(),
+        orderDate: order.orderDate.toISOString().split('T')[0],
+        patientName: order.patient?.name || 'Unknown Patient',
+        patientDOB: order.patient?.dateOfBirth || undefined,
+        ecpName: order.ecp?.organizationName || user.organizationName || 'Unknown Provider',
+        status: order.status,
+        lensType: order.lensType,
+        lensMaterial: order.lensMaterial,
+        coating: order.coating,
+        frameType: order.frameType || undefined,
+        rightEye: {
+          sphere: order.odSphere || undefined,
+          cylinder: order.odCylinder || undefined,
+          axis: order.odAxis || undefined,
+          add: order.odAdd || undefined,
+        },
+        leftEye: {
+          sphere: order.osSphere || undefined,
+          cylinder: order.osCylinder || undefined,
+          axis: order.osAxis || undefined,
+          add: order.osAdd || undefined,
+        },
+        pd: order.pd || undefined,
+        notes: order.notes || undefined,
+        customerReferenceNumber: order.customerReferenceNumber || undefined,
+      };
+
+      const pdfBuffer = await pdfService.generateOrderSheetPDF(orderData);
+
+      await emailService.sendEmail({
+        to: toEmail,
+        subject: `Order Sheet #${orderData.orderNumber}`,
+        text: `Your order sheet for ${order.patient?.name} is attached.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #4F46E5;">Order Sheet #${orderData.orderNumber}</h2>
+            <p>Dear ${order.patient?.name || 'Valued Customer'},</p>
+            <p>Please find attached the order sheet for your lens order.</p>
+            <div style="margin: 20px 0; padding: 15px; background-color: #f5f5f5; border-radius: 5px;">
+              <strong>Order Details:</strong><br/>
+              Order Number: ${orderData.orderNumber}<br/>
+              Order Date: ${orderData.orderDate}<br/>
+              Status: ${orderData.status}<br/>
+            </div>
+            <p>If you have any questions, please don't hesitate to contact us.</p>
+            <p style="margin-top: 30px; color: #666; font-size: 12px;">
+              This email was sent by ${user.organizationName || 'Integrated Lens System'}
+            </p>
+          </div>
+        `,
+        attachments: [{
+          filename: `order-${orderData.orderNumber}.pdf`,
+          content: pdfBuffer,
+        }],
+      });
+
+      res.json({ message: "Order sheet sent successfully via email" });
+    } catch (error) {
+      console.error("Error sending order sheet email:", error);
+      res.status(500).json({ message: "Failed to send order sheet email" });
     }
   });
 
