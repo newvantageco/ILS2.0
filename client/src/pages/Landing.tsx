@@ -303,68 +303,292 @@ export default function Landing() {
         <section id="features" className="py-20 px-6 bg-muted/30">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-16">
-              <h3 className="text-3xl md:text-4xl font-bold mb-4">Built for Every Role</h3>
+              <h3 className="text-3xl md:text-4xl font-bold mb-4">Comprehensive Feature Suite</h3>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Comprehensive tools tailored to each stakeholder in the lens production ecosystem
+                Everything you need to manage lens production from patient intake to final delivery
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="hover-elevate border-2 transition-all duration-300">
-                <CardContent className="p-6 space-y-4">
-                  <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                    <Glasses className="h-7 w-7 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-xl mb-2">Eye Care Professionals</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      Submit and track lens orders with real-time production updates and seamless communication.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+            {/* Role-Based Dashboards */}
+            <div className="mb-16">
+              <h4 className="text-2xl font-bold mb-6 text-center">Role-Specific Dashboards</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card className="hover-elevate border-2 transition-all duration-300">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                      <Glasses className="h-7 w-7 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-xl mb-2">Eye Care Professionals</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                        Complete patient & prescription management with e-commerce integration
+                      </p>
+                      <ul className="text-xs text-muted-foreground space-y-1">
+                        <li>• Patient records & eye test management</li>
+                        <li>• Prescription tracking & validation</li>
+                        <li>• Shopify customer sync</li>
+                        <li>• POS & invoicing system</li>
+                        <li>• Inventory management</li>
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
 
-              <Card className="hover-elevate border-2 transition-all duration-300">
-                <CardContent className="p-6 space-y-4">
-                  <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                    <Package className="h-7 w-7 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-xl mb-2">Lab Technicians</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      Manage production queue and quality control workflows with efficiency and precision.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+                <Card className="hover-elevate border-2 transition-all duration-300">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                      <Package className="h-7 w-7 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-xl mb-2">Lab Technicians</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                        Production queue & quality control workflows
+                      </p>
+                      <ul className="text-xs text-muted-foreground space-y-1">
+                        <li>• Real-time order queue management</li>
+                        <li>• Production tracking & status updates</li>
+                        <li>• Quality control inspection</li>
+                        <li>• LIMS integration hub</li>
+                        <li>• Equipment monitoring</li>
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
 
-              <Card className="hover-elevate border-2 transition-all duration-300">
-                <CardContent className="p-6 space-y-4">
-                  <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                    <TrendingUp className="h-7 w-7 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-xl mb-2">Engineers</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      Access analytics, equipment tracking, and comprehensive R&D project management tools.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+                <Card className="hover-elevate border-2 transition-all duration-300">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                      <TrendingUp className="h-7 w-7 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-xl mb-2">Engineers</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                        Advanced analytics & R&D management
+                      </p>
+                      <ul className="text-xs text-muted-foreground space-y-1">
+                        <li>• Root cause analysis tools</li>
+                        <li>• Equipment calibration tracking</li>
+                        <li>• R&D project management</li>
+                        <li>• Performance correlation engine</li>
+                        <li>• Predictive maintenance alerts</li>
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
 
-              <Card className="hover-elevate border-2 transition-all duration-300">
-                <CardContent className="p-6 space-y-4">
-                  <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                    <Users className="h-7 w-7 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-xl mb-2">Suppliers</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      Manage purchase orders and maintain a comprehensive technical documentation library.
+                <Card className="hover-elevate border-2 transition-all duration-300">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                      <Users className="h-7 w-7 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-xl mb-2">Suppliers</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                        Purchase order & documentation management
+                      </p>
+                      <ul className="text-xs text-muted-foreground space-y-1">
+                        <li>• Purchase order tracking</li>
+                        <li>• Technical documentation library</li>
+                        <li>• Supplier product catalog</li>
+                        <li>• Order fulfillment workflow</li>
+                        <li>• Communication hub</li>
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Patient & Practice Management */}
+            <div className="mb-16">
+              <h4 className="text-2xl font-bold mb-6 text-center">Patient & Practice Management</h4>
+              <div className="grid md:grid-cols-3 gap-6">
+                <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-background">
+                  <CardContent className="p-6 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Users className="h-5 w-5 text-primary" />
+                      </div>
+                      <h4 className="font-semibold">Patient Records</h4>
+                    </div>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li>• Complete patient database</li>
+                      <li>• Eye test & prescription history</li>
+                      <li>• Automated Shopify customer import</li>
+                      <li>• Duplicate detection & validation</li>
+                      <li>• Full address management</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-background">
+                  <CardContent className="p-6 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <BarChart3 className="h-5 w-5 text-primary" />
+                      </div>
+                      <h4 className="font-semibold">Prescription Management</h4>
+                    </div>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li>• Digital prescription storage</li>
+                      <li>• Sphere, cylinder, axis tracking</li>
+                      <li>• Add power & prism specifications</li>
+                      <li>• Prescription validity monitoring</li>
+                      <li>• Quick reorder from history</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-background">
+                  <CardContent className="p-6 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Package className="h-5 w-5 text-primary" />
+                      </div>
+                      <h4 className="font-semibold">POS & Inventory</h4>
+                    </div>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li>• Point of sale system</li>
+                      <li>• Frame & lens inventory tracking</li>
+                      <li>• Invoice generation</li>
+                      <li>• Payment processing</li>
+                      <li>• Stock level alerts</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* E-commerce & Multi-Tenant */}
+            <div className="mb-16">
+              <h4 className="text-2xl font-bold mb-6 text-center">E-commerce Integration & Administration</h4>
+              <div className="grid md:grid-cols-2 gap-8">
+                <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-background to-background">
+                  <CardContent className="p-8 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Zap className="h-6 w-6 text-primary" />
+                      </div>
+                      <h4 className="font-bold text-xl">Shopify Integration</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Seamlessly connect your Shopify store to import customers as patients automatically
                     </p>
-                  </div>
-                </CardContent>
-              </Card>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>One-click customer sync from Shopify</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Automatic duplicate detection by email</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Address mapping & data validation</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Store Shopify ID for reference tracking</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Sync status & result reporting</span>
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-background to-background">
+                  <CardContent className="p-8 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Shield className="h-6 w-6 text-primary" />
+                      </div>
+                      <h4 className="font-bold text-xl">Multi-Tenant Administration</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Hierarchical admin roles with platform-wide and company-level control
+                    </p>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span><strong>Platform Admin:</strong> System-wide user & company management</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span><strong>Company Admin:</strong> Company profile & team management</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Complete data isolation per company</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>User password reset & account control</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Role-based access control (RBAC)</span>
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Intelligent Features */}
+            <div>
+              <h4 className="text-2xl font-bold mb-6 text-center">Intelligent Features & AI Assistance</h4>
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card className="border-2 transition-all duration-300">
+                  <CardContent className="p-6 space-y-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Brain className="h-5 w-5 text-primary" />
+                    </div>
+                    <h4 className="font-semibold">AI Assistant</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Context-aware AI help for orders, prescriptions, and system navigation
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-2 transition-all duration-300">
+                  <CardContent className="p-6 space-y-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <BarChart3 className="h-5 w-5 text-primary" />
+                    </div>
+                    <h4 className="font-semibold">BI Dashboard</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Real-time analytics, KPIs, and performance metrics with AI insights
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-2 transition-all duration-300">
+                  <CardContent className="p-6 space-y-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Zap className="h-5 w-5 text-primary" />
+                    </div>
+                    <h4 className="font-semibold">Smart Notifications</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Priority-based alerts with snooze, actions, and intelligent filtering
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-2 transition-all duration-300">
+                  <CardContent className="p-6 space-y-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Compass className="h-5 w-5 text-primary" />
+                    </div>
+                    <h4 className="font-semibold">Command Palette</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Keyboard shortcuts (⌘K) for instant navigation & actions
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         </section>
