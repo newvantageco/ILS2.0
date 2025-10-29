@@ -41,10 +41,12 @@ import AIAssistantPage from "@/pages/AIAssistantPage";
 import AISettingsPage from "@/pages/AISettingsPage";
 import CompanyManagementPage from "@/pages/admin/CompanyManagementPage";
 import BIDashboardPage from "@/pages/BIDashboardPage";
+import PlatformAdminPage from "@/pages/PlatformAdminPage";
+import CompanyAdminPage from "@/pages/CompanyAdminPage";
 import { LogOut } from "lucide-react";
 import { useLocation } from "wouter";
 
-function AppLayout({ children, userRole }: { children: React.ReactNode; userRole: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" }) {
+function AppLayout({ children, userRole }: { children: React.ReactNode; userRole: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin" }) {
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-mobile": "100%",
@@ -274,6 +276,25 @@ function AuthenticatedApp() {
                 <p className="text-muted-foreground mt-2">Configure platform-wide settings and restrictions</p>
               </div>
             </Route>
+          </>
+        )}
+
+        {userRole === "platform_admin" && (
+          <>
+            <Route path="/platform-admin/dashboard" component={PlatformAdminPage} />
+            <Route path="/platform-admin/users" component={PlatformAdminPage} />
+            <Route path="/platform-admin/companies" component={PlatformAdminPage} />
+            <Route path="/platform-admin/settings" component={SettingsPage} />
+          </>
+        )}
+
+        {userRole === "company_admin" && (
+          <>
+            <Route path="/company-admin/dashboard" component={CompanyAdminPage} />
+            <Route path="/company-admin/profile" component={CompanyAdminPage} />
+            <Route path="/company-admin/users" component={CompanyAdminPage} />
+            <Route path="/company-admin/suppliers" component={CompanyAdminPage} />
+            <Route path="/company-admin/settings" component={SettingsPage} />
           </>
         )}
 

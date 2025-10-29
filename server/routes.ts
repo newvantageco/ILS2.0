@@ -1707,6 +1707,225 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== Platform Admin Routes ====================
+  
+  // Platform admin - Get all users across all companies
+  app.get('/api/platform-admin/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'platform_admin') {
+        return res.status(403).json({ message: "Platform admin access required" });
+      }
+
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // Platform admin - Get all companies
+  app.get('/api/platform-admin/companies', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'platform_admin') {
+        return res.status(403).json({ message: "Platform admin access required" });
+      }
+
+      const companies = await storage.getCompanies();
+      res.json(companies);
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+      res.status(500).json({ message: "Failed to fetch companies" });
+    }
+  });
+
+  // Platform admin - Update any user
+  app.patch('/api/platform-admin/users/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'platform_admin') {
+        return res.status(403).json({ message: "Platform admin access required" });
+      }
+
+      const updatedUser = await storage.updateUser(req.params.id, req.body);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Platform admin - Reset user password
+  app.post('/api/platform-admin/users/:id/reset-password', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'platform_admin') {
+        return res.status(403).json({ message: "Platform admin access required" });
+      }
+
+      const { password } = req.body;
+      if (!password || password.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters" });
+      }
+
+      const hashedPassword = await hashPassword(password);
+      const updatedUser = await storage.updateUser(req.params.id, { 
+        password: hashedPassword 
+      });
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({ message: "Password reset successfully" });
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
+  // Platform admin - Delete any user
+  app.delete('/api/platform-admin/users/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'platform_admin') {
+        return res.status(403).json({ message: "Platform admin access required" });
+      }
+
+      const targetUserId = req.params.id;
+
+      // Prevent deleting yourself
+      if (userId === targetUserId) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+
+      const deleted = await storage.deleteUser(targetUserId);
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete user" });
+      }
+
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  // ==================== Company Admin Routes ====================
+  
+  // Company admin - Get company profile
+  app.get('/api/company-admin/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'company_admin') {
+        return res.status(403).json({ message: "Company admin access required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "User not associated with a company" });
+      }
+
+      const company = await storage.getCompany(user.companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      res.json(company);
+    } catch (error) {
+      console.error("Error fetching company profile:", error);
+      res.status(500).json({ message: "Failed to fetch company profile" });
+    }
+  });
+
+  // Company admin - Update company profile
+  app.patch('/api/company-admin/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'company_admin') {
+        return res.status(403).json({ message: "Company admin access required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "User not associated with a company" });
+      }
+
+      const updatedCompany = await storage.updateCompany(user.companyId, req.body);
+      if (!updatedCompany) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      res.json(updatedCompany);
+    } catch (error) {
+      console.error("Error updating company:", error);
+      res.status(500).json({ message: "Failed to update company" });
+    }
+  });
+
+  // Company admin - Get company users
+  app.get('/api/company-admin/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'company_admin') {
+        return res.status(403).json({ message: "Company admin access required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "User not associated with a company" });
+      }
+
+      const allUsers = await storage.getAllUsers();
+      const users = allUsers.filter(u => u.companyId === user.companyId);
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching company users:", error);
+      res.status(500).json({ message: "Failed to fetch company users" });
+    }
+  });
+
+  // Company admin - Get supplier relationships
+  app.get('/api/company-admin/suppliers', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'company_admin') {
+        return res.status(403).json({ message: "Company admin access required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "User not associated with a company" });
+      }
+
+      const suppliers = await storage.getCompanySupplierRelationships(user.companyId);
+      res.json(suppliers);
+    } catch (error) {
+      console.error("Error fetching suppliers:", error);
+      res.status(500).json({ message: "Failed to fetch suppliers" });
+    }
+  });
+
   // ==================== Phase 7: ECP Clinical & Retail Module ====================
   
   // Patient routes

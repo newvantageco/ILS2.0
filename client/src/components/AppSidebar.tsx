@@ -38,7 +38,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getUserDisplayName, getUserInitials } from "@/lib/authUtils";
 
 interface AppSidebarProps {
-  userRole?: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin";
+  userRole?: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin";
 }
 
 const menuItems = {
@@ -90,6 +90,19 @@ const menuItems = {
     { title: "AI Assistant", url: "/admin/ai-assistant", icon: Brain },
     { title: "BI Dashboard", url: "/admin/bi-dashboard", icon: BarChart3 },
   ],
+  platform_admin: [
+    { title: "Dashboard", url: "/platform-admin/dashboard", icon: Home },
+    { title: "All Users", url: "/platform-admin/users", icon: Users },
+    { title: "All Companies", url: "/platform-admin/companies", icon: Building2 },
+    { title: "Platform Settings", url: "/platform-admin/settings", icon: Shield },
+  ],
+  company_admin: [
+    { title: "Dashboard", url: "/company-admin/dashboard", icon: Home },
+    { title: "Company Profile", url: "/company-admin/profile", icon: Building2 },
+    { title: "Users", url: "/company-admin/users", icon: Users },
+    { title: "Suppliers", url: "/company-admin/suppliers", icon: Package },
+    { title: "Settings", url: "/company-admin/settings", icon: Settings },
+  ],
 };
 
 const roleLabels = {
@@ -98,6 +111,8 @@ const roleLabels = {
   supplier: "Supplier",
   engineer: "Principal Engineer",
   admin: "Administrator",
+  platform_admin: "Platform Administrator",
+  company_admin: "Company Administrator",
 };
 
 export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
