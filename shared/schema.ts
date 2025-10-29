@@ -355,6 +355,27 @@ export const companies = pgTable("companies", {
   subscriptionEndDate: timestamp("subscription_end_date"),
   billingEmail: varchar("billing_email"),
   
+  // Stripe integration
+  stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
+  stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
+  stripeSubscriptionStatus: varchar("stripe_subscription_status", { length: 50 }),
+  stripeCurrentPeriodEnd: timestamp("stripe_current_period_end"),
+  freeTrialEndDate: timestamp("free_trial_end_date"),
+  subscriptionCancelledAt: timestamp("subscription_cancelled_at"),
+  isSubscriptionExempt: boolean("is_subscription_exempt").default(false), // Master admin created
+  
+  // Branding
+  companyLogoUrl: text("company_logo_url"),
+  companyLetterheadUrl: text("company_letterhead_url"),
+  brandingSettings: jsonb("branding_settings").default(sql`'{
+    "primaryColor": "#0f172a",
+    "secondaryColor": "#3b82f6",
+    "logoPosition": "top-left",
+    "showGocNumber": true,
+    "includeAftercare": true,
+    "dispenseSlipFooter": ""
+  }'::jsonb`),
+  
   // Settings and preferences
   settings: jsonb("settings").default(sql`'{}'::jsonb`),
   preferences: jsonb("preferences").default(sql`'{}'::jsonb`),
@@ -379,6 +400,83 @@ export const companies = pgTable("companies", {
 }, (table) => [
   index("idx_companies_status").on(table.status),
   index("idx_companies_type").on(table.type),
+  index("idx_companies_stripe_customer").on(table.stripeCustomerId),
+  index("idx_companies_stripe_subscription").on(table.stripeSubscriptionId),
+]);
+
+// Subscription Plans table
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: varchar("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  displayName: varchar("display_name", { length: 150 }).notNull(),
+  description: text("description"),
+  priceMonthlyGbp: decimal("price_monthly_gbp", { precision: 10, scale: 2 }),
+  priceYearlyGbp: decimal("price_yearly_gbp", { precision: 10, scale: 2 }),
+  stripePriceIdMonthly: varchar("stripe_price_id_monthly", { length: 255 }),
+  stripePriceIdYearly: varchar("stripe_price_id_yearly", { length: 255 }),
+  features: jsonb("features"),
+  maxUsers: integer("max_users"),
+  maxOrdersPerMonth: integer("max_orders_per_month"),
+  aiEnabled: boolean("ai_enabled").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Stripe Payment Intents table
+export const stripePaymentIntents = pgTable("stripe_payment_intents", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  amount: integer("amount").notNull(), // Amount in pence/cents
+  currency: varchar("currency", { length: 3 }).default("GBP"),
+  status: varchar("status", { length: 50 }).notNull(),
+  paymentMethod: varchar("payment_method", { length: 255 }),
+  customerId: varchar("customer_id", { length: 255 }),
+  subscriptionId: varchar("subscription_id", { length: 255 }),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_payment_intents_company").on(table.companyId),
+  index("idx_payment_intents_subscription").on(table.subscriptionId),
+]);
+
+// Subscription History table
+export const subscriptionHistory = pgTable("subscription_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  eventType: varchar("event_type", { length: 100 }).notNull(), // created, updated, cancelled, expired, trial_ended
+  oldPlan: varchar("old_plan", { length: 50 }),
+  newPlan: varchar("new_plan", { length: 50 }),
+  changedBy: varchar("changed_by", { length: 255 }).references(() => users.id),
+  reason: text("reason"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_subscription_history_company").on(table.companyId),
+  index("idx_subscription_history_event").on(table.eventType),
+]);
+
+// Dispense Records table (audit trail)
+export const dispenseRecords = pgTable("dispense_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id", { length: 255 }).notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  prescriptionId: varchar("prescription_id", { length: 255 }).references(() => prescriptions.id),
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  patientId: varchar("patient_id", { length: 255 }).notNull().references(() => patients.id),
+  dispensedByUserId: varchar("dispensed_by_user_id", { length: 255 }).notNull().references(() => users.id),
+  dispenserName: varchar("dispenser_name", { length: 255 }).notNull(),
+  dispenserGocNumber: varchar("dispenser_goc_number", { length: 50 }),
+  dispenseDate: timestamp("dispense_date").defaultNow().notNull(),
+  printedAt: timestamp("printed_at"),
+  patientSignature: text("patient_signature"), // Base64 encoded
+  dispenserSignature: text("dispenser_signature"), // Base64 encoded
+  specialInstructions: text("special_instructions"),
+  aftercareProvided: boolean("aftercare_provided").default(true),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_dispense_records_order").on(table.orderId),
+  index("idx_dispense_records_company").on(table.companyId),
+  index("idx_dispense_records_patient").on(table.patientId),
 ]);
 
 // Supplier approval/relationship table
@@ -770,7 +868,26 @@ export const prescriptions = pgTable("prescriptions", {
   osCylinder: text("os_cylinder"),
   osAxis: text("os_axis"),
   osAdd: text("os_add"),
-  pd: text("pd"),
+  pd: text("pd"), // Legacy field - kept for backwards compatibility
+  // British Standards - Separate L/R Pupillary Distances
+  pdRight: decimal("pd_right", { precision: 4, scale: 1 }), // Right monocular PD (mm)
+  pdLeft: decimal("pd_left", { precision: 4, scale: 1 }),   // Left monocular PD (mm)
+  binocularPd: decimal("binocular_pd", { precision: 4, scale: 1 }), // Total binocular PD
+  nearPd: decimal("near_pd", { precision: 4, scale: 1 }), // Near PD for reading
+  // Prism prescription (British standards)
+  odPrismHorizontal: decimal("od_prism_horizontal", { precision: 4, scale: 2 }),
+  odPrismVertical: decimal("od_prism_vertical", { precision: 4, scale: 2 }),
+  odPrismBase: varchar("od_prism_base", { length: 20 }), // IN, OUT, UP, DOWN
+  osPrismHorizontal: decimal("os_prism_horizontal", { precision: 4, scale: 2 }),
+  osPrismVertical: decimal("os_prism_vertical", { precision: 4, scale: 2 }),
+  osPrismBase: varchar("os_prism_base", { length: 20 }),
+  // Additional British standards compliance
+  backVertexDistance: decimal("back_vertex_distance", { precision: 4, scale: 1 }), // BVD in mm
+  prescriptionType: varchar("prescription_type", { length: 50 }), // distance, reading, bifocal, varifocal
+  dispensingNotes: text("dispensing_notes"),
+  gocCompliant: boolean("goc_compliant").default(true).notNull(),
+  prescriberGocNumber: varchar("prescriber_goc_number", { length: 50 }),
+  // Digital signature
   isSigned: boolean("is_signed").default(false).notNull(),
   signedByEcpId: varchar("signed_by_ecp_id").references(() => users.id),
   digitalSignature: text("digital_signature"),
