@@ -22,6 +22,13 @@ import {
   aiKnowledgeBase,
   aiLearningData,
   aiFeedback,
+  aiModelVersions,
+  aiModelDeployments,
+  masterTrainingDatasets,
+  trainingDataAnalytics,
+  companyAiSettings,
+  aiTrainingJobs,
+  aiDeploymentQueue,
   subscriptionPlans,
   stripePaymentIntents,
   subscriptionHistory,
@@ -1658,6 +1665,186 @@ export class DbStorage implements IStorage {
       .select()
       .from(dispenseRecords)
       .where(eq(dispenseRecords.orderId, orderId));
+  }
+
+  // Master AI Training methods
+  async createAiModelVersion(version: any) {
+    const [created] = await db
+      .insert(aiModelVersions)
+      .values(version)
+      .returning();
+    return created;
+  }
+
+  async getAiModelVersions(status?: string) {
+    if (status) {
+      return await db
+        .select()
+        .from(aiModelVersions)
+        .where(eq(aiModelVersions.status, status))
+        .orderBy(desc(aiModelVersions.createdAt));
+    }
+    return await db
+      .select()
+      .from(aiModelVersions)
+      .orderBy(desc(aiModelVersions.createdAt));
+  }
+
+  async getAiModelVersion(id: string) {
+    const [version] = await db
+      .select()
+      .from(aiModelVersions)
+      .where(eq(aiModelVersions.id, id))
+      .limit(1);
+    return version;
+  }
+
+  async updateAiModelVersion(id: string, updates: any) {
+    const [updated] = await db
+      .update(aiModelVersions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(aiModelVersions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async createModelDeployment(deployment: any) {
+    const [created] = await db
+      .insert(aiModelDeployments)
+      .values(deployment)
+      .returning();
+    return created;
+  }
+
+  async getModelDeployments(filters: { companyId?: string; modelVersionId?: string; status?: string }) {
+    let query = db.select().from(aiModelDeployments);
+
+    if (filters.companyId) {
+      query = query.where(eq(aiModelDeployments.companyId, filters.companyId)) as any;
+    }
+    if (filters.modelVersionId) {
+      query = query.where(eq(aiModelDeployments.modelVersionId, filters.modelVersionId)) as any;
+    }
+    if (filters.status) {
+      query = query.where(eq(aiModelDeployments.deploymentStatus, filters.status)) as any;
+    }
+
+    return await query.orderBy(desc(aiModelDeployments.deployedAt));
+  }
+
+  async getModelDeploymentsByVersion(versionId: string) {
+    return await db
+      .select()
+      .from(aiModelDeployments)
+      .where(eq(aiModelDeployments.modelVersionId, versionId))
+      .orderBy(desc(aiModelDeployments.deployedAt));
+  }
+
+  async createMasterTrainingDataset(dataset: any) {
+    const [created] = await db
+      .insert(masterTrainingDatasets)
+      .values(dataset)
+      .returning();
+    return created;
+  }
+
+  async getMasterTrainingDatasets(filters: any) {
+    let query = db.select().from(masterTrainingDatasets);
+
+    if (filters.category) {
+      query = query.where(eq(masterTrainingDatasets.category, filters.category)) as any;
+    }
+    if (filters.status) {
+      query = query.where(eq(masterTrainingDatasets.status, filters.status)) as any;
+    }
+    if (filters.modelVersionId) {
+      query = query.where(eq(masterTrainingDatasets.modelVersionId, filters.modelVersionId)) as any;
+    }
+
+    return await query.orderBy(desc(masterTrainingDatasets.createdAt));
+  }
+
+  async getMasterTrainingDataByVersion(versionId: string) {
+    return await db
+      .select()
+      .from(masterTrainingDatasets)
+      .where(eq(masterTrainingDatasets.modelVersionId, versionId))
+      .orderBy(desc(masterTrainingDatasets.createdAt));
+  }
+
+  async updateMasterTrainingDataset(id: string, updates: any) {
+    const [updated] = await db
+      .update(masterTrainingDatasets)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(masterTrainingDatasets.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteMasterTrainingDataset(id: string) {
+    await db
+      .delete(masterTrainingDatasets)
+      .where(eq(masterTrainingDatasets.id, id));
+  }
+
+  async createAiTrainingJob(job: any) {
+    const [created] = await db
+      .insert(aiTrainingJobs)
+      .values(job)
+      .returning();
+    return created;
+  }
+
+  async getAiTrainingJobs(filters: { status?: string; modelVersionId?: string }) {
+    let query = db.select().from(aiTrainingJobs);
+
+    if (filters.status) {
+      query = query.where(eq(aiTrainingJobs.status, filters.status)) as any;
+    }
+    if (filters.modelVersionId) {
+      query = query.where(eq(aiTrainingJobs.modelVersionId, filters.modelVersionId)) as any;
+    }
+
+    return await query.orderBy(desc(aiTrainingJobs.createdAt));
+  }
+
+  async createDeploymentQueue(deployment: any) {
+    const [created] = await db
+      .insert(aiDeploymentQueue)
+      .values(deployment)
+      .returning();
+    return created;
+  }
+
+  async updateDeploymentQueue(id: string, updates: any) {
+    const [updated] = await db
+      .update(aiDeploymentQueue)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(aiDeploymentQueue.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getAllCompanyAiSettings() {
+    return await db
+      .select()
+      .from(companyAiSettings);
+  }
+
+  async updateCompanyAiSettings(companyId: string, updates: any) {
+    const [updated] = await db
+      .update(companyAiSettings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(companyAiSettings.companyId, companyId))
+      .returning();
+    return updated;
+  }
+
+  async getTrainingDataAnalytics() {
+    return await db
+      .select()
+      .from(trainingDataAnalytics)
+      .orderBy(desc(trainingDataAnalytics.recordedAt));
   }
 }
 

@@ -619,6 +619,139 @@ export const aiFeedback = pgTable("ai_feedback", {
   index("idx_ai_feedback_company").on(table.companyId),
 ]);
 
+// ============== MASTER AI TRAINING SYSTEM ==============
+
+// AI Model Versions - master AI model version tracking
+export const aiModelVersions = pgTable("ai_model_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  versionNumber: varchar("version_number", { length: 50 }).notNull().unique(),
+  modelName: varchar("model_name", { length: 255 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 50 }).notNull().default("draft"),
+  createdBy: varchar("created_by").references(() => users.id),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ai_model_versions_status").on(table.status),
+  index("idx_ai_model_versions_created").on(table.createdAt),
+]);
+
+// AI Model Deployments - track which companies have which AI versions
+export const aiModelDeployments = pgTable("ai_model_deployments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  modelVersionId: varchar("model_version_id").notNull().references(() => aiModelVersions.id, { onDelete: 'cascade' }),
+  versionNumber: varchar("version_number", { length: 50 }).notNull(),
+  deploymentStatus: varchar("deployment_status", { length: 50 }).notNull().default("active"),
+  deployedAt: timestamp("deployed_at").defaultNow().notNull(),
+  deactivatedAt: timestamp("deactivated_at"),
+  performanceMetrics: jsonb("performance_metrics"),
+  metadata: jsonb("metadata"),
+}, (table) => [
+  index("idx_ai_deployments_company").on(table.companyId),
+  index("idx_ai_deployments_version").on(table.modelVersionId),
+  index("idx_ai_deployments_status").on(table.deploymentStatus),
+]);
+
+// Master Training Datasets - curated training data by platform admin
+export const masterTrainingDatasets = pgTable("master_training_datasets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  modelVersionId: varchar("model_version_id").references(() => aiModelVersions.id),
+  category: varchar("category", { length: 100 }).notNull(),
+  title: varchar("title", { length: 500 }).notNull(),
+  content: text("content").notNull(),
+  contentType: varchar("content_type", { length: 100 }).notNull(),
+  source: text("source"),
+  qualityScore: decimal("quality_score", { precision: 3, scale: 2 }),
+  tags: jsonb("tags"),
+  status: varchar("status", { length: 50 }).notNull().default("pending"),
+  createdBy: varchar("created_by").references(() => users.id),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_master_training_category").on(table.category),
+  index("idx_master_training_status").on(table.status),
+  index("idx_master_training_version").on(table.modelVersionId),
+]);
+
+// Training Data Analytics - track effectiveness of training data
+export const trainingDataAnalytics = pgTable("training_data_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  datasetId: varchar("dataset_id").notNull().references(() => masterTrainingDatasets.id, { onDelete: 'cascade' }),
+  modelVersionId: varchar("model_version_id").notNull().references(() => aiModelVersions.id, { onDelete: 'cascade' }),
+  usageCount: integer("usage_count").default(0),
+  successRate: decimal("success_rate", { precision: 5, scale: 2 }),
+  avgConfidence: decimal("avg_confidence", { precision: 5, scale: 2 }),
+  feedbackScore: decimal("feedback_score", { precision: 5, scale: 2 }),
+  improvementMetrics: jsonb("improvement_metrics"),
+  recordedAt: timestamp("recorded_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_training_analytics_dataset").on(table.datasetId),
+  index("idx_training_analytics_version").on(table.modelVersionId),
+]);
+
+// Company AI Settings - per-company AI configuration
+export const companyAiSettings = pgTable("company_ai_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().unique().references(() => companies.id, { onDelete: 'cascade' }),
+  currentModelVersion: varchar("current_model_version", { length: 50 }),
+  autoUpdateEnabled: boolean("auto_update_enabled").default(true),
+  customTrainingEnabled: boolean("custom_training_enabled").default(false),
+  dataRetentionDays: integer("data_retention_days").default(90),
+  lastTrainingSync: timestamp("last_training_sync"),
+  aiPreferences: jsonb("ai_preferences"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_company_ai_settings_company").on(table.companyId),
+]);
+
+// AI Training Jobs - background training process tracking
+export const aiTrainingJobs = pgTable("ai_training_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  modelVersionId: varchar("model_version_id").notNull().references(() => aiModelVersions.id, { onDelete: 'cascade' }),
+  jobType: varchar("job_type", { length: 50 }).notNull(),
+  status: varchar("status", { length: 50 }).notNull().default("queued"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  trainingDatasetIds: jsonb("training_dataset_ids"),
+  trainingMetrics: jsonb("training_metrics"),
+  errorLog: jsonb("error_log"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ai_training_jobs_version").on(table.modelVersionId),
+  index("idx_ai_training_jobs_status").on(table.status),
+]);
+
+// AI Deployment Queue - scheduled deployments
+export const aiDeploymentQueue = pgTable("ai_deployment_queue", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  modelVersionId: varchar("model_version_id").notNull().references(() => aiModelVersions.id, { onDelete: 'cascade' }),
+  companyIds: jsonb("company_ids"),
+  deploymentType: varchar("deployment_type", { length: 50 }).notNull(),
+  scheduledAt: timestamp("scheduled_at"),
+  status: varchar("status", { length: 50 }).notNull().default("pending"),
+  priority: integer("priority").default(5),
+  companiesDeployed: integer("companies_deployed").default(0),
+  companiesFailed: integer("companies_failed").default(0),
+  processedAt: timestamp("processed_at"),
+  errorLog: jsonb("error_log"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ai_deployment_queue_version").on(table.modelVersionId),
+  index("idx_ai_deployment_queue_status").on(table.status),
+  index("idx_ai_deployment_queue_scheduled").on(table.scheduledAt),
+]);
+
 // User storage table with Replit Auth fields and local auth support
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

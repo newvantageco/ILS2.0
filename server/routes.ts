@@ -37,6 +37,7 @@ import { registerAiIntelligenceRoutes } from "./routes/aiIntelligence";
 import { registerAiAssistantRoutes } from "./routes/aiAssistant";
 import { registerMetricsRoutes } from "./routes/metrics";
 import { registerPermissionRoutes } from "./routes/permissions";
+import { registerMasterAiRoutes } from "./routes/masterAi";
 import { websocketService } from "./websocket";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -67,6 +68,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Permission Management routes
   registerPermissionRoutes(app);
+
+  // Register Master AI Training routes (platform admin only)
+  registerMasterAiRoutes(app);
 
   const FULL_PLAN = "full" as const;
   const FREE_ECP_PLAN = "free_ecp" as const;
