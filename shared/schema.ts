@@ -587,6 +587,7 @@ export const userCustomPermissions = pgTable("user_custom_permissions", {
 export const patients = pgTable("patients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   customerNumber: varchar("customer_number", { length: 20 }).notNull().unique(),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
   name: text("name").notNull(),
   dateOfBirth: text("date_of_birth"),
   email: varchar("email"),
@@ -601,6 +602,7 @@ export const patients = pgTable("patients", {
 export const orders = pgTable("orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderNumber: text("order_number").notNull().unique(),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
   patientId: varchar("patient_id").notNull().references(() => patients.id),
   ecpId: varchar("ecp_id").notNull().references(() => users.id),
   status: orderStatusEnum("status").notNull().default("pending"),
@@ -645,6 +647,7 @@ export const orders = pgTable("orders", {
 
 export const consultLogs = pgTable("consult_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
   orderId: varchar("order_id").notNull().references(() => orders.id),
   ecpId: varchar("ecp_id").notNull().references(() => users.id),
   priority: consultPriorityEnum("priority").notNull().default("normal"),
@@ -659,6 +662,7 @@ export const consultLogs = pgTable("consult_logs", {
 export const purchaseOrders = pgTable("purchase_orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   poNumber: text("po_number").notNull().unique(),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
   supplierId: varchar("supplier_id").notNull().references(() => users.id),
   createdById: varchar("created_by_id").notNull().references(() => users.id),
   status: poStatusEnum("status").notNull().default("draft"),
@@ -722,6 +726,7 @@ export const userPreferences = pgTable("user_preferences", {
 
 export const eyeExaminations = pgTable("eye_examinations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
   patientId: varchar("patient_id").notNull().references(() => patients.id),
   ecpId: varchar("ecp_id").notNull().references(() => users.id),
   examinationDate: timestamp("examination_date").defaultNow().notNull(),
@@ -742,6 +747,7 @@ export const eyeExaminations = pgTable("eye_examinations", {
 
 export const prescriptions = pgTable("prescriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
   examinationId: varchar("examination_id").references(() => eyeExaminations.id),
   patientId: varchar("patient_id").notNull().references(() => patients.id),
   ecpId: varchar("ecp_id").notNull().references(() => users.id),
@@ -765,6 +771,7 @@ export const prescriptions = pgTable("prescriptions", {
 
 export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
   ecpId: varchar("ecp_id").notNull().references(() => users.id),
   productType: productTypeEnum("product_type").notNull(),
   sku: text("sku"),
@@ -779,6 +786,7 @@ export const products = pgTable("products", {
 export const invoices = pgTable("invoices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   invoiceNumber: text("invoice_number").notNull().unique(),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
   patientId: varchar("patient_id").references(() => patients.id),
   ecpId: varchar("ecp_id").notNull().references(() => users.id),
   status: invoiceStatusEnum("status").notNull().default("draft"),
