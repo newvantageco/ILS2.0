@@ -8,17 +8,19 @@ export default function AccountSuspendedPage() {
   const searchParams = new URLSearchParams(location.split('?')[1]);
   const reason = searchParams.get('reason');
 
-  const handleLogout = () => {
-    window.location.href = '/api/logout';
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Logout error:', error);
+      window.location.href = '/';
+    }
   };
 
   const handleGoBack = () => {
-    // Try to go to the previous page or default to home/login
-    if (window.history.length > 1) {
-      window.history.back();
-    } else {
-      setLocation("/login");
-    }
+    // Navigate to home page
+    window.location.href = '/';
   };
 
   return (
