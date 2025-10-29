@@ -395,6 +395,20 @@ export const companies = pgTable("companies", {
   shopifyLastSyncAt: timestamp("shopify_last_sync_at"),
   shopifySyncSettings: jsonb("shopify_sync_settings").default(sql`'{}'::jsonb`), // Sync preferences
   
+  // GOC Practice Details
+  practiceGocNumber: varchar("practice_goc_number", { length: 50 }),
+  practiceType: varchar("practice_type", { length: 50 }), // 'independent', 'multiple', 'hospital', 'domiciliary'
+  primaryPractitionerName: varchar("primary_practitioner_name", { length: 255 }),
+  primaryPractitionerGoc: varchar("primary_practitioner_goc", { length: 50 }),
+  emergencyContactName: varchar("emergency_contact_name", { length: 255 }),
+  emergencyContactPhone: varchar("emergency_contact_phone", { length: 50 }),
+  outOfHoursContact: text("out_of_hours_contact"),
+  insuranceProvider: varchar("insurance_provider", { length: 255 }),
+  insurancePolicyNumber: varchar("insurance_policy_number", { length: 100 }),
+  insuranceExpiryDate: timestamp("insurance_expiry_date"),
+  hasEcpAccess: boolean("has_ecp_access").default(false),
+  hasLabAccess: boolean("has_lab_access").default(false),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -776,6 +790,21 @@ export const users = pgTable("users", {
   isActive: boolean("is_active").default(true),
   isVerified: boolean("is_verified").default(false),
   lastLoginAt: timestamp("last_login_at"),
+  
+  // GOC Practitioner Details
+  gocRegistrationNumber: varchar("goc_registration_number", { length: 50 }),
+  gocRegistrationType: varchar("goc_registration_type", { length: 50 }),
+  professionalQualifications: varchar("professional_qualifications", { length: 255 }),
+  gocRegistrationExpiry: timestamp("goc_registration_expiry"),
+  indemnityInsuranceProvider: varchar("indemnity_insurance_provider", { length: 255 }),
+  indemnityPolicyNumber: varchar("indemnity_policy_number", { length: 100 }),
+  indemnityExpiryDate: timestamp("indemnity_expiry_date"),
+  cpdCompleted: boolean("cpd_completed").default(true),
+  cpdLastUpdated: timestamp("cpd_last_updated"),
+  signatureImage: text("signature_image"),
+  canPrescribe: boolean("can_prescribe").default(true),
+  canDispense: boolean("can_dispense").default(true),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -836,6 +865,28 @@ export const patients = pgTable("patients", {
   customerReferenceLabel: text("customer_reference_label"),
   customerReferenceNumber: text("customer_reference_number"),
   ecpId: varchar("ecp_id").notNull().references(() => users.id),
+  
+  // Enhanced Clinical Records
+  previousOptician: varchar("previous_optician", { length: 255 }),
+  gpName: varchar("gp_name", { length: 255 }),
+  gpPractice: varchar("gp_practice", { length: 255 }),
+  gpAddress: text("gp_address"),
+  emergencyContactName: varchar("emergency_contact_name", { length: 255 }),
+  emergencyContactPhone: varchar("emergency_contact_phone", { length: 50 }),
+  emergencyContactRelationship: varchar("emergency_contact_relationship", { length: 100 }),
+  medicalHistory: jsonb("medical_history"),
+  currentMedications: text("current_medications"),
+  familyOcularHistory: text("family_ocular_history"),
+  occupation: varchar("occupation", { length: 255 }),
+  vduUser: boolean("vdu_user").default(false),
+  drivingRequirement: boolean("driving_requirement").default(false),
+  contactLensWearer: boolean("contact_lens_wearer").default(false),
+  preferredContactMethod: varchar("preferred_contact_method", { length: 50 }),
+  marketingConsent: boolean("marketing_consent").default(false),
+  dataSharingConsent: boolean("data_sharing_consent").default(true),
+  lastExaminationDate: timestamp("last_examination_date"),
+  nextExaminationDue: timestamp("next_examination_due"),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -1020,13 +1071,161 @@ export const prescriptions = pgTable("prescriptions", {
   dispensingNotes: text("dispensing_notes"),
   gocCompliant: boolean("goc_compliant").default(true).notNull(),
   prescriberGocNumber: varchar("prescriber_goc_number", { length: 50 }),
+  
+  // British GOC Compliance & Test Room
+  testRoomName: varchar("test_room_name", { length: 100 }),
+  prescriberName: varchar("prescriber_name", { length: 255 }),
+  prescriberQualifications: varchar("prescriber_qualifications", { length: 255 }),
+  prescriberGocType: varchar("prescriber_goc_type", { length: 50 }), // 'optometrist', 'dispensing_optician', 'ophthalmologist'
+  
+  // Visual Acuity (British Standards)
+  odVisualAcuityUnaided: varchar("od_visual_acuity_unaided", { length: 20 }),
+  odVisualAcuityAided: varchar("od_visual_acuity_aided", { length: 20 }),
+  odVisualAcuityPinhole: varchar("od_visual_acuity_pinhole", { length: 20 }),
+  osVisualAcuityUnaided: varchar("os_visual_acuity_unaided", { length: 20 }),
+  osVisualAcuityAided: varchar("os_visual_acuity_aided", { length: 20 }),
+  osVisualAcuityPinhole: varchar("os_visual_acuity_pinhole", { length: 20 }),
+  binocularVisualAcuity: varchar("binocular_visual_acuity", { length: 20 }),
+  
+  // Near Vision
+  odNearVision: varchar("od_near_vision", { length: 20 }),
+  osNearVision: varchar("os_near_vision", { length: 20 }),
+  binocularNearVision: varchar("binocular_near_vision", { length: 20 }),
+  
+  // Intermediate Vision
+  odIntermediateAdd: decimal("od_intermediate_add", { precision: 4, scale: 2 }),
+  osIntermediateAdd: decimal("os_intermediate_add", { precision: 4, scale: 2 }),
+  
+  // Keratometry
+  odKReading1: decimal("od_k_reading_1", { precision: 5, scale: 2 }),
+  odKReading2: decimal("od_k_reading_2", { precision: 5, scale: 2 }),
+  odKAxis: integer("od_k_axis"),
+  osKReading1: decimal("os_k_reading_1", { precision: 5, scale: 2 }),
+  osKReading2: decimal("os_k_reading_2", { precision: 5, scale: 2 }),
+  osKAxis: integer("os_k_axis"),
+  
+  // Ocular Health
+  intraocularPressureOd: varchar("intraocular_pressure_od", { length: 20 }),
+  intraocularPressureOs: varchar("intraocular_pressure_os", { length: 20 }),
+  ocularHealthNotes: text("ocular_health_notes"),
+  clinicalRecommendations: text("clinical_recommendations"),
+  followUpRequired: boolean("follow_up_required").default(false),
+  followUpDate: timestamp("follow_up_date"),
+  followUpReason: text("follow_up_reason"),
+  
+  // Dispensing Recommendations
+  recommendedLensType: varchar("recommended_lens_type", { length: 100 }),
+  recommendedLensMaterial: varchar("recommended_lens_material", { length: 100 }),
+  recommendedCoatings: text("recommended_coatings"),
+  frameRecommendations: text("frame_recommendations"),
+  specialInstructions: text("special_instructions"),
+  
+  // Usage & Restrictions
+  usagePurpose: varchar("usage_purpose", { length: 100 }),
+  wearTime: varchar("wear_time", { length: 100 }),
+  drivingSuitable: boolean("driving_suitable").default(true),
+  dvlaNotified: boolean("dvla_notified").default(false),
+  
+  // Verification
+  verifiedByEcpId: varchar("verified_by_ecp_id").references(() => users.id),
+  verifiedAt: timestamp("verified_at"),
+  verificationNotes: text("verification_notes"),
+  
+  // GOC Record Keeping
+  recordRetentionDate: timestamp("record_retention_date"),
+  referralMade: boolean("referral_made").default(false),
+  referralTo: varchar("referral_to", { length: 255 }),
+  referralReason: text("referral_reason"),
+  
+  // Enhanced metadata
+  examinationDurationMinutes: integer("examination_duration_minutes"),
+  examinationType: varchar("examination_type", { length: 50 }),
+  patientComplaint: text("patient_complaint"),
+  previousPrescriptionId: varchar("previous_prescription_id").references(() => prescriptions.id),
+  
   // Digital signature
   isSigned: boolean("is_signed").default(false).notNull(),
   signedByEcpId: varchar("signed_by_ecp_id").references(() => users.id),
   digitalSignature: text("digital_signature"),
   signedAt: timestamp("signed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_prescriptions_test_room").on(table.testRoomName),
+  index("idx_prescriptions_goc_number").on(table.prescriberGocNumber),
+  index("idx_prescriptions_follow_up").on(table.followUpDate),
+  index("idx_prescriptions_retention").on(table.recordRetentionDate),
+  index("idx_prescriptions_verified").on(table.verifiedByEcpId),
+]);
+
+// Test Rooms table
+export const testRooms = pgTable("test_rooms", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  roomName: varchar("room_name", { length: 100 }).notNull(),
+  roomCode: varchar("room_code", { length: 20 }),
+  locationDescription: text("location_description"),
+  equipmentList: text("equipment_list"),
+  isActive: boolean("is_active").default(true),
+  displayOrder: integer("display_order").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_test_rooms_company").on(table.companyId),
+  index("idx_test_rooms_active").on(table.isActive),
+]);
+
+// GOC Compliance Checks table
+export const gocComplianceChecks = pgTable("goc_compliance_checks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id),
+  checkType: varchar("check_type", { length: 100 }).notNull(),
+  checkDate: timestamp("check_date").defaultNow().notNull(),
+  status: varchar("status", { length: 50 }).notNull(),
+  details: text("details"),
+  actionRequired: text("action_required"),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: varchar("resolved_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_goc_compliance_company").on(table.companyId),
+  index("idx_goc_compliance_status").on(table.status),
+  index("idx_goc_compliance_date").on(table.checkDate),
+]);
+
+// Prescription Templates table
+export const prescriptionTemplates = pgTable("prescription_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  templateName: varchar("template_name", { length: 150 }).notNull(),
+  templateDescription: text("template_description"),
+  prescriptionType: varchar("prescription_type", { length: 50 }),
+  defaultValues: jsonb("default_values").notNull(),
+  usageCount: integer("usage_count").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_prescription_templates_company").on(table.companyId),
+]);
+
+// Clinical Protocols table
+export const clinicalProtocols = pgTable("clinical_protocols", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  protocolName: varchar("protocol_name", { length: 255 }).notNull(),
+  protocolType: varchar("protocol_type", { length: 100 }),
+  description: text("description"),
+  protocolSteps: jsonb("protocol_steps"),
+  complianceNotes: text("compliance_notes"),
+  isMandatory: boolean("is_mandatory").default(false),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_clinical_protocols_company").on(table.companyId),
+]);
 
 export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1818,4 +2017,32 @@ export const insertUserCustomPermissionSchema = createInsertSchema(userCustomPer
 
 export type UserCustomPermission = typeof userCustomPermissions.$inferSelect;
 export type InsertUserCustomPermission = typeof userCustomPermissions.$inferInsert;
+
+// Test Rooms schemas
+export const insertTestRoomSchema = createInsertSchema(testRooms);
+export const updateTestRoomSchema = insertTestRoomSchema.partial();
+
+export type TestRoom = typeof testRooms.$inferSelect;
+export type InsertTestRoom = typeof testRooms.$inferInsert;
+
+// GOC Compliance Checks schemas
+export const insertGocComplianceCheckSchema = createInsertSchema(gocComplianceChecks);
+export const updateGocComplianceCheckSchema = insertGocComplianceCheckSchema.partial();
+
+export type GocComplianceCheck = typeof gocComplianceChecks.$inferSelect;
+export type InsertGocComplianceCheck = typeof gocComplianceChecks.$inferInsert;
+
+// Prescription Templates schemas
+export const insertPrescriptionTemplateSchema = createInsertSchema(prescriptionTemplates);
+export const updatePrescriptionTemplateSchema = insertPrescriptionTemplateSchema.partial();
+
+export type PrescriptionTemplate = typeof prescriptionTemplates.$inferSelect;
+export type InsertPrescriptionTemplate = typeof prescriptionTemplates.$inferInsert;
+
+// Clinical Protocols schemas
+export const insertClinicalProtocolSchema = createInsertSchema(clinicalProtocols);
+export const updateClinicalProtocolSchema = insertClinicalProtocolSchema.partial();
+
+export type ClinicalProtocol = typeof clinicalProtocols.$inferSelect;
+export type InsertClinicalProtocol = typeof clinicalProtocols.$inferInsert;
 
