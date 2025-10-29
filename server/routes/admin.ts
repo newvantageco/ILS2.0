@@ -98,7 +98,7 @@ router.post("/companies", isPlatformAdmin, async (req: any, res: Response) => {
 
     // Log the creation in subscription history
     const userId = req.user?.claims?.sub || req.user?.id;
-    await storage.db.insert(storage.subscriptionHistory).values({
+    await storage.createSubscriptionHistory({
       companyId: company.id,
       eventType: "created",
       newPlan: data.subscriptionPlan,
@@ -160,7 +160,7 @@ router.put("/companies/:companyId/subscription-exemption", isPlatformAdmin, asyn
 
     // Log the change
     const userId = req.user?.claims?.sub || req.user?.id;
-    await storage.db.insert(storage.subscriptionHistory).values({
+    await storage.createSubscriptionHistory({
       companyId,
       eventType: "updated",
       changedBy: userId,
@@ -269,7 +269,7 @@ router.put("/companies/:companyId/subscription", isPlatformAdmin, async (req: an
 
     // Log the change
     const userId = req.user?.claims?.sub || req.user?.id;
-    await storage.db.insert(storage.subscriptionHistory).values({
+    await storage.createSubscriptionHistory({
       companyId,
       eventType: "updated",
       oldPlan: company.subscriptionPlan,

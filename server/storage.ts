@@ -22,6 +22,10 @@ import {
   aiKnowledgeBase,
   aiLearningData,
   aiFeedback,
+  subscriptionPlans,
+  stripePaymentIntents,
+  subscriptionHistory,
+  dispenseRecords,
   type UpsertUser, 
   type User, 
   type UserWithRoles,
@@ -1598,6 +1602,62 @@ export class DbStorage implements IStorage {
       .from(aiFeedback)
       .where(eq(aiFeedback.companyId, companyId))
       .orderBy(desc(aiFeedback.createdAt));
+  }
+
+  // Subscription and payment methods
+  async getSubscriptionPlans() {
+    return await db
+      .select()
+      .from(subscriptionPlans)
+      .where(eq(subscriptionPlans.isActive, true));
+  }
+
+  async createSubscriptionHistory(history: any) {
+    const [created] = await db
+      .insert(subscriptionHistory)
+      .values(history)
+      .returning();
+    return created;
+  }
+
+  async getSubscriptionHistory(companyId: string) {
+    return await db
+      .select()
+      .from(subscriptionHistory)
+      .where(eq(subscriptionHistory.companyId, companyId))
+      .orderBy(desc(subscriptionHistory.createdAt));
+  }
+
+  async createPaymentIntent(payment: any) {
+    const [created] = await db
+      .insert(stripePaymentIntents)
+      .values(payment)
+      .returning();
+    return created;
+  }
+
+  async getCompanyByStripeCustomerId(customerId: string) {
+    const [company] = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.stripeCustomerId, customerId))
+      .limit(1);
+    return company;
+  }
+
+  async createDispenseRecord(record: any) {
+    const [created] = await db
+      .insert(dispenseRecords)
+      .values(record)
+      .returning();
+    return created;
+  }
+
+  async getDispenseRecords(orderId: string) {
+    return await db
+      .select()
+      .from(dispenseRecords)
+      .where(eq(dispenseRecords.orderId, orderId));
   }
 }
 

@@ -13,7 +13,7 @@ const router = Router();
 
 // Initialize Stripe (use environment variable in production)
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_placeholder", {
-  apiVersion: "2024-10-28.acacia",
+  apiVersion: "2025-09-30.clover",
 });
 
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
@@ -44,7 +44,7 @@ function isPlatformAdmin(req: any, res: Response, next: Function) {
  */
 router.get("/subscription-plans", async (req: Request, res: Response) => {
   try {
-    const plans = await storage.db.select().from(storage.subscriptionPlans).where({ isActive: true });
+    const plans = await storage.getSubscriptionPlans();
     res.json({ success: true, plans });
   } catch (error: any) {
     console.error("Error fetching subscription plans:", error);
@@ -73,16 +73,16 @@ router.post("/create-checkout-session", isAuthenticated, async (req: any, res: R
 
     // Get company and plan details
     const company = await storage.getCompany(user.companyId);
-    const plan = await storage.db.select().from(storage.subscriptionPlans).where({ id: planId }).limit(1);
+    const plans = await storage.getSubscriptionPlans();
+    const plan = plans.find(p => p.id === planId);
 
-    if (!plan || plan.length === 0) {
+    if (!plan) {
       return res.status(404).json({ error: "Subscription plan not found" });
     }
 
-    const selectedPlan = plan[0];
     const priceId = billingInterval === "yearly" 
-      ? selectedPlan.stripePriceIdYearly 
-      : selectedPlan.stripePriceIdMonthly;
+      ? plan.stripePriceIdYearly 
+      : plan.stripePriceIdMonthly;
 
     if (!priceId) {
       return res.status(400).json({ error: "Price not configured for this plan" });
@@ -93,7 +93,7 @@ router.post("/create-checkout-session", isAuthenticated, async (req: any, res: R
     
     if (!customerId) {
       const customer = await stripe.customers.create({
-        email: company?.email || user.email,
+        email: company?.email || user.email || undefined,
         name: company?.name,
         metadata: {
           companyId: user.companyId,
@@ -184,11 +184,7 @@ router.get("/subscription-status", isAuthenticated, async (req: any, res: Respon
     }
 
     // Get subscription history
-    const history = await storage.db.select()
-      .from(storage.subscriptionHistory)
-      .where({ companyId: user.companyId })
-      .orderBy({ createdAt: "desc" })
-      .limit(10);
+    const history = await storage.getSubscriptionHistory(user.companyId);
 
     res.json({
       success: true,
@@ -271,17 +267,18 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   }
 
   const planId = subscription.metadata.planId || "professional";
+  const currentPeriodEnd = (subscription as any).current_period_end;
 
   await storage.updateCompany(companyId, {
     stripeSubscriptionId: subscription.id,
     stripeSubscriptionStatus: subscription.status,
-    stripeCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
+    stripeCurrentPeriodEnd: currentPeriodEnd ? new Date(currentPeriodEnd * 1000) : undefined,
     subscriptionPlan: planId as any,
     subscriptionStartDate: new Date(subscription.created * 1000),
   });
 
   // Log subscription history
-  await storage.db.insert(storage.subscriptionHistory).values({
+  await storage.createSubscriptionHistory({
     companyId,
     eventType: "updated",
     newPlan: planId,
@@ -307,7 +304,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   });
 
   // Log cancellation
-  await storage.db.insert(storage.subscriptionHistory).values({
+  await storage.createSubscriptionHistory({
     companyId,
     eventType: "cancelled",
     oldPlan: company?.subscriptionPlan,
@@ -321,23 +318,21 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
  */
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
   const customerId = invoice.customer as string;
+  const paymentIntent = (invoice as any).payment_intent;
   
   // Record payment intent
-  if (invoice.payment_intent) {
-    const companies = await storage.db.select()
-      .from(storage.companies)
-      .where({ stripeCustomerId: customerId })
-      .limit(1);
+  if (paymentIntent) {
+    const company = await storage.getCompanyByStripeCustomerId(customerId);
 
-    if (companies.length > 0) {
-      await storage.db.insert(storage.stripePaymentIntents).values({
-        id: invoice.payment_intent as string,
-        companyId: companies[0].id,
+    if (company) {
+      await storage.createPaymentIntent({
+        id: paymentIntent as string,
+        companyId: company.id,
         amount: invoice.amount_paid,
         currency: invoice.currency.toUpperCase(),
         status: "succeeded",
         customerId: customerId,
-        subscriptionId: invoice.subscription as string,
+        subscriptionId: (invoice as any).subscription as string,
         metadata: { invoiceId: invoice.id },
       });
     }
@@ -350,14 +345,11 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
   const customerId = invoice.customer as string;
   
-  const companies = await storage.db.select()
-    .from(storage.companies)
-    .where({ stripeCustomerId: customerId })
-    .limit(1);
+  const company = await storage.getCompanyByStripeCustomerId(customerId);
 
-  if (companies.length > 0) {
-    await storage.db.insert(storage.subscriptionHistory).values({
-      companyId: companies[0].id,
+  if (company) {
+    await storage.createSubscriptionHistory({
+      companyId: company.id,
       eventType: "payment_failed",
       reason: `Payment failed for invoice ${invoice.id}`,
       metadata: { invoiceId: invoice.id },
