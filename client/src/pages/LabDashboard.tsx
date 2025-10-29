@@ -5,11 +5,13 @@ import { FilterBar } from "@/components/FilterBar";
 import { CreatePurchaseOrderDialog } from "@/components/CreatePurchaseOrderDialog";
 import { ShipOrderDialog } from "@/components/ShipOrderDialog";
 import { SuppliersTable } from "@/components/SuppliersTable";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Clock, CheckCircle, TrendingUp, Printer, Mail } from "lucide-react";
+import { StatCardSkeleton } from "@/components/ui/CardSkeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Package, Clock, CheckCircle, TrendingUp, Printer, Mail, ClipboardList } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -180,7 +182,7 @@ export default function LabDashboard() {
           {statsLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-32 bg-card rounded-md animate-pulse" />
+                <StatCardSkeleton key={i} />
               ))}
             </div>
           ) : (
@@ -232,15 +234,15 @@ export default function LabDashboard() {
             {ordersLoading ? (
               <div className="h-96 bg-card rounded-md animate-pulse" />
             ) : tableOrders.length === 0 ? (
-              <div className="text-center py-12">
-                <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No orders found</h3>
-                <p className="text-muted-foreground">
-                  {searchValue || statusFilter 
+              <EmptyState
+                icon={ClipboardList}
+                title="No orders found"
+                description={
+                  searchValue || statusFilter 
                     ? "Try adjusting your search or filters." 
-                    : "Orders will appear here once they are created."}
-                </p>
-              </div>
+                    : "Orders will appear here once they are created."
+                }
+              />
             ) : (
               <OrderTable
                 orders={tableOrders}

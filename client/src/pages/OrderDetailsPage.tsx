@@ -9,6 +9,7 @@ import { OMAViewer } from "@/components/OMAViewer";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { CardSkeleton } from "@/components/ui/CardSkeleton";
 
 type Order = {
   id: string;
@@ -137,10 +138,16 @@ export default function OrderDetailsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading order details...</p>
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <div className="h-10 w-24 bg-muted animate-pulse rounded" />
+          <div className="h-10 w-48 bg-muted animate-pulse rounded" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
         </div>
       </div>
     );

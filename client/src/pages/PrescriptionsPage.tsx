@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,8 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Prescription {
   id: string;
@@ -124,7 +126,14 @@ export default function PrescriptionsPage() {
         <div className="flex items-center justify-between">
           <div className="h-10 w-48 bg-muted animate-pulse rounded" />
         </div>
-        <div className="h-96 bg-muted animate-pulse rounded" />
+        <Card>
+          <CardHeader>
+            <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+          </CardHeader>
+          <CardContent>
+            <TableSkeleton rows={5} columns={7} />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -143,7 +152,10 @@ export default function PrescriptionsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-4 flex-wrap">
-            <CardTitle className="flex-1">All Prescriptions</CardTitle>
+            <div className="flex-1">
+              <CardTitle>All Prescriptions</CardTitle>
+              <CardDescription>View and manage optical prescriptions</CardDescription>
+            </div>
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -158,17 +170,15 @@ export default function PrescriptionsPage() {
         </CardHeader>
         <CardContent>
           {!filteredPrescriptions || filteredPrescriptions.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">
-                {searchQuery ? "No prescriptions found" : "No prescriptions yet"}
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {searchQuery
+            <EmptyState
+              icon={FileText}
+              title={searchQuery ? "No prescriptions found" : "No prescriptions yet"}
+              description={
+                searchQuery
                   ? "Try adjusting your search query"
-                  : "Prescriptions will appear here after eye examinations"}
-              </p>
-            </div>
+                  : "Prescriptions will appear here after eye examinations"
+              }
+            />
           ) : (
             <div className="rounded-md border">
               <Table>

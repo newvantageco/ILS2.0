@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +41,8 @@ import {
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Product {
   id: string;
@@ -178,7 +180,14 @@ export default function InventoryPage() {
           <div className="h-8 sm:h-10 w-40 sm:w-48 bg-muted animate-pulse rounded" />
           <div className="h-9 sm:h-10 w-full sm:w-32 bg-muted animate-pulse rounded" />
         </div>
-        <div className="h-64 sm:h-96 bg-muted animate-pulse rounded" />
+        <Card>
+          <CardHeader>
+            <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+          </CardHeader>
+          <CardContent>
+            <TableSkeleton rows={5} columns={6} />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -298,7 +307,10 @@ export default function InventoryPage() {
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-            <CardTitle className="flex-1">Product Inventory</CardTitle>
+            <div className="flex-1">
+              <CardTitle>Product Inventory</CardTitle>
+              <CardDescription>Manage your optical products and stock levels</CardDescription>
+            </div>
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -313,17 +325,23 @@ export default function InventoryPage() {
         </CardHeader>
         <CardContent>
           {!filteredProducts || filteredProducts.length === 0 ? (
-            <div className="text-center py-12">
-              <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">
-                {searchQuery ? "No products found" : "No products in inventory"}
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {searchQuery
+            <EmptyState
+              icon={Package}
+              title={searchQuery ? "No products found" : "No products in inventory"}
+              description={
+                searchQuery
                   ? "Try adjusting your search query"
-                  : "Start by adding your first product"}
-              </p>
-            </div>
+                  : "Start by adding your first product"
+              }
+              action={
+                !searchQuery
+                  ? {
+                      label: "Add Product",
+                      onClick: () => setIsAddDialogOpen(true),
+                    }
+                  : undefined
+              }
+            />
           ) : (
             <SimpleResponsiveTable>
               <TableHeader>

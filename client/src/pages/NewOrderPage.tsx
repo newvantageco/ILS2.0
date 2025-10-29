@@ -1,6 +1,6 @@
-import { ProgressStepper } from "@/components/ProgressStepper";
+import { MultiStepWizard, WizardStep } from "@/components/ui/MultiStepWizard";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -11,8 +11,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { User, Eye, Glasses, FileCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -20,11 +22,31 @@ import { useLocation } from "wouter";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { OMAFileUpload } from "@/components/OMAFileUpload";
 
-const steps = [
-  { label: "Patient Info", description: "Basic details" },
-  { label: "Prescription", description: "Rx values" },
-  { label: "Lens & Frame", description: "Product selection" },
-  { label: "Review", description: "Confirm order" },
+const steps: WizardStep[] = [
+  { 
+    id: "patient", 
+    title: "Patient Info", 
+    description: "Enter patient details and reference information",
+    icon: <User className="w-5 h-5" />
+  },
+  { 
+    id: "prescription", 
+    title: "Prescription", 
+    description: "Enter optical prescription values",
+    icon: <Eye className="w-5 h-5" />
+  },
+  { 
+    id: "lens-frame", 
+    title: "Lens & Frame", 
+    description: "Select lens type, material, and coating",
+    icon: <Glasses className="w-5 h-5" />
+  },
+  { 
+    id: "review", 
+    title: "Review", 
+    description: "Review and confirm order details",
+    icon: <FileCheck className="w-5 h-5" />
+  },
 ];
 
 export default function NewOrderPage() {
@@ -141,23 +163,34 @@ export default function NewOrderPage() {
     setFormData({ ...formData, [field]: value });
   };
 
+  const canProceedToNext = () => {
+    if (currentStep === 0) {
+      return !!formData.patientName;
+    }
+    if (currentStep === 2) {
+      return !!formData.lensType && !!formData.lensMaterial && !!formData.coating;
+    }
+    return true;
+  };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Create New Order</h1>
-        <p className="text-muted-foreground mt-1">
+    <div className="max-w-5xl mx-auto py-8 px-4">
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-bold tracking-tight">Create New Order</h1>
+        <p className="text-muted-foreground mt-2">
           Complete the form to submit a new lens order.
         </p>
       </div>
 
-      <ProgressStepper steps={steps} currentStep={currentStep} />
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{steps[currentStep].label}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {currentStep === 0 && (
+      <MultiStepWizard
+        steps={steps}
+        currentStep={currentStep}
+        onStepChange={setCurrentStep}
+        onComplete={handleSubmit}
+        canProceed={canProceedToNext()}
+        isLastStepSubmitting={createOrderMutation.isPending}
+      >
+        {currentStep === 0 && (
             <div className="space-y-4">
               <div>
                 <Label htmlFor="patient-name">Patient Name *</Label>
@@ -472,36 +505,7 @@ export default function NewOrderPage() {
               </div>
             </div>
           )}
-
-          <div className="flex justify-between pt-4">
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={currentStep === 0}
-              data-testid="button-back"
-            >
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <Button
-              onClick={handleNext}
-              disabled={createOrderMutation.isPending}
-              data-testid="button-next"
-            >
-              {createOrderMutation.isPending ? (
-                <>Submitting...</>
-              ) : currentStep === steps.length - 1 ? (
-                <>Submit Order</>
-              ) : (
-                <>
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-2" />
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+        </MultiStepWizard>
+      </div>
+    );
+  }

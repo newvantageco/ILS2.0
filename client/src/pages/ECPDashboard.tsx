@@ -3,6 +3,8 @@ import { OrderCard } from "@/components/OrderCard";
 import { SearchBar } from "@/components/SearchBar";
 import { ConsultLogManager } from "@/components/ConsultLogManager";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { StatCardSkeleton, OrderCardSkeleton } from "@/components/ui/CardSkeleton";
 import { Package, Clock, CheckCircle, AlertCircle, Plus } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
@@ -75,7 +77,7 @@ export default function ECPDashboard() {
       {statsLoading ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-28 sm:h-32 bg-card rounded-md animate-pulse" />
+            <StatCardSkeleton key={i} />
           ))}
         </div>
       ) : (
@@ -117,23 +119,19 @@ export default function ECPDashboard() {
         {ordersLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-44 sm:h-48 bg-card rounded-md animate-pulse" />
+              <OrderCardSkeleton key={i} />
             ))}
           </div>
         ) : recentOrders.length === 0 ? (
-          <div className="text-center py-8 sm:py-12">
-            <Package className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
-            <h3 className="text-base sm:text-lg font-semibold mb-2">No orders yet</h3>
-            <p className="text-sm text-muted-foreground mb-3 sm:mb-4">
-              Get started by creating your first lens order.
-            </p>
-            <Link href="/ecp/new-order">
-              <Button className="w-full sm:w-auto">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Order
-              </Button>
-            </Link>
-          </div>
+          <EmptyState
+            icon={Package}
+            title="No orders yet"
+            description="Get started by creating your first lens order."
+            action={{
+              label: "Create Order",
+              onClick: () => setLocation("/ecp/new-order"),
+            }}
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {recentOrders.map((order) => (

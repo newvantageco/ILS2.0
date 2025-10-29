@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,8 @@ import {
 import { useState } from "react";
 import { format } from "date-fns";
 import AddPatientModal from "@/components/AddPatientModal";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Patient {
   id: string;
@@ -61,7 +63,14 @@ export default function PatientsPage() {
           <div className="h-10 w-48 bg-muted animate-pulse rounded" />
           <div className="h-10 w-32 bg-muted animate-pulse rounded" />
         </div>
-        <div className="h-96 bg-muted animate-pulse rounded" />
+        <Card>
+          <CardHeader>
+            <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+          </CardHeader>
+          <CardContent>
+            <TableSkeleton rows={5} columns={6} />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -92,7 +101,10 @@ export default function PatientsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-4 flex-wrap">
-            <CardTitle className="flex-1">Patient Records</CardTitle>
+            <div className="flex-1">
+              <CardTitle>Patient Records</CardTitle>
+              <CardDescription>View and manage patient information</CardDescription>
+            </div>
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -107,17 +119,23 @@ export default function PatientsPage() {
         </CardHeader>
         <CardContent>
           {!filteredPatients || filteredPatients.length === 0 ? (
-            <div className="text-center py-12">
-              <UserCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">
-                {searchQuery ? "No patients found" : "No patients yet"}
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {searchQuery
+            <EmptyState
+              icon={UserCircle}
+              title={searchQuery ? "No patients found" : "No patients yet"}
+              description={
+                searchQuery
                   ? "Try adjusting your search query"
-                  : "Start by adding your first patient"}
-              </p>
-            </div>
+                  : "Start by adding your first patient"
+              }
+              action={
+                !searchQuery
+                  ? {
+                      label: "Add Patient",
+                      onClick: () => setIsAddModalOpen(true),
+                    }
+                  : undefined
+              }
+            />
           ) : (
             <div className="rounded-md border">
               <Table>
