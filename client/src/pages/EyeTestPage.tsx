@@ -7,17 +7,26 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Eye, 
   FileText,
   Save,
   CheckCircle2,
   ArrowLeft,
+  TestTube,
+  Palette,
+  Crosshair,
+  FileCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Link } from "wouter";
+import { VisualAcuityChart } from "@/components/eye-test/VisualAcuityChart";
+import { ColorBlindnessTest, type ColorBlindnessResult } from "@/components/eye-test/ColorBlindnessTest";
+import { VisualFieldTest } from "@/components/eye-test/VisualFieldTest";
+import { EXAM_TEMPLATES, type ExamTemplate } from "@/data/examTemplates";
 
 interface Patient {
   id: string;
@@ -29,7 +38,12 @@ interface Patient {
 export default function EyeTestPage() {
   const [, params] = useRoute("/ecp/patient/:id/test");
   const patientId = params?.id;
-  const [activeTab, setActiveTab] = useState("examination");
+  const [activeTab, setActiveTab] = useState("template");
+  const [selectedTemplate, setSelectedTemplate] = useState<ExamTemplate | null>(null);
+  const [templateData, setTemplateData] = useState<Record<string, any>>({});
+  const [vaResults, setVaResults] = useState({ OD: "", OS: "" });
+  const [colorBlindnessResult, setColorBlindnessResult] = useState<ColorBlindnessResult | null>(null);
+  const [visualFieldResults, setVisualFieldResults] = useState<any>({ OD: null, OS: null });
   const { toast } = useToast();
 
   const { data: patient, isLoading } = useQuery<Patient>({
@@ -166,7 +180,23 @@ export default function EyeTestPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="template" data-testid="tab-template">
+            <FileCheck className="h-4 w-4 mr-2" />
+            Template
+          </TabsTrigger>
+          <TabsTrigger value="visual-acuity" data-testid="tab-visual-acuity">
+            <TestTube className="h-4 w-4 mr-2" />
+            Visual Acuity
+          </TabsTrigger>
+          <TabsTrigger value="color-vision" data-testid="tab-color-vision">
+            <Palette className="h-4 w-4 mr-2" />
+            Color Vision
+          </TabsTrigger>
+          <TabsTrigger value="visual-field" data-testid="tab-visual-field">
+            <Crosshair className="h-4 w-4 mr-2" />
+            Visual Field
+          </TabsTrigger>
           <TabsTrigger value="examination" data-testid="tab-examination">
             <Eye className="h-4 w-4 mr-2" />
             Examination
@@ -177,16 +207,144 @@ export default function EyeTestPage() {
           </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="template">
+          <Card>
+            <CardHeader>
+              <CardTitle>Select Examination Template</CardTitle>
+              <CardDescription>
+                Choose a template to guide your examination workflow
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4">
+                {EXAM_TEMPLATES.map((template) => (
+                  <button
+                    key={template.id}
+                    onClick={() => {
+                      setSelectedTemplate(template);
+                      setActiveTab("examination");
+                    }}
+                    className="text-left p-4 border rounded-lg hover:bg-accent transition-colors"
+                  >
+                    <h3 className="font-semibold">{template.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {template.description}
+                    </p>
+                    <div className="flex gap-2 mt-2">
+                      {template.sections.map((section) => (
+                        <Badge key={section.id} variant="outline" className="text-xs">
+                          {section.title}
+                        </Badge>
+                      ))}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="visual-acuity">
+          <div className="grid gap-6 md:grid-cols-2">
+            <VisualAcuityChart
+              eye="OD"
+              initialValue={vaResults.OD}
+              onResult={(result) => setVaResults({ ...vaResults, OD: result })}
+            />
+            <VisualAcuityChart
+              eye="OS"
+              initialValue={vaResults.OS}
+              onResult={(result) => setVaResults({ ...vaResults, OS: result })}
+            />
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Button onClick={() => setActiveTab("color-vision")}>
+              Next: Color Vision Test
+            </Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="color-vision">
+          <ColorBlindnessTest
+            onComplete={(result) => {
+              setColorBlindnessResult(result);
+              toast({
+                title: "Color Vision Test Complete",
+                description: `Score: ${result.correctAnswers}/${result.totalPlates} - ${result.interpretation}`,
+              });
+            }}
+          />
+          <div className="mt-4 flex justify-end">
+            <Button onClick={() => setActiveTab("visual-field")}>
+              Next: Visual Field Test
+            </Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="visual-field">
+          <div className="grid gap-6 md:grid-cols-2">
+            <VisualFieldTest
+              eye="OD"
+              onComplete={(results) => {
+                setVisualFieldResults({ ...visualFieldResults, OD: results });
+                toast({
+                  title: "Visual Field Test Complete - OD",
+                  description: "Results saved for right eye",
+                });
+              }}
+            />
+            <VisualFieldTest
+              eye="OS"
+              onComplete={(results) => {
+                setVisualFieldResults({ ...visualFieldResults, OS: results });
+                toast({
+                  title: "Visual Field Test Complete - OS",
+                  description: "Results saved for left eye",
+                });
+              }}
+            />
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Button onClick={() => setActiveTab("examination")}>
+              Continue to Full Examination
+            </Button>
+          </div>
+        </TabsContent>
+
         <TabsContent value="examination">
           <form onSubmit={handleExaminationSubmit}>
             <Card>
               <CardHeader>
                 <CardTitle>Clinical Eye Examination</CardTitle>
                 <CardDescription>
-                  Record visual acuity and refraction measurements
+                  {selectedTemplate ? `${selectedTemplate.name} - ` : ""}Record visual acuity and refraction measurements
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Show test results summary if available */}
+                {(vaResults.OD || vaResults.OS || colorBlindnessResult || visualFieldResults.OD || visualFieldResults.OS) && (
+                  <div className="p-4 bg-muted rounded-lg space-y-2">
+                    <h3 className="font-semibold text-sm">Test Results Summary</h3>
+                    {vaResults.OD && (
+                      <p className="text-sm">Visual Acuity OD: {vaResults.OD}</p>
+                    )}
+                    {vaResults.OS && (
+                      <p className="text-sm">Visual Acuity OS: {vaResults.OS}</p>
+                    )}
+                    {colorBlindnessResult && (
+                      <p className="text-sm">
+                        Color Vision: {colorBlindnessResult.correctAnswers}/{colorBlindnessResult.totalPlates} - {colorBlindnessResult.interpretation}
+                      </p>
+                    )}
+                    {visualFieldResults.OD && (
+                      <p className="text-sm">Visual Field OD: Complete</p>
+                    )}
+                    {visualFieldResults.OS && (
+                      <p className="text-sm">Visual Field OS: Complete</p>
+                    )}
+                  </div>
+                )}
+                
                 <div className="grid gap-6">
                   <div className="space-y-4">
                     <h3 className="font-semibold flex items-center gap-2">
@@ -199,6 +357,7 @@ export default function EyeTestPage() {
                           id="visualAcuityOD"
                           name="visualAcuityOD"
                           placeholder="e.g., 6/6"
+                          defaultValue={vaResults.OD}
                           data-testid="input-va-od"
                         />
                       </div>
