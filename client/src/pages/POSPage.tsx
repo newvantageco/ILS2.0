@@ -43,8 +43,10 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface Product {
   id: string;
-  name: string;
-  category: string;
+  productType: "frame" | "contact_lens" | "solution" | "service";
+  brand: string | null;
+  model: string | null;
+  sku: string | null;
   unitPrice: string;
   stockQuantity: number;
 }
@@ -60,6 +62,10 @@ interface CartItem {
   quantity: number;
   unitPrice: string;
 }
+
+const getProductDisplayName = (product: Product): string => {
+  return `${product.brand || ''} ${product.model || ''}`.trim() || product.productType.replace('_', ' ');
+};
 
 export default function POSPage() {
   const [selectedPatientId, setSelectedPatientId] = useState<string>("");
@@ -109,6 +115,7 @@ export default function POSPage() {
 
   const addToCart = (product: Product) => {
     const existingItem = cart.find((item) => item.productId === product.id);
+    const productName = getProductDisplayName(product);
     
     if (existingItem) {
       setCart(
@@ -123,7 +130,7 @@ export default function POSPage() {
         ...cart,
         {
           productId: product.id,
-          productName: product.name,
+          productName: productName,
           quantity: 1,
           unitPrice: product.unitPrice,
         },
@@ -132,7 +139,7 @@ export default function POSPage() {
 
     toast({
       title: "Added to cart",
-      description: `${product.name} added to cart.`,
+      description: `${productName} added to cart.`,
     });
   };
 
@@ -201,6 +208,7 @@ export default function POSPage() {
 
     const lineItems = cart.map((item) => ({
       productId: item.productId,
+      description: item.productName,  // This is required by the database schema
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       totalPrice: (parseFloat(item.unitPrice) * item.quantity).toFixed(2),
@@ -257,10 +265,10 @@ export default function POSPage() {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex-1">
-                          <div className="font-medium">{product.name}</div>
+                          <div className="font-medium">{getProductDisplayName(product)}</div>
                           <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="text-xs">
-                              {product.category}
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {product.productType.replace('_', ' ')}
                             </Badge>
                             <span className="text-sm text-muted-foreground">
                               Stock: {product.stockQuantity}
@@ -270,7 +278,7 @@ export default function POSPage() {
                         <div className="flex items-center gap-4">
                           <div className="text-right">
                             <div className="font-bold text-lg">
-                              £{parseFloat(product.unitPrice).toFixed(2)}
+                              ${parseFloat(product.unitPrice).toFixed(2)}
                             </div>
                           </div>
                           <Button
