@@ -34,6 +34,7 @@ import { registerAiEngineRoutes } from "./routes/aiEngine";
 import { registerAiIntelligenceRoutes } from "./routes/aiIntelligence";
 import { registerAiAssistantRoutes } from "./routes/aiAssistant";
 import { registerMetricsRoutes } from "./routes/metrics";
+import { registerPermissionRoutes } from "./routes/permissions";
 import { websocketService } from "./websocket";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -61,6 +62,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Metrics Dashboard routes
   registerMetricsRoutes(app);
+  
+  // Register Permission Management routes
+  registerPermissionRoutes(app);
 
   const FULL_PLAN = "full" as const;
   const FREE_ECP_PLAN = "free_ecp" as const;

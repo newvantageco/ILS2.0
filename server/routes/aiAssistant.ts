@@ -519,6 +519,85 @@ export function registerAiAssistantRoutes(app: Express): void {
       });
     }
   });
+
+  /**
+   * POST /api/ai-assistant/train
+   * 
+   * Start training the neural network for the company
+   * 
+   * Body: {
+   *   epochs?: number,
+   *   batchSize?: number
+   * }
+   */
+  app.post("/api/ai-assistant/train", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user.companyId) {
+        return res.status(403).json({
+          error: "User must belong to a company",
+        });
+      }
+
+      const { epochs, batchSize } = req.body;
+
+      const result = await aiAssistantService.trainNeuralNetwork(
+        user.companyId,
+        { epochs, batchSize }
+      );
+
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          error: result.error,
+          progress: result.progress
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Neural network training started",
+        data: {
+          progress: result.progress
+        }
+      });
+    } catch (error: any) {
+      console.error("Error starting training:", error);
+      res.status(500).json({
+        error: "Failed to start training",
+        message: error.message,
+      });
+    }
+  });
+
+  /**
+   * GET /api/ai-assistant/training-status
+   * 
+   * Get neural network training status
+   */
+  app.get("/api/ai-assistant/training-status", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user.companyId) {
+        return res.status(403).json({
+          error: "User must belong to a company",
+        });
+      }
+
+      const status = await aiAssistantService.getNeuralNetworkStatus(user.companyId);
+
+      res.status(200).json({
+        success: true,
+        data: status
+      });
+    } catch (error: any) {
+      console.error("Error getting training status:", error);
+      res.status(500).json({
+        error: "Failed to get training status",
+        message: error.message,
+      });
+    }
+  });
 }
 
 export function getAiAssistantService() {

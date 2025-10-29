@@ -23,6 +23,16 @@ export const sessions = pgTable(
 );
 
 export const userRoleEnum = pgEnum("user_role", ["ecp", "lab_tech", "engineer", "supplier", "admin"]);
+export const userRoleEnhancedEnum = pgEnum("user_role_enhanced", [
+  "owner",
+  "admin", 
+  "optometrist",
+  "dispenser",
+  "retail_assistant",
+  "lab_tech",
+  "engineer",
+  "supplier"
+]);
 export const accountStatusEnum = pgEnum("account_status", ["pending", "active", "suspended"]);
 export const orderStatusEnum = pgEnum("order_status", [
   "pending",
@@ -516,6 +526,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: roleEnum("role"),
+  enhancedRole: userRoleEnhancedEnum("enhanced_role"),
   subscriptionPlan: subscriptionPlanEnum("subscription_plan").notNull().default("full"),
   gocNumber: varchar("goc_number"), // General Optical Council registration number
   accountNumber: varchar("account_number"),
@@ -537,6 +548,40 @@ export const userRoles = pgTable("user_roles", {
   assignedAt: timestamp("assigned_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_user_roles_user_id").on(table.userId),
+]);
+
+// Enhanced Permission System Tables
+export const permissions = pgTable("permissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  permissionKey: varchar("permission_key").notNull().unique(),
+  permissionName: varchar("permission_name").notNull(),
+  category: varchar("category").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_permissions_category").on(table.category),
+]);
+
+export const rolePermissions = pgTable("role_permissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  role: userRoleEnhancedEnum("role").notNull(),
+  permissionId: varchar("permission_id").notNull().references(() => permissions.id, { onDelete: 'cascade' }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_role_permissions_company").on(table.companyId),
+  index("idx_role_permissions_role").on(table.role),
+]);
+
+export const userCustomPermissions = pgTable("user_custom_permissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  permissionId: varchar("permission_id").notNull().references(() => permissions.id, { onDelete: 'cascade' }),
+  granted: boolean("granted").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+}, (table) => [
+  index("idx_user_custom_permissions_user").on(table.userId),
 ]);
 
 export const patients = pgTable("patients", {
@@ -1485,4 +1530,23 @@ export const insertAiFeedbackSchema = createInsertSchema(aiFeedback);
 
 export type AiFeedback = typeof aiFeedback.$inferSelect;
 export type InsertAiFeedback = typeof aiFeedback.$inferInsert;
+
+// Permission schemas
+export const insertPermissionSchema = createInsertSchema(permissions);
+export const updatePermissionSchema = insertPermissionSchema.partial();
+
+export type Permission = typeof permissions.$inferSelect;
+export type InsertPermission = typeof permissions.$inferInsert;
+
+// Role Permission schemas
+export const insertRolePermissionSchema = createInsertSchema(rolePermissions);
+
+export type RolePermission = typeof rolePermissions.$inferSelect;
+export type InsertRolePermission = typeof rolePermissions.$inferInsert;
+
+// User Custom Permission schemas
+export const insertUserCustomPermissionSchema = createInsertSchema(userCustomPermissions);
+
+export type UserCustomPermission = typeof userCustomPermissions.$inferSelect;
+export type InsertUserCustomPermission = typeof userCustomPermissions.$inferInsert;
 

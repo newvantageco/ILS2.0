@@ -16,6 +16,7 @@
 
 import { IStorage } from "../storage";
 import { createLogger, type Logger } from "../utils/logger";
+import { NeuralNetworkService } from "./NeuralNetworkService";
 import type { 
   InsertAiConversation, 
   InsertAiMessage, 
@@ -56,11 +57,24 @@ export interface AiResponse {
 export class AIAssistantService {
   private logger: Logger;
   private externalAiAvailable: boolean = true;
+  private neuralNetworks: Map<string, NeuralNetworkService> = new Map();
 
   constructor(private storage: IStorage) {
     this.logger = createLogger("AIAssistantService");
     // Check if external AI API key is available
     this.externalAiAvailable = !!process.env.OPENAI_API_KEY;
+  }
+
+  /**
+   * Get or create neural network for a company
+   */
+  private async getNeuralNetwork(companyId: string): Promise<NeuralNetworkService> {
+    if (!this.neuralNetworks.has(companyId)) {
+      const nn = new NeuralNetworkService(companyId);
+      await nn.initialize();
+      this.neuralNetworks.set(companyId, nn);
+    }
+    return this.neuralNetworks.get(companyId)!;
   }
 
   /**
@@ -73,19 +87,34 @@ export class AIAssistantService {
         learningProgress: config.learningProgress 
       });
 
-      // Step 1: Search learned knowledge base
+      // Step 1: Try neural network prediction if learning progress is high enough
+      let neuralNetworkAnswer: string | null = null;
+      if (config.learningProgress >= 25) {
+        try {
+          const nn = await this.getNeuralNetwork(config.companyId);
+          neuralNetworkAnswer = await nn.predict(query.question);
+          this.logger.info("Neural network prediction obtained", {
+            questionLength: query.question.length,
+            answerLength: neuralNetworkAnswer?.length
+          });
+        } catch (error) {
+          this.logger.warn("Neural network prediction failed, falling back", error as Error);
+        }
+      }
+
+      // Step 2: Search learned knowledge base
       const learnedAnswers = await this.searchLearnedKnowledge(
         query.question, 
         config.companyId
       );
 
-      // Step 2: Search uploaded documents
+      // Step 3: Search uploaded documents
       const documentContext = await this.searchDocuments(
         query.question,
         config.companyId
       );
 
-      // Step 3: Decide if we can answer with learned data or need external AI
+      // Step 4: Decide if we can answer with learned data or need external AI
       const canAnswerLocally = await this.canAnswerWithLearnedData(
         learnedAnswers,
         documentContext,
@@ -94,7 +123,23 @@ export class AIAssistantService {
 
       let response: AiResponse;
 
-      if (canAnswerLocally && learnedAnswers.length > 0) {
+      // If neural network provided a good answer and learning progress is high, use it
+      if (neuralNetworkAnswer && neuralNetworkAnswer.length > 20 && config.learningProgress >= 50) {
+        response = {
+          answer: neuralNetworkAnswer,
+          confidence: config.learningProgress / 100,
+          usedExternalAi: false,
+          sources: [
+            {
+              type: 'learned',
+              relevance: 0.9,
+              reference: 'Neural Network Model'
+            }
+          ],
+          suggestions: [],
+          learningOpportunity: false
+        };
+      } else if (canAnswerLocally && learnedAnswers.length > 0) {
         // Answer from learned knowledge
         response = await this.generateLocalAnswer(
           query.question,
@@ -688,5 +733,80 @@ To get the most accurate assistance, please ensure your AI integration is config
     }
     
     return bestMatch.substring(0, 300) + '...';
+  }
+
+  /**
+   * Train neural network for a company
+   */
+  async trainNeuralNetwork(
+    companyId: string,
+    options?: { epochs?: number; batchSize?: number }
+  ): Promise<{ success: boolean; progress: number; error?: string }> {
+    try {
+      this.logger.info("Starting neural network training", { companyId });
+      
+      const nn = await this.getNeuralNetwork(companyId);
+      const trainingProgress = nn.getTrainingProgress();
+      
+      if (trainingProgress.isTraining) {
+        return {
+          success: false,
+          progress: trainingProgress.progress,
+          error: "Training already in progress"
+        };
+      }
+
+      // Train in background
+      nn.train({
+        epochs: options?.epochs || 20,
+        batchSize: options?.batchSize || 32,
+        onProgress: async (progress, epoch, logs) => {
+          this.logger.info("Training progress", { companyId, epoch, progress, logs });
+          // Update company AI progress
+          await this.storage.updateCompanyAiProgress(companyId, Math.floor(progress));
+        }
+      }).catch(error => {
+        this.logger.error("Neural network training error", error);
+      });
+
+      return {
+        success: true,
+        progress: 0
+      };
+    } catch (error) {
+      this.logger.error("Error starting neural network training", error as Error);
+      return {
+        success: false,
+        progress: 0,
+        error: (error as Error).message
+      };
+    }
+  }
+
+  /**
+   * Get neural network training status
+   */
+  async getNeuralNetworkStatus(companyId: string): Promise<{
+    isTraining: boolean;
+    progress: number;
+  }> {
+    try {
+      const nn = await this.getNeuralNetwork(companyId);
+      return nn.getTrainingProgress();
+    } catch (error) {
+      this.logger.error("Error getting neural network status", error as Error);
+      return { isTraining: false, progress: 0 };
+    }
+  }
+
+  /**
+   * Cleanup - dispose of all neural networks
+   */
+  dispose(): void {
+    this.neuralNetworks.forEach((nn, companyId) => {
+      this.logger.info("Disposing neural network", { companyId });
+      nn.dispose();
+    });
+    this.neuralNetworks.clear();
   }
 }

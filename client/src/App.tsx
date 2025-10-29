@@ -7,6 +7,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RoleSwitcherDropdown } from "@/components/RoleSwitcherDropdown";
+import { FloatingAiChat } from "@/components/FloatingAiChat";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/Landing";
@@ -277,6 +278,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthenticatedApp />
+        <FloatingAiChat />
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
