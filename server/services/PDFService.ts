@@ -107,36 +107,45 @@ export class PDFService {
    * Add header section
    */
   private addHeader(doc: typeof PDFDocument.prototype, data: InvoiceData): void {
-    // Company name
+    // Add colored header bar
     doc
-      .fontSize(20)
-      .font("Helvetica-Bold")
-      .text(data.companyName, 50, 50);
+      .rect(0, 0, 612, 120)
+      .fillAndStroke("#4F46E5", "#4338CA");
 
-    // Company details
+    // Company name in white
+    doc
+      .fontSize(22)
+      .font("Helvetica-Bold")
+      .fillColor("#FFFFFF")
+      .text(data.companyName, 50, 35);
+
+    // Company details in light gray
     if (data.companyAddress || data.companyPhone || data.companyEmail) {
-      let y = 75;
-      doc.fontSize(10).font("Helvetica");
+      let y = 65;
+      doc.fontSize(9).font("Helvetica").fillColor("#E0E7FF");
 
       if (data.companyAddress) {
         doc.text(data.companyAddress, 50, y);
-        y += 15;
+        y += 12;
       }
       if (data.companyPhone) {
-        doc.text(`Phone: ${data.companyPhone}`, 50, y);
-        y += 15;
+        doc.text(`📞 ${data.companyPhone}`, 50, y);
+        y += 12;
       }
       if (data.companyEmail) {
-        doc.text(`Email: ${data.companyEmail}`, 50, y);
+        doc.text(`✉ ${data.companyEmail}`, 50, y);
       }
     }
 
-    // Invoice title
+    // Invoice title with background
     doc
-      .fontSize(24)
+      .fontSize(26)
       .font("Helvetica-Bold")
-      .text("INVOICE", 400, 50, { align: "right" });
+      .fillColor("#FFFFFF")
+      .text("INVOICE", 400, 45, { align: "right" });
 
+    // Reset fill color
+    doc.fillColor("#000000");
     doc.moveDown();
   }
 
@@ -146,24 +155,37 @@ export class PDFService {
   private addInvoiceInfo(doc: typeof PDFDocument.prototype, data: InvoiceData): void {
     const startY = 150;
 
+    // Add bordered box for invoice details
+    doc
+      .roundedRect(380, startY - 10, 170, 85, 5)
+      .fillAndStroke("#F9FAFB", "#E5E7EB");
+
     doc
       .fontSize(10)
       .font("Helvetica-Bold")
-      .text("Invoice Number:", 400, startY)
+      .fillColor("#374151")
+      .text("Invoice Number:", 390, startY)
       .font("Helvetica")
-      .text(data.invoiceNumber, 500, startY);
+      .fillColor("#111827")
+      .text(data.invoiceNumber, 490, startY);
 
     doc
       .font("Helvetica-Bold")
-      .text("Invoice Date:", 400, startY + 15)
+      .fillColor("#374151")
+      .text("Invoice Date:", 390, startY + 20)
       .font("Helvetica")
-      .text(data.invoiceDate, 500, startY + 15);
+      .fillColor("#111827")
+      .text(data.invoiceDate, 490, startY + 20);
 
     doc
       .font("Helvetica-Bold")
-      .text("Due Date:", 400, startY + 30)
+      .fillColor("#374151")
+      .text("Due Date:", 390, startY + 40)
       .font("Helvetica")
-      .text(data.dueDate, 500, startY + 30);
+      .fillColor("#DC2626")
+      .text(data.dueDate, 490, startY + 40);
+
+    doc.fillColor("#000000");
   }
 
   /**
@@ -172,153 +194,212 @@ export class PDFService {
   private addCustomerInfo(doc: typeof PDFDocument.prototype, data: InvoiceData): void {
     const startY = 150;
 
+    // Add bordered box for customer details
     doc
-      .fontSize(12)
+      .roundedRect(40, startY - 10, 320, 85, 5)
+      .fillAndStroke("#F0F9FF", "#BAE6FD");
+
+    doc
+      .fontSize(11)
       .font("Helvetica-Bold")
-      .text("Bill To:", 50, startY);
+      .fillColor("#0C4A6E")
+      .text("BILL TO:", 50, startY);
 
-    let y = startY + 20;
-    doc.fontSize(10).font("Helvetica");
-
+    let y = startY + 22;
+    doc.fontSize(10).font("Helvetica-Bold").fillColor("#111827");
     doc.text(data.customerName, 50, y);
-    y += 15;
+    y += 16;
 
+    doc.font("Helvetica").fillColor("#374151");
     if (data.customerAddress) {
       doc.text(data.customerAddress, 50, y);
-      y += 15;
+      y += 14;
     }
 
     if (data.customerEmail) {
-      doc.text(data.customerEmail, 50, y);
+      doc.text(`✉ ${data.customerEmail}`, 50, y);
     }
+
+    doc.fillColor("#000000");
   }
 
   /**
    * Add line items table
    */
   private addLineItems(doc: typeof PDFDocument.prototype, data: InvoiceData): void {
-    const tableTop = 250;
+    const tableTop = 260;
     const itemCodeX = 50;
-    const descriptionX = 150;
-    const quantityX = 350;
-    const priceX = 420;
-    const amountX = 490;
+    const descriptionX = 140;
+    const quantityX = 360;
+    const priceX = 430;
+    const amountX = 500;
 
-    // Table header
+    // Table header background
+    doc
+      .rect(40, tableTop - 5, 520, 22)
+      .fillAndStroke("#4F46E5", "#4338CA");
+
+    // Table header text
     doc
       .fontSize(10)
       .font("Helvetica-Bold")
+      .fillColor("#FFFFFF")
       .text("Item", itemCodeX, tableTop)
       .text("Description", descriptionX, tableTop)
       .text("Qty", quantityX, tableTop)
       .text("Price", priceX, tableTop)
       .text("Amount", amountX, tableTop);
 
-    // Header line
-    doc
-      .moveTo(50, tableTop + 15)
-      .lineTo(550, tableTop + 15)
-      .strokeColor("#cccccc")
-      .stroke();
+    doc.fillColor("#000000");
 
     // Table rows
     doc.font("Helvetica");
-    let y = tableTop + 25;
+    let y = tableTop + 30;
+    let rowIndex = 0;
 
     data.items.forEach((item, index) => {
-      if (y > 700) {
+      if (y > 680) {
         // Add new page if needed
         doc.addPage();
         y = 50;
+        rowIndex = 0;
+      }
+
+      // Alternating row colors
+      if (rowIndex % 2 === 0) {
+        doc
+          .rect(40, y - 5, 520, 22)
+          .fillAndStroke("#F9FAFB", "#F9FAFB");
       }
 
       doc
+        .fillColor("#374151")
         .text(index + 1, itemCodeX, y)
-        .text(item.description, descriptionX, y, { width: 180 })
+        .fillColor("#111827")
+        .text(item.description, descriptionX, y, { width: 200 })
+        .fillColor("#374151")
         .text(item.quantity.toString(), quantityX, y)
         .text(`£${item.unitPrice.toFixed(2)}`, priceX, y)
+        .font("Helvetica-Bold")
+        .fillColor("#111827")
         .text(`£${item.total.toFixed(2)}`, amountX, y);
 
+      doc.font("Helvetica");
       y += 25;
+      rowIndex++;
     });
 
-    // Bottom line
+    // Bottom border line
     doc
-      .moveTo(50, y)
-      .lineTo(550, y)
-      .strokeColor("#cccccc")
+      .moveTo(40, y)
+      .lineTo(560, y)
+      .strokeColor("#4F46E5")
+      .lineWidth(2)
       .stroke();
+
+    doc.fillColor("#000000").lineWidth(1);
   }
 
   /**
    * Add totals section
    */
   private addTotals(doc: typeof PDFDocument.prototype, data: InvoiceData): void {
-    const tableBottom = doc.y + 20;
+    const tableBottom = doc.y + 30;
+
+    // Totals box with border
+    doc
+      .roundedRect(380, tableBottom - 10, 170, 100, 5)
+      .fillAndStroke("#F9FAFB", "#E5E7EB");
 
     doc
       .fontSize(10)
       .font("Helvetica-Bold")
-      .text("Subtotal:", 400, tableBottom)
+      .fillColor("#374151")
+      .text("Subtotal:", 390, tableBottom)
       .font("Helvetica")
+      .fillColor("#111827")
       .text(`£${data.subtotal.toFixed(2)}`, 490, tableBottom);
 
     doc
       .font("Helvetica-Bold")
-      .text(`Tax (${(data.taxRate * 100).toFixed(0)}%):`, 400, tableBottom + 15)
+      .fillColor("#374151")
+      .text(`Tax (${(data.taxRate * 100).toFixed(0)}%):`, 390, tableBottom + 20)
       .font("Helvetica")
-      .text(`£${data.tax.toFixed(2)}`, 490, tableBottom + 15);
+      .fillColor("#111827")
+      .text(`£${data.tax.toFixed(2)}`, 490, tableBottom + 20);
 
-    // Total line
+    // Total with colored background
     doc
-      .moveTo(400, tableBottom + 35)
-      .lineTo(550, tableBottom + 35)
-      .strokeColor("#4F46E5")
-      .lineWidth(2)
-      .stroke();
+      .roundedRect(385, tableBottom + 48, 160, 32, 5)
+      .fillAndStroke("#4F46E5", "#4338CA");
 
     doc
-      .fontSize(12)
+      .fontSize(13)
       .font("Helvetica-Bold")
-      .fillColor("#4F46E5")
-      .text("Total:", 400, tableBottom + 45)
-      .text(`£${data.total.toFixed(2)}`, 490, tableBottom + 45);
+      .fillColor("#FFFFFF")
+      .text("TOTAL:", 390, tableBottom + 56)
+      .text(`£${data.total.toFixed(2)}`, 490, tableBottom + 56);
 
-    doc.fillColor("#000000");
+    doc.fillColor("#000000").lineWidth(1);
   }
 
   /**
    * Add footer section
    */
   private addFooter(doc: typeof PDFDocument.prototype, data: InvoiceData): void {
-    const footerTop = 680;
+    const footerTop = 650;
 
     if (data.notes) {
       doc
+        .roundedRect(40, footerTop - 5, 520, 60, 5)
+        .fillAndStroke("#FEF3C7", "#FCD34D");
+
+      doc
         .fontSize(10)
         .font("Helvetica-Bold")
-        .text("Notes:", 50, footerTop)
+        .fillColor("#92400E")
+        .text("📝 Notes:", 50, footerTop + 5)
         .font("Helvetica")
-        .text(data.notes, 50, footerTop + 15, { width: 500 });
+        .fillColor("#78350F")
+        .text(data.notes, 50, footerTop + 20, { width: 500 });
     }
 
     if (data.paymentTerms) {
       doc
-        .fontSize(10)
+        .fontSize(9)
         .font("Helvetica-Bold")
-        .text("Payment Terms:", 50, 730)
+        .fillColor("#374151")
+        .text("Payment Terms:", 50, 725)
         .font("Helvetica")
-        .text(data.paymentTerms, 50, 745, { width: 500 });
+        .fillColor("#6B7280")
+        .text(data.paymentTerms, 50, 738, { width: 500 });
     }
+
+    // Footer bar
+    doc
+      .rect(0, 760, 612, 72)
+      .fillAndStroke("#F3F4F6", "#E5E7EB");
 
     // Thank you message
     doc
-      .fontSize(10)
-      .font("Helvetica-Oblique")
-      .text("Thank you for your business!", 50, 780, {
+      .fontSize(11)
+      .font("Helvetica-Bold")
+      .fillColor("#4F46E5")
+      .text("Thank you for your business!", 0, 780, {
         align: "center",
-        width: 500,
+        width: 612,
       });
+
+    doc
+      .fontSize(8)
+      .font("Helvetica")
+      .fillColor("#6B7280")
+      .text("For questions, please contact us at the details above.", 0, 800, {
+        align: "center",
+        width: 612,
+      });
+
+    doc.fillColor("#000000");
   }
 
   /**
@@ -402,117 +483,242 @@ export class PDFService {
           resolve(pdfBuffer);
         });
 
-        // Header
-        doc.fontSize(20).text("LENS ORDER SHEET", { align: "center" });
-        doc.moveDown(0.5);
-        doc.fontSize(10).text(`Order #: ${data.orderNumber}`, { align: "center" });
-        doc.text(`Date: ${data.orderDate}`, { align: "center" });
+        // Header with colored background
+        doc
+          .rect(0, 0, 612, 100)
+          .fillAndStroke("#10B981", "#059669");
+
+        doc
+          .fontSize(24)
+          .font("Helvetica-Bold")
+          .fillColor("#FFFFFF")
+          .text("LENS ORDER SHEET", 0, 30, { align: "center", width: 612 });
+        
+        doc.fontSize(11).fillColor("#D1FAE5");
+        doc.text(`Order #: ${data.orderNumber}`, 0, 60, { align: "center", width: 612 });
+        doc.text(`Date: ${data.orderDate}`, 0, 75, { align: "center", width: 612 });
+
+        doc.fillColor("#000000");
         doc.moveDown(1);
 
         // Status Badge
-        doc.fontSize(12)
-          .fillColor("#4F46E5")
-          .text(`Status: ${data.status.toUpperCase()}`, { align: "center" });
+        const statusY = 115;
+        let statusColor = "#10B981";
+        let statusBg = "#D1FAE5";
+        
+        if (data.status.toLowerCase() === "completed") {
+          statusColor = "#059669";
+          statusBg = "#A7F3D0";
+        } else if (data.status.toLowerCase() === "pending") {
+          statusColor = "#F59E0B";
+          statusBg = "#FEF3C7";
+        } else if (data.status.toLowerCase() === "processing") {
+          statusColor = "#3B82F6";
+          statusBg = "#DBEAFE";
+        }
+
+        doc
+          .roundedRect(230, statusY, 150, 25, 5)
+          .fillAndStroke(statusBg, statusColor);
+
+        doc
+          .fontSize(12)
+          .font("Helvetica-Bold")
+          .fillColor(statusColor)
+          .text(`Status: ${data.status.toUpperCase()}`, 0, statusY + 7, {
+            align: "center",
+            width: 612,
+          });
+
         doc.fillColor("#000000");
-        doc.moveDown(1.5);
+        doc.y = statusY + 45;
 
-        // Patient Information
-        doc.fontSize(14).text("Patient Information", { underline: true });
-        doc.moveDown(0.5);
-        doc.fontSize(10);
-        doc.text(`Name: ${data.patientName}`);
+        // Patient Information Section
+        doc
+          .roundedRect(40, doc.y, 250, 90, 5)
+          .fillAndStroke("#EFF6FF", "#BFDBFE");
+
+        const patientY = doc.y + 15;
+        doc
+          .fontSize(13)
+          .font("Helvetica-Bold")
+          .fillColor("#1E40AF")
+          .text("👤 PATIENT INFORMATION", 50, patientY);
+
+        doc.fontSize(10).font("Helvetica").fillColor("#374151");
+        doc.text(`Name: ${data.patientName}`, 50, patientY + 25);
         if (data.patientDOB) {
-          doc.text(`Date of Birth: ${data.patientDOB}`);
+          doc.text(`Date of Birth: ${data.patientDOB}`, 50, patientY + 40);
         }
-        doc.moveDown(1);
-
-        // Provider Information
-        doc.fontSize(14).text("Eye Care Provider", { underline: true });
-        doc.moveDown(0.5);
-        doc.fontSize(10);
-        doc.text(`Provider: ${data.ecpName}`);
         if (data.customerReferenceNumber) {
-          doc.text(`Reference #: ${data.customerReferenceNumber}`);
+          doc.text(`Customer #: ${data.customerReferenceNumber}`, 50, patientY + 55);
         }
-        doc.moveDown(1);
 
-        // Prescription Details
-        doc.fontSize(14).text("Prescription Details", { underline: true });
-        doc.moveDown(0.5);
+        // Provider Information Section
+        doc
+          .roundedRect(310, patientY - 15, 250, 90, 5)
+          .fillAndStroke("#FEF3C7", "#FCD34D");
+
+        doc
+          .fontSize(13)
+          .font("Helvetica-Bold")
+          .fillColor("#92400E")
+          .text("🏥 EYE CARE PROVIDER", 320, patientY);
+
+        doc.fontSize(10).font("Helvetica").fillColor("#374151");
+        doc.text(`Provider: ${data.ecpName}`, 320, patientY + 25);
+
+        doc.fillColor("#000000");
+        doc.y = patientY + 100;
+
+        // Prescription Details Section
+        doc
+          .fontSize(14)
+          .font("Helvetica-Bold")
+          .fillColor("#4F46E5")
+          .text("👁 PRESCRIPTION DETAILS", 50, doc.y);
+
+        doc.moveDown(0.8);
         
         const tableTop = doc.y;
         const col1X = 50;
-        const col2X = 150;
-        const col3X = 250;
-        const col4X = 350;
-        const col5X = 450;
+        const col2X = 160;
+        const col3X = 270;
+        const col4X = 380;
+        const col5X = 490;
 
-        // Table headers
-        doc.fontSize(10).font("Helvetica-Bold");
+        // Table header with background
+        doc
+          .rect(40, tableTop - 5, 520, 25)
+          .fillAndStroke("#4F46E5", "#4338CA");
+
+        doc.fontSize(10).font("Helvetica-Bold").fillColor("#FFFFFF");
         doc.text("Eye", col1X, tableTop);
         doc.text("Sphere", col2X, tableTop);
         doc.text("Cylinder", col3X, tableTop);
         doc.text("Axis", col4X, tableTop);
         doc.text("Add", col5X, tableTop);
 
-        // Right Eye
-        doc.font("Helvetica");
-        let currentY = tableTop + 20;
+        doc.fillColor("#000000");
+
+        // Right Eye Row
+        let currentY = tableTop + 30;
+        doc
+          .rect(40, currentY - 5, 520, 25)
+          .fillAndStroke("#F9FAFB", "#E5E7EB");
+
+        doc.font("Helvetica-Bold").fillColor("#374151");
         doc.text("OD (Right)", col1X, currentY);
+        
+        doc.font("Helvetica").fillColor("#111827");
         doc.text(data.rightEye.sphere || "—", col2X, currentY);
         doc.text(data.rightEye.cylinder || "—", col3X, currentY);
         doc.text(data.rightEye.axis || "—", col4X, currentY);
         doc.text(data.rightEye.add || "—", col5X, currentY);
 
-        // Left Eye
-        currentY += 20;
+        // Left Eye Row
+        currentY += 30;
+        doc
+          .rect(40, currentY - 5, 520, 25)
+          .fillAndStroke("#FFFFFF", "#E5E7EB");
+
+        doc.font("Helvetica-Bold").fillColor("#374151");
         doc.text("OS (Left)", col1X, currentY);
+        
+        doc.font("Helvetica").fillColor("#111827");
         doc.text(data.leftEye.sphere || "—", col2X, currentY);
         doc.text(data.leftEye.cylinder || "—", col3X, currentY);
         doc.text(data.leftEye.axis || "—", col4X, currentY);
         doc.text(data.leftEye.add || "—", col5X, currentY);
 
-        doc.moveDown(2);
+        doc.fillColor("#000000");
+        doc.y = currentY + 40;
 
-        // PD
+        // PD Section
         if (data.pd) {
-          doc.text(`Pupillary Distance (PD): ${data.pd} mm`);
-          doc.moveDown(0.5);
+          doc
+            .roundedRect(40, doc.y, 520, 30, 5)
+            .fillAndStroke("#DBEAFE", "#93C5FD");
+
+          doc
+            .fontSize(11)
+            .font("Helvetica-Bold")
+            .fillColor("#1E40AF")
+            .text(`📏 Pupillary Distance (PD): ${data.pd} mm`, 50, doc.y + 10);
+
+          doc.y += 40;
         }
 
-        // Lens Specifications
+        // Lens Specifications Section
         doc.moveDown(1);
-        doc.fontSize(14).font("Helvetica-Bold").text("Lens Specifications", { underline: true });
-        doc.moveDown(0.5);
-        doc.fontSize(10).font("Helvetica");
-        doc.text(`Lens Type: ${data.lensType}`);
-        doc.text(`Material: ${data.lensMaterial}`);
-        doc.text(`Coating: ${data.coating}`);
+        doc
+          .fontSize(14)
+          .font("Helvetica-Bold")
+          .fillColor("#4F46E5")
+          .text("🔬 LENS SPECIFICATIONS", 50, doc.y);
+
+        doc.moveDown(0.8);
+
+        const specsY = doc.y;
+        doc
+          .roundedRect(40, specsY - 5, 520, 90, 5)
+          .fillAndStroke("#F0FDF4", "#BBF7D0");
+
+        doc.fontSize(10).font("Helvetica").fillColor("#374151");
+        doc.text(`Lens Type: ${data.lensType}`, 50, specsY + 10);
+        doc.text(`Material: ${data.lensMaterial}`, 50, specsY + 30);
+        doc.text(`Coating: ${data.coating}`, 50, specsY + 50);
         if (data.frameType) {
-          doc.text(`Frame Type: ${data.frameType}`);
+          doc.text(`Frame Type: ${data.frameType}`, 50, specsY + 70);
         }
-        doc.moveDown(1);
 
-        // Notes
+        doc.fillColor("#000000");
+        doc.y = specsY + 105;
+
+        // Notes Section
         if (data.notes) {
-          doc.fontSize(14).font("Helvetica-Bold").text("Additional Notes", { underline: true });
-          doc.moveDown(0.5);
-          doc.fontSize(10).font("Helvetica");
-          doc.text(data.notes, {
-            width: 500,
-            align: "left",
-          });
           doc.moveDown(1);
+          doc
+            .fontSize(14)
+            .font("Helvetica-Bold")
+            .fillColor("#4F46E5")
+            .text("📝 ADDITIONAL NOTES", 50, doc.y);
+
+          doc.moveDown(0.5);
+
+          doc
+            .roundedRect(40, doc.y, 520, 60, 5)
+            .fillAndStroke("#FEF3C7", "#FCD34D");
+
+          doc
+            .fontSize(10)
+            .font("Helvetica")
+            .fillColor("#78350F")
+            .text(data.notes, 50, doc.y + 15, {
+              width: 500,
+              align: "left",
+            });
+
+          doc.y += 75;
         }
 
         // Footer
-        doc.moveDown(2);
-        doc.fontSize(8)
-          .fillColor("#666666")
-          .text("This order sheet was generated by Integrated Lens System", {
+        doc
+          .rect(0, 750, 612, 92)
+          .fillAndStroke("#F3F4F6", "#E5E7EB");
+
+        doc
+          .fontSize(9)
+          .font("Helvetica")
+          .fillColor("#6B7280")
+          .text("This order sheet was generated by Integrated Lens System", 0, 770, {
             align: "center",
+            width: 612,
           });
-        doc.text(`Generated on ${new Date().toLocaleString()}`, { align: "center" });
+        doc.text(`Generated on ${new Date().toLocaleString()}`, 0, 785, {
+          align: "center",
+          width: 612,
+        });
 
         doc.end();
       } catch (error) {

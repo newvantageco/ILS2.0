@@ -2950,6 +2950,363 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // ADMIN COMPANY MANAGEMENT ENDPOINTS
+  // ============================================
+
+  // Get all companies (admin only)
+  app.get('/api/admin/companies', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const allUsers = await storage.getAllUsers();
+      // Filter to get company accounts (non-admin users)
+      const companies = allUsers
+        .filter(u => u.role !== 'admin' && u.organizationName)
+        .map(u => ({
+          id: u.id,
+          name: u.organizationName || `${u.firstName} ${u.lastName}`,
+          email: u.email || '',
+          role: u.role || 'ecp',
+          accountStatus: u.accountStatus || 'pending',
+          createdAt: u.createdAt || new Date().toISOString(),
+        }));
+
+      res.json(companies);
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+      res.status(500).json({ message: 'Failed to fetch companies' });
+    }
+  });
+
+  // Create new company with auto-generated credentials (admin only)
+  app.post('/api/admin/companies', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const {
+        companyName,
+        email,
+        firstName,
+        lastName,
+        role,
+        contactPhone,
+        address
+      } = req.body;
+
+      // Validate required fields
+      if (!companyName || !email || !firstName || !lastName || !role) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Generate secure random password
+      const crypto = await import('crypto');
+      const password = crypto.randomBytes(12).toString('base64').slice(0, 16);
+      const hashedPassword = await hashPassword(password);
+
+      // Create company user
+      const newUser = await storage.upsertUser({
+        id: crypto.randomUUID(),
+        email: normalizeEmail(email),
+        password: hashedPassword,
+        firstName,
+        lastName,
+        organizationName: companyName,
+        role,
+        contactPhone,
+        address: address ? { street: address } : undefined,
+        accountStatus: 'active',
+        subscriptionPlan: 'full',
+        isActive: true,
+        isVerified: true,
+      });
+
+      // Send welcome email with credentials
+      const emailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 30px 20px;
+              text-align: center;
+              border-radius: 8px 8px 0 0;
+            }
+            .content {
+              background-color: #f9fafb;
+              padding: 30px;
+              border-radius: 0 0 8px 8px;
+            }
+            .credentials-box {
+              background-color: white;
+              padding: 25px;
+              border-radius: 8px;
+              margin: 25px 0;
+              border-left: 4px solid #667eea;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .credential-item {
+              margin: 15px 0;
+              padding: 12px;
+              background-color: #f3f4f6;
+              border-radius: 6px;
+            }
+            .credential-label {
+              font-weight: bold;
+              color: #4b5563;
+              font-size: 12px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            .credential-value {
+              font-size: 16px;
+              color: #111827;
+              font-family: 'Courier New', monospace;
+              margin-top: 5px;
+            }
+            .button {
+              display: inline-block;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 14px 28px;
+              text-decoration: none;
+              border-radius: 6px;
+              margin: 20px 0;
+              font-weight: bold;
+            }
+            .warning-box {
+              background-color: #fef3c7;
+              border-left: 4px solid #f59e0b;
+              padding: 15px;
+              border-radius: 6px;
+              margin: 20px 0;
+            }
+            .footer {
+              text-align: center;
+              color: #6b7280;
+              font-size: 0.9em;
+              margin-top: 30px;
+              padding-top: 20px;
+              border-top: 1px solid #e5e7eb;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>🎉 Welcome to Integrated Lens System</h1>
+            <p>Your account has been created successfully</p>
+          </div>
+          <div class="content">
+            <p>Dear ${firstName} ${lastName},</p>
+            <p>Your company account for <strong>${companyName}</strong> has been created in the Integrated Lens System.</p>
+            
+            <div class="credentials-box">
+              <h3 style="margin-top: 0; color: #667eea;">🔐 Your Login Credentials</h3>
+              
+              <div class="credential-item">
+                <div class="credential-label">Email Address</div>
+                <div class="credential-value">${email}</div>
+              </div>
+              
+              <div class="credential-item">
+                <div class="credential-label">Password</div>
+                <div class="credential-value">${password}</div>
+              </div>
+              
+              <div class="credential-item">
+                <div class="credential-label">Role</div>
+                <div class="credential-value">${role.toUpperCase()}</div>
+              </div>
+            </div>
+
+            <div class="warning-box">
+              <strong>⚠️ Security Notice:</strong> Please change your password after your first login for security purposes.
+            </div>
+
+            <div style="text-align: center;">
+              <a href="${process.env.APP_URL || 'http://localhost:3000'}/login" class="button">
+                Log In to Your Account
+              </a>
+            </div>
+
+            <h3 style="color: #374151;">📋 Next Steps:</h3>
+            <ol style="color: #6b7280;">
+              <li>Click the button above to access the login page</li>
+              <li>Enter your email and temporary password</li>
+              <li>Complete your profile setup</li>
+              <li>Start managing your optical business efficiently</li>
+            </ol>
+
+            <p style="color: #6b7280; margin-top: 30px;">
+              If you have any questions or need assistance, please don't hesitate to contact our support team.
+            </p>
+
+            <div class="footer">
+              <p><strong>Integrated Lens System</strong></p>
+              <p>The complete solution for optical practice management</p>
+              <p style="font-size: 0.85em; color: #9ca3af;">
+                This email contains sensitive information. Please keep it secure.
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      await emailService.sendEmail({
+        to: email,
+        subject: `Welcome to Integrated Lens System - Your Login Credentials`,
+        html: emailHtml,
+      });
+
+      console.log(`Company created: ${companyName} with user ${email}`);
+
+      res.json({
+        message: 'Company created successfully',
+        userId: newUser.id,
+        email: newUser.email,
+        password, // Return password for admin to show in dialog
+      });
+    } catch (error) {
+      console.error('Error creating company:', error);
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : 'Failed to create company' 
+      });
+    }
+  });
+
+  // Resend credentials to company (admin only)
+  app.post('/api/admin/companies/:id/resend-credentials', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const companyUser = await storage.getUser(req.params.id);
+      if (!companyUser) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      // Generate new password
+      const crypto = await import('crypto');
+      const newPassword = crypto.randomBytes(12).toString('base64').slice(0, 16);
+      const hashedPassword = await hashPassword(newPassword);
+
+      // Update password
+      await storage.updateUser(req.params.id, { password: hashedPassword });
+
+      // Send email with new credentials
+      const emailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 30px 20px;
+              text-align: center;
+              border-radius: 8px 8px 0 0;
+            }
+            .content {
+              background-color: #f9fafb;
+              padding: 30px;
+              border-radius: 0 0 8px 8px;
+            }
+            .credentials-box {
+              background-color: white;
+              padding: 25px;
+              border-radius: 8px;
+              margin: 25px 0;
+              border-left: 4px solid #667eea;
+            }
+            .credential-item {
+              margin: 15px 0;
+              padding: 12px;
+              background-color: #f3f4f6;
+              border-radius: 6px;
+            }
+            .credential-value {
+              font-size: 16px;
+              color: #111827;
+              font-family: 'Courier New', monospace;
+              margin-top: 5px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>🔑 Password Reset - Integrated Lens System</h1>
+          </div>
+          <div class="content">
+            <p>Dear ${companyUser.firstName} ${companyUser.lastName},</p>
+            <p>Your login credentials have been reset. Here are your new login details:</p>
+            
+            <div class="credentials-box">
+              <div class="credential-item">
+                <strong>Email:</strong>
+                <div class="credential-value">${companyUser.email}</div>
+              </div>
+              <div class="credential-item">
+                <strong>New Password:</strong>
+                <div class="credential-value">${newPassword}</div>
+              </div>
+            </div>
+
+            <p style="color: #dc2626; font-weight: bold;">
+              ⚠️ Please change this password after logging in for security.
+            </p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      await emailService.sendEmail({
+        to: companyUser.email!,
+        subject: 'Your New Login Credentials - Integrated Lens System',
+        html: emailHtml,
+      });
+
+      res.json({ message: 'Credentials sent successfully' });
+    } catch (error) {
+      console.error('Error resending credentials:', error);
+      res.status(500).json({ message: 'Failed to resend credentials' });
+    }
+  });
+
   const httpServer = createServer(app);
   
   // Initialize WebSocket server for real-time updates

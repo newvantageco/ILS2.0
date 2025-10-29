@@ -35,7 +35,7 @@ import InvoicesPage from "@/pages/InvoicesPage";
 import EyeTestPage from "@/pages/EyeTestPage";
 import AIAssistantPage from "@/pages/AIAssistantPage";
 import AISettingsPage from "@/pages/AISettingsPage";
-import CompanyManagementPage from "@/pages/CompanyManagementPage";
+import CompanyManagementPage from "@/pages/admin/CompanyManagementPage";
 import BIDashboardPage from "@/pages/BIDashboardPage";
 import { LogOut } from "lucide-react";
 import { useLocation } from "wouter";
@@ -254,6 +254,7 @@ function AuthenticatedApp() {
           <>
             <Route path="/admin/dashboard" component={AdminDashboard} />
             <Route path="/admin/users" component={AdminDashboard} />
+            <Route path="/admin/companies" component={CompanyManagementPage} />
             <Route path="/admin/ai-assistant" component={AIAssistantPage} />
             <Route path="/admin/ai-settings" component={AISettingsPage} />
             <Route path="/admin/company" component={CompanyManagementPage} />

@@ -370,6 +370,133 @@ export class EmailService {
       html,
     });
   }
+
+  /**
+   * Send welcome email with login credentials
+   */
+  async sendWelcomeEmail(
+    recipientEmail: string,
+    recipientName: string,
+    password: string,
+    companyName: string,
+    role: string
+  ): Promise<boolean> {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+          .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+          }
+          .content {
+            background-color: #f9fafb;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+          }
+          .credentials-box {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 25px 0;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+          .credential-item {
+            margin: 15px 0;
+            padding: 12px;
+            background-color: #f3f4f6;
+            border-radius: 6px;
+          }
+          .credential-label {
+            font-weight: bold;
+            color: #4b5563;
+            font-size: 12px;
+            text-transform: uppercase;
+          }
+          .credential-value {
+            font-size: 16px;
+            color: #111827;
+            font-family: 'Courier New', monospace;
+            margin-top: 5px;
+          }
+          .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 28px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+          }
+          .footer {
+            text-align: center;
+            color: #6b7280;
+            margin-top: 30px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>🎉 Welcome to Integrated Lens System</h1>
+        </div>
+        <div class="content">
+          <p>Dear ${recipientName},</p>
+          <p>Your account for <strong>${companyName}</strong> has been created.</p>
+          
+          <div class="credentials-box">
+            <h3>🔐 Your Login Credentials</h3>
+            <div class="credential-item">
+              <div class="credential-label">Email</div>
+              <div class="credential-value">${recipientEmail}</div>
+            </div>
+            <div class="credential-item">
+              <div class="credential-label">Password</div>
+              <div class="credential-value">${password}</div>
+            </div>
+            <div class="credential-item">
+              <div class="credential-label">Role</div>
+              <div class="credential-value">${role.toUpperCase()}</div>
+            </div>
+          </div>
+
+          <div style="text-align: center;">
+            <a href="${process.env.APP_URL || 'http://localhost:3000'}/login" class="button">
+              Log In to Your Account
+            </a>
+          </div>
+
+          <p style="color: #dc2626; font-weight: bold;">
+            ⚠️ Please change your password after logging in.
+          </p>
+
+          <div class="footer">
+            <p><strong>Integrated Lens System</strong></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return await this.sendEmail({
+      to: recipientEmail,
+      subject: `Welcome to Integrated Lens System - Your Login Credentials`,
+      html,
+    });
+  }
 }
 
 // Create singleton instance

@@ -85,10 +85,10 @@ const menuItems = {
   admin: [
     { title: "Dashboard", url: "/admin/dashboard", icon: Home },
     { title: "User Management", url: "/admin/users", icon: Users },
+    { title: "Company Management", url: "/admin/companies", icon: Building2 },
     { title: "Platform Settings", url: "/admin/platform", icon: Shield },
     { title: "AI Assistant", url: "/admin/ai-assistant", icon: Brain },
     { title: "BI Dashboard", url: "/admin/bi-dashboard", icon: BarChart3 },
-    { title: "Company", url: "/admin/company", icon: Building2 },
   ],
 };
 
