@@ -38,6 +38,8 @@ Added npm script for easy migration execution:
 "db:migrate": "bash scripts/run-migration.sh"
 ```
 
+**Note**: This script requires bash. On Windows, use Git Bash, WSL, or create a .cmd/.ps1 equivalent. For true cross-platform support, consider using Node.js-based migration tools.
+
 ### 3. Documentation
 
 #### `MIGRATION_README.md` (Quick Start)
@@ -118,16 +120,23 @@ The migration adds the following capabilities:
 
 ### Running the Migration
 
+**Security Note**: Never expose database credentials in command history or scripts. Use environment files (.env) or secure credential management systems.
+
 ```bash
-# Method 1: Using npm script
+# Method 1: Using npm script (recommended)
 export DATABASE_URL="postgres://user:pass@host:port/db"
 npm run db:migrate
 
-# Method 2: Direct script execution
+# Method 2: Using .env file (more secure)
+# Create a .env file with: DATABASE_URL=postgres://user:pass@host:port/db
+source .env
+npm run db:migrate
+
+# Method 3: Direct script execution
 export DATABASE_URL="postgres://user:pass@host:port/db"
 ./scripts/run-migration.sh
 
-# Method 3: Direct psql
+# Method 4: Direct psql
 psql "$DATABASE_URL" -f migrations/enhanced_test_rooms_and_remote_access.sql
 ```
 
@@ -150,7 +159,8 @@ The migration includes a verification query at the end that shows column counts 
 
 ```sql
 SELECT 'test_rooms' as table_name, COUNT(*) as column_count 
-FROM information_schema.columns WHERE table_name = 'test_rooms'
+FROM information_schema.columns 
+WHERE table_name = 'test_rooms' AND table_schema = 'public'
 -- ... similar for other tables
 ```
 
@@ -163,7 +173,7 @@ Expected results:
 
 ## Safety Features
 
-1. **Idempotent Operations**: Uses `IF NOT EXISTS` and `IF NOT EXISTS` clauses
+1. **Idempotent Operations**: Uses `IF NOT EXISTS` and `CREATE OR REPLACE` clauses
 2. **Safe to Re-run**: Can be executed multiple times without errors
 3. **Error Handling**: Script exits on first error (`set -e`)
 4. **Validation**: Checks for DATABASE_URL and file existence
