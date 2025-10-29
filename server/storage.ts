@@ -376,7 +376,14 @@ export class DbStorage implements IStorage {
   }
 
   async createPatient(insertPatient: InsertPatient): Promise<Patient> {
-    const [patient] = await db.insert(patients).values(insertPatient).returning();
+    // Generate customer number using database function
+    const result = await db.execute(sql`SELECT generate_customer_number() as customer_number`);
+    const customerNumber = (result.rows[0] as any).customer_number;
+
+    const [patient] = await db.insert(patients).values({
+      ...insertPatient,
+      customerNumber,
+    }).returning();
     return patient;
   }
 

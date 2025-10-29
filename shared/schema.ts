@@ -586,6 +586,7 @@ export const userCustomPermissions = pgTable("user_custom_permissions", {
 
 export const patients = pgTable("patients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerNumber: varchar("customer_number", { length: 20 }).notNull().unique(),
   name: text("name").notNull(),
   dateOfBirth: text("date_of_birth"),
   email: varchar("email"),
@@ -895,6 +896,7 @@ export const biRecommendations = pgTable("bi_recommendations", {
 export const upsertUserSchema = createInsertSchema(users);
 export const insertPatientSchema = createInsertSchema(patients).omit({
   id: true,
+  customerNumber: true,  // Auto-generated
   createdAt: true,
 });
 

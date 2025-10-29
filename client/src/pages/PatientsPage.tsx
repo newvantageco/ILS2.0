@@ -25,6 +25,7 @@ import { format } from "date-fns";
 
 interface Patient {
   id: string;
+  customerNumber: string;
   name: string;
   dateOfBirth: string | null;
   nhsNumber: string | null;
@@ -45,6 +46,7 @@ export default function PatientsPage() {
     const query = searchQuery.toLowerCase();
     return (
       patient.name.toLowerCase().includes(query) ||
+      patient.customerNumber.toLowerCase().includes(query) ||
       patient.nhsNumber?.toLowerCase().includes(query) ||
       patient.email?.toLowerCase().includes(query)
     );
@@ -111,6 +113,7 @@ export default function PatientsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Customer #</TableHead>
                     <TableHead>Patient Name</TableHead>
                     <TableHead>Date of Birth</TableHead>
                     <TableHead>NHS Number</TableHead>
@@ -121,6 +124,11 @@ export default function PatientsPage() {
                 <TableBody>
                   {filteredPatients.map((patient) => (
                     <TableRow key={patient.id} data-testid={`row-patient-${patient.id}`}>
+                      <TableCell>
+                        <Badge variant="secondary" className="font-mono text-xs">
+                          {patient.customerNumber}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <UserCircle className="h-4 w-4 text-muted-foreground" />
