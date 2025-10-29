@@ -31,6 +31,7 @@ import PatientsPage from "@/pages/PatientsPage";
 import PrescriptionsPage from "@/pages/PrescriptionsPage";
 import InventoryPage from "@/pages/InventoryPage";
 import POSPage from "@/pages/POSPage";
+import InvoicesPage from "@/pages/InvoicesPage";
 import EyeTestPage from "@/pages/EyeTestPage";
 import AIAssistantPage from "@/pages/AIAssistantPage";
 import AISettingsPage from "@/pages/AISettingsPage";
@@ -176,6 +177,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/prescriptions" component={PrescriptionsPage} />
             <Route path="/ecp/inventory" component={InventoryPage} />
             <Route path="/ecp/pos" component={POSPage} />
+            <Route path="/ecp/invoices" component={InvoicesPage} />
             <Route path="/ecp/new-order" component={NewOrderPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />

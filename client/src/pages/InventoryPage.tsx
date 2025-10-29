@@ -23,6 +23,13 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Package, 
   Plus,
@@ -37,13 +44,15 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface Product {
   id: string;
-  name: string;
-  category: string;
+  productType: "frame" | "contact_lens" | "solution" | "service";
+  brand: string | null;
+  model: string | null;
   sku: string | null;
-  description: string | null;
   unitPrice: string;
   stockQuantity: number;
-  reorderLevel: number | null;
+  ecpId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function InventoryPage() {
@@ -131,28 +140,28 @@ export default function InventoryPage() {
 
   const filteredProducts = products?.filter((product) => {
     const query = searchQuery.toLowerCase();
+    const displayName = `${product.brand || ''} ${product.model || ''}`.trim();
     return (
-      product.name.toLowerCase().includes(query) ||
-      product.category.toLowerCase().includes(query) ||
+      displayName.toLowerCase().includes(query) ||
+      product.productType.toLowerCase().includes(query) ||
       product.sku?.toLowerCase().includes(query)
     );
   });
 
   const lowStockProducts = products?.filter(
-    (p) => p.reorderLevel && p.stockQuantity <= p.reorderLevel
+    (p) => p.stockQuantity <= 10  // Default low stock threshold
   ) || [];
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const data = {
-      name: formData.get("name") as string,
-      category: formData.get("category") as string,
+      productType: formData.get("productType") as string,
+      brand: formData.get("brand") as string || null,
+      model: formData.get("model") as string || null,
       sku: formData.get("sku") as string || null,
-      description: formData.get("description") as string || null,
       unitPrice: formData.get("unitPrice") as string,
-      stockQuantity: parseInt(formData.get("stockQuantity") as string),
-      reorderLevel: parseInt(formData.get("reorderLevel") as string) || null,
+      stockQuantity: parseInt(formData.get("stockQuantity") as string) || 0,
     };
 
     if (editingProduct) {
@@ -200,24 +209,34 @@ export default function InventoryPage() {
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="name">Product Name *</Label>
-                  <Input id="name" name="name" required data-testid="input-product-name" />
+                  <Label htmlFor="productType">Product Type *</Label>
+                  <Select name="productType" required>
+                    <SelectTrigger id="productType" data-testid="select-product-type">
+                      <SelectValue placeholder="Select product type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="frame">Frame</SelectItem>
+                      <SelectItem value="contact_lens">Contact Lens</SelectItem>
+                      <SelectItem value="solution">Solution</SelectItem>
+                      <SelectItem value="service">Service</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="category">Category *</Label>
-                    <Input id="category" name="category" required data-testid="input-product-category" />
+                    <Label htmlFor="brand">Brand</Label>
+                    <Input id="brand" name="brand" data-testid="input-product-brand" />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="sku">SKU</Label>
-                    <Input id="sku" name="sku" data-testid="input-product-sku" />
+                    <Label htmlFor="model">Model</Label>
+                    <Input id="model" name="model" data-testid="input-product-model" />
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea id="description" name="description" data-testid="input-product-description" />
+                  <Label htmlFor="sku">SKU</Label>
+                  <Input id="sku" name="sku" data-testid="input-product-sku" />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="unitPrice">Unit Price *</Label>
                     <Input
@@ -231,24 +250,14 @@ export default function InventoryPage() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="stockQuantity">Stock *</Label>
+                    <Label htmlFor="stockQuantity">Stock Quantity</Label>
                     <Input
                       id="stockQuantity"
                       name="stockQuantity"
                       type="number"
                       min="0"
-                      required
+                      defaultValue="0"
                       data-testid="input-product-stock"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="reorderLevel">Reorder Level</Label>
-                    <Input
-                      id="reorderLevel"
-                      name="reorderLevel"
-                      type="number"
-                      min="0"
-                      data-testid="input-product-reorder"
                     />
                   </div>
                 </div>
@@ -278,7 +287,7 @@ export default function InventoryPage() {
             <div className="flex flex-wrap gap-2">
               {lowStockProducts.map((product) => (
                 <Badge key={product.id} variant="outline" className="border-amber-500">
-                  {product.name} ({product.stockQuantity} left)
+                  {product.brand} {product.model} ({product.stockQuantity} left)
                 </Badge>
               ))}
             </div>
@@ -320,7 +329,7 @@ export default function InventoryPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="min-w-[150px]">Product</TableHead>
-                  <TableHead className="min-w-[100px]">Category</TableHead>
+                  <TableHead className="min-w-[100px]">Type</TableHead>
                   <TableHead className="min-w-[100px]">SKU</TableHead>
                   <TableHead className="text-right min-w-[80px]">Price</TableHead>
                   <TableHead className="text-right min-w-[80px]">Stock</TableHead>
@@ -333,18 +342,13 @@ export default function InventoryPage() {
                     <TableCell className="font-medium">
                       <div className="min-w-[140px]">
                         <div data-testid={`text-product-name-${product.id}`} className="font-medium">
-                          {product.name}
+                          {product.brand} {product.model}
                         </div>
-                        {product.description && (
-                          <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                            {product.description}
-                          </div>
-                        )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="text-xs whitespace-nowrap">
-                        {product.category}
+                      <Badge variant="outline" className="text-xs whitespace-nowrap capitalize">
+                        {product.productType.replace('_', ' ')}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -355,12 +359,12 @@ export default function InventoryPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right font-medium whitespace-nowrap">
-                      £{parseFloat(product.unitPrice).toFixed(2)}
+                      ${parseFloat(product.unitPrice).toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right">
                       <Badge
                         variant={
-                          product.reorderLevel && product.stockQuantity <= product.reorderLevel
+                          product.stockQuantity <= 10
                             ? "destructive"
                             : "secondary"
                         }

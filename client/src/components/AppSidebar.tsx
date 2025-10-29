@@ -28,6 +28,7 @@ import {
   Brain,
   Building2,
   BarChart3,
+  Receipt,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -47,6 +48,7 @@ const menuItems = {
     { title: "Prescriptions", url: "/ecp/prescriptions", icon: FileText },
     { title: "Inventory", url: "/ecp/inventory", icon: Archive },
     { title: "Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
+    { title: "Invoices", url: "/ecp/invoices", icon: Receipt },
     { title: "New Order", url: "/ecp/new-order", icon: Package },
     { title: "My Orders", url: "/ecp/orders", icon: ClipboardList },
     { title: "Returns", url: "/ecp/returns", icon: TrendingUp },
