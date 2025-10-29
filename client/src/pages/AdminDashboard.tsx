@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserCheck, UserX, Clock, CheckCircle, XCircle, Ban, Shield } from "lucide-react";
+import { Users, UserCheck, UserX, Clock, CheckCircle, XCircle, Ban, Shield, Trash2 } from "lucide-react";
 
 type User = {
   id: string;
@@ -29,7 +29,7 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [actionDialog, setActionDialog] = useState<{
-    type: "approve" | "suspend" | "activate" | "change-role" | null;
+    type: "approve" | "suspend" | "activate" | "change-role" | "delete" | null;
     user: User | null;
   }>({type: null, user: null});
   const [suspensionReason, setSuspensionReason] = useState("");
@@ -72,6 +72,29 @@ export default function AdminDashboard() {
     },
   });
 
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await apiRequest("DELETE", `/api/admin/users/${userId}`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      setActionDialog({ type: null, user: null });
+      toast({
+        title: "User deleted successfully",
+        description: "The user account has been permanently deleted.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Delete failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleApprove = (user: User) => {
     updateUserMutation.mutate({
       userId: user.id,
@@ -103,6 +126,11 @@ export default function AdminDashboard() {
       userId: actionDialog.user.id,
       updates: { role: newRole },
     });
+  };
+
+  const handleDelete = () => {
+    if (!actionDialog.user) return;
+    deleteUserMutation.mutate(actionDialog.user.id);
   };
 
   const getUserName = (user: User) => {
@@ -262,15 +290,26 @@ export default function AdminDashboard() {
                           )}
                           
                           {user.accountStatus === "suspended" && (
-                            <Button
-                              size="sm"
-                              variant="default"
-                              onClick={() => handleActivate(user)}
-                              data-testid={`button-activate-${user.id}`}
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Activate
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => handleActivate(user)}
+                                data-testid={`button-activate-${user.id}`}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Activate
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => setActionDialog({ type: "delete", user })}
+                                data-testid={`button-delete-${user.id}`}
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Delete
+                              </Button>
+                            </>
                           )}
                           
                           {user.role && user.role !== "admin" && (
@@ -378,6 +417,44 @@ export default function AdminDashboard() {
               data-testid="button-confirm-role-change"
             >
               Update Role
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Dialog */}
+      <Dialog open={actionDialog.type === "delete"} onOpenChange={(open) => !open && setActionDialog({ type: null, user: null })}>
+        <DialogContent data-testid="dialog-delete-user">
+          <DialogHeader>
+            <DialogTitle>Delete User Account</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete {actionDialog.user && getUserName(actionDialog.user)}'s account? 
+              This action cannot be undone and will remove all associated data.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-center gap-2 p-4 bg-destructive/10 border border-destructive/20 rounded-md">
+              <XCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+              <p className="text-sm text-destructive font-medium">
+                Warning: This is a permanent action and cannot be reversed.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setActionDialog({ type: null, user: null })}
+              data-testid="button-cancel-delete"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteUserMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteUserMutation.isPending ? "Deleting..." : "Delete Permanently"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1667,6 +1667,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/admin/users/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const targetUserId = req.params.id;
+
+      // Prevent admin from deleting themselves
+      if (userId === targetUserId) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+
+      // Get the target user to verify it exists and check status
+      const targetUser = await storage.getUser(targetUserId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Optional: Only allow deleting suspended users
+      // Uncomment the following to enforce this restriction
+      // if (targetUser.accountStatus !== 'suspended') {
+      //   return res.status(400).json({ message: "Can only delete suspended users" });
+      // }
+
+      const deleted = await storage.deleteUser(targetUserId);
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete user" });
+      }
+
+      res.json({ message: "User deleted successfully", id: targetUserId });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
   // ==================== Phase 7: ECP Clinical & Retail Module ====================
   
   // Patient routes

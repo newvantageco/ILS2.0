@@ -81,6 +81,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
+  deleteUser(id: string): Promise<boolean>;
   getAllUsers(): Promise<User[]>;
   getUserStats(): Promise<{ total: number; pending: number; active: number; suspended: number }>;
   getSuppliers(): Promise<User[]>;
@@ -312,6 +313,21 @@ export class DbStorage implements IStorage {
       .delete(users)
       .where(and(eq(users.id, id), eq(users.role, 'supplier')))
       .returning();
+    return result.length > 0;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    // First delete user roles
+    await db
+      .delete(userRoles)
+      .where(eq(userRoles.userId, id));
+    
+    // Then delete the user
+    const result = await db
+      .delete(users)
+      .where(eq(users.id, id))
+      .returning();
+    
     return result.length > 0;
   }
 
