@@ -91,7 +91,9 @@ export function registerAiAssistantRoutes(app: Express): void {
    */
   app.post("/api/ai-assistant/ask", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const user = await getAuthenticatedUser(req);
+      // Get user from database (works in both development and production)
+      const userId = req.user?.claims?.sub || req.user?.id;
+      const user = await storage.getUser(userId);
       
       if (!user) {
         return res.status(404).json({ error: "User not found" });
@@ -167,7 +169,7 @@ export function registerAiAssistantRoutes(app: Express): void {
    */
   app.get("/api/ai-assistant/conversations", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const user = await getAuthenticatedUser(req);
+      const user = req.user;
       if (!user.companyId) {
         return res.status(403).json({
           error: "User must belong to a company",
@@ -196,7 +198,7 @@ export function registerAiAssistantRoutes(app: Express): void {
    */
   app.get("/api/ai-assistant/conversations/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const user = await getAuthenticatedUser(req);
+      const user = req.user;
       const { id } = req.params;
 
       const conversation = await storage.getAiConversation(id);
@@ -247,7 +249,7 @@ export function registerAiAssistantRoutes(app: Express): void {
    */
   app.post("/api/ai-assistant/conversations/:id/feedback", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const user = await getAuthenticatedUser(req);
+      const user = req.user;
       const { id: conversationId } = req.params;
 
       const validation = feedbackSchema.safeParse(req.body);
@@ -305,7 +307,7 @@ export function registerAiAssistantRoutes(app: Express): void {
     upload.single('file'), 
     async (req: any, res: Response) => {
       try {
-        const user = await getAuthenticatedUser(req);
+        const user = req.user;
         if (!user.companyId) {
           return res.status(403).json({
             error: "User must belong to a company",
@@ -359,7 +361,7 @@ export function registerAiAssistantRoutes(app: Express): void {
    */
   app.get("/api/ai-assistant/knowledge", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const user = await getAuthenticatedUser(req);
+      const user = req.user;
       if (!user.companyId) {
         return res.status(403).json({
           error: "User must belong to a company",
@@ -388,7 +390,7 @@ export function registerAiAssistantRoutes(app: Express): void {
    */
   app.delete("/api/ai-assistant/knowledge/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const user = await getAuthenticatedUser(req);
+      const user = req.user;
       const { id } = req.params;
 
       const knowledge = await storage.getAiKnowledgeBase(id);
@@ -427,7 +429,7 @@ export function registerAiAssistantRoutes(app: Express): void {
    */
   app.get("/api/ai-assistant/learning-progress", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const user = await getAuthenticatedUser(req);
+      const user = req.user;
       if (!user.companyId) {
         return res.status(403).json({
           error: "User must belong to a company",
@@ -485,7 +487,9 @@ export function registerAiAssistantRoutes(app: Express): void {
    */
   app.get("/api/ai-assistant/stats", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const user = await getAuthenticatedUser(req);
+      // Get user from database (works in both development and production)
+      const userId = req.user?.claims?.sub || req.user?.id;
+      const user = await storage.getUser(userId);
       
       if (!user) {
         return res.status(404).json({ error: "User not found" });
@@ -549,7 +553,7 @@ export function registerAiAssistantRoutes(app: Express): void {
    */
   app.post("/api/ai-assistant/train", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const user = await getAuthenticatedUser(req);
+      const user = req.user;
       if (!user.companyId) {
         return res.status(403).json({
           error: "User must belong to a company",
@@ -594,7 +598,7 @@ export function registerAiAssistantRoutes(app: Express): void {
    */
   app.get("/api/ai-assistant/training-status", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const user = await getAuthenticatedUser(req);
+      const user = req.user;
       if (!user.companyId) {
         return res.status(403).json({
           error: "User must belong to a company",
@@ -623,7 +627,7 @@ export function registerAiAssistantRoutes(app: Express): void {
    */
   app.get("/api/ai-assistant/settings", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const user = await getAuthenticatedUser(req);
+      const user = req.user;
       if (!user.companyId) {
         return res.status(403).json({
           error: "User must belong to a company",
@@ -667,7 +671,7 @@ export function registerAiAssistantRoutes(app: Express): void {
    */
   app.put("/api/ai-assistant/settings", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const user = await getAuthenticatedUser(req);
+      const user = req.user;
       if (!user.companyId) {
         return res.status(403).json({
           error: "User must belong to a company",
