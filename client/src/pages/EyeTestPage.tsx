@@ -18,6 +18,8 @@ import {
   Palette,
   Crosshair,
   FileCheck,
+  DoorOpen,
+  Wifi,
 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +37,16 @@ interface Patient {
   nhsNumber: string | null;
 }
 
+interface TestRoom {
+  id: string;
+  roomName: string;
+  roomCode: string | null;
+  currentStatus: string;
+  equipmentList: string | null;
+  allowRemoteAccess: boolean;
+  isActive: boolean;
+}
+
 export default function EyeTestPage() {
   const [, params] = useRoute("/ecp/patient/:id/test");
   const patientId = params?.id;
@@ -44,12 +56,23 @@ export default function EyeTestPage() {
   const [vaResults, setVaResults] = useState({ OD: "", OS: "" });
   const [colorBlindnessResult, setColorBlindnessResult] = useState<ColorBlindnessResult | null>(null);
   const [visualFieldResults, setVisualFieldResults] = useState<any>({ OD: null, OS: null });
+  const [selectedTestRoom, setSelectedTestRoom] = useState<string>("");
   const { toast } = useToast();
 
   const { data: patient, isLoading } = useQuery<Patient>({
     queryKey: ["/api/patients", patientId],
     enabled: !!patientId,
   });
+
+  // Fetch available test rooms
+  const { data: testRooms } = useQuery<TestRoom[]>({
+    queryKey: ["/api/ecp/test-rooms"],
+  });
+
+  // Filter only available test rooms
+  const availableTestRooms = testRooms?.filter(
+    room => room.isActive && room.currentStatus === "available"
+  );
 
   const createExaminationMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -98,8 +121,18 @@ export default function EyeTestPage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
+    if (!selectedTestRoom) {
+      toast({
+        title: "Test Room Required",
+        description: "Please select a test room before saving the examination.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const data = {
       patientId,
+      testRoomId: selectedTestRoom,
       visualAcuityOD: formData.get("visualAcuityOD") as string || null,
       visualAcuityOS: formData.get("visualAcuityOS") as string || null,
       autoRefractionODSphere: formData.get("autoRefractionODSphere") as string || null,
@@ -321,6 +354,60 @@ export default function EyeTestPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Test Room Selection */}
+                <div className="p-4 border-2 border-primary/20 rounded-lg bg-primary/5 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <DoorOpen className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold">Test Room Selection</h3>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="testRoom">Select Test Room *</Label>
+                      <Select
+                        value={selectedTestRoom}
+                        onValueChange={setSelectedTestRoom}
+                        required
+                      >
+                        <SelectTrigger id="testRoom" className="bg-background">
+                          <SelectValue placeholder="Choose test room..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableTestRooms?.map((room) => (
+                            <SelectItem key={room.id} value={room.id}>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{room.roomName}</span>
+                                {room.roomCode && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {room.roomCode}
+                                  </Badge>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {selectedTestRoom && availableTestRooms?.find(r => r.id === selectedTestRoom) && (
+                      <div className="space-y-2">
+                        <Label>Room Details</Label>
+                        <div className="p-3 bg-background rounded-md border text-sm space-y-1">
+                          {availableTestRooms.find(r => r.id === selectedTestRoom)?.equipmentList && (
+                            <p className="text-muted-foreground">
+                              Equipment: {availableTestRooms.find(r => r.id === selectedTestRoom)?.equipmentList}
+                            </p>
+                          )}
+                          {availableTestRooms.find(r => r.id === selectedTestRoom)?.allowRemoteAccess && (
+                            <Badge variant="outline" className="gap-1">
+                              <Wifi className="h-3 w-3" />
+                              Remote Access
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Show test results summary if available */}
                 {(vaResults.OD || vaResults.OS || colorBlindnessResult || visualFieldResults.OD || visualFieldResults.OS) && (
                   <div className="p-4 bg-muted rounded-lg space-y-2">

@@ -459,6 +459,162 @@ export default function Landing() {
               </div>
             </div>
 
+            {/* Modern Practice Management Features */}
+            <div className="mb-16">
+              <h4 className="text-2xl font-bold mb-6 text-center">Advanced Practice Operations</h4>
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-background hover:shadow-lg transition-all duration-300">
+                  <CardContent className="p-6 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Package className="h-5 w-5 text-primary" />
+                      </div>
+                      <h4 className="font-semibold">Test Room Management</h4>
+                    </div>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li>• Complete room inventory & status</li>
+                      <li>• Equipment tracking per room</li>
+                      <li>• Maintenance scheduling</li>
+                      <li>• Accessibility management</li>
+                      <li>• Multi-location support</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-background hover:shadow-lg transition-all duration-300">
+                  <CardContent className="p-6 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Clock className="h-5 w-5 text-primary" />
+                      </div>
+                      <h4 className="font-semibold">Room Scheduling</h4>
+                    </div>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li>• Calendar-based booking system</li>
+                      <li>• Automatic conflict detection</li>
+                      <li>• Patient appointment linking</li>
+                      <li>• Real-time availability view</li>
+                      <li>• Appointment type classification</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-background hover:shadow-lg transition-all duration-300">
+                  <CardContent className="p-6 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Gauge className="h-5 w-5 text-primary" />
+                      </div>
+                      <h4 className="font-semibold">Equipment Calibration</h4>
+                    </div>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li>• Equipment inventory tracking</li>
+                      <li>• Calibration due date alerts</li>
+                      <li>• Compliance reporting</li>
+                      <li>• Calibration history logs</li>
+                      <li>• Automated status updates</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-background hover:shadow-lg transition-all duration-300">
+                  <CardContent className="p-6 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Cloud className="h-5 w-5 text-primary" />
+                      </div>
+                      <h4 className="font-semibold">Offline PWA</h4>
+                    </div>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li>• Works without internet</li>
+                      <li>• Background sync when online</li>
+                      <li>• Installable on devices</li>
+                      <li>• Offline data queue</li>
+                      <li>• Push notifications</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Multi-Location & Remote Features */}
+            <div className="mb-16">
+              <h4 className="text-2xl font-bold mb-6 text-center">Multi-Location & Remote Capabilities</h4>
+              <div className="grid md:grid-cols-2 gap-8">
+                <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-background to-background hover:shadow-lg transition-all duration-300">
+                  <CardContent className="p-8 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Layers className="h-6 w-6 text-primary" />
+                      </div>
+                      <h4 className="font-bold text-xl">Multi-Location Dashboard</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Manage multiple practice locations from a unified dashboard with real-time statistics
+                    </p>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Per-location room utilization metrics</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Centralized equipment tracking</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Cross-location scheduling visibility</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Aggregate reporting & analytics</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>System-wide health monitoring</span>
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-background to-background hover:shadow-lg transition-all duration-300">
+                  <CardContent className="p-8 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Shield className="h-6 w-6 text-primary" />
+                      </div>
+                      <h4 className="font-bold text-xl">Secure Remote Access</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Enable remote prescription viewing and approval with enterprise-grade security
+                    </p>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Time-limited access tokens</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Approval workflow for remote sessions</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Session audit trail & logging</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Instant session revocation</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span>Patient data access controls</span>
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
             {/* E-commerce & Multi-Tenant */}
             <div className="mb-16">
               <h4 className="text-2xl font-bold mb-6 text-center">E-commerce Integration & Administration</h4>

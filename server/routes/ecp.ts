@@ -7,12 +7,17 @@ import { Router, type Request, type Response } from "express";
 import { db } from "../../db";
 import { 
   testRooms, 
+  testRoomBookings,
+  equipment,
+  calibrationRecords,
+  remoteSessions,
   gocComplianceChecks, 
   prescriptionTemplates, 
   clinicalProtocols,
   prescriptions,
   users,
   companies,
+  patients,
   type InsertTestRoom,
   type InsertGocComplianceCheck,
   type InsertPrescriptionTemplate,
@@ -22,7 +27,7 @@ import {
   insertPrescriptionTemplateSchema,
   insertClinicalProtocolSchema,
 } from "@shared/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, between, gte, lte } from "drizzle-orm";
 import { isAuthenticated } from "../replitAuth";
 
 const router = Router();
@@ -175,6 +180,355 @@ router.delete('/test-rooms/:id', isAuthenticated, async (req: any, res: Response
   } catch (error) {
     console.error("Error deleting test room:", error);
     res.status(500).json({ message: "Failed to delete test room" });
+  }
+});
+
+// ============== TEST ROOM BOOKINGS ==============
+
+// Get test room bookings
+router.get('/test-room-bookings', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user.length || !user[0].companyId) {
+      return res.status(403).json({ message: "User must belong to a company" });
+    }
+
+    // Get bookings with room and patient details
+    const bookings = await db
+      .select({
+        booking: testRoomBookings,
+        room: testRooms,
+        patient: patients,
+      })
+      .from(testRoomBookings)
+      .innerJoin(testRooms, eq(testRoomBookings.testRoomId, testRooms.id))
+      .leftJoin(patients, eq(testRoomBookings.patientId, patients.id))
+      .where(eq(testRooms.companyId, user[0].companyId))
+      .orderBy(desc(testRoomBookings.bookingDate));
+
+    res.json(bookings);
+  } catch (error) {
+    console.error("Error fetching test room bookings:", error);
+    res.status(500).json({ message: "Failed to fetch test room bookings" });
+  }
+});
+
+// Get bookings for a specific date and room
+router.get('/test-room-bookings/date/:date/room/:roomId', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { date, roomId } = req.params;
+    const bookingDate = new Date(date);
+    
+    // Get start and end of day
+    const startOfDay = new Date(bookingDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(bookingDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const bookings = await db
+      .select()
+      .from(testRoomBookings)
+      .where(
+        and(
+          eq(testRoomBookings.testRoomId, roomId),
+          gte(testRoomBookings.bookingDate, startOfDay),
+          lte(testRoomBookings.bookingDate, endOfDay)
+        )
+      )
+      .orderBy(testRoomBookings.startTime);
+
+    res.json(bookings);
+  } catch (error) {
+    console.error("Error fetching bookings for date:", error);
+    res.status(500).json({ message: "Failed to fetch bookings" });
+  }
+});
+
+// Create test room booking
+router.post('/test-room-bookings', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user.length || !user[0].companyId) {
+      return res.status(403).json({ message: "User must belong to a company" });
+    }
+
+    // Check for booking conflicts
+    const { testRoomId, startTime, endTime, bookingDate } = req.body;
+    const conflicts = await db
+      .select()
+      .from(testRoomBookings)
+      .where(
+        and(
+          eq(testRoomBookings.testRoomId, testRoomId),
+          eq(testRoomBookings.status, 'scheduled'),
+          sql`${testRoomBookings.startTime} < ${endTime}`,
+          sql`${testRoomBookings.endTime} > ${startTime}`
+        )
+      );
+
+    if (conflicts.length > 0) {
+      return res.status(409).json({ 
+        message: "Booking conflict detected", 
+        conflicts 
+      });
+    }
+
+    const [booking] = await db
+      .insert(testRoomBookings)
+      .values({
+        ...req.body,
+        userId,
+      })
+      .returning();
+
+    res.status(201).json(booking);
+  } catch (error) {
+    console.error("Error creating booking:", error);
+    res.status(500).json({ message: "Failed to create booking" });
+  }
+});
+
+// Update booking status
+router.patch('/test-room-bookings/:id/status', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { status } = req.body;
+    const [booking] = await db
+      .update(testRoomBookings)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(testRoomBookings.id, req.params.id))
+      .returning();
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    res.json(booking);
+  } catch (error) {
+    console.error("Error updating booking status:", error);
+    res.status(500).json({ message: "Failed to update booking status" });
+  }
+});
+
+// Delete booking
+router.delete('/test-room-bookings/:id', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    await db
+      .delete(testRoomBookings)
+      .where(eq(testRoomBookings.id, req.params.id));
+
+    res.json({ message: "Booking deleted" });
+  } catch (error) {
+    console.error("Error deleting booking:", error);
+    res.status(500).json({ message: "Failed to delete booking" });
+  }
+});
+
+// ============== EQUIPMENT & CALIBRATION ==============
+
+// Get equipment for company
+router.get('/equipment', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user.length || !user[0].companyId) {
+      return res.status(403).json({ message: "User must belong to a company" });
+    }
+
+    const equipmentList = await db
+      .select()
+      .from(equipment)
+      .where(eq(equipment.companyId, user[0].companyId))
+      .orderBy(equipment.name);
+
+    res.json(equipmentList);
+  } catch (error) {
+    console.error("Error fetching equipment:", error);
+    res.status(500).json({ message: "Failed to fetch equipment" });
+  }
+});
+
+// Get calibration records
+router.get('/calibration-records', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user.length || !user[0].companyId) {
+      return res.status(403).json({ message: "User must belong to a company" });
+    }
+
+    const records = await db
+      .select({
+        calibration: calibrationRecords,
+        equipment: equipment,
+      })
+      .from(calibrationRecords)
+      .innerJoin(equipment, eq(calibrationRecords.equipmentId, equipment.id))
+      .where(eq(equipment.companyId, user[0].companyId))
+      .orderBy(desc(calibrationRecords.calibrationDate));
+
+    res.json(records);
+  } catch (error) {
+    console.error("Error fetching calibration records:", error);
+    res.status(500).json({ message: "Failed to fetch calibration records" });
+  }
+});
+
+// Record calibration
+router.post('/calibration-records', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const [record] = await db
+      .insert(calibrationRecords)
+      .values({
+        ...req.body,
+        performedBy: userId,
+      })
+      .returning();
+
+    res.status(201).json(record);
+  } catch (error) {
+    console.error("Error recording calibration:", error);
+    res.status(500).json({ message: "Failed to record calibration" });
+  }
+});
+
+// ============== REMOTE ACCESS ==============
+
+// Get remote sessions
+router.get('/remote-sessions', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user.length || !user[0].companyId) {
+      return res.status(403).json({ message: "User must belong to a company" });
+    }
+
+    const sessions = await db
+      .select({
+        session: remoteSessions,
+        prescription: prescriptions,
+        patient: patients,
+      })
+      .from(remoteSessions)
+      .leftJoin(prescriptions, eq(remoteSessions.prescriptionId, prescriptions.id))
+      .leftJoin(patients, eq(prescriptions.patientId, patients.id))
+      .where(eq(remoteSessions.companyId, user[0].companyId))
+      .orderBy(desc(remoteSessions.createdAt));
+
+    res.json(sessions);
+  } catch (error) {
+    console.error("Error fetching remote sessions:", error);
+    res.status(500).json({ message: "Failed to fetch remote sessions" });
+  }
+});
+
+// Create remote session
+router.post('/remote-sessions', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user.length || !user[0].companyId) {
+      return res.status(403).json({ message: "User must belong to a company" });
+    }
+
+    // Generate access token
+    const accessToken = `remote_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const [session] = await db
+      .insert(remoteSessions)
+      .values({
+        ...req.body,
+        companyId: user[0].companyId,
+        requestedBy: userId,
+        accessToken,
+        status: 'pending',
+      })
+      .returning();
+
+    res.status(201).json(session);
+  } catch (error) {
+    console.error("Error creating remote session:", error);
+    res.status(500).json({ message: "Failed to create remote session" });
+  }
+});
+
+// Approve/revoke remote session
+router.patch('/remote-sessions/:id/status', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { status } = req.body;
+    const updates: any = { status, updatedAt: new Date() };
+
+    if (status === 'approved') {
+      updates.approvedBy = userId;
+      updates.approvedAt = new Date();
+    } else if (status === 'revoked') {
+      updates.revokedAt = new Date();
+    }
+
+    const [session] = await db
+      .update(remoteSessions)
+      .set(updates)
+      .where(eq(remoteSessions.id, req.params.id))
+      .returning();
+
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+
+    res.json(session);
+  } catch (error) {
+    console.error("Error updating session status:", error);
+    res.status(500).json({ message: "Failed to update session status" });
   }
 });
 

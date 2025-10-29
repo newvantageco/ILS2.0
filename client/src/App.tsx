@@ -37,6 +37,7 @@ import InventoryPage from "@/pages/InventoryPage";
 import POSPage from "@/pages/POSPage";
 import InvoicesPage from "@/pages/InvoicesPage";
 import EyeTestPage from "@/pages/EyeTestPage";
+import TestRoomsPage from "@/pages/TestRoomsPage";
 import AIAssistantPage from "@/pages/AIAssistantPage";
 import AISettingsPage from "@/pages/AISettingsPage";
 import CompanyManagementPage from "@/pages/admin/CompanyManagementPage";
@@ -189,6 +190,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/inventory" component={InventoryPage} />
             <Route path="/ecp/pos" component={POSPage} />
             <Route path="/ecp/invoices" component={InvoicesPage} />
+            <Route path="/ecp/test-rooms" component={TestRoomsPage} />
             <Route path="/ecp/new-order" component={NewOrderPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />

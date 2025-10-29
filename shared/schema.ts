@@ -210,21 +210,33 @@ export const maintenanceTypeEnum = pgEnum("maintenance_type", [
 // Equipment management tables
 export const equipment = pgTable("equipment", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(),
-  model: varchar("model").notNull(),
-  serialNumber: varchar("serial_number").notNull(),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  testRoomId: varchar("test_room_id").references(() => testRooms.id, { onDelete: 'set null' }),
+  name: varchar("name", { length: 200 }).notNull(),
+  manufacturer: varchar("manufacturer", { length: 150 }),
+  model: varchar("model", { length: 150 }),
+  serialNumber: varchar("serial_number", { length: 100 }).notNull(),
   status: equipmentStatusEnum("status").notNull().default("operational"),
+  purchaseDate: timestamp("purchase_date"),
+  lastCalibrationDate: timestamp("last_calibration_date"),
+  nextCalibrationDate: timestamp("next_calibration_date"),
+  calibrationFrequencyDays: integer("calibration_frequency_days").default(365),
   lastMaintenance: timestamp("last_maintenance"),
   nextMaintenance: timestamp("next_maintenance"),
   specifications: jsonb("specifications"),
+  notes: text("notes"),
   location: varchar("location"),
-  purchaseDate: timestamp("purchase_date"),
   warrantyExpiration: timestamp("warranty_expiration"),
   maintenanceHistory: jsonb("maintenance_history").default('[]'),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_equipment_company").on(table.companyId),
+  index("idx_equipment_test_room").on(table.testRoomId),
+  index("idx_equipment_status").on(table.status),
+  index("idx_equipment_next_calibration").on(table.nextCalibrationDate),
+]);
 
 // Notification system table is defined below with proper types
 
@@ -1157,7 +1169,7 @@ export const prescriptions = pgTable("prescriptions", {
   index("idx_prescriptions_verified").on(table.verifiedByEcpId),
 ]);
 
-// Test Rooms table
+// Test Rooms table - Enhanced with scheduling & equipment tracking
 export const testRooms = pgTable("test_rooms", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -1165,6 +1177,22 @@ export const testRooms = pgTable("test_rooms", {
   roomCode: varchar("room_code", { length: 20 }),
   locationDescription: text("location_description"),
   equipmentList: text("equipment_list"),
+  
+  // Enhanced features for web-based PMS
+  capacity: integer("capacity").default(1), // Number of practitioners that can use simultaneously
+  floorLevel: varchar("floor_level", { length: 50 }), // e.g., "Ground Floor", "First Floor"
+  accessibility: boolean("accessibility").default(true), // Wheelchair accessible
+  currentStatus: varchar("current_status", { length: 50 }).default("available"), // available, occupied, maintenance, offline
+  lastMaintenanceDate: timestamp("last_maintenance_date"),
+  nextMaintenanceDate: timestamp("next_maintenance_date"),
+  
+  // Equipment calibration tracking
+  equipmentDetails: jsonb("equipment_details"), // Detailed equipment list with calibration dates
+  
+  // Remote access & multi-location support
+  allowRemoteAccess: boolean("allow_remote_access").default(false),
+  locationId: varchar("location_id"), // For multi-location practices
+  
   isActive: boolean("is_active").default(true),
   displayOrder: integer("display_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -1172,6 +1200,84 @@ export const testRooms = pgTable("test_rooms", {
 }, (table) => [
   index("idx_test_rooms_company").on(table.companyId),
   index("idx_test_rooms_active").on(table.isActive),
+  index("idx_test_rooms_status").on(table.currentStatus),
+  index("idx_test_rooms_location").on(table.locationId),
+]);
+
+// Test Room Bookings - For scheduling and conflict detection
+export const testRoomBookings = pgTable("test_room_bookings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  testRoomId: varchar("test_room_id").notNull().references(() => testRooms.id, { onDelete: 'cascade' }),
+  patientId: varchar("patient_id").references(() => patients.id, { onDelete: 'set null' }),
+  userId: varchar("user_id").notNull().references(() => users.id), // Practitioner
+  
+  bookingDate: timestamp("booking_date").notNull(),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  
+  appointmentType: varchar("appointment_type", { length: 100 }), // e.g., "Routine Eye Test", "Contact Lens Fitting"
+  status: varchar("status", { length: 50 }).default("scheduled"), // scheduled, in-progress, completed, cancelled
+  
+  notes: text("notes"),
+  
+  // Remote access tracking
+  isRemoteSession: boolean("is_remote_session").default(false),
+  remoteAccessUrl: text("remote_access_url"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_bookings_test_room").on(table.testRoomId),
+  index("idx_bookings_date").on(table.bookingDate),
+  index("idx_bookings_status").on(table.status),
+  index("idx_bookings_user").on(table.userId),
+]);
+
+// Calibration Records table - for equipment compliance tracking
+export const calibrationRecords = pgTable("calibration_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  equipmentId: varchar("equipment_id").notNull().references(() => equipment.id, { onDelete: 'cascade' }),
+  
+  calibrationDate: timestamp("calibration_date").notNull(),
+  performedBy: varchar("performed_by", { length: 200 }).notNull(),
+  certificateNumber: varchar("certificate_number", { length: 100 }),
+  nextDueDate: timestamp("next_due_date").notNull(),
+  
+  results: text("results"),
+  passed: boolean("passed").notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_calibration_equipment").on(table.equipmentId),
+  index("idx_calibration_date").on(table.calibrationDate),
+]);
+
+// Remote Sessions table - for secure remote prescription access
+export const remoteSessions = pgTable("remote_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  patientId: varchar("patient_id").notNull().references(() => patients.id, { onDelete: 'cascade' }),
+  prescriptionId: varchar("prescription_id").references(() => prescriptions.id, { onDelete: 'cascade' }),
+  
+  accessToken: varchar("access_token", { length: 255 }).unique().notNull(),
+  
+  requestedBy: varchar("requested_by").notNull().references(() => users.id),
+  expiresAt: timestamp("expires_at").notNull(),
+  
+  status: varchar("status", { length: 50 }).default("pending"), // pending, approved, expired, revoked
+  
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  revokedAt: timestamp("revoked_at"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_remote_sessions_company").on(table.companyId),
+  index("idx_remote_sessions_patient").on(table.patientId),
+  index("idx_remote_sessions_token").on(table.accessToken),
+  index("idx_remote_sessions_status").on(table.status),
+  index("idx_remote_sessions_expires").on(table.expiresAt),
 ]);
 
 // GOC Compliance Checks table
@@ -2024,6 +2130,13 @@ export const updateTestRoomSchema = insertTestRoomSchema.partial();
 
 export type TestRoom = typeof testRooms.$inferSelect;
 export type InsertTestRoom = typeof testRooms.$inferInsert;
+
+// Test Room Bookings schemas
+export const insertTestRoomBookingSchema = createInsertSchema(testRoomBookings);
+export const updateTestRoomBookingSchema = insertTestRoomBookingSchema.partial();
+
+export type TestRoomBooking = typeof testRoomBookings.$inferSelect;
+export type InsertTestRoomBooking = typeof testRoomBookings.$inferInsert;
 
 // GOC Compliance Checks schemas
 export const insertGocComplianceCheckSchema = createInsertSchema(gocComplianceChecks);
