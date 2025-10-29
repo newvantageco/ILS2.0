@@ -2251,6 +2251,257 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Email and PDF routes for invoices
+  app.get('/api/invoices/:id/pdf', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can download invoice PDFs" });
+      }
+
+      if (denyFreePlanAccess(user, res, "point of sale billing")) {
+        return;
+      }
+
+      const invoice = await storage.getInvoice(req.params.id);
+      
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      if (invoice.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { PDFService } = await import('./services/PDFService');
+      const pdfService = new PDFService();
+      
+      // Calculate subtotal and tax from line items
+      const subtotal = invoice.lineItems.reduce((sum: number, item: any) => 
+        sum + parseFloat(item.totalPrice), 0
+      );
+      const total = parseFloat(invoice.totalAmount);
+      const tax = total - subtotal;
+      
+      const pdfBuffer = await pdfService.generateInvoicePDF({
+        invoiceNumber: invoice.invoiceNumber,
+        invoiceDate: invoice.invoiceDate.toISOString().split('T')[0],
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        customerName: invoice.patient?.name || 'Customer',
+        customerEmail: invoice.patient?.email ? invoice.patient.email : undefined,
+        items: invoice.lineItems.map((item: any) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: parseFloat(item.unitPrice),
+          total: parseFloat(item.totalPrice)
+        })),
+        subtotal,
+        tax,
+        taxRate: subtotal > 0 ? (tax / subtotal) : 0,
+        total,
+        companyName: user.organizationName || 'Integrated Lens System',
+        companyEmail: user.email || process.env.EMAIL_FROM,
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="invoice-${invoice.invoiceNumber}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating invoice PDF:", error);
+      res.status(500).json({ message: "Failed to generate invoice PDF" });
+    }
+  });
+
+  app.post('/api/invoices/:id/email', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can email invoices" });
+      }
+
+      if (denyFreePlanAccess(user, res, "point of sale billing")) {
+        return;
+      }
+
+      const invoice = await storage.getInvoice(req.params.id);
+      
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      if (invoice.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Check if customer has email
+      const customerEmail = invoice.patient?.email;
+      if (!customerEmail) {
+        return res.status(400).json({ message: "Customer email not found" });
+      }
+
+      const { EmailService } = await import('./services/EmailService');
+      const { PDFService } = await import('./services/PDFService');
+      const emailService = new EmailService();
+      const pdfService = new PDFService();
+
+      // Calculate subtotal and tax from line items
+      const subtotal = invoice.lineItems.reduce((sum: number, item: any) => 
+        sum + parseFloat(item.totalPrice), 0
+      );
+      const total = parseFloat(invoice.totalAmount);
+      const tax = total - subtotal;
+
+      // Generate PDF
+      const pdfBuffer = await pdfService.generateInvoicePDF({
+        invoiceNumber: invoice.invoiceNumber,
+        invoiceDate: invoice.invoiceDate.toISOString().split('T')[0],
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+        customerName: invoice.patient?.name || 'Customer',
+        customerEmail: invoice.patient?.email ? invoice.patient.email : undefined,
+        items: invoice.lineItems.map((item: any) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: parseFloat(item.unitPrice),
+          total: parseFloat(item.totalPrice)
+        })),
+        subtotal,
+        tax,
+        taxRate: subtotal > 0 ? (tax / subtotal) : 0,
+        total,
+        companyName: user.organizationName || 'Integrated Lens System',
+        companyEmail: user.email || process.env.EMAIL_FROM,
+      });
+
+      // Send email with PDF attachment
+      await emailService.sendInvoiceEmail({
+        recipientEmail: customerEmail,
+        recipientName: invoice.patient?.name || 'Customer',
+        invoiceNumber: invoice.invoiceNumber,
+        invoiceDate: invoice.invoiceDate.toISOString().split('T')[0],
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+        items: invoice.lineItems.map((item: any) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: parseFloat(item.unitPrice),
+          total: parseFloat(item.totalPrice)
+        })),
+        subtotal,
+        tax,
+        total,
+        companyName: user.organizationName || 'Integrated Lens System',
+        companyEmail: user.email || process.env.EMAIL_FROM,
+      }, pdfBuffer);
+
+      res.json({ message: "Invoice sent successfully via email" });
+    } catch (error) {
+      console.error("Error sending invoice email:", error);
+      res.status(500).json({ message: "Failed to send invoice email" });
+    }
+  });
+
+  // Receipt PDF endpoint (for POS transactions)
+  app.get('/api/invoices/:id/receipt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can generate receipts" });
+      }
+
+      if (denyFreePlanAccess(user, res, "point of sale billing")) {
+        return;
+      }
+
+      const invoice = await storage.getInvoice(req.params.id);
+      
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      if (invoice.ecpId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { PDFService } = await import('./services/PDFService');
+      const pdfService = new PDFService();
+      
+      const pdfBuffer = await pdfService.generateReceiptPDF({
+        receiptNumber: invoice.invoiceNumber,
+        date: invoice.invoiceDate.toISOString().split('T')[0],
+        customerName: invoice.patient?.name || 'Customer',
+        items: invoice.lineItems.map((item: any) => ({
+          description: item.description,
+          quantity: item.quantity,
+          price: parseFloat(item.unitPrice)
+        })),
+        total: parseFloat(invoice.totalAmount),
+        paymentMethod: invoice.paymentMethod || 'cash',
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="receipt-${invoice.invoiceNumber}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating receipt PDF:", error);
+      res.status(500).json({ message: "Failed to generate receipt PDF" });
+    }
+  });
+
+  // Order confirmation email route
+  app.post('/api/orders/:id/send-confirmation', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
+        return res.status(403).json({ message: "Only lab staff can send order confirmations" });
+      }
+
+      const order = await storage.getOrder(req.params.id);
+      
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      // Get ECP user details
+      const ecp = await storage.getUser(order.ecpId);
+      if (!ecp || !ecp.email) {
+        return res.status(400).json({ message: "ECP email not found" });
+      }
+
+      const { EmailService } = await import('./services/EmailService');
+      const emailService = new EmailService();
+
+      // Build order details HTML
+      const orderDetails = `
+        <p><strong>Patient:</strong> ${order.patient.name}</p>
+        <p><strong>Order Date:</strong> ${order.orderDate.toISOString().split('T')[0]}</p>
+        <p><strong>Lens Type:</strong> ${order.lensType}</p>
+        <p><strong>Lens Material:</strong> ${order.lensMaterial}</p>
+        <p><strong>Coating:</strong> ${order.coating}</p>
+        ${order.notes ? `<p><strong>Notes:</strong> ${order.notes}</p>` : ''}
+        <p><strong>Status:</strong> ${order.status}</p>
+      `;
+
+      await emailService.sendOrderConfirmation(
+        ecp.email,
+        `${ecp.firstName || ''} ${ecp.lastName || ''}`.trim() || 'Customer',
+        order.orderNumber,
+        orderDetails
+      );
+
+      res.json({ message: "Order confirmation sent successfully" });
+    } catch (error) {
+      console.error("Error sending order confirmation:", error);
+      res.status(500).json({ message: "Failed to send order confirmation" });
+    }
+  });
+
   // GitHub routes
   app.get('/api/github/user', async (req, res) => {
     try {
