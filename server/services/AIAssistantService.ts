@@ -17,6 +17,7 @@
 import { IStorage } from "../storage";
 import { createLogger, type Logger } from "../utils/logger";
 import { NeuralNetworkService } from "./NeuralNetworkService";
+import { ExternalAIService } from "./ExternalAIService";
 import type { 
   InsertAiConversation, 
   InsertAiMessage, 
@@ -56,13 +57,22 @@ export interface AiResponse {
 
 export class AIAssistantService {
   private logger: Logger;
+  private externalAI: ExternalAIService;
   private externalAiAvailable: boolean = true;
   private neuralNetworks: Map<string, NeuralNetworkService> = new Map();
 
   constructor(private storage: IStorage) {
     this.logger = createLogger("AIAssistantService");
-    // Check if external AI API key is available
-    this.externalAiAvailable = !!process.env.OPENAI_API_KEY;
+    // Initialize external AI service
+    this.externalAI = new ExternalAIService();
+    this.externalAiAvailable = this.externalAI.isAvailable();
+    
+    if (this.externalAiAvailable) {
+      const providers = this.externalAI.getAvailableProviders();
+      this.logger.info(`External AI initialized with providers: ${providers.join(', ')}`);
+    } else {
+      this.logger.warn("No external AI providers available");
+    }
   }
 
   /**
@@ -352,38 +362,89 @@ export class AIAssistantService {
         });
       }
 
-      // In production, this would call OpenAI/Anthropic API
-      // For now, simulate response
-      const simulatedResponse = await this.simulateExternalAI(
-        question,
-        contextPrompt,
-        config
-      );
+      // Use real external AI if available
+      if (this.externalAiAvailable) {
+        const systemPrompt = this.externalAI.buildSystemPrompt(contextPrompt);
+        
+        const messages = [
+          { role: 'system' as const, content: systemPrompt },
+          { role: 'user' as const, content: question }
+        ];
 
-      const sources: AiResponse['sources'] = [
-        { type: 'external', relevance: 1.0 }
-      ];
+        // Determine provider and model based on config
+        const provider = config.model?.startsWith('claude') ? 'anthropic' : 'openai';
+        const model = config.model || (provider === 'openai' ? 'gpt-4-turbo-preview' : 'claude-3-sonnet-20240229');
 
-      // Add document sources
-      documentContext.forEach(doc => {
-        sources.push({
-          type: 'document',
-          reference: doc.filename,
-          relevance: doc.relevanceScore || 0.5
+        const aiResponse = await this.externalAI.generateResponse(messages, {
+          provider,
+          model,
+          maxTokens: 2000,
+          temperature: 0.7,
         });
-      });
 
-      return {
-        answer: simulatedResponse,
-        confidence: 0.85,
-        usedExternalAi: true,
-        sources,
-        learningOpportunity: true, // External AI answers are learning opportunities
-        suggestions: [
-          "Would you like me to remember this for future questions?",
-          "Should I create a knowledge base entry from this conversation?"
-        ]
-      };
+        this.logger.info("External AI response generated", {
+          provider: aiResponse.provider,
+          model: aiResponse.model,
+          tokensUsed: aiResponse.tokensUsed.total,
+          estimatedCost: aiResponse.estimatedCost
+        });
+
+        const sources: AiResponse['sources'] = [
+          { type: 'external', relevance: 1.0 }
+        ];
+
+        // Add document sources
+        documentContext.forEach(doc => {
+          sources.push({
+            type: 'document',
+            reference: doc.filename,
+            relevance: doc.relevanceScore || 0.5
+          });
+        });
+
+        return {
+          answer: aiResponse.content,
+          confidence: 0.9,
+          usedExternalAi: true,
+          sources,
+          learningOpportunity: true,
+          suggestions: [
+            "Would you like me to remember this for future questions?",
+            "Should I create a knowledge base entry from this conversation?"
+          ]
+        };
+      } else {
+        // Fallback to simulated response if no external AI available
+        const simulatedResponse = await this.simulateExternalAI(
+          question,
+          contextPrompt,
+          config
+        );
+
+        const sources: AiResponse['sources'] = [
+          { type: 'external', relevance: 1.0 }
+        ];
+
+        documentContext.forEach(doc => {
+          sources.push({
+            type: 'document',
+            reference: doc.filename,
+            relevance: doc.relevanceScore || 0.5
+          });
+        });
+
+        return {
+          answer: simulatedResponse,
+          confidence: 0.85,
+          usedExternalAi: true,
+          sources,
+          learningOpportunity: true,
+          suggestions: [
+            "Would you like me to remember this for future questions?",
+            "Should I create a knowledge base entry from this conversation?"
+          ]
+        };
+      }
     } catch (error) {
       this.logger.error("Error with external AI", error as Error);
       throw error;
@@ -808,5 +869,15 @@ To get the most accurate assistance, please ensure your AI integration is config
       nn.dispose();
     });
     this.neuralNetworks.clear();
+  }
+
+  /**
+   * Get external AI availability status
+   */
+  getExternalAIAvailability() {
+    return {
+      openaiAvailable: this.externalAI.getAvailableProviders().includes('openai'),
+      anthropicAvailable: this.externalAI.getAvailableProviders().includes('anthropic'),
+    };
   }
 }

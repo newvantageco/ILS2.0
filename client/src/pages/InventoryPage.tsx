@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SimpleResponsiveTable } from "@/components/ui/ResponsiveTable";
 import {
   Dialog,
   DialogContent,
@@ -163,28 +164,28 @@ export default function InventoryPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="h-10 w-48 bg-muted animate-pulse rounded" />
-          <div className="h-10 w-32 bg-muted animate-pulse rounded" />
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="h-8 sm:h-10 w-40 sm:w-48 bg-muted animate-pulse rounded" />
+          <div className="h-9 sm:h-10 w-full sm:w-32 bg-muted animate-pulse rounded" />
         </div>
-        <div className="h-96 bg-muted animate-pulse rounded" />
+        <div className="h-64 sm:h-96 bg-muted animate-pulse rounded" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Inventory Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage optical products and stock levels
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-semibold truncate">Inventory Management</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your optical products and stock levels
           </p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button data-testid="button-add-product">
+            <Button data-testid="button-add-product" className="w-full sm:w-auto shrink-0">
               <Plus className="h-4 w-4 mr-2" />
               Add Product
             </Button>
@@ -202,7 +203,7 @@ export default function InventoryPage() {
                   <Label htmlFor="name">Product Name *</Label>
                   <Input id="name" name="name" required data-testid="input-product-name" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="category">Category *</Label>
                     <Input id="category" name="category" required data-testid="input-product-category" />
@@ -216,7 +217,7 @@ export default function InventoryPage() {
                   <Label htmlFor="description">Description</Label>
                   <Textarea id="description" name="description" data-testid="input-product-description" />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="unitPrice">Unit Price *</Label>
                     <Input
@@ -287,7 +288,7 @@ export default function InventoryPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
             <CardTitle className="flex-1">Product Inventory</CardTitle>
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -315,85 +316,90 @@ export default function InventoryPage() {
               </p>
             </div>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
-                    <TableHead className="text-right">Stock</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProducts.map((product) => (
-                    <TableRow key={product.id} data-testid={`row-product-${product.id}`}>
-                      <TableCell className="font-medium">
-                        <div>
-                          <div data-testid={`text-product-name-${product.id}`}>{product.name}</div>
-                          {product.description && (
-                            <div className="text-sm text-muted-foreground line-clamp-1">
-                              {product.description}
-                            </div>
-                          )}
+            <SimpleResponsiveTable>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[150px]">Product</TableHead>
+                  <TableHead className="min-w-[100px]">Category</TableHead>
+                  <TableHead className="min-w-[100px]">SKU</TableHead>
+                  <TableHead className="text-right min-w-[80px]">Price</TableHead>
+                  <TableHead className="text-right min-w-[80px]">Stock</TableHead>
+                  <TableHead className="text-right min-w-[120px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredProducts.map((product) => (
+                  <TableRow key={product.id} data-testid={`row-product-${product.id}`}>
+                    <TableCell className="font-medium">
+                      <div className="min-w-[140px]">
+                        <div data-testid={`text-product-name-${product.id}`} className="font-medium">
+                          {product.name}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{product.category}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {product.sku ? (
-                          <span className="font-mono text-sm">{product.sku}</span>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">—</span>
+                        {product.description && (
+                          <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                            {product.description}
+                          </div>
                         )}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        £{parseFloat(product.unitPrice).toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Badge
-                          variant={
-                            product.reorderLevel && product.stockQuantity <= product.reorderLevel
-                              ? "destructive"
-                              : "secondary"
-                          }
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs whitespace-nowrap">
+                        {product.category}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {product.sku ? (
+                        <span className="font-mono text-xs whitespace-nowrap">{product.sku}</span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-medium whitespace-nowrap">
+                      £{parseFloat(product.unitPrice).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge
+                        variant={
+                          product.reorderLevel && product.stockQuantity <= product.reorderLevel
+                            ? "destructive"
+                            : "secondary"
+                        }
+                        className="text-xs"
+                      >
+                        {product.stockQuantity}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled
+                          data-testid={`button-edit-product-${product.id}`}
+                          className="h-8 w-8 p-0"
                         >
-                          {product.stockQuantity}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled
-                            data-testid={`button-edit-product-${product.id}`}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              if (confirm("Are you sure you want to delete this product?")) {
-                                deleteMutation.mutate(product.id);
-                              }
-                            }}
-                            disabled={deleteMutation.isPending}
-                            data-testid={`button-delete-product-${product.id}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            if (confirm("Are you sure you want to delete this product?")) {
+                              deleteMutation.mutate(product.id);
+                            }
+                          }}
+                          disabled={deleteMutation.isPending}
+                          data-testid={`button-delete-product-${product.id}`}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </SimpleResponsiveTable>
           )}
         </CardContent>
       </Card>

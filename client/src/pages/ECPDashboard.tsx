@@ -56,16 +56,16 @@ export default function ECPDashboard() {
   const recentOrders = orders?.slice(0, 6) || [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-semibold truncate">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Welcome back! Here's your order overview.
           </p>
         </div>
-        <Link href="/ecp/new-order">
-          <Button data-testid="button-new-order">
+        <Link href="/ecp/new-order" className="shrink-0">
+          <Button data-testid="button-new-order" className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             New Order
           </Button>
@@ -73,13 +73,13 @@ export default function ECPDashboard() {
       </div>
 
       {statsLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-card rounded-md animate-pulse" />
+            <div key={i} className="h-28 sm:h-32 bg-card rounded-md animate-pulse" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           <StatCard
             title="Total Orders"
             value={stats?.total.toString() || "0"}
@@ -103,39 +103,39 @@ export default function ECPDashboard() {
         </div>
       )}
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Recent Orders</h2>
+      <div className="space-y-3 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h2 className="text-lg sm:text-xl font-semibold">Recent Orders</h2>
           <SearchBar
             value={searchValue}
             onChange={setSearchValue}
             placeholder="Search orders..."
-            className="max-w-sm"
+            className="w-full sm:max-w-sm"
           />
         </div>
 
         {ordersLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-48 bg-card rounded-md animate-pulse" />
+              <div key={i} className="h-44 sm:h-48 bg-card rounded-md animate-pulse" />
             ))}
           </div>
         ) : recentOrders.length === 0 ? (
-          <div className="text-center py-12">
-            <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No orders yet</h3>
-            <p className="text-muted-foreground mb-4">
+          <div className="text-center py-8 sm:py-12">
+            <Package className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
+            <h3 className="text-base sm:text-lg font-semibold mb-2">No orders yet</h3>
+            <p className="text-sm text-muted-foreground mb-3 sm:mb-4">
               Get started by creating your first lens order.
             </p>
             <Link href="/ecp/new-order">
-              <Button>
+              <Button className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Order
               </Button>
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {recentOrders.map((order) => (
               <OrderCard
                 key={order.id}

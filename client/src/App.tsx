@@ -33,6 +33,7 @@ import InventoryPage from "@/pages/InventoryPage";
 import POSPage from "@/pages/POSPage";
 import EyeTestPage from "@/pages/EyeTestPage";
 import AIAssistantPage from "@/pages/AIAssistantPage";
+import AISettingsPage from "@/pages/AISettingsPage";
 import CompanyManagementPage from "@/pages/CompanyManagementPage";
 import BIDashboardPage from "@/pages/BIDashboardPage";
 import { LogOut } from "lucide-react";
@@ -41,6 +42,7 @@ import { useLocation } from "wouter";
 function AppLayout({ children, userRole }: { children: React.ReactNode; userRole: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" }) {
   const style = {
     "--sidebar-width": "16rem",
+    "--sidebar-width-mobile": "100%",
   };
 
   const handleLogout = () => {
@@ -49,12 +51,12 @@ function AppLayout({ children, userRole }: { children: React.ReactNode; userRole
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
+      <div className="flex h-screen w-full overflow-hidden">
         <AppSidebar userRole={userRole} />
-        <div className="flex flex-col flex-1">
-          <header className="flex items-center justify-between p-4 border-b border-border">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <div className="flex items-center gap-2">
+        <div className="flex flex-col flex-1 min-w-0">
+          <header className="flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3 border-b border-border bg-background sticky top-0 z-10">
+            <SidebarTrigger data-testid="button-sidebar-toggle" className="shrink-0" />
+            <div className="flex items-center gap-1 sm:gap-2 ml-auto">
               <RoleSwitcherDropdown />
               <ThemeToggle />
               <Button 
@@ -62,12 +64,13 @@ function AppLayout({ children, userRole }: { children: React.ReactNode; userRole
                 size="icon" 
                 onClick={handleLogout}
                 data-testid="button-logout"
+                className="shrink-0"
               >
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
           </header>
-          <main className="flex-1 overflow-auto p-6 md:p-8">
+          <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8">
             <PageTransition>
               {children}
             </PageTransition>
@@ -250,6 +253,7 @@ function AuthenticatedApp() {
             <Route path="/admin/dashboard" component={AdminDashboard} />
             <Route path="/admin/users" component={AdminDashboard} />
             <Route path="/admin/ai-assistant" component={AIAssistantPage} />
+            <Route path="/admin/ai-settings" component={AISettingsPage} />
             <Route path="/admin/company" component={CompanyManagementPage} />
             <Route path="/admin/bi-dashboard" component={BIDashboardPage} />
             <Route path="/admin/platform">

@@ -598,6 +598,90 @@ export function registerAiAssistantRoutes(app: Express): void {
       });
     }
   });
+
+  /**
+   * GET /api/ai-assistant/settings
+   * 
+   * Get AI provider settings and availability
+   */
+  app.get("/api/ai-assistant/settings", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user.companyId) {
+        return res.status(403).json({
+          error: "User must belong to a company",
+        });
+      }
+
+      const company = await storage.getCompany(user.companyId);
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      // Get learning progress
+      const progressData = await storage.getAiLearningDataByCompany(user.companyId);
+      const learningProgress = progressData.length > 0 
+        ? Math.min(100, (progressData.length / 100) * 100) 
+        : 0;
+
+      // Get external AI availability
+      const externalAIAvailability = aiAssistantService.getExternalAIAvailability();
+
+      res.status(200).json({
+        provider: 'openai', // Default provider
+        model: 'gpt-4-turbo-preview', // Default model
+        openaiAvailable: externalAIAvailability.openaiAvailable,
+        anthropicAvailable: externalAIAvailability.anthropicAvailable,
+        learningProgress: Math.floor(learningProgress),
+      });
+    } catch (error: any) {
+      console.error("Error getting AI settings:", error);
+      res.status(500).json({
+        error: "Failed to get AI settings",
+        message: error.message,
+      });
+    }
+  });
+
+  /**
+   * PUT /api/ai-assistant/settings
+   * 
+   * Update AI provider settings (stored in user session for now)
+   */
+  app.put("/api/ai-assistant/settings", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user.companyId) {
+        return res.status(403).json({
+          error: "User must belong to a company",
+        });
+      }
+
+      const { provider, model } = req.body;
+
+      if (!provider || !model) {
+        return res.status(400).json({
+          error: "Provider and model are required",
+        });
+      }
+
+      // Store in session for now (can be persisted to DB later)
+      req.session.aiProvider = provider;
+      req.session.aiModel = model;
+
+      res.status(200).json({
+        success: true,
+        message: "AI settings updated",
+        data: { provider, model }
+      });
+    } catch (error: any) {
+      console.error("Error updating AI settings:", error);
+      res.status(500).json({
+        error: "Failed to update AI settings",
+        message: error.message,
+      });
+    }
+  });
 }
 
 export function getAiAssistantService() {
