@@ -1141,7 +1141,7 @@ export const prescriptions = pgTable("prescriptions", {
   examinationDurationMinutes: integer("examination_duration_minutes"),
   examinationType: varchar("examination_type", { length: 50 }),
   patientComplaint: text("patient_complaint"),
-  previousPrescriptionId: varchar("previous_prescription_id").references(() => prescriptions.id),
+  previousPrescriptionId: varchar("previous_prescription_id"), // Self-reference handled at DB level
   
   // Digital signature
   isSigned: boolean("is_signed").default(false).notNull(),

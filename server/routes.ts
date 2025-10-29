@@ -2392,7 +2392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const prescription = await storage.createPrescription({
         ...validation.data,
-        companyId: user.companyId,
+        companyId: user.companyId!,
       }, userId);
       res.status(201).json(prescription);
     } catch (error) {
