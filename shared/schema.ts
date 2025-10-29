@@ -1041,6 +1041,7 @@ export const eyeExaminations = pgTable("eye_examinations", {
   binocularVision: jsonb("binocular_vision"),
   eyeHealth: jsonb("eye_health"),
   equipmentReadings: jsonb("equipment_readings"), // Store equipment measurement data
+  testRoomId: varchar("test_room_id").references(() => testRooms.id),
   gosFormType: text("gos_form_type"),
   nhsVoucherCode: text("nhs_voucher_code"),
   notes: text("notes"),
@@ -1160,6 +1161,12 @@ export const prescriptions = pgTable("prescriptions", {
   signedByEcpId: varchar("signed_by_ecp_id").references(() => users.id),
   digitalSignature: text("digital_signature"),
   signedAt: timestamp("signed_at"),
+  
+  // Approval workflow
+  requiresApproval: boolean("requires_approval").default(false),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_prescriptions_test_room").on(table.testRoomName),
