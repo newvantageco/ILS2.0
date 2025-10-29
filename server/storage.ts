@@ -387,8 +387,12 @@ export class DbStorage implements IStorage {
     return patient;
   }
 
-  async getPatient(id: string): Promise<Patient | undefined> {
-    const [patient] = await db.select().from(patients).where(eq(patients.id, id));
+  async getPatient(id: string, companyId?: string): Promise<Patient | undefined> {
+    const conditions = [eq(patients.id, id)];
+    if (companyId) {
+      conditions.push(eq(patients.companyId, companyId));
+    }
+    const [patient] = await db.select().from(patients).where(and(...conditions));
     return patient;
   }
 
@@ -403,7 +407,13 @@ export class DbStorage implements IStorage {
     return order;
   }
 
-  async getOrder(id: string): Promise<OrderWithDetails | undefined> {
+  async getOrder(id: string, companyId?: string): Promise<OrderWithDetails | undefined> {
+    let conditions = [eq(orders.id, id)];
+    
+    if (companyId) {
+      conditions.push(eq(orders.companyId, companyId));
+    }
+    
     const result = await db
       .select({
         order: orders,
@@ -418,7 +428,7 @@ export class DbStorage implements IStorage {
       .from(orders)
       .innerJoin(patients, eq(orders.patientId, patients.id))
       .innerJoin(users, eq(orders.ecpId, users.id))
-      .where(eq(orders.id, id))
+      .where(and(...conditions))
       .limit(1);
 
     if (!result.length) return undefined;
@@ -432,14 +442,19 @@ export class DbStorage implements IStorage {
 
   async getOrders(filters: {
     ecpId?: string;
+    companyId?: string;
     status?: string;
     search?: string;
     limit?: number;
     offset?: number;
   } = {}): Promise<OrderWithDetails[]> {
-    const { ecpId, status, search, limit = 50, offset = 0 } = filters;
+    const { ecpId, companyId, status, search, limit = 50, offset = 0 } = filters;
 
     let conditions = [];
+    
+    if (companyId) {
+      conditions.push(eq(orders.companyId, companyId));
+    }
     
     if (ecpId) {
       conditions.push(eq(orders.ecpId, ecpId));
@@ -885,11 +900,17 @@ export class DbStorage implements IStorage {
     }
   }
 
-  async getPatients(ecpId: string): Promise<Patient[]> {
+  async getPatients(ecpId: string, companyId?: string): Promise<Patient[]> {
+    const conditions = [eq(patients.ecpId, ecpId)];
+    
+    if (companyId) {
+      conditions.push(eq(patients.companyId, companyId));
+    }
+    
     return await db
       .select()
       .from(patients)
-      .where(eq(patients.ecpId, ecpId))
+      .where(and(...conditions))
       .orderBy(desc(patients.createdAt));
   }
 
@@ -911,7 +932,11 @@ export class DbStorage implements IStorage {
     return examination;
   }
 
-  async getEyeExamination(id: string): Promise<EyeExaminationWithDetails | undefined> {
+  async getEyeExamination(id: string, companyId?: string): Promise<EyeExaminationWithDetails | undefined> {
+    const conditions = [eq(eyeExaminations.id, id)];
+    if (companyId) {
+      conditions.push(eq(eyeExaminations.companyId, companyId));
+    }
     const result = await db
       .select({
         examination: eyeExaminations,
@@ -925,7 +950,7 @@ export class DbStorage implements IStorage {
       .from(eyeExaminations)
       .innerJoin(patients, eq(eyeExaminations.patientId, patients.id))
       .innerJoin(users, eq(eyeExaminations.ecpId, users.id))
-      .where(eq(eyeExaminations.id, id))
+      .where(and(...conditions))
       .limit(1);
 
     if (!result.length) return undefined;
@@ -1019,7 +1044,11 @@ export class DbStorage implements IStorage {
     return prescription;
   }
 
-  async getPrescription(id: string): Promise<PrescriptionWithDetails | undefined> {
+  async getPrescription(id: string, companyId?: string): Promise<PrescriptionWithDetails | undefined> {
+    const conditions = [eq(prescriptions.id, id)];
+    if (companyId) {
+      conditions.push(eq(prescriptions.companyId, companyId));
+    }
     const result = await db
       .select({
         prescription: prescriptions,
@@ -1035,7 +1064,7 @@ export class DbStorage implements IStorage {
       .innerJoin(patients, eq(prescriptions.patientId, patients.id))
       .innerJoin(users, eq(prescriptions.ecpId, users.id))
       .leftJoin(eyeExaminations, eq(prescriptions.examinationId, eyeExaminations.id))
-      .where(eq(prescriptions.id, id))
+      .where(and(...conditions))
       .limit(1);
 
     if (!result.length) return undefined;
@@ -1048,7 +1077,13 @@ export class DbStorage implements IStorage {
     };
   }
 
-  async getPrescriptions(ecpId: string): Promise<PrescriptionWithDetails[]> {
+  async getPrescriptions(ecpId: string, companyId?: string): Promise<PrescriptionWithDetails[]> {
+    const conditions = [eq(prescriptions.ecpId, ecpId)];
+    
+    if (companyId) {
+      conditions.push(eq(prescriptions.companyId, companyId));
+    }
+    
     const results = await db
       .select({
         prescription: prescriptions,
@@ -1064,7 +1099,7 @@ export class DbStorage implements IStorage {
       .innerJoin(patients, eq(prescriptions.patientId, patients.id))
       .innerJoin(users, eq(prescriptions.ecpId, users.id))
       .leftJoin(eyeExaminations, eq(prescriptions.examinationId, eyeExaminations.id))
-      .where(eq(prescriptions.ecpId, ecpId))
+      .where(and(...conditions))
       .orderBy(desc(prescriptions.issueDate));
 
     return results.map(r => ({
@@ -1098,21 +1133,31 @@ export class DbStorage implements IStorage {
     return product;
   }
 
-  async getProduct(id: string): Promise<Product | undefined> {
+  async getProduct(id: string, companyId?: string): Promise<Product | undefined> {
+    const conditions = [eq(products.id, id)];
+    if (companyId) {
+      conditions.push(eq(products.companyId, companyId));
+    }
     const [product] = await db
       .select()
       .from(products)
-      .where(eq(products.id, id))
+      .where(and(...conditions))
       .limit(1);
     
     return product;
   }
 
-  async getProducts(ecpId: string): Promise<Product[]> {
+  async getProducts(ecpId: string, companyId?: string): Promise<Product[]> {
+    const conditions = [eq(products.ecpId, ecpId)];
+    
+    if (companyId) {
+      conditions.push(eq(products.companyId, companyId));
+    }
+    
     return await db
       .select()
       .from(products)
-      .where(eq(products.ecpId, ecpId))
+      .where(and(...conditions))
       .orderBy(products.productType, products.brand, products.model);
   }
 
@@ -1175,11 +1220,15 @@ export class DbStorage implements IStorage {
     };
   }
 
-  async getInvoice(id: string): Promise<InvoiceWithDetails | undefined> {
+  async getInvoice(id: string, companyId?: string): Promise<InvoiceWithDetails | undefined> {
+    const conditions = [eq(invoices.id, id)];
+    if (companyId) {
+      conditions.push(eq(invoices.companyId, companyId));
+    }
     const [invoice] = await db
       .select()
       .from(invoices)
-      .where(eq(invoices.id, id));
+      .where(and(...conditions));
 
     if (!invoice) return undefined;
 
@@ -1207,11 +1256,17 @@ export class DbStorage implements IStorage {
     };
   }
 
-  async getInvoices(ecpId: string): Promise<InvoiceWithDetails[]> {
+  async getInvoices(ecpId: string, companyId?: string): Promise<InvoiceWithDetails[]> {
+    const conditions = [eq(invoices.ecpId, ecpId)];
+    
+    if (companyId) {
+      conditions.push(eq(invoices.companyId, companyId));
+    }
+    
     const invoicesList = await db
       .select()
       .from(invoices)
-      .where(eq(invoices.ecpId, ecpId))
+      .where(and(...conditions))
       .orderBy(desc(invoices.invoiceDate));
 
     const invoicesWithDetails = await Promise.all(

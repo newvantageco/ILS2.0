@@ -505,6 +505,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can create orders" });
       }
 
+      if (!user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
       const validation = insertOrderSchema.safeParse(req.body);
       if (!validation.success) {
         const validationError = fromZodError(validation.error);
@@ -517,6 +521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const patient = await storage.createPatient({
         name: patientName,
         dateOfBirth: patientDOB || null,
+        companyId: user.companyId,
         ecpId: userId,
       });
 
@@ -529,6 +534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create order with patient ID and ECP ID
       const order = await storage.createOrder({
         ...orderData,
+        companyId: user.companyId,
         patientId: patient.id,
         ecpId: userId,
         omaFileContent: omaFileContent || null,
@@ -553,7 +559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Only ECPs, lab techs, and engineers can access orders
-      if (user.role !== 'ecp' && user.role !== 'lab_tech' && user.role !== 'engineer') {
+      if (user.role !== 'ecp' && user.role !== 'lab_tech' && user.role !== 'engineer' && user.role !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -565,6 +571,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit: limit ? parseInt(limit as string) : undefined,
         offset: offset ? parseInt(offset as string) : undefined,
       };
+
+      // Add company filtering (admin can see all)
+      if (user.role !== 'admin' && user.companyId) {
+        filters.companyId = user.companyId;
+      }
 
       // ECPs can only see their own orders
       if (user.role === 'ecp') {
@@ -1073,6 +1084,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can create consult logs" });
       }
 
+      if (!user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
       if (denyFreePlanAccess(user, res, "lab consultations")) {
         return;
       }
@@ -1085,6 +1100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const log = await storage.createConsultLog({
         ...validation.data,
+        companyId: user.companyId,
         ecpId: userId,
       });
 
@@ -1184,6 +1200,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only lab staff can create purchase orders" });
       }
 
+      if (!user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
       const { lineItems, ...poData } = req.body;
       
       if (!lineItems || !Array.isArray(lineItems) || lineItems.length === 0) {
@@ -1198,6 +1218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const po = await storage.createPurchaseOrder({
         ...poValidation.data,
+        companyId: user.companyId,
         lineItems,
       }, userId);
 
@@ -1662,7 +1683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      const patients = await storage.getPatients(userId);
+      const patients = await storage.getPatients(userId, user.companyId || undefined);
       res.json(patients);
     } catch (error) {
       console.error("Error fetching patients:", error);
@@ -1683,7 +1704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      const patient = await storage.getPatient(req.params.id);
+      const patient = await storage.getPatient(req.params.id, user.companyId || undefined);
       
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
@@ -1766,7 +1787,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      const examination = await storage.getEyeExamination(req.params.id);
+      const examination = await storage.getEyeExamination(req.params.id, user.companyId || undefined);
       
       if (!examination) {
         return res.status(404).json({ message: "Examination not found" });
@@ -1823,6 +1844,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can create examinations" });
       }
 
+      if (!user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
       if (denyFreePlanAccess(user, res, "clinical examinations")) {
         return;
       }
@@ -1833,7 +1858,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: validationError.message, errors: validation.error.issues });
       }
 
-      const examination = await storage.createEyeExamination(validation.data, userId);
+      const examination = await storage.createEyeExamination({
+        ...validation.data,
+        companyId: user.companyId,
+      }, userId);
       res.status(201).json(examination);
     } catch (error) {
       console.error("Error creating examination:", error);
@@ -1921,7 +1949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      const prescriptions = await storage.getPrescriptions(userId);
+      const prescriptions = await storage.getPatients(userId, user.companyId || undefined);
       res.json(prescriptions);
     } catch (error) {
       console.error("Error fetching prescriptions:", error);
@@ -1942,7 +1970,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      const prescription = await storage.getPrescription(req.params.id);
+      const prescription = await storage.getPrescription(req.params.id, user.companyId || undefined);
       
       if (!prescription) {
         return res.status(404).json({ message: "Prescription not found" });
@@ -1968,6 +1996,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can create prescriptions" });
       }
 
+      if (!user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
       if (denyFreePlanAccess(user, res, "digital prescriptions")) {
         return;
       }
@@ -1978,7 +2010,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: validationError.message, errors: validation.error.issues });
       }
 
-      const prescription = await storage.createPrescription(validation.data, userId);
+      const prescription = await storage.createPrescription({
+        ...validation.data,
+        companyId: user.companyId,
+      }, userId);
       res.status(201).json(prescription);
     } catch (error) {
       console.error("Error creating prescription:", error);
@@ -2112,7 +2147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      const products = await storage.getProducts(userId);
+      const products = await storage.getProducts(userId, user.companyId || undefined);
       res.json(products);
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -2133,7 +2168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      const product = await storage.getProduct(req.params.id);
+      const product = await storage.getProduct(req.params.id, user.companyId || undefined);
       
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
@@ -2159,6 +2194,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can create products" });
       }
 
+      if (!user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
       if (denyFreePlanAccess(user, res, "practice inventory")) {
         return;
       }
@@ -2169,7 +2208,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: validationError.message, errors: validation.error.issues });
       }
 
-      const product = await storage.createProduct(validation.data, userId);
+      const product = await storage.createProduct({
+        ...validation.data,
+        companyId: user.companyId,
+      }, userId);
       res.status(201).json(product);
     } catch (error) {
       console.error("Error creating product:", error);
@@ -2258,7 +2300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      const invoices = await storage.getInvoices(userId);
+      const invoices = await storage.getInvoices(userId, user.companyId || undefined);
       res.json(invoices);
     } catch (error) {
       console.error("Error fetching invoices:", error);
@@ -2279,7 +2321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      const invoice = await storage.getInvoice(req.params.id);
+      const invoice = await storage.getInvoice(req.params.id, user.companyId || undefined);
       
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
@@ -2305,6 +2347,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can create invoices" });
       }
 
+      if (!user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
       if (denyFreePlanAccess(user, res, "point of sale billing")) {
         return;
       }
@@ -2316,7 +2362,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // If status is 'paid', set amountPaid to totalAmount and require payment method
-      const invoicePayload: any = { ...invoiceData, lineItems };
+      const invoicePayload: any = { 
+        ...invoiceData, 
+        companyId: user.companyId,
+        lineItems 
+      };
       
       if (invoiceData.status === 'paid') {
         if (!paymentMethod || !['cash', 'card', 'mixed'].includes(paymentMethod)) {

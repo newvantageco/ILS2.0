@@ -9,6 +9,10 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { RoleSwitcherDropdown } from "@/components/RoleSwitcherDropdown";
 import { FloatingAiChat } from "@/components/FloatingAiChat";
 import { PageTransition } from "@/components/ui/PageTransition";
+import { CommandPalette } from "@/components/ui/CommandPalette";
+import { ScrollToTop, ScrollProgress } from "@/components/ui/ScrollEnhancements";
+import { PWAInstallPrompt, OfflineIndicator } from "@/components/ui/PWAFeatures";
+import { NotificationProvider } from "@/components/ui/SmartNotifications";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/Landing";
@@ -52,6 +56,9 @@ function AppLayout({ children, userRole }: { children: React.ReactNode; userRole
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
+      <ScrollProgress />
+      <OfflineIndicator />
+      <CommandPalette userRole={userRole} />
       <div className="flex h-screen w-full overflow-hidden">
         <AppSidebar userRole={userRole} />
         <div className="flex flex-col flex-1 min-w-0">
@@ -78,6 +85,8 @@ function AppLayout({ children, userRole }: { children: React.ReactNode; userRole
           </main>
         </div>
       </div>
+      <ScrollToTop />
+      <PWAInstallPrompt />
     </SidebarProvider>
   );
 }
@@ -287,9 +296,11 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthenticatedApp />
-        <FloatingAiChat />
-        <Toaster />
+        <NotificationProvider>
+          <AuthenticatedApp />
+          <FloatingAiChat />
+          <Toaster />
+        </NotificationProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
