@@ -365,6 +365,15 @@ export const companies = pgTable("companies", {
   useExternalAi: boolean("use_external_ai").default(true), // Initially uses external, learns over time
   aiLearningProgress: integer("ai_learning_progress").default(0), // 0-100%
   
+  // Shopify Integration
+  shopifyEnabled: boolean("shopify_enabled").default(false),
+  shopifyShopUrl: varchar("shopify_shop_url"), // e.g., mystore.myshopify.com
+  shopifyAccessToken: varchar("shopify_access_token"), // Encrypted in production
+  shopifyApiVersion: varchar("shopify_api_version").default("2024-10"),
+  shopifyAutoSync: boolean("shopify_auto_sync").default(false), // Auto-sync customers as patients
+  shopifyLastSyncAt: timestamp("shopify_last_sync_at"),
+  shopifySyncSettings: jsonb("shopify_sync_settings").default(sql`'{}'::jsonb`), // Sync preferences
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [

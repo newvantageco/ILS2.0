@@ -10,11 +10,14 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Building2, User, Bell, Users, Beaker, Plus, Check } from "lucide-react";
+import { Loader2, Building2, User, Bell, Users, Beaker, Plus, Check, ShoppingCart } from "lucide-react";
 import type { OrganizationSettings, UserPreferences } from "@shared/schema";
+import ShopifyIntegrationSettings from "@/components/ShopifyIntegrationSettings";
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isEcp = user?.role === 'ecp';
 
   const { data: orgSettings, isLoading: isLoadingOrg } = useQuery<OrganizationSettings>({
     queryKey: ["/api/settings/organization"],
@@ -74,7 +77,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="organization" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3" data-testid="tabs-settings">
+        <TabsList className={`grid w-full ${isEcp ? 'grid-cols-4' : 'grid-cols-3'}`} data-testid="tabs-settings">
           <TabsTrigger value="organization" data-testid="tab-organization">
             <Building2 className="mr-2 h-4 w-4" />
             Organization
@@ -83,6 +86,12 @@ export default function SettingsPage() {
             <Users className="mr-2 h-4 w-4" />
             Roles
           </TabsTrigger>
+          {isEcp && (
+            <TabsTrigger value="integrations" data-testid="tab-integrations">
+              <ShoppingCart className="mr-2 h-4 w-4" />
+              Integrations
+            </TabsTrigger>
+          )}
           <TabsTrigger value="preferences" data-testid="tab-preferences">
             <User className="mr-2 h-4 w-4" />
             Preferences
@@ -101,6 +110,12 @@ export default function SettingsPage() {
         <TabsContent value="roles" className="space-y-6">
           <RoleManagement />
         </TabsContent>
+
+        {isEcp && (
+          <TabsContent value="integrations" className="space-y-6">
+            <ShopifyIntegrationSettings />
+          </TabsContent>
+        )}
 
         <TabsContent value="preferences" className="space-y-6">
           <UserPreferencesSettings

@@ -1761,6 +1761,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/patients', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can add patients" });
+      }
+
+      if (denyFreePlanAccess(user, res, "adding patients")) {
+        return;
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "User must be associated with a company" });
+      }
+
+      const patientData = {
+        ...req.body,
+        companyId: user.companyId,
+        ecpId: userId,
+      };
+
+      const patient = await storage.createPatient(patientData);
+      res.status(201).json(patient);
+    } catch (error) {
+      console.error("Error creating patient:", error);
+      res.status(500).json({ message: "Failed to create patient" });
+    }
+  });
+
   app.patch('/api/patients/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -1789,6 +1820,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating patient:", error);
       res.status(500).json({ message: "Failed to update patient" });
+    }
+  });
+
+  // Shopify Integration routes
+  app.get('/api/shopify/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can access Shopify integration" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "User must be associated with a company" });
+      }
+
+      const { shopifyService } = await import("./services/ShopifyService");
+      const status = await shopifyService.getSyncStatus(user.companyId);
+      res.json(status);
+    } catch (error) {
+      console.error("Error fetching Shopify status:", error);
+      res.status(500).json({ message: "Failed to fetch Shopify status" });
+    }
+  });
+
+  app.post('/api/shopify/verify', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can configure Shopify" });
+      }
+
+      const { shopUrl, accessToken, apiVersion } = req.body;
+
+      if (!shopUrl || !accessToken) {
+        return res.status(400).json({ message: "Shop URL and access token are required" });
+      }
+
+      const { shopifyService } = await import("./services/ShopifyService");
+      const result = await shopifyService.verifyConnection({
+        shopUrl,
+        accessToken,
+        apiVersion: apiVersion || '2024-10',
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error verifying Shopify connection:", error);
+      res.status(500).json({ message: "Failed to verify connection" });
+    }
+  });
+
+  app.post('/api/shopify/sync', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can sync Shopify data" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "User must be associated with a company" });
+      }
+
+      if (denyFreePlanAccess(user, res, "Shopify integration")) {
+        return;
+      }
+
+      const { shopifyService } = await import("./services/ShopifyService");
+      const result = await shopifyService.syncCustomers(user.companyId, user);
+      
+      res.json({
+        message: "Sync completed",
+        ...result,
+      });
+    } catch (error) {
+      console.error("Error syncing Shopify customers:", error);
+      res.status(500).json({ message: "Failed to sync customers" });
     }
   });
 

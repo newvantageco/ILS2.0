@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { format } from "date-fns";
+import AddPatientModal from "@/components/AddPatientModal";
 
 interface Patient {
   id: string;
@@ -37,6 +38,7 @@ interface Patient {
 
 export default function PatientsPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const { data: patients, isLoading } = useQuery<Patient[]>({
     queryKey: ["/api/patients"],
@@ -73,11 +75,19 @@ export default function PatientsPage() {
             Manage patient records and examinations
           </p>
         </div>
-        <Button data-testid="button-add-patient" disabled>
+        <Button 
+          data-testid="button-add-patient"
+          onClick={() => setIsAddModalOpen(true)}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add Patient
         </Button>
       </div>
+
+      <AddPatientModal 
+        open={isAddModalOpen}
+        onOpenChange={setIsAddModalOpen}
+      />
 
       <Card>
         <CardHeader>
