@@ -1341,11 +1341,24 @@ export const products = pgTable("products", {
   sku: text("sku"),
   brand: text("brand"),
   model: text("model"),
+  name: text("name"), // Product display name
+  description: text("description"), // Product description
+  category: text("category"), // 'frames', 'lenses', 'accessories', 'solutions', 'cases', 'cleaning'
+  barcode: text("barcode"), // Barcode for scanning
+  imageUrl: text("image_url"), // Product image
+  cost: decimal("cost", { precision: 10, scale: 2 }), // Cost price for profit tracking
   stockQuantity: integer("stock_quantity").default(0).notNull(),
+  lowStockThreshold: integer("low_stock_threshold").default(10), // Alert when stock is low
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).default("0"), // Tax percentage
+  isActive: boolean("is_active").default(true), // Product active status
+  isPrescriptionRequired: boolean("is_prescription_required").default(false), // Requires Rx
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_products_company_barcode").on(table.companyId, table.barcode),
+  index("idx_products_category").on(table.category),
+]);
 
 export const invoices = pgTable("invoices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -2158,4 +2171,125 @@ export const updateClinicalProtocolSchema = insertClinicalProtocolSchema.partial
 
 export type ClinicalProtocol = typeof clinicalProtocols.$inferSelect;
 export type InsertClinicalProtocol = typeof clinicalProtocols.$inferInsert;
+
+// ============================================
+// POS & Multi-Tenant Tables
+// ============================================
+
+// POS Transactions
+export const posTransactions = pgTable("pos_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: "cascade" }).notNull(),
+  transactionNumber: varchar("transaction_number", { length: 50 }).notNull(),
+  staffId: varchar("staff_id").references(() => users.id).notNull(),
+  patientId: varchar("patient_id").references(() => patients.id),
+  
+  // Transaction details
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default("0"),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default("0"),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  
+  // Payment info
+  paymentMethod: varchar("payment_method", { length: 50 }).notNull(), // 'cash', 'card', 'insurance', 'split'
+  paymentStatus: varchar("payment_status", { length: 50 }).default("completed"), // 'completed', 'refunded', 'partial_refund'
+  cashReceived: decimal("cash_received", { precision: 10, scale: 2 }),
+  changeGiven: decimal("change_given", { precision: 10, scale: 2 }),
+  
+  // Metadata
+  notes: text("notes"),
+  refundReason: text("refund_reason"),
+  refundedAt: timestamp("refunded_at"),
+  transactionDate: timestamp("transaction_date").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_pos_transactions_company_id").on(table.companyId),
+  index("idx_pos_transactions_staff_id").on(table.staffId),
+  index("idx_pos_transactions_date").on(table.transactionDate),
+  index("idx_pos_transactions_status").on(table.paymentStatus),
+]);
+
+// POS Transaction Items
+export const posTransactionItems = pgTable("pos_transaction_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  transactionId: varchar("transaction_id").references(() => posTransactions.id, { onDelete: "cascade" }).notNull(),
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  
+  quantity: integer("quantity").notNull(),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  unitCost: decimal("unit_cost", { precision: 10, scale: 2 }),
+  taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).default("0"),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default("0"),
+  lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_pos_items_transaction_id").on(table.transactionId),
+  index("idx_pos_items_product_id").on(table.productId),
+]);
+
+// PDF Templates
+export const pdfTemplates = pgTable("pdf_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: "cascade" }).notNull(),
+  
+  name: varchar("name", { length: 100 }).notNull(),
+  templateType: varchar("template_type", { length: 50 }).notNull(), // 'invoice', 'receipt', 'prescription', 'report', 'order'
+  htmlTemplate: text("html_template").notNull(),
+  cssStyles: text("css_styles"),
+  
+  // Branding
+  headerLogoUrl: text("header_logo_url"),
+  footerText: text("footer_text"),
+  primaryColor: varchar("primary_color", { length: 7 }).default("#000000"),
+  secondaryColor: varchar("secondary_color", { length: 7 }).default("#666666"),
+  
+  // Settings
+  isDefault: boolean("is_default").default(false),
+  paperSize: varchar("paper_size", { length: 20 }).default("A4"), // 'A4', 'Letter', 'Receipt'
+  orientation: varchar("orientation", { length: 20 }).default("portrait"), // 'portrait', 'landscape'
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_pdf_templates_company_id").on(table.companyId),
+  index("idx_pdf_templates_type").on(table.templateType),
+]);
+
+// Insert and validation schemas
+export const insertPosTransactionSchema = createInsertSchema(posTransactions, {
+  subtotal: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid subtotal"),
+  taxAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid tax amount").optional(),
+  discountAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid discount amount").optional(),
+  totalAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid total amount"),
+  paymentMethod: z.enum(["cash", "card", "insurance", "split", "debit", "mobile_pay"]),
+  paymentStatus: z.enum(["completed", "refunded", "partial_refund", "pending"]),
+});
+
+export const updatePosTransactionSchema = insertPosTransactionSchema.partial();
+
+export const insertPosTransactionItemSchema = createInsertSchema(posTransactionItems, {
+  quantity: z.number().int().min(1, "Quantity must be at least 1"),
+  unitPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid price"),
+  lineTotal: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid line total"),
+});
+
+export const insertPdfTemplateSchema = createInsertSchema(pdfTemplates, {
+  templateType: z.enum(["invoice", "receipt", "prescription", "report", "order", "label"]),
+  paperSize: z.enum(["A4", "Letter", "Receipt", "Label"]),
+  orientation: z.enum(["portrait", "landscape"]),
+});
+
+export const updatePdfTemplateSchema = insertPdfTemplateSchema.partial();
+
+// Type exports
+export type PosTransaction = typeof posTransactions.$inferSelect;
+export type InsertPosTransaction = typeof posTransactions.$inferInsert;
+
+export type PosTransactionItem = typeof posTransactionItems.$inferSelect;
+export type InsertPosTransactionItem = typeof posTransactionItems.$inferInsert;
+
+export type PdfTemplate = typeof pdfTemplates.$inferSelect;
+export type InsertPdfTemplate = typeof pdfTemplates.$inferInsert;
 

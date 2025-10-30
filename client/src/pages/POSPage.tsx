@@ -1,515 +1,513 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import React, { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { AnimatedCard } from '@/components/ui/AnimatedCard';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { 
   ShoppingCart, 
-  Plus,
-  Trash2,
-  CreditCard,
+  Scan, 
+  Plus, 
+  Minus, 
+  Trash2, 
+  CreditCard, 
+  Banknote, 
+  Receipt, 
+  Search,
   Package,
-  Banknote,
-  Receipt,
-} from "lucide-react";
-import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+  DollarSign
+} from 'lucide-react';
 
 interface Product {
   id: string;
-  productType: "frame" | "contact_lens" | "solution" | "service";
-  brand: string | null;
-  model: string | null;
-  sku: string | null;
+  name: string;
+  brand?: string;
+  category?: string;
   unitPrice: string;
   stockQuantity: number;
+  barcode?: string;
+  imageUrl?: string;
+  taxRate?: string;
 }
 
-interface Patient {
-  id: string;
-  name: string;
-}
-
-interface CartItem {
-  productId: string;
-  productName: string;
+interface CartItem extends Product {
   quantity: number;
-  unitPrice: string;
+  discount: number;
+  lineTotal: number;
 }
 
-const getProductDisplayName = (product: Product): string => {
-  return `${product.brand || ''} ${product.model || ''}`.trim() || product.productType.replace('_', ' ');
-};
-
-export default function POSPage() {
-  const [selectedPatientId, setSelectedPatientId] = useState<string>("");
+export default function POSTill() {
+  const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card">("cash");
-  const [cashReceived, setCashReceived] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [barcodeInput, setBarcodeInput] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [paymentMethod, setPaymentMethod] = useState<string>('card');
+  const [cashReceived, setCashReceived] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const { toast } = useToast();
 
-  const { data: patients } = useQuery<Patient[]>({
-    queryKey: ["/api/patients"],
-  });
+  const categories = ['all', 'frames', 'lenses', 'accessories', 'solutions', 'cases', 'cleaning'];
 
-  const { data: products } = useQuery<Product[]>({
-    queryKey: ["/api/products"],
-  });
+  // Fetch products
+  useEffect(() => {
+    fetchProducts();
+  }, [selectedCategory, searchTerm]);
 
-  const createInvoiceMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/invoices", data);
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to create invoice");
-      }
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
-      setCart([]);
-      setSelectedPatientId("");
-      setIsPaymentDialogOpen(false);
-      setPaymentMethod("cash");
-      setCashReceived("");
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (selectedCategory !== 'all') params.append('category', selectedCategory);
+      if (searchTerm) params.append('search', searchTerm);
+      params.append('inStock', 'true');
+
+      const response = await fetch(`/api/pos/products?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch products');
+      
+      const data = await response.json();
+      setProducts(data.products);
+    } catch (error) {
       toast({
-        title: "Sale Completed",
-        description: "Invoice has been created and payment recorded successfully.",
+        title: 'Error',
+        description: 'Failed to load products',
+        variant: 'destructive',
       });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create invoice. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const addToCart = (product: Product) => {
-    const existingItem = cart.find((item) => item.productId === product.id);
-    const productName = getProductDisplayName(product);
-    
-    if (existingItem) {
-      setCart(
-        cart.map((item) =>
-          item.productId === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      );
-    } else {
-      setCart([
-        ...cart,
-        {
-          productId: product.id,
-          productName: productName,
-          quantity: 1,
-          unitPrice: product.unitPrice,
-        },
-      ]);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    toast({
-      title: "Added to cart",
-      description: `${productName} added to cart.`,
+  // Handle barcode scan
+  const handleBarcodeScan = async (barcode: string) => {
+    try {
+      const response = await fetch(`/api/pos/products/barcode/${barcode}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Product not found');
+      }
+      
+      const product = await response.json();
+      addToCart(product);
+      setBarcodeInput('');
+      
+      toast({
+        title: 'Product Added',
+        description: `${product.name} added to cart`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Add product to cart
+  const addToCart = (product: Product) => {
+    setCart(prevCart => {
+      const existingItem = prevCart.find(item => item.id === product.id);
+      
+      if (existingItem) {
+        return prevCart.map(item =>
+          item.id === product.id
+            ? {
+                ...item,
+                quantity: item.quantity + 1,
+                lineTotal: (item.quantity + 1) * parseFloat(item.unitPrice) - item.discount,
+              }
+            : item
+        );
+      }
+      
+      return [
+        ...prevCart,
+        {
+          ...product,
+          quantity: 1,
+          discount: 0,
+          lineTotal: parseFloat(product.unitPrice),
+        },
+      ];
     });
   };
 
+  // Update cart item quantity
+  const updateQuantity = (productId: string, change: number) => {
+    setCart(prevCart =>
+      prevCart.map(item => {
+        if (item.id === productId) {
+          const newQuantity = Math.max(0, item.quantity + change);
+          if (newQuantity === 0) return null;
+          
+          return {
+            ...item,
+            quantity: newQuantity,
+            lineTotal: newQuantity * parseFloat(item.unitPrice) - item.discount,
+          };
+        }
+        return item;
+      }).filter(Boolean) as CartItem[]
+    );
+  };
+
+  // Remove item from cart
   const removeFromCart = (productId: string) => {
-    setCart(cart.filter((item) => item.productId !== productId));
+    setCart(prevCart => prevCart.filter(item => item.id !== productId));
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
+  // Calculate totals
+  const subtotal = cart.reduce((sum, item) => sum + item.lineTotal, 0);
+  const tax = cart.reduce((sum, item) => {
+    const taxRate = parseFloat(item.taxRate || '0');
+    return sum + (item.lineTotal * taxRate / 100);
+  }, 0);
+  const total = subtotal + tax;
+  const change = paymentMethod === 'cash' && cashReceived ? parseFloat(cashReceived) - total : 0;
 
-    setCart(
-      cart.map((item) =>
-        item.productId === productId ? { ...item, quantity } : item
-      )
-    );
-  };
-
-  const calculateTotal = () => {
-    return cart.reduce(
-      (total, item) => total + parseFloat(item.unitPrice) * item.quantity,
-      0
-    );
-  };
-
-  const handleCheckout = () => {
-    if (!selectedPatientId) {
-      toast({
-        title: "Patient Required",
-        description: "Please select a patient before checkout.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  // Process transaction
+  const processTransaction = async () => {
     if (cart.length === 0) {
       toast({
-        title: "Cart Empty",
-        description: "Please add items to cart before checkout.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Cart is empty',
+        variant: 'destructive',
       });
       return;
     }
 
-    // Open payment dialog instead of immediately creating invoice
-    setIsPaymentDialogOpen(true);
-  };
-
-  const handleCompletePayment = () => {
-    const total = calculateTotal();
-
-    // Validate cash payment
-    if (paymentMethod === "cash") {
-      const received = parseFloat(cashReceived);
-      if (!cashReceived || isNaN(received) || received < total) {
-        toast({
-          title: "Invalid Cash Amount",
-          description: `Cash received must be at least £${total.toFixed(2)}`,
-          variant: "destructive",
-        });
-        return;
-      }
+    if (paymentMethod === 'cash' && (!cashReceived || parseFloat(cashReceived) < total)) {
+      toast({
+        title: 'Error',
+        description: 'Insufficient cash amount',
+        variant: 'destructive',
+      });
+      return;
     }
 
-    const lineItems = cart.map((item) => ({
-      productId: item.productId,
-      description: item.productName,  // This is required by the database schema
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      totalPrice: (parseFloat(item.unitPrice) * item.quantity).toFixed(2),
-    }));
+    try {
+      setProcessing(true);
 
-    createInvoiceMutation.mutate({
-      patientId: selectedPatientId,
-      totalAmount: total.toFixed(2),
-      paymentMethod,
-      status: "paid",
-      lineItems,
-    });
+      const transactionData = {
+        items: cart.map(item => ({
+          productId: item.id,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          discountAmount: item.discount.toFixed(2),
+        })),
+        paymentMethod,
+        cashReceived: paymentMethod === 'cash' ? cashReceived : undefined,
+        discountAmount: '0',
+      };
+
+      const response = await fetch('/api/pos/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(transactionData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Transaction failed');
+      }
+
+      const result = await response.json();
+
+      toast({
+        title: 'Sale Complete',
+        description: `Transaction ${result.transaction.transactionNumber} completed successfully`,
+      });
+
+      // Print receipt (optional)
+      // printReceipt(result.transaction);
+
+      // Clear cart
+      setCart([]);
+      setCashReceived('');
+    } catch (error: any) {
+      toast({
+        title: 'Transaction Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessing(false);
+    }
   };
-
-  const calculateChange = () => {
-    if (paymentMethod !== "cash" || !cashReceived) return 0;
-    const received = parseFloat(cashReceived);
-    const total = calculateTotal();
-    return Math.max(0, received - total);
-  };
-
-  const total = calculateTotal();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Point of Sale</h1>
-          <p className="text-muted-foreground mt-1">
-            Process sales and create invoices
-          </p>
-        </div>
+    <div className="container mx-auto p-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold">Point of Sale</h1>
+        <p className="text-muted-foreground">Over-the-counter sales till</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Available Products</CardTitle>
-            <CardDescription>Select products to add to cart</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {!products || products.length === 0 ? (
-              <div className="text-center py-12">
-                <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No products available</h3>
-                <p className="text-muted-foreground">
-                  Add products to inventory first
-                </p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Product Selection - Left Side (2/3 width) */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Barcode Scanner */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Scan className="h-5 w-5" />
+                Barcode Scanner
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Scan or enter barcode..."
+                  value={barcodeInput}
+                  onChange={(e) => setBarcodeInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && barcodeInput) {
+                      handleBarcodeScan(barcodeInput);
+                    }
+                  }}
+                  autoFocus
+                />
+                <Button
+                  onClick={() => barcodeInput && handleBarcodeScan(barcodeInput)}
+                  disabled={!barcodeInput}
+                >
+                  <Scan className="h-4 w-4" />
+                </Button>
               </div>
-            ) : (
-              <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                {products.map((product) => (
-                  <Card key={product.id} className="hover-elevate" data-testid={`card-product-${product.id}`}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="font-medium">{getProductDisplayName(product)}</div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="text-xs capitalize">
-                              {product.productType.replace('_', ' ')}
-                            </Badge>
-                            <span className="text-sm text-muted-foreground">
-                              Stock: {product.stockQuantity}
-                            </span>
+            </CardContent>
+          </Card>
+
+          {/* Product Search & Filter */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Products
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <Search className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
+                  <Input
+                    placeholder="Search products..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map(cat => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Product Grid */}
+              <ScrollArea className="h-[500px]">
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <LoadingSpinner />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {products.map(product => (
+                      <AnimatedCard
+                        key={product.id}
+                        className="cursor-pointer hover:border-primary transition-colors"
+                        onClick={() => addToCart(product)}
+                      >
+                        <CardContent className="p-3 space-y-2">
+                          {product.imageUrl && (
+                            <img
+                              src={product.imageUrl}
+                              alt={product.name}
+                              className="w-full h-24 object-cover rounded"
+                            />
+                          )}
+                          <div>
+                            <p className="font-medium text-sm line-clamp-2">{product.name}</p>
+                            {product.brand && (
+                              <p className="text-xs text-muted-foreground">{product.brand}</p>
+                            )}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <div className="font-bold text-lg">
+                          <div className="flex justify-between items-center">
+                            <span className="font-bold text-primary">
                               ${parseFloat(product.unitPrice).toFixed(2)}
-                            </div>
+                            </span>
+                            <Badge variant={product.stockQuantity > 10 ? 'default' : 'destructive'}>
+                              {product.stockQuantity} in stock
+                            </Badge>
                           </div>
+                        </CardContent>
+                      </AnimatedCard>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Cart & Checkout - Right Side (1/3 width) */}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5" />
+                Cart ({cart.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[400px] mb-4">
+                {cart.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <ShoppingCart className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                    <p>Cart is empty</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {cart.map(item => (
+                      <div key={item.id} className="flex items-center gap-2 p-2 border rounded">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{item.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            ${parseFloat(item.unitPrice).toFixed(2)} each
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
                           <Button
                             size="sm"
-                            onClick={() => addToCart(product)}
-                            disabled={product.stockQuantity === 0}
-                            data-testid={`button-add-to-cart-${product.id}`}
+                            variant="outline"
+                            onClick={() => updateQuantity(item.id, -1)}
                           >
-                            <Plus className="h-4 w-4" />
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-8 text-center text-sm">{item.quantity}</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateQuantity(item.id, 1)}
+                            disabled={item.quantity >= item.stockQuantity}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => removeFromCart(item.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ShoppingCart className="h-5 w-5" />
-              Cart
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="patient">Patient *</Label>
-              <Select value={selectedPatientId} onValueChange={setSelectedPatientId}>
-                <SelectTrigger data-testid="select-patient">
-                  <SelectValue placeholder="Select patient" />
-                </SelectTrigger>
-                <SelectContent>
-                  {patients?.map((patient) => (
-                    <SelectItem key={patient.id} value={patient.id}>
-                      {patient.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {cart.length === 0 ? (
-              <div className="text-center py-12 border rounded-md">
-                <ShoppingCart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Cart is empty</h3>
-                <p className="text-muted-foreground text-sm">
-                  Add products from the left panel
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead className="w-24">Qty</TableHead>
-                        <TableHead className="text-right">Price</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                        <TableHead className="w-12"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {cart.map((item) => (
-                        <TableRow key={item.productId} data-testid={`cart-item-${item.productId}`}>
-                          <TableCell className="font-medium">
-                            {item.productName}
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min="1"
-                              value={item.quantity}
-                              onChange={(e) =>
-                                updateQuantity(
-                                  item.productId,
-                                  parseInt(e.target.value) || 0
-                                )
-                              }
-                              className="w-16"
-                              data-testid={`input-quantity-${item.productId}`}
-                            />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            £{parseFloat(item.unitPrice).toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            £{(parseFloat(item.unitPrice) * item.quantity).toFixed(2)}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => removeFromCart(item.productId)}
-                              data-testid={`button-remove-${item.productId}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                    <TableFooter>
-                      <TableRow>
-                        <TableCell colSpan={3} className="font-bold text-right">
-                          Total:
-                        </TableCell>
-                        <TableCell className="font-bold text-right text-lg" data-testid="text-cart-total">
-                          £{total.toFixed(2)}
-                        </TableCell>
-                        <TableCell></TableCell>
-                      </TableRow>
-                    </TableFooter>
-                  </Table>
-                </div>
-
-                <Button
-                  size="lg"
-                  className="w-full"
-                  onClick={handleCheckout}
-                  disabled={createInvoiceMutation.isPending || !selectedPatientId}
-                  data-testid="button-checkout"
-                >
-                  <Receipt className="h-4 w-4 mr-2" />
-                  Proceed to Payment
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Payment Dialog */}
-      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Complete Payment</DialogTitle>
-            <DialogDescription>
-              Select payment method and complete the transaction
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-              <span className="text-sm font-medium">Total Amount:</span>
-              <span className="text-2xl font-bold">£{calculateTotal().toFixed(2)}</span>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="paymentMethod">Payment Method *</Label>
-              <Select value={paymentMethod} onValueChange={(value: "cash" | "card") => {
-                setPaymentMethod(value);
-                setCashReceived("");
-              }}>
-                <SelectTrigger data-testid="select-payment-method">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">
-                    <div className="flex items-center gap-2">
-                      <Banknote className="h-4 w-4" />
-                      <span>Cash</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="card">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4" />
-                      <span>Card</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {paymentMethod === "cash" && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="cashReceived">Cash Received *</Label>
-                  <Input
-                    id="cashReceived"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="Enter amount received"
-                    value={cashReceived}
-                    onChange={(e) => setCashReceived(e.target.value)}
-                    data-testid="input-cash-received"
-                  />
-                </div>
-
-                {cashReceived && parseFloat(cashReceived) >= calculateTotal() && (
-                  <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                    <span className="text-sm font-medium text-green-700 dark:text-green-400">Change to Give:</span>
-                    <span className="text-xl font-bold text-green-700 dark:text-green-400">
-                      £{calculateChange().toFixed(2)}
-                    </span>
+                    ))}
                   </div>
                 )}
-              </>
-            )}
+              </ScrollArea>
 
-            {paymentMethod === "card" && (
-              <div className="p-4 bg-muted rounded-lg text-sm text-muted-foreground">
-                <p>Process card payment using your card terminal and confirm below.</p>
+              <Separator className="my-4" />
+
+              {/* Totals */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal:</span>
+                  <span>${subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Tax:</span>
+                  <span>${tax.toFixed(2)}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Total:</span>
+                  <span className="text-primary">${total.toFixed(2)}</span>
+                </div>
               </div>
-            )}
-          </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsPaymentDialogOpen(false)}
-              disabled={createInvoiceMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleCompletePayment}
-              disabled={createInvoiceMutation.isPending}
-              data-testid="button-complete-payment"
-            >
-              {createInvoiceMutation.isPending ? "Processing..." : "Complete Sale"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <Separator className="my-4" />
+
+              {/* Payment Method */}
+              <div className="space-y-3">
+                <Label>Payment Method</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">
+                      <div className="flex items-center gap-2">
+                        <Banknote className="h-4 w-4" />
+                        Cash
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="card">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Card
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="debit">Debit Card</SelectItem>
+                    <SelectItem value="mobile_pay">Mobile Pay</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {paymentMethod === 'cash' && (
+                  <div className="space-y-2">
+                    <Label>Cash Received</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={cashReceived}
+                      onChange={(e) => setCashReceived(e.target.value)}
+                    />
+                    {change > 0 && (
+                      <div className="flex justify-between text-sm font-medium text-green-600">
+                        <span>Change:</span>
+                        <span>${change.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <Button
+                className="w-full mt-4"
+                size="lg"
+                onClick={processTransaction}
+                disabled={cart.length === 0 || processing}
+              >
+                {processing ? (
+                  <>
+                    <LoadingSpinner size="sm" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Receipt className="h-5 w-5 mr-2" />
+                    Complete Sale
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
