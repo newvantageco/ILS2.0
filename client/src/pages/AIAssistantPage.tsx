@@ -55,6 +55,7 @@ interface AIResponse {
 }
 
 export default function AIAssistantPage() {
+  console.log('[AIAssistantPage] Component mounted');
   const [question, setQuestion] = useState("");
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -224,6 +225,7 @@ export default function AIAssistantPage() {
 
   // Show loading state
   if (conversationsLoading || progressLoading) {
+    console.log('[AIAssistantPage] Loading state:', { conversationsLoading, progressLoading });
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center space-y-4">
@@ -236,6 +238,7 @@ export default function AIAssistantPage() {
 
   // Show error state
   if (conversationsError || progressError) {
+    console.log('[AIAssistantPage] Error state:', { conversationsError, progressError });
     return (
       <div className="container mx-auto p-6">
         <Alert variant="destructive">

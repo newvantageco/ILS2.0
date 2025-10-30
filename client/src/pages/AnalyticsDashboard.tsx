@@ -194,6 +194,7 @@ const StatCard = ({
 };
 
 export default function AnalyticsDashboard() {
+  console.log('[AnalyticsDashboard] Component mounted');
   const [dateRange, setDateRange] = useState('30days');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -212,11 +213,13 @@ export default function AnalyticsDashboard() {
   const [peakHours, setPeakHours] = useState<PeakHour[]>([]);
 
   const fetchAnalytics = async () => {
+    console.log('[AnalyticsDashboard] fetchAnalytics called');
     setLoading(true);
     setError(null);
     try {
       const { startDate, endDate } = getDateRange(dateRange);
       const params = new URLSearchParams({ startDate, endDate });
+      console.log('[AnalyticsDashboard] Fetching with params:', { startDate, endDate });
 
       const [
         overviewRes, 
