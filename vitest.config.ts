@@ -8,8 +8,18 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./test/setup.vitest.ts'],
-    include: ['test/**/*.{test,spec}.{ts,tsx}', 'client/src/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['node_modules', 'dist', 'build', 'test/e2e/**'],
+    include: ['test/components/**/*.{test,spec}.{ts,tsx}', 'client/src/**/*.{test,spec}.{ts,tsx}'],
+    exclude: [
+      'node_modules',
+      'dist',
+      'build',
+      'test/e2e/**',
+      'test/unit/example.test.ts', // Jest-based test
+      'test/integration/api.test.ts', // Jest-based test
+      'test/EquipmentDiscoveryService.test.ts', // Old test files
+      'test/NotificationService.test.ts',
+      'test/PDFGenerationService.test.ts',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

@@ -150,6 +150,7 @@
     "drizzle-kit": "^0.31.5",
     "esbuild": "^0.25.0",
     "jest": "^30.2.0",
+    "jsdom": "^27.0.1",
     "playwright": "^1.56.1",
     "postcss": "^8.5.6",
     "postcss-nesting": "^13.0.2",
