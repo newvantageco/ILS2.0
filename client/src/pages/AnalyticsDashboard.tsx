@@ -35,6 +35,14 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { AnimatedCard } from "@/components/ui/AnimatedCard";
+import { 
+  dateRanges, 
+  getDateRange, 
+  formatCurrency, 
+  formatDate,
+  CHART_COLOR_ARRAY,
+  fetchAnalyticsData
+} from "@/lib/analytics-utils";
 
 interface AnalyticsOverview {
   period: { start: string; end: string };
@@ -144,45 +152,6 @@ interface PeakHour {
   revenue: number;
   transactionCount: number;
 }
-
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
-
-const dateRanges = [
-  { label: 'Today', value: 'today' },
-  { label: 'Last 7 Days', value: '7days' },
-  { label: 'Last 30 Days', value: '30days' },
-  { label: 'Last 90 Days', value: '90days' },
-  { label: 'This Year', value: 'year' },
-];
-
-const getDateRange = (range: string) => {
-  const end = new Date();
-  const start = new Date();
-  
-  switch (range) {
-    case 'today':
-      start.setHours(0, 0, 0, 0);
-      break;
-    case '7days':
-      start.setDate(end.getDate() - 7);
-      break;
-    case '30days':
-      start.setDate(end.getDate() - 30);
-      break;
-    case '90days':
-      start.setDate(end.getDate() - 90);
-      break;
-    case 'year':
-      start.setMonth(0, 1);
-      start.setHours(0, 0, 0, 0);
-      break;
-  }
-  
-  return {
-    startDate: start.toISOString().split('T')[0],
-    endDate: end.toISOString().split('T')[0],
-  };
-};
 
 const StatCard = ({ 
   title, 
@@ -572,7 +541,7 @@ export default function AnalyticsDashboard() {
                       label={(entry) => `${entry.category}: ${entry.percentage.toFixed(1)}%`}
                     >
                       {categoryBreakdown.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={CHART_COLOR_ARRAY[index % CHART_COLOR_ARRAY.length]} />
                       ))}
                     </Pie>
                     <Tooltip formatter={(value: number) => `£${value.toFixed(2)}`} />
@@ -594,7 +563,7 @@ export default function AnalyticsDashboard() {
                         <div className="flex items-center gap-2">
                           <div 
                             className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+                            style={{ backgroundColor: CHART_COLOR_ARRAY[idx % CHART_COLOR_ARRAY.length] }}
                           />
                           <span className="font-medium">{category.category}</span>
                         </div>
@@ -680,7 +649,7 @@ export default function AnalyticsDashboard() {
                         label={(entry) => `${entry.method}: ${entry.count}`}
                       >
                         {overview.paymentMethods.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell key={`cell-${index}`} fill={CHART_COLOR_ARRAY[index % CHART_COLOR_ARRAY.length]} />
                         ))}
                       </Pie>
                       <Tooltip formatter={(value: number) => `£${value.toFixed(2)}`} />
