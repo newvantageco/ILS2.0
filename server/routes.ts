@@ -41,6 +41,7 @@ import { registerMasterAiRoutes } from "./routes/masterAi";
 import ecpRoutes from "./routes/ecp";
 import posRoutes from "./routes/pos";
 import analyticsRoutes from "./routes/analytics";
+import pdfGenerationRoutes from "./routes/pdfGeneration";
 import { websocketService } from "./websocket";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -83,6 +84,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Analytics routes (Shopify-style dashboard and reports)
   app.use('/api/analytics', isAuthenticated, analyticsRoutes);
+
+  // Register PDF Generation routes (receipts, invoices, labels, templates)
+  app.use('/api/pdf', isAuthenticated, pdfGenerationRoutes);
 
   const FULL_PLAN = "full" as const;
   const FREE_ECP_PLAN = "free_ecp" as const;
