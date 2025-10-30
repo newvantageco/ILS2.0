@@ -40,6 +40,7 @@ import { registerPermissionRoutes } from "./routes/permissions";
 import { registerMasterAiRoutes } from "./routes/masterAi";
 import ecpRoutes from "./routes/ecp";
 import posRoutes from "./routes/pos";
+import analyticsRoutes from "./routes/analytics";
 import { websocketService } from "./websocket";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -79,6 +80,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register POS (Point of Sale) routes for over-the-counter sales
   app.use('/api/pos', isAuthenticated, posRoutes);
+
+  // Register Analytics routes (Shopify-style dashboard and reports)
+  app.use('/api/analytics', isAuthenticated, analyticsRoutes);
 
   const FULL_PLAN = "full" as const;
   const FREE_ECP_PLAN = "free_ecp" as const;

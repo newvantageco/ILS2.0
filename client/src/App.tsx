@@ -44,17 +44,20 @@ import CompanyManagementPage from "@/pages/admin/CompanyManagementPage";
 import BIDashboardPage from "@/pages/BIDashboardPage";
 import PlatformAdminPage from "@/pages/PlatformAdminPage";
 import CompanyAdminPage from "@/pages/CompanyAdminPage";
+import AnalyticsDashboard from "@/pages/AnalyticsDashboard";
 import { LogOut } from "lucide-react";
 import { useLocation } from "wouter";
 
 function AppLayout({ children, userRole }: { children: React.ReactNode; userRole: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin" }) {
+  const { logout } = useAuth();
+  
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-mobile": "100%",
   };
 
   const handleLogout = () => {
-    window.location.href = "/api/logout";
+    logout();
   };
 
   return (
@@ -196,6 +199,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
             <Route path="/ecp/company" component={CompanyManagementPage} />
             <Route path="/ecp/bi-dashboard" component={BIDashboardPage} />
+            <Route path="/ecp/analytics" component={AnalyticsDashboard} />
             <Route path="/order/:id" component={OrderDetailsPage} />
             <Route path="/ecp/returns">
               <div className="text-center py-12">

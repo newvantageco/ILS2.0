@@ -29,6 +29,7 @@ import {
   Building2,
   BarChart3,
   Receipt,
+  LineChart,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -53,6 +54,7 @@ const menuItems = {
     { title: "My Orders", url: "/ecp/orders", icon: ClipboardList },
     { title: "Returns", url: "/ecp/returns", icon: TrendingUp },
     { title: "AI Assistant", url: "/ecp/ai-assistant", icon: Brain },
+    { title: "Analytics", url: "/ecp/analytics", icon: LineChart },
     { title: "BI Dashboard", url: "/ecp/bi-dashboard", icon: BarChart3 },
     { title: "Company", url: "/ecp/company", icon: Building2 },
   ],

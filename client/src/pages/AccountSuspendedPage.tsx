@@ -2,20 +2,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, LogOut, ArrowLeft, Mail, Phone } from "lucide-react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AccountSuspendedPage() {
+  const { logout } = useAuth();
   const [location, setLocation] = useLocation();
   const searchParams = new URLSearchParams(location.split('?')[1]);
   const reason = searchParams.get('reason');
 
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/logout', { method: 'POST' });
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Logout error:', error);
-      window.location.href = '/';
-    }
+  const handleLogout = () => {
+    logout();
   };
 
   const handleGoBack = () => {
