@@ -227,6 +227,7 @@ const StatCard = ({
 export default function AnalyticsDashboard() {
   const [dateRange, setDateRange] = useState('30days');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [salesTrends, setSalesTrends] = useState<SalesTrend[]>([]);
   const [productPerformance, setProductPerformance] = useState<ProductPerformance[]>([]);
@@ -243,6 +244,7 @@ export default function AnalyticsDashboard() {
 
   const fetchAnalytics = async () => {
     setLoading(true);
+    setError(null);
     try {
       const { startDate, endDate } = getDateRange(dateRange);
       const params = new URLSearchParams({ startDate, endDate });
@@ -273,6 +275,11 @@ export default function AnalyticsDashboard() {
         fetch(`/api/analytics/peak-hours?${params}`),
       ]);
 
+      // Check if any request failed
+      if (!overviewRes.ok) {
+        throw new Error(`Failed to fetch analytics: ${overviewRes.statusText}`);
+      }
+
       const [
         overviewData, 
         trendsData, 
@@ -287,31 +294,32 @@ export default function AnalyticsDashboard() {
         peakData
       ] = await Promise.all([
         overviewRes.json(),
-        trendsRes.json(),
-        productsRes.json(),
-        categoriesRes.json(),
-        staffRes.json(),
-        clvRes.json(),
-        affinityRes.json(),
-        hourlyRes.json(),
-        weekdayRes.json(),
-        turnoverRes.json(),
-        peakRes.json(),
+        trendsRes.ok ? trendsRes.json() : { data: [] },
+        productsRes.ok ? productsRes.json() : { products: [] },
+        categoriesRes.ok ? categoriesRes.json() : { categories: [] },
+        staffRes.ok ? staffRes.json() : { staff: [] },
+        clvRes.ok ? clvRes.json() : [],
+        affinityRes.ok ? affinityRes.json() : [],
+        hourlyRes.ok ? hourlyRes.json() : [],
+        weekdayRes.ok ? weekdayRes.json() : [],
+        turnoverRes.ok ? turnoverRes.json() : [],
+        peakRes.ok ? peakRes.json() : [],
       ]);
 
       setOverview(overviewData);
-      setSalesTrends(trendsData.data);
-      setProductPerformance(productsData.products);
-      setCategoryBreakdown(categoriesData.categories);
-      setStaffPerformance(staffData.staff);
-      setCustomerLTV(clvData);
-      setProductAffinity(affinityData);
-      setHourlyRevenue(hourlyData);
-      setWeekdayRevenue(weekdayData);
-      setInventoryTurnover(turnoverData);
-      setPeakHours(peakData);
+      setSalesTrends(trendsData.data || []);
+      setProductPerformance(productsData.products || []);
+      setCategoryBreakdown(categoriesData.categories || []);
+      setStaffPerformance(staffData.staff || []);
+      setCustomerLTV(Array.isArray(clvData) ? clvData : []);
+      setProductAffinity(Array.isArray(affinityData) ? affinityData : []);
+      setHourlyRevenue(Array.isArray(hourlyData) ? hourlyData : []);
+      setWeekdayRevenue(Array.isArray(weekdayData) ? weekdayData : []);
+      setInventoryTurnover(Array.isArray(turnoverData) ? turnoverData : []);
+      setPeakHours(Array.isArray(peakData) ? peakData : []);
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load analytics data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -325,6 +333,46 @@ export default function AnalyticsDashboard() {
     return (
       <div className="flex items-center justify-center h-96">
         <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card className="border-destructive">
+          <CardHeader>
+            <CardTitle className="text-destructive">Error Loading Analytics</CardTitle>
+            <CardDescription>{error}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={fetchAnalytics} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!overview) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>No Data Available</CardTitle>
+            <CardDescription>
+              There is no analytics data for the selected period. Start by making some sales transactions.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={fetchAnalytics} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
