@@ -35,7 +35,7 @@ function LoginForm({ onSubmit }: { onSubmit: (email: string, password: string) =
         type="email"
         placeholder="Email"
         value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        onChange={(e) => setEmail(e.currentTarget.value)}
         aria-label="Email"
       />
       {emailError && <span role="alert">{emailError}</span>}
@@ -44,7 +44,7 @@ function LoginForm({ onSubmit }: { onSubmit: (email: string, password: string) =
         type="password"
         placeholder="Password"
         value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        onChange={(e) => setPassword(e.currentTarget.value)}
         aria-label="Password"
       />
       
