@@ -40,7 +40,7 @@ router.get('/products',
             eq(products.companyId, companyId),
             eq(products.isActive, true),
             inStock === 'true' ? sql`${products.stockQuantity} > 0` : undefined,
-            category ? eq(products.category, category) : undefined,
+            category ? eq(products.category, category as string) : undefined,
             search ? sql`${products.name} ILIKE ${`%${search}%`} OR ${products.brand} ILIKE ${`%${search}%`}` : undefined
           )
         )
@@ -169,21 +169,21 @@ router.post('/transactions',
 
         // Create transaction
         const [transaction] = await tx.insert(posTransactions).values({
-          companyId,
+          companyId: companyId as string,
           transactionNumber,
           staffId,
-          patientId: patientId || null,
+          patientId: patientId || undefined,
           subtotal: subtotal.toFixed(2),
           taxAmount: taxAmount.toFixed(2),
           discountAmount: transactionDiscount.toFixed(2),
           totalAmount: total.toFixed(2),
           paymentMethod,
-          paymentStatus: 'completed',
-          cashReceived: cashReceived || null,
-          changeGiven: cashReceived ? (parseFloat(cashReceived) - total).toFixed(2) : null,
-          notes: notes || null,
+          paymentStatus: 'completed' as const,
+          cashReceived: cashReceived || undefined,
+          changeGiven: cashReceived ? (parseFloat(cashReceived) - total).toFixed(2) : undefined,
+          notes: notes || undefined,
           transactionDate: new Date(),
-        }).returning();
+        } as any).returning();
 
         // Create transaction items and update stock
         const createdItems = [];
@@ -328,8 +328,8 @@ router.get('/transactions',
       const transactions = await db.query.posTransactions.findMany({
         where: and(...conditions),
         orderBy: [desc(posTransactions.transactionDate)],
-        limit: limit as number,
-        offset: offset as number,
+        limit: Number(limit) || 50,
+        offset: Number(offset) || 0,
         with: {
           staff: {
             columns: {
