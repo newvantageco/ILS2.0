@@ -2293,3 +2293,6 @@ export type InsertPosTransactionItem = typeof posTransactionItems.$inferInsert;
 export type PdfTemplate = typeof pdfTemplates.$inferSelect;
 export type InsertPdfTemplate = typeof pdfTemplates.$inferInsert;
 
+export type Equipment = typeof equipment.$inferSelect;
+export type InsertEquipment = typeof equipment.$inferInsert;
+

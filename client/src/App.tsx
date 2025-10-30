@@ -27,6 +27,7 @@ import SettingsPage from "@/pages/SettingsPage";
 import SignupPage from "@/pages/SignupPage";
 import PendingApprovalPage from "@/pages/PendingApprovalPage";
 import AccountSuspendedPage from "@/pages/AccountSuspendedPage";
+import OnboardingFlow from "@/pages/OnboardingFlow";
 import AdminDashboard from "@/pages/AdminDashboard";
 import EmailLoginPage from "@/pages/EmailLoginPage";
 import EmailSignupPage from "@/pages/EmailSignupPage";
@@ -45,6 +46,9 @@ import BIDashboardPage from "@/pages/BIDashboardPage";
 import PlatformAdminPage from "@/pages/PlatformAdminPage";
 import CompanyAdminPage from "@/pages/CompanyAdminPage";
 import AnalyticsDashboard from "@/pages/AnalyticsDashboard";
+import EquipmentPage from "@/pages/EquipmentPage";
+import ProductionTrackingPage from "@/pages/ProductionTrackingPage";
+import QualityControlPage from "@/pages/QualityControlPage";
 import { LogOut } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -134,7 +138,18 @@ function AuthenticatedApp() {
     return (
       <Switch>
         <Route path="/signup" component={SignupPage} />
+        <Route path="/onboarding" component={OnboardingFlow} />
         <Route><Redirect to="/signup" /></Route>
+      </Switch>
+    );
+  }
+  
+  // Handle users who completed signup but no company
+  if (!user.companyId && user.role !== 'platform_admin') {
+    return (
+      <Switch>
+        <Route path="/onboarding" component={OnboardingFlow} />
+        <Route><Redirect to="/onboarding" /></Route>
       </Switch>
     );
   }
@@ -223,30 +238,15 @@ function AuthenticatedApp() {
                 <p className="text-muted-foreground mt-2">Full order queue management</p>
               </div>
             </Route>
-            <Route path="/lab/production">
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-semibold">Production Tracking</h2>
-                <p className="text-muted-foreground mt-2">Real-time production monitoring</p>
-              </div>
-            </Route>
-            <Route path="/lab/quality">
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-semibold">Quality Control</h2>
-                <p className="text-muted-foreground mt-2">QC inspection and approval workflow</p>
-              </div>
-            </Route>
+            <Route path="/lab/production" component={ProductionTrackingPage} />
+            <Route path="/lab/quality" component={QualityControlPage} />
             <Route path="/lab/analytics">
               <div className="text-center py-12">
                 <h2 className="text-2xl font-semibold">Analytics Hub</h2>
                 <p className="text-muted-foreground mt-2">Root cause analysis and data correlation</p>
               </div>
             </Route>
-            <Route path="/lab/equipment">
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-semibold">Equipment Management</h2>
-                <p className="text-muted-foreground mt-2">Calibration tracking and maintenance scheduling</p>
-              </div>
-            </Route>
+            <Route path="/lab/equipment" component={EquipmentPage} />
             <Route path="/lab/rnd">
               <div className="text-center py-12">
                 <h2 className="text-2xl font-semibold">R&D Projects</h2>

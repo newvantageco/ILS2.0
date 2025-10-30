@@ -42,6 +42,7 @@ import ecpRoutes from "./routes/ecp";
 import posRoutes from "./routes/pos";
 import analyticsRoutes from "./routes/analytics";
 import pdfGenerationRoutes from "./routes/pdfGeneration";
+import companiesRoutes from "./routes/companies";
 import { websocketService } from "./websocket";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -87,6 +88,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register PDF Generation routes (receipts, invoices, labels, templates)
   app.use('/api/pdf', isAuthenticated, pdfGenerationRoutes);
+  
+  // Register Companies routes for multi-tenant onboarding
+  app.use('/api/companies', isAuthenticated, companiesRoutes);
 
   const FULL_PLAN = "full" as const;
   const FREE_ECP_PLAN = "free_ecp" as const;
@@ -3747,6 +3751,1007 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error resending credentials:', error);
       res.status(500).json({ message: 'Failed to resend credentials' });
     }
+  });
+
+  // ============================================
+  // AI ASSISTANT ENDPOINTS
+  // ============================================
+  
+  // Import AI services
+  const { AIAssistantService } = await import('./services/AIAssistantService');
+  const aiAssistantService = new AIAssistantService(storage);
+
+  // Ask AI Assistant a question
+  app.post('/api/ai-assistant/ask', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const { question, conversationId, context } = req.body;
+      
+      if (!question) {
+        return res.status(400).json({ message: "Question is required" });
+      }
+
+      // Get learning progress for the company
+      const learningProgress = await aiAssistantService.getLearningProgress(user.companyId);
+
+      const response = await aiAssistantService.ask(
+        {
+          question,
+          conversationId,
+          context,
+          userId
+        },
+        {
+          companyId: user.companyId,
+          useExternalAi: true,
+          learningProgress: learningProgress.progress
+        }
+      );
+
+      // Save the conversation
+      await aiAssistantService.saveConversation(
+        conversationId || crypto.randomUUID(),
+        userId,
+        user.companyId,
+        question,
+        response.answer
+      );
+
+      res.json(response);
+    } catch (error) {
+      console.error('Error asking AI assistant:', error);
+      res.status(500).json({ message: 'Failed to get AI response' });
+    }
+  });
+
+  // Get all conversations for a user
+  app.get('/api/ai-assistant/conversations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const conversations = await aiAssistantService.getConversations(userId, user.companyId);
+      res.json(conversations);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      res.status(500).json({ message: 'Failed to fetch conversations' });
+    }
+  });
+
+  // Get a specific conversation with messages
+  app.get('/api/ai-assistant/conversations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const conversationId = req.params.id;
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const conversation = await aiAssistantService.getConversation(conversationId, user.companyId);
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+
+      res.json(conversation);
+    } catch (error) {
+      console.error('Error fetching conversation:', error);
+      res.status(500).json({ message: 'Failed to fetch conversation' });
+    }
+  });
+
+  // Upload document to knowledge base
+  app.post('/api/ai-assistant/knowledge/upload', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const { fileName, fileContent, fileType, title, description } = req.body;
+      
+      if (!fileName || !fileContent) {
+        return res.status(400).json({ message: "File name and content are required" });
+      }
+
+      const result = await aiAssistantService.uploadDocument(
+        user.companyId,
+        userId,
+        {
+          fileName,
+          fileContent,
+          fileType,
+          title,
+          description
+        }
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      res.status(500).json({ message: 'Failed to upload document' });
+    }
+  });
+
+  // Get all knowledge base documents
+  app.get('/api/ai-assistant/knowledge', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const documents = await aiAssistantService.getKnowledgeBase(user.companyId);
+      res.json(documents);
+    } catch (error) {
+      console.error('Error fetching knowledge base:', error);
+      res.status(500).json({ message: 'Failed to fetch knowledge base' });
+    }
+  });
+
+  // Get learning progress
+  app.get('/api/ai-assistant/learning-progress', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const progress = await aiAssistantService.getLearningProgress(user.companyId);
+      res.json(progress);
+    } catch (error) {
+      console.error('Error fetching learning progress:', error);
+      res.status(500).json({ message: 'Failed to fetch learning progress' });
+    }
+  });
+
+  // Get AI assistant statistics
+  app.get('/api/ai-assistant/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const stats = await aiAssistantService.getStats(user.companyId);
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching AI stats:', error);
+      res.status(500).json({ message: 'Failed to fetch statistics' });
+    }
+  });
+
+  // Provide feedback on AI response
+  app.post('/api/ai-assistant/conversations/:id/feedback', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const conversationId = req.params.id;
+      const { messageId, helpful, feedback } = req.body;
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      // Update the saveFeedback call to include userId
+      await storage.createAiFeedback({
+        messageId,
+        userId,
+        companyId: user.companyId,
+        rating: helpful ? 5 : 1,
+        helpful,
+        comments: feedback
+      });
+
+      res.json({ message: "Feedback saved successfully" });
+    } catch (error) {
+      console.error('Error saving feedback:', error);
+      res.status(500).json({ message: 'Failed to save feedback' });
+    }
+  });
+
+  // ============================================
+  // AI INTELLIGENCE & BI ENDPOINTS
+  // ============================================
+  
+  const { BusinessIntelligenceService } = await import('./services/BusinessIntelligenceService');
+  const biService = new BusinessIntelligenceService(storage);
+
+  // Get BI Dashboard overview
+  app.get('/api/ai-intelligence/dashboard', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const dashboard = await biService.getDashboardOverview(user.companyId);
+      res.json(dashboard);
+    } catch (error) {
+      console.error('Error fetching BI dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch dashboard' });
+    }
+  });
+
+  // Get AI-generated insights
+  app.get('/api/ai-intelligence/insights', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const insights = await biService.generateInsights(user.companyId);
+      res.json(insights);
+    } catch (error) {
+      console.error('Error generating insights:', error);
+      res.status(500).json({ message: 'Failed to generate insights' });
+    }
+  });
+
+  // Get growth opportunities
+  app.get('/api/ai-intelligence/opportunities', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const opportunities = await biService.identifyGrowthOpportunities(user.companyId);
+      res.json(opportunities);
+    } catch (error) {
+      console.error('Error identifying opportunities:', error);
+      res.status(500).json({ message: 'Failed to identify opportunities' });
+    }
+  });
+
+  // Get alerts
+  app.get('/api/ai-intelligence/alerts', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const alerts = await biService.getAlerts(user.companyId);
+      res.json(alerts);
+    } catch (error) {
+      console.error('Error fetching alerts:', error);
+      res.status(500).json({ message: 'Failed to fetch alerts' });
+    }
+  });
+
+  // Generate demand forecast
+  app.post('/api/ai-intelligence/forecast', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const { productId, timeframe } = req.body;
+      
+      const forecast = await biService.generateForecast(
+        user.companyId,
+        productId,
+        timeframe || 30
+      );
+
+      res.json(forecast);
+    } catch (error) {
+      console.error('Error generating forecast:', error);
+      res.status(500).json({ message: 'Failed to generate forecast' });
+    }
+  });
+
+  // Analyze order risk (for prescription alerts)
+  app.post('/api/orders/analyze-risk', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "ECP access required" });
+      }
+
+      const prescriptionData = req.body;
+      
+      // Simple risk calculation without full PredictiveNonAdaptService
+      // Calculate risk based on prescription complexity
+      let riskScore = 0;
+      let riskFactors: string[] = [];
+      
+      // High add power
+      if (prescriptionData.odAdd > 2.5 || prescriptionData.osAdd > 2.5) {
+        riskScore += 0.25;
+        riskFactors.push("High add power detected");
+      }
+      
+      // High cylinder
+      if (Math.abs(prescriptionData.odCylinder) > 2.0 || Math.abs(prescriptionData.osCylinder) > 2.0) {
+        riskScore += 0.15;
+        riskFactors.push("High astigmatism");
+      }
+      
+      // High sphere
+      const odTotal = Math.abs(prescriptionData.odSphere) + Math.abs(prescriptionData.odCylinder);
+      const osTotal = Math.abs(prescriptionData.osSphere) + Math.abs(prescriptionData.osCylinder);
+      if (odTotal > 6.0 || osTotal > 6.0) {
+        riskScore += 0.20;
+        riskFactors.push("High total power");
+      }
+      
+      // Frame type
+      if (prescriptionData.frameType === 'wrap' || prescriptionData.frameType === 'sport') {
+        riskScore += 0.15;
+        riskFactors.push("Wrap/sport frame increases complexity");
+      }
+      
+      // PD variation
+      if (prescriptionData.pd < 58 || prescriptionData.pd > 74) {
+        riskScore += 0.10;
+        riskFactors.push("Non-standard PD");
+      }
+      
+      const severity = riskScore >= 0.45 ? 'critical' : riskScore >= 0.30 ? 'warning' : 'info';
+      
+      const analysis = {
+        severity,
+        riskScore,
+        riskFactors,
+        recommendation: riskScore > 0.30 
+          ? "Consider consulting with lab engineer before proceeding"
+          : "Prescription within normal parameters",
+        suggestedActions: riskScore > 0.30 
+          ? ["Review with patient", "Consider alternative frame", "Consult lab engineer"]
+          : []
+      };
+
+      res.json({ analysis });
+    } catch (error) {
+      console.error('Error analyzing order risk:', error);
+      res.status(500).json({ message: 'Failed to analyze risk' });
+    }
+  });
+
+  // ============================================
+  // EQUIPMENT MANAGEMENT ENDPOINTS
+  // ============================================
+  
+  const equipmentStorage = await import('./storage/equipment');
+
+  // Get all equipment
+  app.get('/api/equipment', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const { status, testRoomId, needsCalibration, needsMaintenance } = req.query;
+      
+      const filters = {
+        companyId: user.companyId,
+        status: status as string | undefined,
+        testRoomId: testRoomId as string | undefined,
+        needsCalibration: needsCalibration === 'true',
+        needsMaintenance: needsMaintenance === 'true',
+      };
+
+      const equipment = await equipmentStorage.getAllEquipment(filters);
+      res.json(equipment);
+    } catch (error) {
+      console.error('Error fetching equipment:', error);
+      res.status(500).json({ message: 'Failed to fetch equipment' });
+    }
+  });
+
+  // Get equipment statistics
+  app.get('/api/equipment/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const stats = await equipmentStorage.getEquipmentStats(user.companyId);
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching equipment stats:', error);
+      res.status(500).json({ message: 'Failed to fetch statistics' });
+    }
+  });
+
+  // Get equipment due for calibration
+  app.get('/api/equipment/due-calibration', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const daysAhead = parseInt(req.query.days as string) || 30;
+      const equipment = await equipmentStorage.getDueCalibrations(user.companyId, daysAhead);
+      res.json(equipment);
+    } catch (error) {
+      console.error('Error fetching due calibrations:', error);
+      res.status(500).json({ message: 'Failed to fetch calibrations' });
+    }
+  });
+
+  // Get equipment due for maintenance
+  app.get('/api/equipment/due-maintenance', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const daysAhead = parseInt(req.query.days as string) || 30;
+      const equipment = await equipmentStorage.getDueMaintenance(user.companyId, daysAhead);
+      res.json(equipment);
+    } catch (error) {
+      console.error('Error fetching due maintenance:', error);
+      res.status(500).json({ message: 'Failed to fetch maintenance' });
+    }
+  });
+
+  // Get single equipment by ID
+  app.get('/api/equipment/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const equipment = await equipmentStorage.getEquipmentById(req.params.id, user.companyId);
+      if (!equipment) {
+        return res.status(404).json({ message: 'Equipment not found' });
+      }
+      
+      res.json(equipment);
+    } catch (error) {
+      console.error('Error fetching equipment:', error);
+      res.status(500).json({ message: 'Failed to fetch equipment' });
+    }
+  });
+
+  // Create new equipment
+  app.post('/api/equipment', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      // Only lab_tech, engineer, and admin can create equipment
+      if (user.role && !['lab_tech', 'engineer', 'admin'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const equipmentData = {
+        ...req.body,
+        companyId: user.companyId,
+      };
+
+      const equipment = await equipmentStorage.createEquipment(equipmentData);
+      res.status(201).json(equipment);
+    } catch (error) {
+      console.error('Error creating equipment:', error);
+      res.status(500).json({ message: 'Failed to create equipment' });
+    }
+  });
+
+  // Update equipment
+  app.patch('/api/equipment/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      // Only lab_tech, engineer, and admin can update equipment
+      if (user.role && !['lab_tech', 'engineer', 'admin'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const equipment = await equipmentStorage.updateEquipment(
+        req.params.id,
+        user.companyId,
+        req.body
+      );
+
+      if (!equipment) {
+        return res.status(404).json({ message: 'Equipment not found' });
+      }
+      
+      res.json(equipment);
+    } catch (error) {
+      console.error('Error updating equipment:', error);
+      res.status(500).json({ message: 'Failed to update equipment' });
+    }
+  });
+
+  // Delete equipment
+  app.delete('/api/equipment/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      // Only admin can delete equipment
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const success = await equipmentStorage.deleteEquipment(req.params.id, user.companyId);
+      if (!success) {
+        return res.status(404).json({ message: 'Equipment not found' });
+      }
+      
+      res.json({ message: 'Equipment deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting equipment:', error);
+      res.status(500).json({ message: 'Failed to delete equipment' });
+    }
+  });
+
+  // Add maintenance record
+  app.post('/api/equipment/:id/maintenance', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      // Only lab_tech, engineer, and admin can add maintenance
+      if (user.role && !['lab_tech', 'engineer', 'admin'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const maintenanceRecord = {
+        ...req.body,
+        date: new Date(req.body.date),
+        performedBy: user.email || 'Unknown',
+        nextScheduledDate: req.body.nextScheduledDate ? new Date(req.body.nextScheduledDate) : undefined,
+      };
+
+      const equipment = await equipmentStorage.addMaintenanceRecord(
+        req.params.id,
+        user.companyId,
+        maintenanceRecord
+      );
+
+      if (!equipment) {
+        return res.status(404).json({ message: 'Equipment not found' });
+      }
+      
+      res.json(equipment);
+    } catch (error) {
+      console.error('Error adding maintenance record:', error);
+      res.status(500).json({ message: 'Failed to add maintenance record' });
+    }
+  });
+
+  // Record calibration
+  app.post('/api/equipment/:id/calibration', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      // Only engineer and admin can calibrate
+      if (user.role && !['engineer', 'admin'].includes(user.role)) {
+        return res.status(403).json({ message: "Engineer or admin access required" });
+      }
+
+      const { calibrationDate, nextCalibrationDate, notes } = req.body;
+
+      const equipment = await equipmentStorage.recordCalibration(
+        req.params.id,
+        user.companyId,
+        new Date(calibrationDate),
+        new Date(nextCalibrationDate),
+        user.email || 'Unknown',
+        notes
+      );
+
+      if (!equipment) {
+        return res.status(404).json({ message: 'Equipment not found' });
+      }
+      
+      res.json(equipment);
+    } catch (error) {
+      console.error('Error recording calibration:', error);
+      res.status(500).json({ message: 'Failed to record calibration' });
+    }
+  });
+
+  // ============================================
+  // PRODUCTION TRACKING ENDPOINTS
+  // ============================================
+  
+  const productionStorage = await import('./storage/production');
+
+  // Get production statistics
+  app.get('/api/production/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const stats = await productionStorage.getProductionStats(user.companyId);
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching production stats:', error);
+      res.status(500).json({ message: 'Failed to fetch statistics' });
+    }
+  });
+
+  // Get orders in production
+  app.get('/api/production/orders', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const { status } = req.query;
+      const orders = await productionStorage.getOrdersInProduction(
+        user.companyId,
+        status as string | undefined
+      );
+      res.json(orders);
+    } catch (error) {
+      console.error('Error fetching production orders:', error);
+      res.status(500).json({ message: 'Failed to fetch orders' });
+    }
+  });
+
+  // Get order timeline
+  app.get('/api/production/orders/:id/timeline', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const timeline = await productionStorage.getOrderTimeline(req.params.id, user.companyId);
+      res.json(timeline);
+    } catch (error) {
+      console.error('Error fetching order timeline:', error);
+      res.status(500).json({ message: 'Failed to fetch timeline' });
+    }
+  });
+
+  // Update order status (with timeline event)
+  app.patch('/api/production/orders/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      // Only lab_tech, engineer, and admin can update production status
+      if (user.role && !['lab_tech', 'engineer', 'admin'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { status, notes } = req.body;
+      const order = await productionStorage.updateOrderStatus(
+        req.params.id,
+        user.companyId,
+        userId,
+        status,
+        notes
+      );
+
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+
+      res.json(order);
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      res.status(500).json({ message: 'Failed to update status' });
+    }
+  });
+
+  // Add timeline event
+  app.post('/api/production/orders/:id/timeline', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      // Only lab_tech, engineer, and admin can add timeline events
+      if (user.role && !['lab_tech', 'engineer', 'admin'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { status, details, metadata } = req.body;
+      const event = await productionStorage.addTimelineEvent(
+        req.params.id,
+        user.companyId,
+        userId,
+        status,
+        details,
+        metadata
+      );
+
+      if (!event) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+
+      res.json(event);
+    } catch (error) {
+      console.error('Error adding timeline event:', error);
+      res.status(500).json({ message: 'Failed to add event' });
+    }
+  });
+
+  // Get production stages analysis
+  app.get('/api/production/stages', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const stages = await productionStorage.getProductionStages(user.companyId);
+      res.json(stages);
+    } catch (error) {
+      console.error('Error fetching production stages:', error);
+      res.status(500).json({ message: 'Failed to fetch stages' });
+    }
+  });
+
+  // Get production bottlenecks
+  app.get('/api/production/bottlenecks', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const bottlenecks = await productionStorage.getBottlenecks(user.companyId);
+      res.json(bottlenecks);
+    } catch (error) {
+      console.error('Error fetching bottlenecks:', error);
+      res.status(500).json({ message: 'Failed to fetch bottlenecks' });
+    }
+  });
+
+  // Get production velocity (orders completed per day)
+  app.get('/api/production/velocity', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const days = parseInt(req.query.days as string) || 7;
+      const velocity = await productionStorage.getProductionVelocity(user.companyId, days);
+      res.json(velocity);
+    } catch (error) {
+      console.error('Error fetching production velocity:', error);
+      res.status(500).json({ message: 'Failed to fetch velocity' });
+    }
+  });
+
+  // ============================================
+  // QUALITY CONTROL ENDPOINTS
+  // ============================================
+  
+  const qcStorage = await import('./storage/qualityControl');
+
+  // Get orders awaiting quality check
+  app.get('/api/quality-control/orders', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const orders = await qcStorage.getOrdersForQC(user.companyId);
+      res.json(orders);
+    } catch (error) {
+      console.error('Error fetching QC orders:', error);
+      res.status(500).json({ message: 'Failed to fetch orders' });
+    }
+  });
+
+  // Get QC statistics
+  app.get('/api/quality-control/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const stats = await qcStorage.getQCStats(user.companyId);
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching QC stats:', error);
+      res.status(500).json({ message: 'Failed to fetch statistics' });
+    }
+  });
+
+  // Get QC metrics
+  app.get('/api/quality-control/metrics', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const metrics = await qcStorage.getQCMetrics(user.companyId);
+      res.json(metrics);
+    } catch (error) {
+      console.error('Error fetching QC metrics:', error);
+      res.status(500).json({ message: 'Failed to fetch metrics' });
+    }
+  });
+
+  // Get defect trends
+  app.get('/api/quality-control/defect-trends', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const days = parseInt(req.query.days as string) || 30;
+      const trends = await qcStorage.getDefectTrends(user.companyId, days);
+      res.json(trends);
+    } catch (error) {
+      console.error('Error fetching defect trends:', error);
+      res.status(500).json({ message: 'Failed to fetch trends' });
+    }
+  });
+
+  // Perform quality inspection
+  app.post('/api/quality-control/inspect/:orderId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      // Only lab_tech, engineer, and admin can perform QC
+      if (user.role && !['lab_tech', 'engineer', 'admin'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { status, defects, measurements, notes, images } = req.body;
+      const result = await qcStorage.performQCInspection(
+        req.params.orderId,
+        user.companyId,
+        userId,
+        status,
+        defects || [],
+        measurements || [],
+        notes,
+        images || []
+      );
+
+      if (!result) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error('Error performing inspection:', error);
+      res.status(500).json({ message: 'Failed to perform inspection' });
+    }
+  });
+
+  // Get inspection history for an order
+  app.get('/api/quality-control/orders/:orderId/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const history = await qcStorage.getInspectionHistory(req.params.orderId, user.companyId);
+      res.json(history);
+    } catch (error) {
+      console.error('Error fetching inspection history:', error);
+      res.status(500).json({ message: 'Failed to fetch history' });
+    }
+  });
+
+  // Get standard measurements
+  app.get('/api/quality-control/standard-measurements', isAuthenticated, async (_req: any, res) => {
+    res.json(qcStorage.standardMeasurements);
+  });
+
+  // Get defect types
+  app.get('/api/quality-control/defect-types', isAuthenticated, async (_req: any, res) => {
+    res.json(qcStorage.defectTypes);
   });
 
   const httpServer = createServer(app);

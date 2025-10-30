@@ -501,4 +501,132 @@ router.get('/real-time', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * Advanced Analytics Endpoints
+ */
+const advancedAnalytics = require('../storage/advancedAnalytics');
+
+/**
+ * GET /api/analytics/customer-lifetime-value
+ * Get customer lifetime value analysis
+ */
+router.get('/customer-lifetime-value', async (req: Request, res: Response) => {
+  try {
+    const companyId = req.user!.companyId;
+    const limit = parseInt(req.query.limit as string) || 20;
+    
+    const clvData = await advancedAnalytics.getCustomerLifetimeValue(companyId, limit);
+    res.json(clvData);
+  } catch (error) {
+    console.error('Error fetching CLV:', error);
+    res.status(500).json({ error: 'Failed to fetch customer lifetime value' });
+  }
+});
+
+/**
+ * GET /api/analytics/product-affinity
+ * Get products frequently bought together
+ */
+router.get('/product-affinity', async (req: Request, res: Response) => {
+  try {
+    const companyId = req.user!.companyId;
+    const minOccurrences = parseInt(req.query.minOccurrences as string) || 3;
+    
+    const affinityData = await advancedAnalytics.getProductAffinity(companyId, minOccurrences);
+    res.json(affinityData);
+  } catch (error) {
+    console.error('Error fetching product affinity:', error);
+    res.status(500).json({ error: 'Failed to fetch product affinity' });
+  }
+});
+
+/**
+ * GET /api/analytics/revenue-by-hour
+ * Get revenue distribution by hour of day
+ */
+router.get('/revenue-by-hour', async (req: Request, res: Response) => {
+  try {
+    const companyId = req.user!.companyId;
+    const { startDate, endDate } = req.query;
+    const { start, end } = getDateRange(startDate as string, endDate as string);
+    
+    const hourlyData = await advancedAnalytics.getRevenueByHourOfDay(companyId, start, end);
+    res.json(hourlyData);
+  } catch (error) {
+    console.error('Error fetching hourly revenue:', error);
+    res.status(500).json({ error: 'Failed to fetch hourly revenue' });
+  }
+});
+
+/**
+ * GET /api/analytics/revenue-by-day-of-week
+ * Get revenue distribution by day of week
+ */
+router.get('/revenue-by-day-of-week', async (req: Request, res: Response) => {
+  try {
+    const companyId = req.user!.companyId;
+    const { startDate, endDate } = req.query;
+    const { start, end } = getDateRange(startDate as string, endDate as string);
+    
+    const weekdayData = await advancedAnalytics.getRevenueByDayOfWeek(companyId, start, end);
+    res.json(weekdayData);
+  } catch (error) {
+    console.error('Error fetching weekday revenue:', error);
+    res.status(500).json({ error: 'Failed to fetch weekday revenue' });
+  }
+});
+
+/**
+ * GET /api/analytics/inventory-turnover
+ * Get inventory turnover rates
+ */
+router.get('/inventory-turnover', async (req: Request, res: Response) => {
+  try {
+    const companyId = req.user!.companyId;
+    const days = parseInt(req.query.days as string) || 30;
+    
+    const turnoverData = await advancedAnalytics.getInventoryTurnover(companyId, days);
+    res.json(turnoverData);
+  } catch (error) {
+    console.error('Error fetching inventory turnover:', error);
+    res.status(500).json({ error: 'Failed to fetch inventory turnover' });
+  }
+});
+
+/**
+ * GET /api/analytics/peak-hours
+ * Get peak sales hours
+ */
+router.get('/peak-hours', async (req: Request, res: Response) => {
+  try {
+    const companyId = req.user!.companyId;
+    const { startDate, endDate } = req.query;
+    const { start, end } = getDateRange(startDate as string, endDate as string);
+    
+    const peakData = await advancedAnalytics.getPeakSalesHours(companyId, start, end);
+    res.json(peakData);
+  } catch (error) {
+    console.error('Error fetching peak hours:', error);
+    res.status(500).json({ error: 'Failed to fetch peak hours' });
+  }
+});
+
+/**
+ * GET /api/analytics/abandonment-funnel
+ * Get abandonment analysis
+ */
+router.get('/abandonment-funnel', async (req: Request, res: Response) => {
+  try {
+    const companyId = req.user!.companyId;
+    const { startDate, endDate } = req.query;
+    const { start, end } = getDateRange(startDate as string, endDate as string);
+    
+    const funnelData = await advancedAnalytics.getAbandonmentAnalysis(companyId, start, end);
+    res.json(funnelData);
+  } catch (error) {
+    console.error('Error fetching abandonment funnel:', error);
+    res.status(500).json({ error: 'Failed to fetch abandonment funnel' });
+  }
+});
+
 export default router;

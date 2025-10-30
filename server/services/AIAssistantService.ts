@@ -174,7 +174,7 @@ export class AIAssistantService {
       }
 
       // Step 4: Save conversation
-      await this.saveConversation(query, response, config);
+      await this.saveConversationInternal(query, response, config);
 
       // Step 5: Identify learning opportunities
       if (response.learningOpportunity) {
@@ -526,9 +526,9 @@ To get the most accurate assistance, please ensure your AI integration is config
   }
 
   /**
-   * Save conversation to database
+   * Save conversation internally (private method)
    */
-  private async saveConversation(
+  private async saveConversationInternal(
     query: AiQuery,
     response: AiResponse,
     config: AiAssistantConfig
@@ -879,5 +879,242 @@ To get the most accurate assistance, please ensure your AI integration is config
       openaiAvailable: this.externalAI.getAvailableProviders().includes('openai'),
       anthropicAvailable: this.externalAI.getAvailableProviders().includes('anthropic'),
     };
+  }
+
+  // ========== PUBLIC API METHODS ==========
+
+  /**
+   * Save a conversation (called from API)
+   */
+  async saveConversation(
+    conversationId: string,
+    userId: string,
+    companyId: string,
+    question: string,
+    answer: string
+  ): Promise<void> {
+    try {
+      // Create or get conversation
+      let conversation = await this.storage.getAiConversation(conversationId);
+      
+      if (!conversation) {
+        conversation = await this.storage.createAiConversation({
+          id: conversationId,
+          companyId,
+          userId,
+          title: question.substring(0, 100),
+          status: 'active' as const
+        });
+      }
+
+      // Save user message
+      await this.storage.createAiMessage({
+        conversationId,
+        role: 'user' as const,
+        content: question,
+        usedExternalAi: false
+      });
+
+      // Save assistant response
+      await this.storage.createAiMessage({
+        conversationId,
+        role: 'assistant' as const,
+        content: answer,
+        usedExternalAi: true
+      });
+    } catch (error) {
+      this.logger.error("Error saving conversation", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all conversations for a user/company
+   */
+  async getConversations(userId: string, companyId: string): Promise<AiConversation[]> {
+    try {
+      return await this.storage.getAiConversations(companyId, userId);
+    } catch (error) {
+      this.logger.error("Error getting conversations", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a specific conversation with messages
+   */
+  async getConversation(conversationId: string, companyId: string): Promise<{
+    conversation: AiConversation;
+    messages: AiMessage[];
+  } | null> {
+    try {
+      const conversation = await this.storage.getAiConversation(conversationId);
+      
+      if (!conversation || conversation.companyId !== companyId) {
+        return null;
+      }
+
+      const messages = await this.storage.getAiMessages(conversationId);
+
+      return {
+        conversation,
+        messages
+      };
+    } catch (error) {
+      this.logger.error("Error getting conversation", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload a document to the knowledge base
+   */
+  async uploadDocument(
+    companyId: string,
+    userId: string,
+    file: {
+      fileName: string;
+      fileContent: string;
+      fileType?: string;
+      title?: string;
+      description?: string;
+    }
+  ): Promise<AiKnowledgeBase> {
+    try {
+      // Process the document
+      const knowledge = await this.processDocument(companyId, userId, {
+        filename: file.fileName,
+        fileType: file.fileType || 'text/plain',
+        fileSize: file.fileContent.length,
+        content: file.fileContent
+      });
+
+      return knowledge;
+    } catch (error) {
+      this.logger.error("Error uploading document", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all knowledge base documents for a company
+   */
+  async getKnowledgeBase(companyId: string): Promise<AiKnowledgeBase[]> {
+    try {
+      return await this.storage.getAiKnowledgeBaseByCompany(companyId);
+    } catch (error) {
+      this.logger.error("Error getting knowledge base", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get learning progress for a company
+   */
+  async getLearningProgress(companyId: string): Promise<{
+    progress: number;
+    totalLearning: number;
+    totalDocuments: number;
+    lastUpdated: string;
+  }> {
+    try {
+      const learningData = await this.storage.getAiLearningDataByCompany(companyId);
+      const knowledgeBase = await this.storage.getAiKnowledgeBaseByCompany(companyId);
+
+      // Calculate progress
+      const learningScore = Math.min(40, (learningData.length / 100) * 40);
+      const documentScore = Math.min(30, (knowledgeBase.length / 20) * 30);
+      
+      const avgSuccessRate = learningData.length > 0
+        ? learningData.reduce((sum, l) => sum + parseFloat(l.successRate || '0'), 0) / learningData.length
+        : 0;
+      const successScore = avgSuccessRate * 30;
+
+      const totalProgress = Math.floor(learningScore + documentScore + successScore);
+
+      return {
+        progress: totalProgress,
+        totalLearning: learningData.length,
+        totalDocuments: knowledgeBase.length,
+        lastUpdated: new Date().toISOString()
+      };
+    } catch (error) {
+      this.logger.error("Error getting learning progress", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get statistics for AI assistant
+   */
+  async getStats(companyId: string): Promise<{
+    totalConversations: number;
+    totalMessages: number;
+    totalDocuments: number;
+    totalLearningEntries: number;
+    averageConfidence: number;
+    externalAIUsage: number;
+  }> {
+    try {
+      const conversations = await this.storage.getAiConversations(companyId);
+      const learningData = await this.storage.getAiLearningDataByCompany(companyId);
+      const knowledgeBase = await this.storage.getAiKnowledgeBaseByCompany(companyId);
+
+      // Count total messages across all conversations
+      let totalMessages = 0;
+      let externalAICount = 0;
+      
+      for (const conv of conversations) {
+        const messages = await this.storage.getAiMessages(conv.id);
+        totalMessages += messages.length;
+        externalAICount += messages.filter(m => m.usedExternalAi).length;
+      }
+
+      const avgConfidence = learningData.length > 0
+        ? learningData.reduce((sum, l) => sum + parseFloat(l.confidence || '0.5'), 0) / learningData.length
+        : 0.5;
+
+      return {
+        totalConversations: conversations.length,
+        totalMessages,
+        totalDocuments: knowledgeBase.length,
+        totalLearningEntries: learningData.length,
+        averageConfidence: avgConfidence,
+        externalAIUsage: totalMessages > 0 ? (externalAICount / totalMessages) * 100 : 0
+      };
+    } catch (error) {
+      this.logger.error("Error getting stats", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Save feedback for a message
+   */
+  async saveFeedback(
+    conversationId: string,
+    messageId: string,
+    companyId: string,
+    helpful: boolean,
+    feedback?: string
+  ): Promise<void> {
+    try {
+      // Get current user from context (we'll need to pass userId)
+      const userId = 'system'; // This should be passed from the API route
+      
+      await this.storage.createAiFeedback({
+        messageId,
+        userId,
+        companyId,
+        rating: helpful ? 5 : 1,
+        helpful,
+        comments: feedback
+      });
+
+      this.logger.info("Saved AI feedback", { conversationId, helpful });
+    } catch (error) {
+      this.logger.error("Error saving feedback", error as Error);
+      throw error;
+    }
   }
 }

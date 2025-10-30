@@ -22,11 +22,46 @@ import {
   Lock,
   Receipt,
   Scan,
+  Phone,
+  Mail,
+  BookOpen,
+  HelpCircle,
+  Github,
+  Twitter,
+  Linkedin,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Landing() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  const handleGetStarted = () => {
+    setLocation("/email-signup");
+    toast({
+      title: "Welcome to ILS 2.0!",
+      description: "Create your account to start your free trial",
+    });
+  };
+
+  const handleSignIn = () => {
+    setLocation("/login");
+  };
+
+  const handleLearnMore = (feature: string) => {
+    toast({
+      title: `Learn more about ${feature}`,
+      description: "Full documentation coming soon. Contact support for details.",
+    });
+  };
+
+  const handleContactSales = () => {
+    toast({
+      title: "Contact Sales",
+      description: "Email us at sales@ils2.0 or call +44 (0) 20 7946 0958",
+    });
+  };
 
   const features = [
     {
@@ -145,7 +180,7 @@ export default function Landing() {
               <p className="text-xs text-muted-foreground">Integrated Lens System</p>
             </div>
           </div>
-          <Button onClick={() => setLocation("/login")} className="gap-2">
+          <Button onClick={handleSignIn} className="gap-2">
             <LogIn className="h-4 w-4" />
             Sign In
           </Button>
@@ -169,7 +204,7 @@ export default function Landing() {
               From prescription to retail—manage orders, inventory, sales, and analytics in one powerful system with enterprise-grade security.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Button size="lg" onClick={() => setLocation("/email-signup")} className="gap-2">
+              <Button size="lg" onClick={handleGetStarted} className="gap-2">
                 Get Started Free
                 <ArrowRight className="h-4 w-4" />
               </Button>
@@ -202,13 +237,17 @@ export default function Landing() {
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((feature, index) => (
-            <AnimatedCard key={index} className="p-6 hover:shadow-xl transition-shadow">
+            <AnimatedCard 
+              key={index} 
+              className="p-6 hover:shadow-xl transition-shadow cursor-pointer"
+              onClick={() => handleLearnMore(feature.title)}
+            >
               <CardHeader className="p-0 mb-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className={`p-3 rounded-xl bg-background ${feature.color}`}>
                     <feature.icon className="h-6 w-6" />
                   </div>
-                  <Badge variant={feature.badge === "NEW" ? "default" : "secondary"}>
+                  <Badge variant={feature.badge === "NEW" ? "default" : feature.badge === "CORE" ? "outline" : "secondary"}>
                     {feature.badge}
                   </Badge>
                 </div>
@@ -216,6 +255,9 @@ export default function Landing() {
               </CardHeader>
               <CardContent className="p-0">
                 <p className="text-muted-foreground">{feature.description}</p>
+                <p className="mt-3 text-sm text-primary hover:underline">
+                  Learn more →
+                </p>
               </CardContent>
             </AnimatedCard>
           ))}
@@ -281,36 +323,211 @@ export default function Landing() {
 
       {/* CTA Section */}
       <section className="max-w-4xl mx-auto px-6 py-16 text-center">
-        <div className="space-y-6">
+        <div className="space-y-6 p-12 bg-gradient-to-br from-primary/10 via-primary/5 to-background rounded-3xl border border-primary/20">
+          <Badge className="gap-1 mb-2">
+            <Sparkles className="h-3 w-3" />
+            Special Launch Offer
+          </Badge>
           <h3 className="text-4xl font-bold">Ready to transform your practice?</h3>
           <p className="text-xl text-muted-foreground">
             Join hundreds of optical practices using ILS 2.0 to streamline operations and boost revenue.
           </p>
-          <div className="flex flex-wrap justify-center gap-3 pt-4">
-            <Button size="lg" onClick={() => setLocation("/email-signup")} className="gap-2">
-              Start Free Trial
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            <Button size="lg" variant="outline" onClick={() => setLocation("/login")}>
-              Sign In to Dashboard
+          <div className="grid md:grid-cols-2 gap-4 pt-4 max-w-2xl mx-auto">
+            <Card className="p-6 text-left">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                  <span className="font-semibold">For New Users</span>
+                </div>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                    <span>30-day free trial</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                    <span>No credit card required</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                    <span>Full feature access</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                    <span>Free onboarding support</span>
+                  </li>
+                </ul>
+                <Button size="lg" className="w-full gap-2 mt-4" onClick={handleGetStarted}>
+                  Start Free Trial
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </Card>
+            <Card className="p-6 text-left">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" />
+                  <span className="font-semibold">Existing Users</span>
+                </div>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                    <span>Access your dashboard</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                    <span>Manage orders & inventory</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                    <span>View analytics & reports</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                    <span>24/7 platform access</span>
+                  </li>
+                </ul>
+                <Button size="lg" variant="outline" className="w-full gap-2 mt-4" onClick={handleSignIn}>
+                  Sign In to Dashboard
+                  <LogIn className="h-4 w-4" />
+                </Button>
+              </div>
+            </Card>
+          </div>
+          <div className="pt-4">
+            <Button variant="ghost" size="lg" onClick={handleContactSales} className="gap-2">
+              <Phone className="h-4 w-4" />
+              Talk to Sales
             </Button>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t mt-16">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Glasses className="h-5 w-5 text-primary" />
-              <span className="font-semibold">ILS 2.0</span>
-              <span className="text-sm text-muted-foreground">© 2025 All rights reserved</span>
+      <footer className="border-t mt-16 bg-muted/30">
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            {/* Company Info */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                  <Glasses className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <span className="font-bold text-lg">ILS 2.0</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Complete lens management platform for modern optical practices.
+              </p>
+              <div className="flex gap-3">
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Twitter className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Linkedin className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Github className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-6 text-sm text-muted-foreground">
-              <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-              <a href="#" className="hover:text-foreground transition-colors">Documentation</a>
-              <a href="#" className="hover:text-foreground transition-colors">Support</a>
+
+            {/* Product */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm">Product</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-foreground transition-colors">
+                    Features
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => handleLearnMore("Pricing")} className="hover:text-foreground transition-colors">
+                    Pricing
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => handleLearnMore("Security")} className="hover:text-foreground transition-colors">
+                    Security
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => handleLearnMore("Integrations")} className="hover:text-foreground transition-colors">
+                    Integrations
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Resources */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm">Resources</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <button onClick={() => handleLearnMore("Documentation")} className="hover:text-foreground transition-colors flex items-center gap-1">
+                    <BookOpen className="h-3 w-3" />
+                    Documentation
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => handleLearnMore("API Reference")} className="hover:text-foreground transition-colors">
+                    API Reference
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => handleLearnMore("Support")} className="hover:text-foreground transition-colors flex items-center gap-1">
+                    <HelpCircle className="h-3 w-3" />
+                    Support Center
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => handleLearnMore("Community")} className="hover:text-foreground transition-colors">
+                    Community Forum
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Contact */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-sm">Contact</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <Mail className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <a href="mailto:support@ils2.0" className="hover:text-foreground transition-colors">
+                    support@ils2.0
+                  </a>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Phone className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <a href="tel:+442079460958" className="hover:text-foreground transition-colors">
+                    +44 (0) 20 7946 0958
+                  </a>
+                </li>
+                <li>
+                  <Button variant="outline" size="sm" onClick={handleContactSales} className="mt-2 gap-2">
+                    <Mail className="h-3 w-3" />
+                    Contact Sales
+                  </Button>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="pt-8 border-t border-border">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
+              <p>© 2025 ILS 2.0 - Integrated Lens System. All rights reserved.</p>
+              <div className="flex gap-6">
+                <button onClick={() => handleLearnMore("Privacy Policy")} className="hover:text-foreground transition-colors">
+                  Privacy Policy
+                </button>
+                <button onClick={() => handleLearnMore("Terms of Service")} className="hover:text-foreground transition-colors">
+                  Terms of Service
+                </button>
+                <button onClick={() => handleLearnMore("Cookie Policy")} className="hover:text-foreground transition-colors">
+                  Cookies
+                </button>
+              </div>
             </div>
           </div>
         </div>

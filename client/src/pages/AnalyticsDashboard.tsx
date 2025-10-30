@@ -94,6 +94,57 @@ interface StaffPerformance {
   cardTransactions: number;
 }
 
+interface CustomerLifetimeValue {
+  patientId: string;
+  customerName: string;
+  totalSpent: number;
+  orderCount: number;
+  averageOrderValue: number;
+  firstPurchase: string;
+  lastPurchase: string;
+}
+
+interface ProductAffinity {
+  product1Id: string;
+  product1Name: string;
+  product2Id: string;
+  product2Name: string;
+  occurrences: number;
+  affinityScore: number;
+}
+
+interface HourlyRevenue {
+  hour: number;
+  revenue: number;
+  transactionCount: number;
+  averageValue: number;
+}
+
+interface WeekdayRevenue {
+  dayOfWeek: number;
+  dayName: string;
+  revenue: number;
+  transactionCount: number;
+  averageValue: number;
+}
+
+interface InventoryTurnover {
+  productId: string;
+  productName: string;
+  currentStock: number;
+  soldQuantity: number;
+  turnoverRate: number;
+  daysToStockout: number | null;
+}
+
+interface PeakHour {
+  dayOfWeek: number;
+  dayName: string;
+  hour: number;
+  revenue: number;
+  transactionCount: number;
+}
+
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 const dateRanges = [
@@ -181,6 +232,14 @@ export default function AnalyticsDashboard() {
   const [productPerformance, setProductPerformance] = useState<ProductPerformance[]>([]);
   const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryBreakdown[]>([]);
   const [staffPerformance, setStaffPerformance] = useState<StaffPerformance[]>([]);
+  
+  // Advanced analytics state
+  const [customerLTV, setCustomerLTV] = useState<CustomerLifetimeValue[]>([]);
+  const [productAffinity, setProductAffinity] = useState<ProductAffinity[]>([]);
+  const [hourlyRevenue, setHourlyRevenue] = useState<HourlyRevenue[]>([]);
+  const [weekdayRevenue, setWeekdayRevenue] = useState<WeekdayRevenue[]>([]);
+  const [inventoryTurnover, setInventoryTurnover] = useState<InventoryTurnover[]>([]);
+  const [peakHours, setPeakHours] = useState<PeakHour[]>([]);
 
   const fetchAnalytics = async () => {
     setLoading(true);
@@ -188,20 +247,56 @@ export default function AnalyticsDashboard() {
       const { startDate, endDate } = getDateRange(dateRange);
       const params = new URLSearchParams({ startDate, endDate });
 
-      const [overviewRes, trendsRes, productsRes, categoriesRes, staffRes] = await Promise.all([
+      const [
+        overviewRes, 
+        trendsRes, 
+        productsRes, 
+        categoriesRes, 
+        staffRes,
+        clvRes,
+        affinityRes,
+        hourlyRes,
+        weekdayRes,
+        turnoverRes,
+        peakRes
+      ] = await Promise.all([
         fetch(`/api/analytics/overview?${params}`),
         fetch(`/api/analytics/sales-trends?${params}&interval=day`),
         fetch(`/api/analytics/product-performance?${params}`),
         fetch(`/api/analytics/category-breakdown?${params}`),
         fetch(`/api/analytics/staff-performance?${params}`),
+        fetch(`/api/analytics/customer-lifetime-value?limit=20`),
+        fetch(`/api/analytics/product-affinity?minOccurrences=3`),
+        fetch(`/api/analytics/revenue-by-hour?${params}`),
+        fetch(`/api/analytics/revenue-by-day-of-week?${params}`),
+        fetch(`/api/analytics/inventory-turnover?days=30`),
+        fetch(`/api/analytics/peak-hours?${params}`),
       ]);
 
-      const [overviewData, trendsData, productsData, categoriesData, staffData] = await Promise.all([
+      const [
+        overviewData, 
+        trendsData, 
+        productsData, 
+        categoriesData, 
+        staffData,
+        clvData,
+        affinityData,
+        hourlyData,
+        weekdayData,
+        turnoverData,
+        peakData
+      ] = await Promise.all([
         overviewRes.json(),
         trendsRes.json(),
         productsRes.json(),
         categoriesRes.json(),
         staffRes.json(),
+        clvRes.json(),
+        affinityRes.json(),
+        hourlyRes.json(),
+        weekdayRes.json(),
+        turnoverRes.json(),
+        peakRes.json(),
       ]);
 
       setOverview(overviewData);
@@ -209,6 +304,12 @@ export default function AnalyticsDashboard() {
       setProductPerformance(productsData.products);
       setCategoryBreakdown(categoriesData.categories);
       setStaffPerformance(staffData.staff);
+      setCustomerLTV(clvData);
+      setProductAffinity(affinityData);
+      setHourlyRevenue(hourlyData);
+      setWeekdayRevenue(weekdayData);
+      setInventoryTurnover(turnoverData);
+      setPeakHours(peakData);
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
     } finally {
@@ -293,12 +394,15 @@ export default function AnalyticsDashboard() {
 
       {/* Charts Tabs */}
       <Tabs defaultValue="trends" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="trends">Sales Trends</TabsTrigger>
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="staff">Staff</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
+          <TabsTrigger value="customers">Customers</TabsTrigger>
+          <TabsTrigger value="patterns">Patterns</TabsTrigger>
+          <TabsTrigger value="inventory">Inventory</TabsTrigger>
         </TabsList>
 
         {/* Sales Trends Tab */}
@@ -563,6 +667,185 @@ export default function AnalyticsDashboard() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Customers Tab - LTV Analysis */}
+        <TabsContent value="customers" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Customer Lifetime Value</CardTitle>
+              <CardDescription>Top 20 customers by total spending</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                {customerLTV.map((customer, idx) => (
+                  <div key={customer.patientId} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted border">
+                    <div className="flex items-center gap-3">
+                      <Badge variant={idx < 3 ? "default" : "outline"}>{idx + 1}</Badge>
+                      <div>
+                        <p className="font-semibold">{customer.customerName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {customer.orderCount} orders • Avg £{customer.averageOrderValue.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-bold text-green-600">£{customer.totalSpent.toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(customer.firstPurchase).toLocaleDateString()} - {new Date(customer.lastPurchase).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Product Affinity Analysis</CardTitle>
+              <CardDescription>Products frequently bought together</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {productAffinity.slice(0, 15).map((affinity, idx) => (
+                  <div key={idx} className="p-3 rounded-lg border hover:bg-muted">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{affinity.occurrences}x</Badge>
+                        <span className="text-sm font-medium">{affinity.product1Name}</span>
+                        <span className="text-muted-foreground">+</span>
+                        <span className="text-sm font-medium">{affinity.product2Name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Affinity:</span>
+                        <Badge variant={affinity.affinityScore > 0.5 ? "default" : "secondary"}>
+                          {(affinity.affinityScore * 100).toFixed(0)}%
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Patterns Tab - Time-based Analysis */}
+        <TabsContent value="patterns" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Revenue by Hour of Day</CardTitle>
+                <CardDescription>24-hour sales performance</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={hourlyRevenue}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="hour" 
+                      tickFormatter={(hour) => `${hour}:00`}
+                    />
+                    <YAxis />
+                    <Tooltip 
+                      labelFormatter={(hour) => `${hour}:00 - ${hour + 1}:00`}
+                      formatter={(value: number) => [`£${value.toFixed(2)}`, 'Revenue']}
+                    />
+                    <Bar dataKey="revenue" fill="#3b82f6" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Revenue by Day of Week</CardTitle>
+                <CardDescription>Weekly sales patterns</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={weekdayRevenue}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="dayName" />
+                    <YAxis />
+                    <Tooltip formatter={(value: number) => [`£${value.toFixed(2)}`, 'Revenue']} />
+                    <Bar dataKey="revenue" fill="#10b981" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Peak Sales Hours</CardTitle>
+              <CardDescription>Best performing hour/day combinations</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                {peakHours.slice(0, 10).map((peak, idx) => (
+                  <div key={idx} className="p-3 rounded-lg border text-center hover:bg-muted">
+                    <Badge className="mb-2" variant={idx < 3 ? "default" : "secondary"}>
+                      #{idx + 1}
+                    </Badge>
+                    <p className="font-semibold text-sm">{peak.dayName}</p>
+                    <p className="text-xs text-muted-foreground">{peak.hour}:00</p>
+                    <p className="text-lg font-bold text-green-600 mt-1">£{peak.revenue.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">{peak.transactionCount} sales</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Inventory Tab - Stock Analysis */}
+        <TabsContent value="inventory" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Inventory Turnover Analysis</CardTitle>
+              <CardDescription>Stock movement over last 30 days</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                <div className="grid grid-cols-6 gap-2 pb-2 border-b font-semibold text-sm">
+                  <div className="col-span-2">Product</div>
+                  <div className="text-right">Stock</div>
+                  <div className="text-right">Sold</div>
+                  <div className="text-right">Turnover</div>
+                  <div className="text-right">Days Left</div>
+                </div>
+                {inventoryTurnover.map((item) => (
+                  <div key={item.productId} className="grid grid-cols-6 gap-2 p-2 rounded hover:bg-muted items-center">
+                    <div className="col-span-2">
+                      <p className="font-medium text-sm">{item.productName}</p>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant={item.currentStock < 10 ? "destructive" : "outline"}>
+                        {item.currentStock}
+                      </Badge>
+                    </div>
+                    <div className="text-right text-sm">{item.soldQuantity}</div>
+                    <div className="text-right">
+                      <Badge variant={item.turnoverRate > 1 ? "default" : "secondary"}>
+                        {item.turnoverRate.toFixed(2)}
+                      </Badge>
+                    </div>
+                    <div className="text-right">
+                      {item.daysToStockout !== null ? (
+                        <Badge variant={item.daysToStockout < 7 ? "destructive" : item.daysToStockout < 14 ? "default" : "outline"}>
+                          {Math.round(item.daysToStockout)}d
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">N/A</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
