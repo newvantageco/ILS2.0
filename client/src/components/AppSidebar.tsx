@@ -30,6 +30,10 @@ import {
   BarChart3,
   Receipt,
   LineChart,
+  Eye,
+  TestTube,
+  Factory,
+  CheckCircle,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -47,6 +51,7 @@ const menuItems = {
     { title: "Dashboard", url: "/ecp/dashboard", icon: Home },
     { title: "Patients", url: "/ecp/patients", icon: UserCircle },
     { title: "Prescriptions", url: "/ecp/prescriptions", icon: FileText },
+    { title: "Test Rooms", url: "/ecp/test-rooms", icon: TestTube },
     { title: "Inventory", url: "/ecp/inventory", icon: Archive },
     { title: "Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
     { title: "Invoices", url: "/ecp/invoices", icon: Receipt },
@@ -61,8 +66,9 @@ const menuItems = {
   lab_tech: [
     { title: "Dashboard", url: "/lab/dashboard", icon: Home },
     { title: "Order Queue", url: "/lab/queue", icon: ClipboardList },
-    { title: "Production", url: "/lab/production", icon: Package },
-    { title: "Quality Control", url: "/lab/quality", icon: Beaker },
+    { title: "Production", url: "/lab/production", icon: Factory },
+    { title: "Quality Control", url: "/lab/quality", icon: CheckCircle },
+    { title: "Equipment", url: "/lab/equipment", icon: Settings },
     { title: "AI Assistant", url: "/lab/ai-assistant", icon: Brain },
     { title: "BI Dashboard", url: "/lab/bi-dashboard", icon: BarChart3 },
     { title: "Company", url: "/lab/company", icon: Building2 },
@@ -79,6 +85,8 @@ const menuItems = {
     { title: "Dashboard", url: "/lab/dashboard", icon: Home },
     { title: "Analytics Hub", url: "/lab/analytics", icon: TrendingUp },
     { title: "Equipment", url: "/lab/equipment", icon: Settings },
+    { title: "Production", url: "/lab/production", icon: Factory },
+    { title: "Quality Control", url: "/lab/quality", icon: CheckCircle },
     { title: "R&D Projects", url: "/lab/rnd", icon: Beaker },
     { title: "AI Assistant", url: "/lab/ai-assistant", icon: Brain },
     { title: "BI Dashboard", url: "/lab/bi-dashboard", icon: BarChart3 },
@@ -90,6 +98,7 @@ const menuItems = {
     { title: "Company Management", url: "/admin/companies", icon: Building2 },
     { title: "Platform Settings", url: "/admin/platform", icon: Shield },
     { title: "AI Assistant", url: "/admin/ai-assistant", icon: Brain },
+    { title: "AI Settings", url: "/admin/ai-settings", icon: Settings },
     { title: "BI Dashboard", url: "/admin/bi-dashboard", icon: BarChart3 },
   ],
   platform_admin: [
