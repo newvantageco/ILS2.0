@@ -223,10 +223,10 @@ export default function AIAssistantPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-6" aria-label="AI Assistant">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
+          <h1 className="text-3xl font-bold flex items-center gap-2" aria-label="AI Assistant">
             <Brain className="h-8 w-8" />
             AI Assistant
           </h1>
@@ -305,6 +305,7 @@ export default function AIAssistantPage() {
               onClick={() => setCurrentConversationId(null)}
               variant="outline" 
               className="w-full justify-start"
+              aria-label="Start new conversation"
             >
               <MessageSquare className="h-4 w-4 mr-2" />
               New Conversation
@@ -315,6 +316,7 @@ export default function AIAssistantPage() {
                 onClick={() => setCurrentConversationId(conv.id)}
                 variant={currentConversationId === conv.id ? "default" : "ghost"}
                 className="w-full justify-start text-left"
+                aria-label={`Open conversation ${conv.title}`}
               >
                 <div className="truncate">
                   {conv.title}
@@ -334,7 +336,7 @@ export default function AIAssistantPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Messages */}
-            <div className="space-y-4 max-h-96 overflow-y-auto p-4 bg-gray-50 rounded">
+            <div className="space-y-4 max-h-96 overflow-y-auto p-4 bg-gray-50 rounded" aria-live="polite">
               {messages.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">
                   <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -344,7 +346,7 @@ export default function AIAssistantPage() {
                 messages.map((msg: Message) => (
                   <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`flex gap-2 max-w-[80%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                      <div className={`flex-shrink-0 ${msg.role === 'user' ? 'bg-blue-500' : 'bg-gray-300'} rounded-full p-2`}>
+                      <div className={`flex-shrink-0 ${msg.role === 'user' ? 'bg-blue-500' : 'bg-gray-300'} rounded-full p-2`} aria-hidden="true">
                         {msg.role === 'user' ? (
                           <User className="h-4 w-4 text-white" />
                         ) : (
@@ -357,7 +359,7 @@ export default function AIAssistantPage() {
                             ? 'bg-blue-500 text-white' 
                             : 'bg-white border'
                         }`}>
-                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                          <p className="whitespace-pre-wrap" aria-label={msg.role === 'user' ? 'User message' : 'Assistant message'}>{msg.content}</p>
                           
                           {msg.role === 'assistant' && msg.metadata?.sources && (
                             <div className="mt-2 pt-2 border-t border-gray-200">
@@ -383,6 +385,7 @@ export default function AIAssistantPage() {
                               size="sm" 
                               variant="ghost"
                               onClick={() => handleFeedback(msg.id, true)}
+                              aria-label="Mark answer helpful"
                             >
                               <ThumbsUp className="h-3 w-3" />
                             </Button>
@@ -390,6 +393,7 @@ export default function AIAssistantPage() {
                               size="sm" 
                               variant="ghost"
                               onClick={() => handleFeedback(msg.id, false)}
+                              aria-label="Mark answer unhelpful"
                             >
                               <ThumbsDown className="h-3 w-3" />
                             </Button>
@@ -404,7 +408,7 @@ export default function AIAssistantPage() {
             </div>
 
             {/* Input Area */}
-            <div className="flex gap-2">
+            <div className="flex gap-2" aria-label="Ask a question">
               <Textarea
                 placeholder="Ask me anything about your business..."
                 value={question}
@@ -417,10 +421,12 @@ export default function AIAssistantPage() {
                 }}
                 rows={3}
                 className="flex-1"
+                aria-label="Your question"
               />
               <Button 
                 onClick={handleAsk} 
                 disabled={!question.trim() || askMutation.isPending}
+                aria-label="Send message"
               >
                 {askMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -497,7 +503,7 @@ export default function AIAssistantPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="space-y-2 max-h-64 overflow-y-auto" aria-label="Knowledge base documents">
               {knowledgeBase?.data?.length === 0 ? (
                 <p className="text-muted-foreground text-center py-4">
                   No documents uploaded yet

@@ -108,7 +108,7 @@ npm run db:push
 npm run dev
 ```
 
-The application will be available at `http://localhost:5000`
+The application will be available at `http://localhost:3000`
 
 ## Project Structure
 
@@ -178,6 +178,13 @@ Copyright © 2025. All rights reserved.
 ## Support
 
 For support and questions, please contact the development team.
+#
+# Further Reading
+- ROUTE_MAP: `./ROUTE_MAP.md`
+- Schema ERD: `./SCHEMA_ERD.md`
+- Development Guide: `./DEVELOPMENT.md`
+- Contributing: `./CONTRIBUTING.md`
+- Security: `./SECURITY.md`
 # NVC-Internal-System-
 # interneal-system-
 # interneal-system-

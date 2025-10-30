@@ -127,7 +127,7 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
   };
 
   return (
-    <Sidebar>
+    <Sidebar aria-label="Primary">
       <SidebarHeader className="p-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-md bg-primary flex items-center justify-center">
@@ -154,7 +154,11 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
                     isActive={location === item.url}
                     data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                   >
-                    <Link href={item.url}>
+                    <Link 
+                      href={item.url}
+                      aria-label={item.title}
+                      aria-current={location === item.url ? "page" : undefined}
+                    >
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>

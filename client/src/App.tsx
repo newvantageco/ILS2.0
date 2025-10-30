@@ -72,7 +72,7 @@ function AppLayout({ children, userRole }: { children: React.ReactNode; userRole
       <div className="flex h-screen w-full overflow-hidden">
         <AppSidebar userRole={userRole} />
         <div className="flex flex-col flex-1 min-w-0">
-          <header className="flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3 border-b border-border bg-background sticky top-0 z-10">
+          <header aria-label="Main header" className="flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10 shadow-sm">
             <SidebarTrigger data-testid="button-sidebar-toggle" className="shrink-0" />
             <div className="flex items-center gap-1 sm:gap-2 ml-auto">
               <RoleSwitcherDropdown />
@@ -83,6 +83,7 @@ function AppLayout({ children, userRole }: { children: React.ReactNode; userRole
                 onClick={handleLogout}
                 data-testid="button-logout"
                 className="shrink-0"
+                aria-label="Logout"
               >
                 <LogOut className="h-4 w-4" />
               </Button>

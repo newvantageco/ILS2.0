@@ -36,12 +36,16 @@ interface Product {
   barcode?: string;
   imageUrl?: string;
   taxRate?: string;
+  colorOptions?: string[]; // e.g., ["Black", "Tortoise", "Blue"]
+  requiresPrescription?: boolean; // true for lenses, false for frames/accessories
 }
 
 interface CartItem extends Product {
   quantity: number;
   discount: number;
   lineTotal: number;
+  selectedColor?: string;
+  withPrescription?: boolean;
 }
 
 export default function POSTill() {
@@ -56,6 +60,8 @@ export default function POSTill() {
   const [processing, setProcessing] = useState(false);
   const [lastTransactionId, setLastTransactionId] = useState<string | null>(null);
   const { toast } = useToast();
+  const [selectedColors, setSelectedColors] = useState<Record<string, string>>({});
+  const [basketFilter, setBasketFilter] = useState<'all' | 'withRx' | 'withoutRx'>('all');
 
   const categories = ['all', 'frames', 'lenses', 'accessories', 'solutions', 'cases', 'cleaning'];
 
@@ -115,13 +121,14 @@ export default function POSTill() {
   };
 
   // Add product to cart
-  const addToCart = (product: Product) => {
+  const addToCart = (product: Product, options?: { selectedColor?: string; withPrescription?: boolean }) => {
     setCart(prevCart => {
-      const existingItem = prevCart.find(item => item.id === product.id);
+      const keyColor = options?.selectedColor || selectedColors[product.id];
+      const existingItem = prevCart.find(item => item.id === product.id && item.selectedColor === keyColor && item.withPrescription === (options?.withPrescription ?? product.requiresPrescription));
       
       if (existingItem) {
         return prevCart.map(item =>
-          item.id === product.id
+          item.id === product.id && item.selectedColor === keyColor && item.withPrescription === (options?.withPrescription ?? product.requiresPrescription)
             ? {
                 ...item,
                 quantity: item.quantity + 1,
@@ -138,6 +145,8 @@ export default function POSTill() {
           quantity: 1,
           discount: 0,
           lineTotal: parseFloat(product.unitPrice),
+          selectedColor: keyColor,
+          withPrescription: options?.withPrescription ?? product.requiresPrescription,
         },
       ];
     });
@@ -168,7 +177,13 @@ export default function POSTill() {
   };
 
   // Calculate totals
-  const subtotal = cart.reduce((sum, item) => sum + item.lineTotal, 0);
+  const visibleCart = cart.filter((item) => {
+    if (basketFilter === 'withRx') return item.withPrescription === true;
+    if (basketFilter === 'withoutRx') return item.withPrescription === false;
+    return true;
+  });
+
+  const subtotal = visibleCart.reduce((sum, item) => sum + item.lineTotal, 0);
   const tax = cart.reduce((sum, item) => {
     const taxRate = parseFloat(item.taxRate || '0');
     return sum + (item.lineTotal * taxRate / 100);
@@ -365,15 +380,14 @@ export default function POSTill() {
                     {products.map(product => (
                       <AnimatedCard
                         key={product.id}
-                        className="cursor-pointer hover:border-primary transition-colors"
-                        onClick={() => addToCart(product)}
+                        className="hover:border-primary transition-colors"
                       >
-                        <CardContent className="p-3 space-y-2">
+                        <CardContent className="p-3 space-y-3">
                           {product.imageUrl && (
                             <img
                               src={product.imageUrl}
                               alt={product.name}
-                              className="w-full h-24 object-cover rounded"
+                              className="w-full h-28 object-cover rounded"
                             />
                           )}
                           <div>
@@ -382,6 +396,21 @@ export default function POSTill() {
                               <p className="text-xs text-muted-foreground">{product.brand}</p>
                             )}
                           </div>
+                          {Array.isArray(product.colorOptions) && product.colorOptions.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {product.colorOptions.map((color) => (
+                                <button
+                                  key={color}
+                                  type="button"
+                                  className={`h-5 px-2 rounded border text-[10px] ${selectedColors[product.id] === color ? 'border-primary text-primary' : 'border-input text-muted-foreground'}`}
+                                  onClick={() => setSelectedColors(prev => ({ ...prev, [product.id]: color }))}
+                                  aria-label={`Select color ${color}`}
+                                >
+                                  {color}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                           <div className="flex justify-between items-center">
                             <span className="font-bold text-primary">
                               ${parseFloat(product.unitPrice).toFixed(2)}
@@ -389,6 +418,24 @@ export default function POSTill() {
                             <Badge variant={product.stockQuantity > 10 ? 'default' : 'destructive'}>
                               {product.stockQuantity} in stock
                             </Badge>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <Button
+                              size="sm"
+                              onClick={() => addToCart(product, { selectedColor: selectedColors[product.id], withPrescription: true })}
+                              variant={product.requiresPrescription ? 'default' : 'outline'}
+                              aria-label="Add with prescription"
+                            >
+                              With Rx
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => addToCart(product, { selectedColor: selectedColors[product.id], withPrescription: false })}
+                              variant={product.requiresPrescription ? 'outline' : 'default'}
+                              aria-label="Add without prescription"
+                            >
+                              Without Rx
+                            </Button>
                           </div>
                         </CardContent>
                       </AnimatedCard>
@@ -410,6 +457,33 @@ export default function POSTill() {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {/* Basket Filters */}
+              <div className="flex gap-2 mb-3" role="tablist" aria-label="Basket filter">
+                <Button
+                  size="sm"
+                  variant={basketFilter === 'all' ? 'default' : 'outline'}
+                  onClick={() => setBasketFilter('all')}
+                  aria-selected={basketFilter === 'all'}
+                >
+                  All
+                </Button>
+                <Button
+                  size="sm"
+                  variant={basketFilter === 'withRx' ? 'default' : 'outline'}
+                  onClick={() => setBasketFilter('withRx')}
+                  aria-selected={basketFilter === 'withRx'}
+                >
+                  With Rx
+                </Button>
+                <Button
+                  size="sm"
+                  variant={basketFilter === 'withoutRx' ? 'default' : 'outline'}
+                  onClick={() => setBasketFilter('withoutRx')}
+                  aria-selected={basketFilter === 'withoutRx'}
+                >
+                  Without Rx
+                </Button>
+              </div>
               <ScrollArea className="h-[400px] mb-4">
                 {cart.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
@@ -418,13 +492,21 @@ export default function POSTill() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {cart.map(item => (
-                      <div key={item.id} className="flex items-center gap-2 p-2 border rounded">
+                    {visibleCart.map(item => (
+                      <div key={`${item.id}-${item.selectedColor || 'default'}-${item.withPrescription ? 'rx' : 'norx'}`} className="flex items-center gap-2 p-2 border rounded">
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            ${parseFloat(item.unitPrice).toFixed(2)} each
-                          </p>
+                          <div className="flex flex-wrap gap-2 items-center text-xs text-muted-foreground">
+                            <span>${parseFloat(item.unitPrice).toFixed(2)} each</span>
+                            {item.selectedColor && (
+                              <Badge variant="outline">{item.selectedColor}</Badge>
+                            )}
+                            {item.withPrescription !== undefined && (
+                              <Badge variant={item.withPrescription ? 'default' : 'secondary'}>
+                                {item.withPrescription ? 'With Rx' : 'No Rx'}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-1">
                           <Button

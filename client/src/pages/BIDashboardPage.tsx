@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -141,9 +142,9 @@ export default function BIDashboardPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-6" aria-label="Analytics Dashboard">
       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
+        <h1 className="text-3xl font-bold flex items-center gap-2" aria-label="Business Intelligence Dashboard">
           <BarChart3 className="h-8 w-8" />
           Business Intelligence Dashboard
         </h1>
@@ -153,7 +154,12 @@ export default function BIDashboardPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <section aria-label="Key Performance Indicators" className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">KPI Overview</div>
+          <div className="text-xs text-muted-foreground">Range: Last 30 days</div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi, index) => (
           <Card key={index}>
             <CardContent className="p-6">
@@ -161,10 +167,15 @@ export default function BIDashboardPage() {
                 <div className="text-muted-foreground">{getKPIIcon(kpi.metric)}</div>
                 {getTrendIcon(kpi.trend)}
               </div>
-              <div className="text-2xl font-bold mb-1">
+              <div className="text-2xl font-bold mb-1" aria-label={`${kpi.metric} value`}>
                 {kpi.metric.toLowerCase().includes('revenue') ? `$${kpi.value.toLocaleString()}` : kpi.value.toLocaleString()}
               </div>
-              <div className="text-sm text-muted-foreground mb-2">{kpi.metric}</div>
+              <div className="text-sm text-muted-foreground mb-2" aria-label="Metric name">{kpi.metric}</div>
+              <div className="h-8 mb-2 flex items-end gap-1">
+                {Array.from({ length: 16 }).map((_, i) => (
+                  <div key={i} className="w-1.5 bg-primary/30 rounded" style={{ height: `${20 + ((i * 13) % 60)}%` }} />
+                ))}
+              </div>
               <div className={`text-sm flex items-center gap-1 ${
                 kpi.change > 0 ? 'text-green-600' : kpi.change < 0 ? 'text-red-600' : 'text-gray-600'
               }`}>
@@ -174,11 +185,12 @@ export default function BIDashboardPage() {
             </CardContent>
           </Card>
         ))}
-      </div>
+        </div>
+      </section>
 
       {/* Alerts */}
       {alerts.length > 0 && (
-        <Card>
+        <Card aria-label="Active Alerts">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5" />
@@ -211,7 +223,7 @@ export default function BIDashboardPage() {
       )}
 
       {/* Insights */}
-      <Card>
+      <Card aria-label="AI-Generated Insights">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
@@ -220,6 +232,12 @@ export default function BIDashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">Insights</div>
+              <div className="text-xs text-muted-foreground">
+                Filter: All · <button className="underline" onClick={() => window.print()}>Export</button>
+              </div>
+            </div>
             {insights.length === 0 ? (
               <p className="text-muted-foreground text-center py-4">
                 No insights available yet. Add more data to generate insights.
@@ -257,7 +275,7 @@ export default function BIDashboardPage() {
       </Card>
 
       {/* Opportunities */}
-      <Card>
+      <Card aria-label="Growth Opportunities">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Lightbulb className="h-5 w-5" />

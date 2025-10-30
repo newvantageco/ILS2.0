@@ -1,10 +1,4 @@
-export default {
-  plugins: {
-    'tailwindcss/nesting': 'postcss-nesting',
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-};import express, { type Express } from "express";
+import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
 import { createServer as createViteServer, createLogger } from "vite";

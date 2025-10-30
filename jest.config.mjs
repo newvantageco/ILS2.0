@@ -4,7 +4,7 @@ export default {
   setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],
   testMatch: ['**/*.test.ts', '**/*.test.tsx'],
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1',
+    '^@/(.*)$': '<rootDir>/client/src/$1',
     '^@shared/(.*)$': '<rootDir>/shared/$1',
     '^(\\.{1,2}/.*)\\.js$': '$1'
   },
@@ -20,7 +20,7 @@ export default {
         types: ['jest', 'node'],
         baseUrl: '.',
         paths: {
-          '@/*': ['src/*'],
+          '@/*': ['client/src/*'],
           '@shared/*': ['shared/*']
         }
       }

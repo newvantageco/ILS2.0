@@ -12,7 +12,7 @@ type EquipmentProtocol = 'DICOM' | 'RS232' | 'TCP' | 'HTTP';
 interface EquipmentInfo {
   id: string;
   name: string;
-  model: string;
+  model: string | null;
   serialNumber: string;
   status: EquipmentStatus;
   lastSeen: Date;
@@ -28,6 +28,7 @@ class EquipmentDiscoveryService extends EventEmitter {
   private socket: dgram.Socket;
   private knownEquipment: Map<string, EquipmentInfo> = new Map();
   private discoveryInterval: NodeJS.Timeout | null = null;
+  private defaultCompanyId: string | null = null;
 
   private constructor() {
     super();
@@ -86,13 +87,25 @@ class EquipmentDiscoveryService extends EventEmitter {
 
   private async updateEquipmentStatus(equipment: EquipmentInfo) {
     try {
+      // Lazily resolve a default company to associate discovered equipment with
+      if (!this.defaultCompanyId) {
+        const [company] = await db.select({ id: schema.companies.id }).from(schema.companies).limit(1);
+        if (company) {
+          this.defaultCompanyId = company.id;
+        } else {
+          // No company exists yet; skip persistence until bootstrap creates one
+          return;
+        }
+      }
+
       await db.insert(schema.equipment)
         .values({
-          id: equipment.id,
+          // id is generated in the database; we use it only for conflict target
           name: equipment.name,
-          model: equipment.model,
+          model: equipment.model ?? null,
           serialNumber: equipment.serialNumber,
           status: equipment.status,
+          companyId: this.defaultCompanyId,
           metadata: {
             ...equipment.metadata,
             protocol: equipment.protocol,
@@ -102,7 +115,7 @@ class EquipmentDiscoveryService extends EventEmitter {
           updatedAt: equipment.lastSeen
         })
         .onConflictDoUpdate({
-          target: schema.equipment.id,
+          target: schema.equipment.serialNumber,
           set: {
             status: equipment.status,
             updatedAt: equipment.lastSeen,
@@ -167,7 +180,7 @@ class EquipmentDiscoveryService extends EventEmitter {
       return equipment.map(e => ({
         id: e.id,
         name: e.name,
-        model: e.model,
+        model: e.model ?? null,
         serialNumber: e.serialNumber,
         status: e.status as EquipmentStatus,
         lastSeen: e.updatedAt,
@@ -194,7 +207,7 @@ class EquipmentDiscoveryService extends EventEmitter {
       return {
         id: equipment.id,
         name: equipment.name,
-        model: equipment.model,
+        model: equipment.model ?? null,
         serialNumber: equipment.serialNumber,
         status: equipment.status as EquipmentStatus,
         lastSeen: equipment.updatedAt,

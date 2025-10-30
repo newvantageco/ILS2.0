@@ -180,7 +180,7 @@ export default function Landing() {
               <p className="text-xs text-muted-foreground">Integrated Lens System</p>
             </div>
           </div>
-          <Button onClick={handleSignIn} className="gap-2">
+          <Button onClick={handleSignIn} className="gap-2" aria-label="Sign in">
             <LogIn className="h-4 w-4" />
             Sign In
           </Button>
@@ -204,11 +204,11 @@ export default function Landing() {
               From prescription to retail—manage orders, inventory, sales, and analytics in one powerful system with enterprise-grade security.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Button size="lg" onClick={handleGetStarted} className="gap-2">
+              <Button size="lg" onClick={handleGetStarted} className="gap-2" aria-label="Get started free">
                 Get Started Free
                 <ArrowRight className="h-4 w-4" />
               </Button>
-              <Button size="lg" variant="outline" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}>
+              <Button size="lg" variant="outline" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} aria-label="Explore features">
                 Explore Features
               </Button>
             </div>
@@ -395,7 +395,7 @@ export default function Landing() {
             </Card>
           </div>
           <div className="pt-4">
-            <Button variant="ghost" size="lg" onClick={handleContactSales} className="gap-2">
+            <Button variant="ghost" size="lg" onClick={handleContactSales} className="gap-2" aria-label="Talk to sales">
               <Phone className="h-4 w-4" />
               Talk to Sales
             </Button>

@@ -1,4 +1,4 @@
-import { WebSocket } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 import fs from 'fs/promises';
 import { db } from '../server/db';
 
@@ -7,17 +7,23 @@ export const createMockWebSocket = () => ({
   on: jest.fn(),
   send: jest.fn(),
   close: jest.fn(),
-} as jest.Mocked<WebSocket>);
+} as unknown as jest.Mocked<WebSocket>);
 
 // Database utilities
 export const setupTestDb = async () => {
   // Setup test database or clear existing data
-  await db.raw('BEGIN');
+  const anyDb = db as any;
+  if (typeof anyDb.raw === 'function') {
+    await anyDb.raw('BEGIN');
+  }
 };
 
 export const teardownTestDb = async () => {
   // Rollback any changes made during tests
-  await db.raw('ROLLBACK');
+  const anyDb = db as any;
+  if (typeof anyDb.raw === 'function') {
+    await anyDb.raw('ROLLBACK');
+  }
 };
 
 // Authentication utilities
@@ -28,10 +34,10 @@ export const createTestToken = (userId: string) => {
 
 // WebSocket test utilities
 export const createTestWebSocketServer = () => {
-  const wss = new WebSocket.Server({ noServer: true });
+  const wss = new WebSocketServer({ noServer: true });
   const connectedClients = new Set<WebSocket>();
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws: WebSocket) => {
     connectedClients.add(ws);
     ws.on('close', () => connectedClients.delete(ws));
   });
