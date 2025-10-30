@@ -21,7 +21,9 @@ import {
   Receipt, 
   Search,
   Package,
-  DollarSign
+  DollarSign,
+  Download,
+  Printer
 } from 'lucide-react';
 
 interface Product {
@@ -52,6 +54,7 @@ export default function POSTill() {
   const [cashReceived, setCashReceived] = useState('');
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [lastTransactionId, setLastTransactionId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const categories = ['all', 'frames', 'lenses', 'accessories', 'solutions', 'cases', 'cleaning'];
@@ -221,13 +224,13 @@ export default function POSTill() {
 
       const result = await response.json();
 
+      // Save transaction ID for receipt download
+      setLastTransactionId(result.transaction.id);
+
       toast({
         title: 'Sale Complete',
         description: `Transaction ${result.transaction.transactionNumber} completed successfully`,
       });
-
-      // Print receipt (optional)
-      // printReceipt(result.transaction);
 
       // Clear cart
       setCart([]);
@@ -240,6 +243,40 @@ export default function POSTill() {
       });
     } finally {
       setProcessing(false);
+    }
+  };
+
+  // Download receipt PDF
+  const downloadReceipt = async (transactionId: string) => {
+    try {
+      const response = await fetch(`/api/pdf/receipt/${transactionId}`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate receipt');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `receipt_${transactionId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: 'Receipt Downloaded',
+        description: 'Receipt PDF has been downloaded',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Download Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
     }
   };
 
@@ -504,6 +541,18 @@ export default function POSTill() {
                   </>
                 )}
               </Button>
+
+              {/* Download Receipt Button */}
+              {lastTransactionId && (
+                <Button
+                  className="w-full mt-2"
+                  variant="outline"
+                  onClick={() => downloadReceipt(lastTransactionId)}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Last Receipt
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
