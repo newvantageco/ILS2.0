@@ -3,19 +3,35 @@
  * 
  * This file demonstrates how to update your existing API routes
  * to use the Zod validation middleware for bulletproof input validation.
+ * 
+ * NOTE: This is an EXAMPLE file for reference. The actual implementations
+ * would require proper database setup and imports. Use these patterns
+ * in your actual route files.
  */
 
 import { Router, Request, Response } from 'express';
-import { validateBody, validateQuery, validateParams } from '../middleware/zodValidation';
+import { validateBody, validateQuery, validateParams, validateDatabaseOutput } from '../middleware/zodValidation';
 import { z } from 'zod';
 import {
   insertOrderSchema,
   updateOrderStatusSchema,
   insertPatientSchema,
   insertPrescriptionSchema,
+  orders,
+  patients,
+  prescriptions,
+  users,
 } from '@shared/schema';
+import { eq, or, like } from 'drizzle-orm';
+// import { db } from '../db'; // You would import your actual db instance
+// import bcrypt from 'bcrypt'; // For password hashing
+// import multer from 'multer'; // For file uploads
+// const upload = multer({ storage: multer.memoryStorage() });
 
 const router = Router();
+
+// Mock db object for examples (replace with actual db import)
+const db: any = null;
 
 // ==========================================
 // EXAMPLE 1: Order Creation with Validation
@@ -83,20 +99,23 @@ router.patch('/orders/:id/status',
 // EXAMPLE 3: Patient Search with Query Validation
 // ==========================================
 
-// Define query schema
+// Define query schema - fix for query param transformation
 const patientSearchQuerySchema = z.object({
   search: z.string().min(1, 'Search term required'),
-  limit: z.string().regex(/^\d+$/).transform(Number).optional(),
-  offset: z.string().regex(/^\d+$/).transform(Number).optional(),
+  limit: z.coerce.number().optional().default(10),
+  offset: z.coerce.number().optional().default(0),
 });
 
 router.get('/patients/search',
   validateQuery(patientSearchQuerySchema),
   async (req: Request, res: Response) => {
     try {
-      const { search, limit = 10, offset = 0 } = req.query;
+      // After validation, query params are properly typed
+      const { search, limit, offset } = req.query;
       
-      const patients = await db.query.patients.findMany({
+      // NOTE: This is example code - replace with your actual db query
+      /*
+      const patientsResult = await db.query.patients.findMany({
         where: or(
           like(patients.name, `%${search}%`),
           like(patients.email, `%${search}%`)
@@ -105,7 +124,9 @@ router.get('/patients/search',
         offset,
       });
       
-      res.json(patients);
+      res.json(patientsResult);
+      */
+      res.json({ message: 'Example endpoint - implement with your db query', search, limit, offset });
     } catch (error) {
       res.status(500).json({ error: 'Search failed' });
     }
@@ -145,12 +166,18 @@ const omaUploadSchema = z.object({
   eyeSide: z.enum(['OD', 'OS']),
 });
 
+// NOTE: Uncomment these when you have multer set up
+// import multer from 'multer';
+// const upload = multer({ storage: multer.memoryStorage() });
+
 router.post('/orders/:id/oma-file',
   validateParams(z.object({ id: z.string().uuid() })),
   validateBody(omaUploadSchema),
-  upload.single('omaFile'), // Multer middleware
+  // upload.single('omaFile'), // Multer middleware - uncomment when available
   async (req: Request, res: Response) => {
     try {
+      // NOTE: This example requires multer and OMA parser setup
+      /*
       if (!req.file) {
         return res.status(400).json({ error: 'OMA file required' });
       }
@@ -159,7 +186,7 @@ router.post('/orders/:id/oma-file',
       const fileContent = req.file.buffer.toString('utf-8');
       
       // Parse and validate OMA file
-      const parsedData = parseOMAFile(fileContent);
+      const parsedData = parseOMAFile(fileContent); // Implement this function
       
       // Update order with OMA data
       await db.update(orders)
@@ -171,6 +198,8 @@ router.post('/orders/:id/oma-file',
         .where(eq(orders.id, id));
       
       res.json({ success: true, data: parsedData });
+      */
+      res.json({ message: 'Example file upload endpoint - implement with multer' });
     } catch (error) {
       res.status(500).json({ error: 'Failed to process OMA file' });
     }
@@ -194,7 +223,7 @@ router.post('/orders/bulk',
       const { orders: ordersList, applyDiscount, discountPercent } = req.body;
       
       // Process all orders in a transaction
-      const createdOrders = await db.transaction(async (tx) => {
+      const createdOrders = await db.transaction(async (tx: any) => { // Use your actual transaction type
         const results = [];
         
         for (const orderData of ordersList) {
@@ -227,7 +256,13 @@ router.post('/orders/bulk',
 // EXAMPLE 7: Database Output Validation
 // ==========================================
 
-import { validateDatabaseOutput, validateDatabaseArray } from '../middleware/zodValidation';
+// Define a simple order schema for validation (or import from @shared/schema)
+const orderValidationSchema = z.object({
+  id: z.string(),
+  orderNumber: z.string(),
+  status: z.string(),
+  // Add other fields as needed
+});
 
 router.get('/orders/:id',
   validateParams(z.object({ id: z.string().uuid() })),
@@ -250,7 +285,7 @@ router.get('/orders/:id',
       
       // Validate database output matches schema
       // This catches any schema drift or data corruption
-      const validatedOrder = validateDatabaseOutput(orderSchema, order);
+      const validatedOrder = validateDatabaseOutput(orderValidationSchema, order);
       
       res.json(validatedOrder);
     } catch (error) {
@@ -292,7 +327,10 @@ router.patch('/users/:id',
       
       // Hash password if provided
       if (updateData.password) {
-        updateData.password = await bcrypt.hash(updateData.password, 10);
+        // NOTE: Uncomment when bcrypt is available
+        // import bcrypt from 'bcrypt';
+        // updateData.password = await bcrypt.hash(updateData.password, 10);
+        updateData.password = 'hashed_password'; // Placeholder
       }
       
       const updatedUser = await db.update(users)
