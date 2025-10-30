@@ -504,7 +504,7 @@ router.get('/real-time', async (req: Request, res: Response) => {
 /**
  * Advanced Analytics Endpoints
  */
-const advancedAnalytics = require('../storage/advancedAnalytics');
+import * as advancedAnalytics from '../storage/advancedAnalytics.js';
 
 /**
  * GET /api/analytics/customer-lifetime-value
