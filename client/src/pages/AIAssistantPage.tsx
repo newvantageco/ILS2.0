@@ -64,7 +64,7 @@ export default function AIAssistantPage() {
   const queryClient = useQueryClient();
 
   // Fetch conversations
-  const { data: conversations } = useQuery<Conversation[]>({
+  const { data: conversations, isLoading: conversationsLoading, error: conversationsError } = useQuery<Conversation[]>({
     queryKey: ["/api/ai-assistant/conversations"],
   });
 
@@ -75,7 +75,7 @@ export default function AIAssistantPage() {
   });
 
   // Fetch learning progress
-  const { data: progressData } = useQuery<{ 
+  const { data: progressData, isLoading: progressLoading, error: progressError } = useQuery<{ 
     data: {
       progress: number;
       status: string;
@@ -221,6 +221,39 @@ export default function AIAssistantPage() {
       default: return 'bg-gray-500';
     }
   };
+
+  // Show loading state
+  if (conversationsLoading || progressLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">Loading AI Assistant...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (conversationsError || progressError) {
+    return (
+      <div className="container mx-auto p-6">
+        <Alert variant="destructive">
+          <AlertDescription>
+            <div className="space-y-2">
+              <p className="font-semibold">Failed to load AI Assistant</p>
+              <p className="text-sm">
+                {(conversationsError as Error)?.message || (progressError as Error)?.message || 'An unknown error occurred'}
+              </p>
+              <Button onClick={() => window.location.reload()} variant="outline" size="sm">
+                Retry
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-6 space-y-6" aria-label="AI Assistant">
