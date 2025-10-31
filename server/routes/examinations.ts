@@ -3,6 +3,7 @@ import { db } from '../db';
 import { eyeExaminations, patients, users } from '../../shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { authenticateUser } from '../middleware/auth';
+import { z } from 'zod';
 
 const router = Router();
 
@@ -14,12 +15,36 @@ const isOptometrist = (user: any): boolean => {
   return user.enhancedRole === 'optometrist' || user.role === 'ecp' || user.role === 'platform_admin' || user.role === 'admin';
 };
 
+// Validation schema for comprehensive examination data
+const comprehensiveExaminationSchema = z.object({
+  patientId: z.string(),
+  examinationDate: z.string().or(z.date()),
+  status: z.enum(['in_progress', 'finalized']).optional(),
+  generalHistory: z.object({
+    schedule: z.any().optional(),
+    reasonForVisit: z.string().optional(),
+    symptoms: z.any().optional(),
+    lifestyle: z.any().optional(),
+    medicalHistory: z.any().optional(),
+  }).optional(),
+  currentRx: z.any().optional(),
+  newRx: z.any().optional(),
+  ophthalmoscopy: z.any().optional(),
+  slitLamp: z.any().optional(),
+  additionalTests: z.any().optional(),
+  tonometry: z.any().optional(),
+  eyeSketch: z.any().optional(),
+  images: z.any().optional(),
+  summary: z.any().optional(),
+  notes: z.string().optional(),
+});
+
 // Get all examinations with filters
 router.get('/', async (req, res) => {
   try {
     const companyId = req.user!.companyId;
     const user = req.user;
-    const { status, date } = req.query;
+    const { status, date, patientId } = req.query;
 
     // Admin can see all companies' data, others see only their company
     const whereClause = (user?.role === 'platform_admin' || user?.role === 'admin') 
@@ -52,6 +77,10 @@ router.get('/', async (req, res) => {
 
     // Apply filters
     let filtered = results;
+    
+    if (patientId) {
+      filtered = filtered.filter(exam => exam.patientId === patientId);
+    }
     
     if (status && status !== 'all') {
       filtered = filtered.filter(exam => exam.status === status);
@@ -109,7 +138,26 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Examination not found' });
     }
 
-    res.json(examination);
+    // Transform database structure back to comprehensive format for frontend
+    const transformedExamination = {
+      id: examination.id,
+      patientId: examination.patientId,
+      examinationDate: examination.examinationDate,
+      status: examination.status,
+      generalHistory: (examination.medicalHistory as any)?.generalHistory,
+      currentRx: (examination.refraction as any)?.currentRx,
+      newRx: (examination.refraction as any)?.newRx,
+      ophthalmoscopy: (examination.binocularVision as any)?.ophthalmoscopy || (examination.eyeHealth as any)?.ophthalmoscopy,
+      slitLamp: (examination.eyeHealth as any)?.slitLamp,
+      additionalTests: (examination.eyeHealth as any)?.additionalTests || (examination.equipmentReadings as any),
+      tonometry: (examination.equipmentReadings as any)?.tonometry,
+      eyeSketch: {},
+      images: {},
+      summary: {},
+      notes: examination.notes,
+    };
+
+    res.json(transformedExamination);
   } catch (error) {
     console.error('Error fetching examination:', error);
     res.status(500).json({ error: 'Failed to fetch examination' });
@@ -126,23 +174,29 @@ router.post('/', async (req, res) => {
       patientId,
       examinationDate,
       status = 'in_progress',
-      reasonForVisit,
-      symptoms,
-      history,
-      medication,
-      previousRx,
-      autoRefraction,
-      subjective,
-      visualAcuity,
-      binocularity,
+      generalHistory,
+      currentRx,
+      newRx,
       ophthalmoscopy,
-      tonometry,
+      slitLamp,
       additionalTests,
-      clinicalNotes,
-      recommendations,
-      recall,
+      tonometry,
+      eyeSketch,
+      images,
+      summary,
       notes,
+      // Legacy field support (fallback)
+      reasonForVisit,
     } = req.body;
+
+    // Validate request body
+    const validationResult = comprehensiveExaminationSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ 
+        error: 'Invalid examination data',
+        details: validationResult.error.errors
+      });
+    }
 
     if (!patientId || !examinationDate) {
       return res.status(400).json({ 
@@ -172,27 +226,49 @@ router.post('/', async (req, res) => {
         patientId,
         ecpId,
         examinationDate: new Date(examinationDate),
-        status,
-        reasonForVisit,
-        notes,
+        status: status || 'in_progress',
+        reasonForVisit: generalHistory?.reasonForVisit || reasonForVisit || null,
+        notes: notes || null,
+        // Map comprehensive structure to JSONB fields
         medicalHistory: {
-          symptoms,
-          history,
-          medication,
-          previousRx,
+          generalHistory,
+          lifestyle: generalHistory?.lifestyle,
+          symptoms: generalHistory?.symptoms,
+          medicalHistory: generalHistory?.medicalHistory,
         },
-        visualAcuity,
+        visualAcuity: currentRx?.unaidedVision,
         refraction: {
-          autoRefraction,
-          subjective,
+          currentRx,
+          newRx,
+          objective: newRx?.objective,
+          subjective: newRx?.subjective,
+          finalRx: {
+            distance: newRx?.subjective?.primaryPair,
+            near: newRx?.subjective?.nearRx,
+            intermediate: newRx?.subjective?.intermediateRx,
+          },
+          notes: newRx?.notes,
         },
-        binocularVision: binocularity,
+        binocularVision: {
+          ophthalmoscopy,
+          motility: ophthalmoscopy?.motility,
+          coverTest: ophthalmoscopy?.coverTest,
+          stereopsis: ophthalmoscopy?.stereopsis,
+        },
         eyeHealth: {
           ophthalmoscopy,
-          tonometry,
+          slitLamp,
+          additionalTests,
         },
-        equipmentReadings: additionalTests,
-      })
+        equipmentReadings: {
+          tonometry,
+          visualFields: additionalTests?.visualFields,
+          oct: additionalTests?.oct,
+          wideFieldImaging: additionalTests?.wideFieldImaging,
+          amsler: additionalTests?.amsler,
+          colourVision: additionalTests?.colourVision,
+        },
+      } as any)
       .returning();
 
     res.status(201).json(newExamination);
@@ -240,22 +316,19 @@ router.put('/:id', async (req, res) => {
     const {
       examinationDate,
       status,
-      reasonForVisit,
-      symptoms,
-      history,
-      medication,
-      previousRx,
-      autoRefraction,
-      subjective,
-      visualAcuity,
-      binocularity,
+      generalHistory,
+      currentRx,
+      newRx,
       ophthalmoscopy,
-      tonometry,
+      slitLamp,
       additionalTests,
-      clinicalNotes,
-      recommendations,
-      recall,
+      tonometry,
+      eyeSketch,
+      images,
+      summary,
       notes,
+      // Legacy field support
+      reasonForVisit,
     } = req.body;
 
     const [updated] = await db
@@ -263,25 +336,47 @@ router.put('/:id', async (req, res) => {
       .set({
         examinationDate: examinationDate ? new Date(examinationDate) : existing.examinationDate,
         status: status || existing.status,
-        reasonForVisit: reasonForVisit !== undefined ? reasonForVisit : existing.reasonForVisit,
+        reasonForVisit: generalHistory?.reasonForVisit || reasonForVisit || existing.reasonForVisit,
         notes: notes !== undefined ? notes : existing.notes,
-        medicalHistory: {
-          symptoms,
-          history,
-          medication,
-          previousRx,
-        },
-        visualAcuity: visualAcuity || existing.visualAcuity,
-        refraction: {
-          autoRefraction,
-          subjective,
-        },
-        binocularVision: binocularity || existing.binocularVision,
-        eyeHealth: {
+        // Map comprehensive structure to JSONB fields
+        medicalHistory: generalHistory ? {
+          generalHistory,
+          lifestyle: generalHistory?.lifestyle,
+          symptoms: generalHistory?.symptoms,
+          medicalHistory: generalHistory?.medicalHistory,
+        } : existing.medicalHistory,
+        visualAcuity: currentRx?.unaidedVision || existing.visualAcuity,
+        refraction: newRx ? {
+          currentRx,
+          newRx,
+          objective: newRx?.objective,
+          subjective: newRx?.subjective,
+          finalRx: {
+            distance: newRx?.subjective?.primaryPair,
+            near: newRx?.subjective?.nearRx,
+            intermediate: newRx?.subjective?.intermediateRx,
+          },
+          notes: newRx?.notes,
+        } : existing.refraction,
+        binocularVision: ophthalmoscopy ? {
           ophthalmoscopy,
+          motility: ophthalmoscopy?.motility,
+          coverTest: ophthalmoscopy?.coverTest,
+          stereopsis: ophthalmoscopy?.stereopsis,
+        } : existing.binocularVision,
+        eyeHealth: (ophthalmoscopy || slitLamp || additionalTests) ? {
+          ophthalmoscopy,
+          slitLamp,
+          additionalTests,
+        } : existing.eyeHealth,
+        equipmentReadings: tonometry ? {
           tonometry,
-        },
-        equipmentReadings: additionalTests || existing.equipmentReadings,
+          visualFields: additionalTests?.visualFields,
+          oct: additionalTests?.oct,
+          wideFieldImaging: additionalTests?.wideFieldImaging,
+          amsler: additionalTests?.amsler,
+          colourVision: additionalTests?.colourVision,
+        } : existing.equipmentReadings,
         updatedAt: new Date(),
       })
       .where(eq(eyeExaminations.id, id))
@@ -432,7 +527,7 @@ router.post('/outside-rx', async (req, res) => {
         examinationDate: examinationDate ? new Date(examinationDate) : new Date(),
         status: 'finalized', // Outside Rx is automatically finalized
         reasonForVisit: `Outside Prescription from ${prescriptionSource}`,
-        notes: notes || '',
+        notes: notes || null,
         refraction: {
           outsideRx: {
             source: prescriptionSource,
@@ -448,7 +543,7 @@ router.post('/outside-rx', async (req, res) => {
             pd,
           }
         },
-      })
+      } as any)
       .returning();
 
     res.status(201).json(newExamination);
