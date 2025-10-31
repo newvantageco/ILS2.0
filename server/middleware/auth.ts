@@ -7,6 +7,7 @@ export interface AuthenticatedUser {
   id: string;
   email: string;
   role: typeof roleEnum.enumValues[number];
+  companyId?: string;
 }
 
 export interface AuthenticatedRequest extends Request {
@@ -32,7 +33,8 @@ export const authenticateUser: RequestHandler = async (req, res, next) => {
     (req as AuthenticatedRequest).user = {
       id: user.id,
       email: user.email,
-      role: user.role
+      role: user.role,
+      companyId: user.companyId
     };
     next();
   } catch (error) {
@@ -62,7 +64,8 @@ async function validateToken(token: string) {
       .select({
         id: users.id,
         email: users.email,
-        role: users.role
+        role: users.role,
+        companyId: users.companyId
       })
       .from(sessions)
       .innerJoin(users, eq(sessions.userId, users.id))

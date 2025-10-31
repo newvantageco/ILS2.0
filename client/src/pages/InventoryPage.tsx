@@ -157,11 +157,20 @@ export default function InventoryPage() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    
+    // Process color options
+    const colorOptionsString = formData.get("colorOptions") as string;
+    const colorOptions = colorOptionsString
+      ? colorOptionsString.split(',').map(c => c.trim()).filter(Boolean)
+      : [];
+    
     const data = {
       productType: formData.get("productType") as string,
       brand: formData.get("brand") as string || null,
       model: formData.get("model") as string || null,
       sku: formData.get("sku") as string || null,
+      imageUrl: formData.get("imageUrl") as string || null,
+      colorOptions: colorOptions.length > 0 ? colorOptions : null,
       unitPrice: formData.get("unitPrice") as string,
       stockQuantity: parseInt(formData.get("stockQuantity") as string) || 0,
     };
@@ -244,6 +253,31 @@ export default function InventoryPage() {
                 <div className="grid gap-2">
                   <Label htmlFor="sku">SKU</Label>
                   <Input id="sku" name="sku" data-testid="input-product-sku" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="imageUrl">Image URL</Label>
+                  <Input
+                    id="imageUrl"
+                    name="imageUrl"
+                    type="url"
+                    placeholder="https://example.com/product-image.jpg"
+                    data-testid="input-product-image"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter a URL to an image of the product
+                  </p>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="colorOptions">Color Options</Label>
+                  <Input
+                    id="colorOptions"
+                    name="colorOptions"
+                    placeholder="Black, Red, Blue, Green (comma-separated)"
+                    data-testid="input-product-colors"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter available colors separated by commas
+                  </p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">

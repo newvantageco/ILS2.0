@@ -35,13 +35,13 @@ import GitHubPushPage from "@/pages/github-push";
 import PatientsPage from "@/pages/PatientsPage";
 import PrescriptionsPage from "@/pages/PrescriptionsPage";
 import InventoryPage from "@/pages/InventoryPage";
-import POSPage from "@/pages/POSPage";
 import InvoicesPage from "@/pages/InvoicesPage";
 import EyeTestPage from "@/pages/EyeTestPage";
 import TestRoomsPage from "@/pages/TestRoomsPage";
 import AIAssistantPage from "@/pages/AIAssistantPage";
 import AISettingsPage from "@/pages/AISettingsPage";
 import CompanyManagementPage from "@/pages/admin/CompanyManagementPage";
+import OpticalPOSPage from "@/pages/OpticalPOSPage";
 import BIDashboardPage from "@/pages/BIDashboardPage";
 import PlatformAdminPage from "@/pages/PlatformAdminPage";
 import CompanyAdminPage from "@/pages/CompanyAdminPage";
@@ -207,7 +207,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/patient/:id/test" component={EyeTestPage} />
             <Route path="/ecp/prescriptions" component={PrescriptionsPage} />
             <Route path="/ecp/inventory" component={InventoryPage} />
-            <Route path="/ecp/pos" component={POSPage} />
+            <Route path="/ecp/pos" component={OpticalPOSPage} />
             <Route path="/ecp/invoices" component={InvoicesPage} />
             <Route path="/ecp/test-rooms" component={TestRoomsPage} />
             <Route path="/ecp/new-order" component={NewOrderPage} />

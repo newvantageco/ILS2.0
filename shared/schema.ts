@@ -1346,6 +1346,7 @@ export const products = pgTable("products", {
   category: text("category"), // 'frames', 'lenses', 'accessories', 'solutions', 'cases', 'cleaning'
   barcode: text("barcode"), // Barcode for scanning
   imageUrl: text("image_url"), // Product image
+  colorOptions: jsonb("color_options").$type<string[]>(), // Available colors for the product
   cost: decimal("cost", { precision: 10, scale: 2 }), // Cost price for profit tracking
   stockQuantity: integer("stock_quantity").default(0).notNull(),
   lowStockThreshold: integer("low_stock_threshold").default(10), // Alert when stock is low

@@ -32,9 +32,36 @@ router.get('/products',
   async (req: Request, res: Response) => {
     try {
       const { category, search, inStock } = req.query;
-      const companyId = req.user!.companyId;
+      const companyId = req.user?.companyId;
 
-      let query = db.select().from(products)
+      if (!companyId) {
+        return res.status(400).json({ error: 'User company not found. Please ensure you are associated with a company.' });
+      }
+
+      let query = db.select({
+        id: products.id,
+        companyId: products.companyId,
+        ecpId: products.ecpId,
+        productType: products.productType,
+        sku: products.sku,
+        brand: products.brand,
+        model: products.model,
+        name: products.name,
+        description: products.description,
+        category: products.category,
+        barcode: products.barcode,
+        imageUrl: products.imageUrl,
+        colorOptions: products.colorOptions,
+        cost: products.cost,
+        stockQuantity: products.stockQuantity,
+        lowStockThreshold: products.lowStockThreshold,
+        unitPrice: products.unitPrice,
+        taxRate: products.taxRate,
+        isActive: products.isActive,
+        isPrescriptionRequired: products.isPrescriptionRequired,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+      }).from(products)
         .where(
           and(
             eq(products.companyId, companyId),
