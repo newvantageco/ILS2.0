@@ -43,6 +43,16 @@ const roleConfig: Record<string, { label: string; icon: any; color: string }> = 
     icon: Shield,
     color: "bg-red-500/10 text-red-700 dark:text-red-400",
   },
+  platform_admin: {
+    label: "Platform Administrator",
+    icon: Shield,
+    color: "bg-violet-500/10 text-violet-700 dark:text-violet-400",
+  },
+  company_admin: {
+    label: "Company Administrator",
+    icon: Shield,
+    color: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400",
+  },
 };
 
 export function RoleSwitcherDropdown() {
@@ -68,6 +78,8 @@ export function RoleSwitcherDropdown() {
       else if (role === "lab_tech" || role === "engineer") path = "/lab/dashboard";
       else if (role === "supplier") path = "/supplier/dashboard";
       else if (role === "admin") path = "/admin/dashboard";
+      else if (role === "platform_admin") path = "/platform-admin/dashboard";
+      else if (role === "company_admin") path = "/company-admin/dashboard";
       
       toast({
         title: "Role switched",
