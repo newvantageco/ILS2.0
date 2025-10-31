@@ -197,14 +197,14 @@ export default function PatientsPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Link href={`/ecp/patient/${patient.id}/test`}>
+                          <Link href={`/ecp/examination/new?patientId=${patient.id}`}>
                             <Button 
                               size="sm" 
                               variant="default"
                               data-testid={`button-new-test-${patient.id}`}
                             >
                               <Eye className="h-4 w-4 mr-2" />
-                              New Test
+                              New Examination
                             </Button>
                           </Link>
                           <Button 

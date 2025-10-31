@@ -310,6 +310,10 @@ export default function EyeExaminationComprehensive() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('general-history');
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Get patientId from URL query params if creating new exam from patients page
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlPatientId = urlParams.get('patientId');
 
   const canEdit = user?.enhancedRole === 'optometrist' || user?.role === 'ecp' || user?.role === 'platform_admin' || user?.role === 'admin';
 
@@ -482,6 +486,17 @@ export default function EyeExaminationComprehensive() {
     queryKey: [`/api/examinations/${id}`],
     enabled: !!id,
   });
+
+  // Auto-select patient from URL parameter
+  useEffect(() => {
+    if (urlPatientId && patients.length > 0 && !selectedPatient) {
+      const patient = patients.find((p: Patient) => p.id === urlPatientId);
+      if (patient) {
+        setSelectedPatient(patient);
+        setFormData(prev => ({ ...prev, patientId: urlPatientId }));
+      }
+    }
+  }, [urlPatientId, patients, selectedPatient]);
 
   useEffect(() => {
     if (examination) {
