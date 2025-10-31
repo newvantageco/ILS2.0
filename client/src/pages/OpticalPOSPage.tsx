@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { Search, User, Check, Package } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Search, User, Check, Package, X, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -41,6 +43,7 @@ interface Product {
 
 export default function OpticalPOSPage() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerProfile | null>(null);
   const [customers, setCustomers] = useState<CustomerProfile[]>([]);
@@ -299,32 +302,46 @@ export default function OpticalPOSPage() {
     return colorMap[colorName] || '#6b7280';
   };
 
-  return (
-    <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center p-8 overflow-hidden">
+  const posContent = (
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center p-6 z-[9999]">
       {/* Floating Modal Container with Drop Shadow */}
-      <div className="w-full max-w-[1400px] h-full max-h-[calc(100vh-12rem)] flex gap-8 bg-white rounded-3xl shadow-2xl p-8 overflow-hidden">
+      <div className="w-full max-w-[1400px] h-[90vh] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden relative">
+        {/* Header with Back Button */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+          <h1 className="text-2xl font-bold text-gray-800">Point of Sale</h1>
+          <button
+            onClick={() => setLocation('/ecp/dashboard')}
+            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-lg transition-colors duration-200 shadow-sm hover:shadow-md border border-gray-200"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="text-sm font-medium">Back to Dashboard</span>
+          </button>
+        </div>
+
+        {/* Main Content - Three Columns */}
+        <div className="flex gap-6 flex-1 overflow-hidden p-6">
         {/* Left Column - Navigation Pane */}
-        <div className="w-96 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200/50 rounded-2xl p-6 flex flex-col shadow-lg overflow-hidden">
-        <div className="mb-6">
+        <div className="w-80 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200/50 rounded-2xl p-4 flex flex-col shadow-lg overflow-hidden">
+        <div className="mb-4">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
             <Input
               type="text"
               placeholder="Search customers"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-12 h-12 bg-white border-gray-300 rounded-xl text-base shadow-sm"
+              className="pl-10 h-10 bg-white border-gray-300 rounded-lg text-sm shadow-sm"
             />
           </div>
         </div>
 
-        <Separator className="bg-gray-300/50 mb-6" />
+        <Separator className="bg-gray-300/50 mb-4" />
 
         {/* Customer List */}
         <ScrollArea className="flex-1 -mr-2 pr-2">
-          <div className="space-y-3">
+          <div className="space-y-2">
             {filteredCustomers.length === 0 ? (
-              <div className="text-center py-12 text-gray-500 text-sm">
+              <div className="text-center py-8 text-gray-500 text-sm">
                 {searchQuery ? 'No customers found' : 'No customers available'}
               </div>
             ) : (
@@ -332,18 +349,18 @@ export default function OpticalPOSPage() {
                 <button
                   key={customer.id}
                   onClick={() => setSelectedCustomer(customer)}
-                  className={`w-full text-left p-4 rounded-xl transition-all duration-200 ${
+                  className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
                     selectedCustomer?.id === customer.id
                       ? "bg-blue-600 text-white shadow-md scale-[1.02]"
                       : "bg-white border border-gray-200 text-gray-900 hover:bg-gray-50 hover:shadow-sm"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <User className="h-5 w-5 flex-shrink-0" />
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold truncate text-base">{customer.name}</div>
-                      <div className="text-sm opacity-80 truncate">{customer.email}</div>
-                      <div className="text-xs opacity-70 mt-1">{customer.customerNumber}</div>
+                      <div className="font-semibold truncate text-sm">{customer.name}</div>
+                      <div className="text-xs opacity-80 truncate">{customer.email}</div>
+                      <div className="text-xs opacity-70 mt-0.5">{customer.customerNumber}</div>
                     </div>
                   </div>
                 </button>
@@ -719,6 +736,10 @@ export default function OpticalPOSPage() {
         )}
       </div>
       </div>
+      {/* Close Main Content wrapper */}
+      </div>
     </div>
   );
+
+  return createPortal(posContent, document.body);
 }
