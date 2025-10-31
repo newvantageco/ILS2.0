@@ -188,6 +188,10 @@ function AuthenticatedApp() {
         return "/supplier";
       case "admin":
         return "/admin";
+      case "platform_admin":
+        return "/platform-admin";
+      case "company_admin":
+        return "/company-admin";
       default:
         return "/lab";
     }
@@ -292,6 +296,44 @@ function AuthenticatedApp() {
             <Route path="/platform-admin/users" component={PlatformAdminPage} />
             <Route path="/platform-admin/companies" component={PlatformAdminPage} />
             <Route path="/platform-admin/settings" component={SettingsPage} />
+            
+            {/* ECP Routes for Testing */}
+            <Route path="/ecp/dashboard" component={ECPDashboard} />
+            <Route path="/ecp/patients" component={PatientsPage} />
+            <Route path="/ecp/patient/:id/test" component={EyeTestPage} />
+            <Route path="/ecp/prescriptions" component={PrescriptionsPage} />
+            <Route path="/ecp/inventory" component={InventoryPage} />
+            <Route path="/ecp/pos" component={OpticalPOSPage} />
+            <Route path="/ecp/invoices" component={InvoicesPage} />
+            <Route path="/ecp/test-rooms" component={TestRoomsPage} />
+            <Route path="/ecp/new-order" component={NewOrderPage} />
+            <Route path="/ecp/orders" component={ECPDashboard} />
+            <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
+            <Route path="/ecp/company" component={CompanyManagementPage} />
+            <Route path="/ecp/bi-dashboard" component={BIDashboardPage} />
+            <Route path="/ecp/analytics" component={AnalyticsDashboard} />
+            
+            {/* Lab Routes for Testing */}
+            <Route path="/lab/dashboard" component={LabDashboard} />
+            <Route path="/lab/production" component={ProductionTrackingPage} />
+            <Route path="/lab/quality" component={QualityControlPage} />
+            <Route path="/lab/equipment" component={EquipmentPage} />
+            <Route path="/lab/ai-assistant" component={AIAssistantPage} />
+            <Route path="/lab/bi-dashboard" component={BIDashboardPage} />
+            <Route path="/lab/queue">
+              <div className="text-center py-12">
+                <h2 className="text-2xl font-semibold">Order Queue</h2>
+                <p className="text-muted-foreground mt-2">Full order queue management</p>
+              </div>
+            </Route>
+            
+            {/* Admin Routes for Testing */}
+            <Route path="/admin/dashboard" component={AdminDashboard} />
+            <Route path="/admin/ai-assistant" component={AIAssistantPage} />
+            <Route path="/admin/bi-dashboard" component={BIDashboardPage} />
+            
+            {/* Common Routes */}
+            <Route path="/order/:id" component={OrderDetailsPage} />
           </>
         )}
 
