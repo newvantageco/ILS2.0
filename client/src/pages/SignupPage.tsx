@@ -20,10 +20,11 @@ export default function SignupPage() {
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
-    role: "" as "ecp" | "lab_tech" | "engineer" | "supplier" | "admin" | "",
+    role: "" as "ecp" | "lab_tech" | "engineer" | "supplier" | "admin" | "optometrist" | "",
     organizationName: "",
     adminSetupKey: "",
     subscriptionPlan: "" as "full" | "free_ecp" | "",
+    gocNumber: "",
   });
 
   useEffect(() => {
@@ -86,6 +87,14 @@ export default function SignupPage() {
       });
       return;
     }
+    if ((formData.role === "optometrist" || formData.role === "ecp") && !formData.gocNumber) {
+      toast({
+        title: "GOC number required",
+        description: "Please enter your GOC registration number",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const allowedPlan = formData.role === "ecp" ? "free_ecp" : "full";
     const selectedPlan = formData.subscriptionPlan || allowedPlan;
@@ -116,6 +125,10 @@ export default function SignupPage() {
     
     if (formData.role === "admin") {
       submitData.adminSetupKey = formData.adminSetupKey;
+    }
+    
+    if (formData.gocNumber) {
+      submitData.gocNumber = formData.gocNumber;
     }
     
     signupMutation.mutate(submitData);
@@ -199,6 +212,7 @@ export default function SignupPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ecp">Eye Care Professional (ECP)</SelectItem>
+                  <SelectItem value="optometrist">Optometrist</SelectItem>
                   <SelectItem value="lab_tech">Lab Technician</SelectItem>
                   <SelectItem value="engineer">Engineer</SelectItem>
                   <SelectItem value="supplier">Supplier</SelectItem>
@@ -209,6 +223,24 @@ export default function SignupPage() {
                 Choose the role that best describes your position
               </p>
             </div>
+
+            {(formData.role === "optometrist" || formData.role === "ecp") && (
+              <div className="space-y-2">
+                <Label htmlFor="gocNumber">GOC Registration Number *</Label>
+                <Input
+                  id="gocNumber"
+                  value={formData.gocNumber}
+                  onChange={(e) =>
+                    setFormData({ ...formData, gocNumber: e.target.value })
+                  }
+                  placeholder="Enter your GOC registration number"
+                  data-testid="input-goc-number"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Your General Optical Council registration number is required for optometrists and ECPs
+                </p>
+              </div>
+            )}
 
             <div className="space-y-3">
               <Label>Subscription Plan</Label>

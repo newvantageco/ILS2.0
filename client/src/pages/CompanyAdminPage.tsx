@@ -18,6 +18,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Building2, 
   Users, 
@@ -25,6 +41,8 @@ import {
   Settings, 
   Save,
   ShoppingCart,
+  UserPlus,
+  Loader2,
 } from "lucide-react";
 import ShopifyIntegrationSettings from "@/components/ShopifyIntegrationSettings";
 
@@ -59,6 +77,18 @@ interface Supplier {
 export default function CompanyAdminPage() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [showAddUserDialog, setShowAddUserDialog] = useState(false);
+  const [newUserForm, setNewUserForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    role: "",
+    enhancedRole: "",
+    gocNumber: "",
+    contactPhone: "",
+    gocRegistrationType: "",
+    professionalQualifications: "",
+  });
 
   // Fetch company profile
   const { data: company, isLoading: loadingCompany } = useQuery<Company>({
@@ -122,6 +152,82 @@ export default function CompanyAdminPage() {
 
   const handleSaveCompany = () => {
     updateCompanyMutation.mutate(companyForm);
+  };
+
+  // Add user mutation
+  const addUserMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await fetch("/api/company-admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to add user");
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/company-admin/users"] });
+      setShowAddUserDialog(false);
+      setNewUserForm({
+        firstName: "",
+        lastName: "",
+        email: "",
+        role: "",
+        enhancedRole: "",
+        gocNumber: "",
+        contactPhone: "",
+        gocRegistrationType: "",
+        professionalQualifications: "",
+      });
+      toast({
+        title: "User Added Successfully",
+        description: `Temporary password: ${data.temporaryPassword}. Please share this securely with the user.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddUser = () => {
+    if (!newUserForm.firstName || !newUserForm.lastName || !newUserForm.email) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in first name, last name, and email",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!newUserForm.role && !newUserForm.enhancedRole) {
+      toast({
+        title: "Role Required",
+        description: "Please select a role for the user",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if ((newUserForm.enhancedRole === "optometrist" || newUserForm.role === "ecp") && !newUserForm.gocNumber) {
+      toast({
+        title: "GOC Number Required",
+        description: "GOC registration number is required for optometrists and ECPs",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    addUserMutation.mutate(newUserForm);
   };
 
   return (
@@ -287,10 +393,164 @@ export default function CompanyAdminPage() {
         <TabsContent value="users" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Company Users</CardTitle>
-              <CardDescription>
-                View and manage users in your company
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Company Users</CardTitle>
+                  <CardDescription>
+                    View and manage users in your company
+                  </CardDescription>
+                </div>
+                <Dialog open={showAddUserDialog} onOpenChange={setShowAddUserDialog}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Add User
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Add New User</DialogTitle>
+                      <DialogDescription>
+                        Add a new user to your company. They will receive login credentials via email.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="firstName">First Name *</Label>
+                          <Input
+                            id="firstName"
+                            value={newUserForm.firstName}
+                            onChange={(e) =>
+                              setNewUserForm({ ...newUserForm, firstName: e.target.value })
+                            }
+                            placeholder="John"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="lastName">Last Name *</Label>
+                          <Input
+                            id="lastName"
+                            value={newUserForm.lastName}
+                            onChange={(e) =>
+                              setNewUserForm({ ...newUserForm, lastName: e.target.value })
+                            }
+                            placeholder="Doe"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email *</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={newUserForm.email}
+                          onChange={(e) =>
+                            setNewUserForm({ ...newUserForm, email: e.target.value })
+                          }
+                          placeholder="john.doe@example.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="contactPhone">Phone</Label>
+                        <Input
+                          id="contactPhone"
+                          value={newUserForm.contactPhone}
+                          onChange={(e) =>
+                            setNewUserForm({ ...newUserForm, contactPhone: e.target.value })
+                          }
+                          placeholder="+44 20 1234 5678"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="enhancedRole">Role *</Label>
+                        <Select
+                          value={newUserForm.enhancedRole}
+                          onValueChange={(value) =>
+                            setNewUserForm({ ...newUserForm, enhancedRole: value, role: value === "optometrist" ? "ecp" : "ecp" })
+                          }
+                        >
+                          <SelectTrigger id="enhancedRole">
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="optometrist">Optometrist</SelectItem>
+                            <SelectItem value="dispenser">Dispenser</SelectItem>
+                            <SelectItem value="retail_assistant">Retail Assistant</SelectItem>
+                            <SelectItem value="lab_tech">Lab Technician</SelectItem>
+                            <SelectItem value="engineer">Engineer</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {(newUserForm.enhancedRole === "optometrist" || newUserForm.role === "ecp") && (
+                        <>
+                          <div className="space-y-2">
+                            <Label htmlFor="gocNumber">GOC Registration Number *</Label>
+                            <Input
+                              id="gocNumber"
+                              value={newUserForm.gocNumber}
+                              onChange={(e) =>
+                                setNewUserForm({ ...newUserForm, gocNumber: e.target.value })
+                              }
+                              placeholder="GOC-12345"
+                            />
+                            <p className="text-sm text-muted-foreground">
+                              General Optical Council registration number
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="gocRegistrationType">GOC Registration Type</Label>
+                            <Select
+                              value={newUserForm.gocRegistrationType}
+                              onValueChange={(value) =>
+                                setNewUserForm({ ...newUserForm, gocRegistrationType: value })
+                              }
+                            >
+                              <SelectTrigger id="gocRegistrationType">
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="optometrist">Optometrist</SelectItem>
+                                <SelectItem value="dispensing_optician">Dispensing Optician</SelectItem>
+                                <SelectItem value="ophthalmologist">Ophthalmologist</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="professionalQualifications">Professional Qualifications</Label>
+                            <Input
+                              id="professionalQualifications"
+                              value={newUserForm.professionalQualifications}
+                              onChange={(e) =>
+                                setNewUserForm({ ...newUserForm, professionalQualifications: e.target.value })
+                              }
+                              placeholder="e.g., BSc (Hons) Optometry"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowAddUserDialog(false)}
+                        disabled={addUserMutation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleAddUser}
+                        disabled={addUserMutation.isPending}
+                      >
+                        {addUserMutation.isPending && (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        )}
+                        Add User
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </CardHeader>
             <CardContent>
               {loadingUsers ? (

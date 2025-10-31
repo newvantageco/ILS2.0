@@ -219,10 +219,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User already has a role assigned" });
       }
 
-  const { role, organizationName, adminSetupKey, subscriptionPlan } = req.body;
+  const { role, organizationName, adminSetupKey, subscriptionPlan, gocNumber } = req.body;
       
-      if (!role || !['ecp', 'lab_tech', 'engineer', 'supplier', 'admin'].includes(role)) {
+      if (!role || !['ecp', 'lab_tech', 'engineer', 'supplier', 'admin', 'optometrist'].includes(role)) {
         return res.status(400).json({ message: "Valid role is required" });
+      }
+
+      // Validate GOC number for optometrists and ECPs
+      if ((role === 'optometrist' || role === 'ecp') && !gocNumber) {
+        return res.status(400).json({ message: "GOC registration number is required for optometrists and ECPs" });
       }
 
       const normalizedPlan = typeof subscriptionPlan === 'string' ? subscriptionPlan : undefined;
@@ -260,6 +265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           organizationName: organizationName || null,
           accountStatus: 'active',
           subscriptionPlan: chosenPlan,
+          gocNumber: gocNumber || null,
         });
 
         // Initialize user roles
@@ -269,12 +275,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update user with role and organization, set status to pending
-      const updatedUser = await storage.updateUser(userId, {
+      const updateData: any = {
         role,
         organizationName: organizationName || null,
         accountStatus: 'pending',
         subscriptionPlan: chosenPlan,
-      });
+      };
+
+      // Add GOC number if provided
+      if (gocNumber) {
+        updateData.gocNumber = gocNumber;
+        updateData.gocRegistrationNumber = gocNumber;
+      }
+
+      // Set enhanced role for optometrist
+      if (role === 'optometrist') {
+        updateData.enhancedRole = 'optometrist';
+      }
+
+      const updatedUser = await storage.updateUser(userId, updateData);
 
       // Initialize user roles
       await storage.addUserRole(userId, role);
@@ -1964,6 +1983,193 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching suppliers:", error);
       res.status(500).json({ message: "Failed to fetch suppliers" });
+    }
+  });
+
+  // Company admin - Add user to company (including optometrists)
+  app.post('/api/company-admin/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'company_admin') {
+        return res.status(403).json({ message: "Company admin access required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "User not associated with a company" });
+      }
+
+      const { 
+        firstName, 
+        lastName, 
+        email, 
+        role, 
+        enhancedRole,
+        gocNumber,
+        gocRegistrationNumber,
+        gocRegistrationType,
+        professionalQualifications,
+        contactPhone
+      } = req.body;
+
+      // Validate required fields
+      if (!firstName || !lastName || !email) {
+        return res.status(400).json({ message: "First name, last name, and email are required" });
+      }
+
+      if (!role && !enhancedRole) {
+        return res.status(400).json({ message: "Either role or enhanced role is required" });
+      }
+
+      // Validate GOC number for optometrists
+      if ((enhancedRole === 'optometrist' || role === 'ecp') && !gocNumber && !gocRegistrationNumber) {
+        return res.status(400).json({ message: "GOC registration number is required for optometrists" });
+      }
+
+      // Check if user already exists
+      const normalizedEmail = normalizeEmail(email);
+      const allUsers = await storage.getAllUsers();
+      const existingUser = allUsers.find(u => normalizeEmail(u.email || '') === normalizedEmail);
+      
+      if (existingUser) {
+        // If user exists and is already in this company
+        if (existingUser.companyId === user.companyId) {
+          return res.status(400).json({ message: "User already exists in your company" });
+        }
+        // If user exists but in different company
+        return res.status(400).json({ message: "User already has an account. They need to join your company through the company join flow." });
+      }
+
+      // Generate a temporary password
+      const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase();
+      const hashedPassword = await hashPassword(tempPassword);
+
+      // Create the new user using upsertUser
+      const newUser = await storage.upsertUser({
+        email: normalizedEmail,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        role: role || 'ecp',
+        enhancedRole: enhancedRole || undefined,
+        companyId: user.companyId,
+        accountStatus: 'active', // Directly activate since added by admin
+        gocNumber: gocNumber || gocRegistrationNumber || undefined,
+        gocRegistrationNumber: gocRegistrationNumber || gocNumber || undefined,
+        gocRegistrationType: gocRegistrationType || undefined,
+        professionalQualifications: professionalQualifications || undefined,
+        contactPhone: contactPhone || undefined,
+        subscriptionPlan: 'full',
+        isVerified: true,
+      });
+
+      // TODO: Send welcome email with temporary password
+      // await emailService.sendWelcomeEmail(newUser.email, tempPassword);
+
+      res.json({
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          firstName: newUser.firstName,
+          lastName: newUser.lastName,
+          role: newUser.role,
+          enhancedRole: newUser.enhancedRole,
+          gocNumber: newUser.gocNumber,
+          accountStatus: newUser.accountStatus,
+        },
+        temporaryPassword: tempPassword,
+        message: "User added successfully. Please share the temporary password securely with the user."
+      });
+    } catch (error) {
+      console.error("Error adding user to company:", error);
+      res.status(500).json({ message: "Failed to add user to company" });
+    }
+  });
+
+  // Company admin - Update user in company
+  app.patch('/api/company-admin/users/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUserId = req.user.claims.sub;
+      const user = await storage.getUser(adminUserId);
+      
+      if (!user || user.role !== 'company_admin') {
+        return res.status(403).json({ message: "Company admin access required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "User not associated with a company" });
+      }
+
+      const { userId } = req.params;
+      const targetUser = await storage.getUser(userId);
+
+      if (!targetUser || targetUser.companyId !== user.companyId) {
+        return res.status(404).json({ message: "User not found in your company" });
+      }
+
+      const updates: any = {};
+      const allowedUpdates = [
+        'firstName', 'lastName', 'contactPhone', 'gocNumber', 
+        'gocRegistrationNumber', 'gocRegistrationType', 
+        'professionalQualifications', 'accountStatus', 'enhancedRole'
+      ];
+
+      for (const field of allowedUpdates) {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+
+      const updatedUser = await storage.updateUser(userId, updates);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Company admin - Remove user from company
+  app.delete('/api/company-admin/users/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUserId = req.user.claims.sub;
+      const user = await storage.getUser(adminUserId);
+      
+      if (!user || user.role !== 'company_admin') {
+        return res.status(403).json({ message: "Company admin access required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "User not associated with a company" });
+      }
+
+      const { userId } = req.params;
+      
+      // Prevent admin from removing themselves
+      if (userId === adminUserId) {
+        return res.status(400).json({ message: "Cannot remove yourself" });
+      }
+
+      const targetUser = await storage.getUser(userId);
+
+      if (!targetUser || targetUser.companyId !== user.companyId) {
+        return res.status(404).json({ message: "User not found in your company" });
+      }
+
+      // Remove user from company (set companyId to null and status to pending)
+      await storage.updateUser(userId, {
+        companyId: null,
+        accountStatus: 'suspended'
+      });
+
+      res.json({ message: "User removed from company successfully" });
+    } catch (error) {
+      console.error("Error removing user:", error);
+      res.status(500).json({ message: "Failed to remove user" });
     }
   });
 
