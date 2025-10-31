@@ -300,11 +300,11 @@ export default function OpticalPOSPage() {
   };
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center p-12">
+    <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center p-8 overflow-hidden">
       {/* Floating Modal Container with Drop Shadow */}
-      <div className="w-full max-w-[1400px] h-[85vh] flex gap-8 bg-white rounded-3xl shadow-2xl p-8">
+      <div className="w-full max-w-[1400px] h-full max-h-[calc(100vh-12rem)] flex gap-8 bg-white rounded-3xl shadow-2xl p-8 overflow-hidden">
         {/* Left Column - Navigation Pane */}
-        <div className="w-96 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200/50 rounded-2xl p-6 flex flex-col shadow-lg">
+        <div className="w-96 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200/50 rounded-2xl p-6 flex flex-col shadow-lg overflow-hidden">
         <div className="mb-6">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
@@ -673,10 +673,10 @@ export default function OpticalPOSPage() {
       </div>
 
       {/* Right Column - Action Panel */}
-      <div className="w-72 flex flex-col gap-5">
+      <div className="w-72 flex flex-col gap-5 overflow-y-auto">
         <Button
           size="lg"
-          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white h-auto py-7 text-lg font-semibold rounded-2xl shadow-xl transition-all duration-200 hover:shadow-2xl hover:scale-[1.02]"
+          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white h-auto py-7 text-lg font-semibold rounded-2xl shadow-xl transition-all duration-200 hover:shadow-2xl hover:scale-[1.02] flex-shrink-0"
           onClick={handleAddToAccount}
           disabled={!selectedCustomer || !selectedProduct}
         >
@@ -687,7 +687,7 @@ export default function OpticalPOSPage() {
         <Button
           size="lg"
           variant="outline"
-          className="w-full h-auto py-7 text-lg font-semibold bg-white hover:bg-gray-50 border-2 border-gray-300 rounded-2xl shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]"
+          className="w-full h-auto py-7 text-lg font-semibold bg-white hover:bg-gray-50 border-2 border-gray-300 rounded-2xl shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] flex-shrink-0"
           onClick={handleCancel}
           disabled={!selectedProduct}
         >
@@ -696,7 +696,7 @@ export default function OpticalPOSPage() {
 
         <Button
           size="lg"
-          className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white h-auto py-7 text-lg font-semibold rounded-2xl shadow-xl transition-all duration-200 hover:shadow-2xl hover:scale-[1.02]"
+          className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white h-auto py-7 text-lg font-semibold rounded-2xl shadow-xl transition-all duration-200 hover:shadow-2xl hover:scale-[1.02] flex-shrink-0"
           onClick={handleProceedToPayment}
           disabled={!selectedCustomer || !selectedProduct || processing}
         >
