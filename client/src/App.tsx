@@ -42,6 +42,7 @@ import AIAssistantPage from "@/pages/AIAssistantPage";
 import AISettingsPage from "@/pages/AISettingsPage";
 import CompanyManagementPage from "@/pages/admin/CompanyManagementPage";
 import OpticalPOSPage from "@/pages/OpticalPOSPage";
+import InventoryManagement from "@/pages/InventoryManagement";
 import BIDashboardPage from "@/pages/BIDashboardPage";
 import PlatformAdminPage from "@/pages/PlatformAdminPage";
 import CompanyAdminPage from "@/pages/CompanyAdminPage";
@@ -210,7 +211,8 @@ function AuthenticatedApp() {
             <Route path="/ecp/patients" component={PatientsPage} />
             <Route path="/ecp/patient/:id/test" component={EyeTestPage} />
             <Route path="/ecp/prescriptions" component={PrescriptionsPage} />
-            <Route path="/ecp/inventory" component={InventoryPage} />
+            <Route path="/ecp/inventory-old" component={InventoryPage} />
+            <Route path="/ecp/inventory" component={InventoryManagement} />
             <Route path="/ecp/pos" component={OpticalPOSPage} />
             <Route path="/ecp/invoices" component={InvoicesPage} />
             <Route path="/ecp/test-rooms" component={TestRoomsPage} />
@@ -302,7 +304,8 @@ function AuthenticatedApp() {
             <Route path="/ecp/patients" component={PatientsPage} />
             <Route path="/ecp/patient/:id/test" component={EyeTestPage} />
             <Route path="/ecp/prescriptions" component={PrescriptionsPage} />
-            <Route path="/ecp/inventory" component={InventoryPage} />
+            <Route path="/ecp/inventory-old" component={InventoryPage} />
+            <Route path="/ecp/inventory" component={InventoryManagement} />
             <Route path="/ecp/pos" component={OpticalPOSPage} />
             <Route path="/ecp/invoices" component={InvoicesPage} />
             <Route path="/ecp/test-rooms" component={TestRoomsPage} />

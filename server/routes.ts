@@ -1,4 +1,5 @@
 import type { Express, Response } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth as setupReplitAuth, isAuthenticated } from "./replitAuth";
@@ -43,9 +44,15 @@ import posRoutes from "./routes/pos";
 import analyticsRoutes from "./routes/analytics";
 import pdfGenerationRoutes from "./routes/pdfGeneration";
 import companiesRoutes from "./routes/companies";
+import inventoryRoutes from "./routes/inventory";
+import uploadRoutes from "./routes/upload";
 import { websocketService } from "./websocket";
+import path from "path";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve uploaded files statically
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
   // Health check endpoint for deployment monitoring
   app.get('/health', (_req, res) => {
     res.status(200).json({ 
@@ -82,6 +89,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register POS (Point of Sale) routes for over-the-counter sales
   app.use('/api/pos', isAuthenticated, posRoutes);
+
+  // Register Inventory Management routes for product CRUD and stock adjustments
+  app.use('/api/inventory', isAuthenticated, inventoryRoutes);
+
+  // Register File Upload routes for images and attachments
+  app.use('/api/upload', isAuthenticated, uploadRoutes);
 
   // Register Analytics routes (Shopify-style dashboard and reports)
   app.use('/api/analytics', isAuthenticated, analyticsRoutes);

@@ -9,3 +9,7 @@ vite.config.ts.*
 *.log
 .replit
 replit.nix
+
+# Uploaded files
+uploads/
+!uploads/.gitkeep
