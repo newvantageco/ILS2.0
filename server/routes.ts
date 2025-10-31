@@ -46,6 +46,7 @@ import pdfGenerationRoutes from "./routes/pdfGeneration";
 import companiesRoutes from "./routes/companies";
 import inventoryRoutes from "./routes/inventory";
 import uploadRoutes from "./routes/upload";
+import examinationsRoutes from "./routes/examinations";
 import { websocketService } from "./websocket";
 import path from "path";
 
@@ -92,6 +93,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Inventory Management routes for product CRUD and stock adjustments
   app.use('/api/inventory', isAuthenticated, inventoryRoutes);
+
+  // Register Eye Examination routes for clinical records
+  app.use('/api/examinations', isAuthenticated, examinationsRoutes);
 
   // Register File Upload routes for images and attachments
   app.use('/api/upload', isAuthenticated, uploadRoutes);

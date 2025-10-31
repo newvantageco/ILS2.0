@@ -43,6 +43,9 @@ import AISettingsPage from "@/pages/AISettingsPage";
 import CompanyManagementPage from "@/pages/admin/CompanyManagementPage";
 import OpticalPOSPage from "@/pages/OpticalPOSPage";
 import InventoryManagement from "@/pages/InventoryManagement";
+import ExaminationList from "@/pages/ExaminationList";
+import EyeExamination from "@/pages/EyeExamination";
+import AddOutsideRx from "@/pages/AddOutsideRx";
 import BIDashboardPage from "@/pages/BIDashboardPage";
 import PlatformAdminPage from "@/pages/PlatformAdminPage";
 import CompanyAdminPage from "@/pages/CompanyAdminPage";
@@ -213,6 +216,10 @@ function AuthenticatedApp() {
             <Route path="/ecp/prescriptions" component={PrescriptionsPage} />
             <Route path="/ecp/inventory-old" component={InventoryPage} />
             <Route path="/ecp/inventory" component={InventoryManagement} />
+            <Route path="/ecp/examinations" component={ExaminationList} />
+            <Route path="/ecp/examination/new" component={EyeExamination} />
+            <Route path="/ecp/examination/:id" component={EyeExamination} />
+            <Route path="/ecp/outside-rx" component={AddOutsideRx} />
             <Route path="/ecp/pos" component={OpticalPOSPage} />
             <Route path="/ecp/invoices" component={InvoicesPage} />
             <Route path="/ecp/test-rooms" component={TestRoomsPage} />

@@ -47,22 +47,33 @@ interface AppSidebarProps {
 }
 
 const menuItems = {
-  ecp: [
-    { title: "Dashboard", url: "/ecp/dashboard", icon: Home },
-    { title: "Patients", url: "/ecp/patients", icon: UserCircle },
-    { title: "Prescriptions", url: "/ecp/prescriptions", icon: FileText },
-    { title: "Test Rooms", url: "/ecp/test-rooms", icon: TestTube },
-    { title: "Inventory", url: "/ecp/inventory", icon: Archive },
-    { title: "Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
-    { title: "Invoices", url: "/ecp/invoices", icon: Receipt },
-    { title: "New Order", url: "/ecp/new-order", icon: Package },
-    { title: "My Orders", url: "/ecp/orders", icon: ClipboardList },
-    { title: "Returns", url: "/ecp/returns", icon: TrendingUp },
-    { title: "AI Assistant", url: "/ecp/ai-assistant", icon: Brain },
-    { title: "Analytics", url: "/ecp/analytics", icon: LineChart },
-    { title: "BI Dashboard", url: "/ecp/bi-dashboard", icon: BarChart3 },
-    { title: "Company", url: "/ecp/company", icon: Building2 },
-  ],
+  ecp: {
+    main: [
+      { title: "Dashboard", url: "/ecp/dashboard", icon: Home },
+      { title: "Patients", url: "/ecp/patients", icon: UserCircle },
+    ],
+    clinical: [
+      { title: "Examinations", url: "/ecp/examinations", icon: Eye },
+      { title: "Prescriptions", url: "/ecp/prescriptions", icon: FileText },
+      { title: "Test Rooms", url: "/ecp/test-rooms", icon: TestTube },
+    ],
+    retail: [
+      { title: "Inventory", url: "/ecp/inventory", icon: Archive },
+      { title: "Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
+      { title: "Invoices", url: "/ecp/invoices", icon: Receipt },
+    ],
+    lab: [
+      { title: "New Order", url: "/ecp/new-order", icon: Package },
+      { title: "My Orders", url: "/ecp/orders", icon: ClipboardList },
+      { title: "Returns", url: "/ecp/returns", icon: TrendingUp },
+    ],
+    analytics: [
+      { title: "AI Assistant", url: "/ecp/ai-assistant", icon: Brain },
+      { title: "Analytics", url: "/ecp/analytics", icon: LineChart },
+      { title: "BI Dashboard", url: "/ecp/bi-dashboard", icon: BarChart3 },
+      { title: "Company", url: "/ecp/company", icon: Building2 },
+    ],
+  },
   lab_tech: [
     { title: "Dashboard", url: "/lab/dashboard", icon: Home },
     { title: "Order Queue", url: "/lab/queue", icon: ClipboardList },
@@ -149,6 +160,9 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
     window.location.href = "/api/logout";
   };
 
+  // Check if items is grouped (has sections)
+  const isGrouped = userRole === "ecp";
+
   return (
     <Sidebar aria-label="Primary">
       <SidebarHeader className="p-6">
@@ -166,31 +180,170 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
       </SidebarHeader>
       
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === item.url}
-                    data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-                  >
-                    <Link 
-                      href={item.url}
-                      aria-label={item.title}
-                      aria-current={location === item.url ? "page" : undefined}
+        {isGrouped && typeof items === 'object' && !Array.isArray(items) ? (
+          <>
+            {/* Main Section */}
+            <SidebarGroup>
+              <SidebarGroupLabel>Main</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {items.main.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        <Link 
+                          href={item.url}
+                          aria-label={item.title}
+                          aria-current={location === item.url ? "page" : undefined}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {/* Clinical Section */}
+            <SidebarGroup>
+              <SidebarGroupLabel>Clinical</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {items.clinical.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        <Link 
+                          href={item.url}
+                          aria-label={item.title}
+                          aria-current={location === item.url ? "page" : undefined}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {/* Retail Section */}
+            <SidebarGroup>
+              <SidebarGroupLabel>Retail</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {items.retail.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        <Link 
+                          href={item.url}
+                          aria-label={item.title}
+                          aria-current={location === item.url ? "page" : undefined}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {/* Lab Orders Section */}
+            <SidebarGroup>
+              <SidebarGroupLabel>Lab Orders</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {items.lab.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        <Link 
+                          href={item.url}
+                          aria-label={item.title}
+                          aria-current={location === item.url ? "page" : undefined}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {/* Analytics Section */}
+            <SidebarGroup>
+              <SidebarGroupLabel>Analytics & Management</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {items.analytics.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        <Link 
+                          href={item.url}
+                          aria-label={item.title}
+                          aria-current={location === item.url ? "page" : undefined}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        ) : (
+          <SidebarGroup>
+            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {Array.isArray(items) && items.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === item.url}
+                      data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                     >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                      <Link 
+                        href={item.url}
+                        aria-label={item.title}
+                        aria-current={location === item.url ? "page" : undefined}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         <SidebarGroup>
           <SidebarGroupLabel>Support</SidebarGroupLabel>
