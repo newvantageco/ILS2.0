@@ -114,11 +114,20 @@ export default function OpticalPOSPage() {
     }
   };
 
-  const filteredCustomers = customers.filter((customer) =>
-    customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    customer.customerNumber.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCustomers = customers.filter((customer) => {
+    if (!searchQuery.trim()) return true; // Show all if search is empty
+    
+    const query = searchQuery.toLowerCase().trim();
+    const name = customer.name?.toLowerCase() || '';
+    const email = customer.email?.toLowerCase() || '';
+    const customerNumber = customer.customerNumber?.toLowerCase() || '';
+    const phone = customer.phone?.toLowerCase() || '';
+    
+    return name.includes(query) || 
+           email.includes(query) || 
+           customerNumber.includes(query) ||
+           phone.includes(query);
+  });
 
   const handleProductSelect = (product: Product) => {
     setSelectedProduct(product);
@@ -327,7 +336,7 @@ export default function OpticalPOSPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
             <Input
               type="text"
-              placeholder="Search customers"
+              placeholder="Search by name, email, phone, or ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 h-10 bg-white border-gray-300 rounded-lg text-sm shadow-sm"
