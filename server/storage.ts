@@ -165,9 +165,9 @@ export interface IStorage {
   updatePatient(id: string, updates: Partial<Patient>): Promise<Patient | undefined>;
 
   createEyeExamination(examination: InsertEyeExamination, ecpId: string): Promise<EyeExamination>;
-  getEyeExamination(id: string): Promise<EyeExaminationWithDetails | undefined>;
-  getEyeExaminations(ecpId: string): Promise<EyeExaminationWithDetails[]>;
-  getPatientExaminations(patientId: string): Promise<EyeExaminationWithDetails[]>;
+  getEyeExamination(id: string, companyId?: string): Promise<EyeExaminationWithDetails | undefined>;
+  getEyeExaminations(ecpId: string, companyId?: string): Promise<EyeExaminationWithDetails[]>;
+  getPatientExaminations(patientId: string, companyId?: string): Promise<EyeExaminationWithDetails[]>;
   updateEyeExamination(id: string, updates: Partial<EyeExamination>): Promise<EyeExamination | undefined>;
   finalizeExamination(id: string, ecpId: string): Promise<EyeExamination | undefined>;
 
@@ -993,7 +993,14 @@ export class DbStorage implements IStorage {
     };
   }
 
-  async getEyeExaminations(ecpId: string): Promise<EyeExaminationWithDetails[]> {
+  async getEyeExaminations(ecpId: string, companyId?: string): Promise<EyeExaminationWithDetails[]> {
+    const whereConditions = [eq(eyeExaminations.ecpId, ecpId)];
+    
+    // Multi-tenancy: filter by companyId if provided
+    if (companyId) {
+      whereConditions.push(eq(eyeExaminations.companyId, companyId));
+    }
+    
     const results = await db
       .select({
         examination: eyeExaminations,
@@ -1007,7 +1014,7 @@ export class DbStorage implements IStorage {
       .from(eyeExaminations)
       .innerJoin(patients, eq(eyeExaminations.patientId, patients.id))
       .innerJoin(users, eq(eyeExaminations.ecpId, users.id))
-      .where(eq(eyeExaminations.ecpId, ecpId))
+      .where(and(...whereConditions))
       .orderBy(desc(eyeExaminations.examinationDate));
 
     return results.map(r => ({
@@ -1017,7 +1024,14 @@ export class DbStorage implements IStorage {
     }));
   }
 
-  async getPatientExaminations(patientId: string): Promise<EyeExaminationWithDetails[]> {
+  async getPatientExaminations(patientId: string, companyId?: string): Promise<EyeExaminationWithDetails[]> {
+    const whereConditions = [eq(eyeExaminations.patientId, patientId)];
+    
+    // Multi-tenancy: filter by companyId if provided
+    if (companyId) {
+      whereConditions.push(eq(eyeExaminations.companyId, companyId));
+    }
+    
     const results = await db
       .select({
         examination: eyeExaminations,
@@ -1031,7 +1045,7 @@ export class DbStorage implements IStorage {
       .from(eyeExaminations)
       .innerJoin(patients, eq(eyeExaminations.patientId, patients.id))
       .innerJoin(users, eq(eyeExaminations.ecpId, users.id))
-      .where(eq(eyeExaminations.patientId, patientId))
+      .where(and(...whereConditions))
       .orderBy(desc(eyeExaminations.examinationDate));
 
     return results.map(r => ({

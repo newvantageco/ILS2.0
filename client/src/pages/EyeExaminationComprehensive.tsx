@@ -35,7 +35,10 @@ import {
   ClipboardList,
   ChevronLeft,
   ChevronRight,
-  Scan
+  Scan,
+  Printer,
+  Phone,
+  Mail
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -571,6 +574,10 @@ export default function EyeExaminationComprehensive() {
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   // Calculate average IOP
   const calculateAverageIOP = (values: string[]) => {
     const nums = values.filter(v => v && !isNaN(parseFloat(v))).map(v => parseFloat(v));
@@ -624,16 +631,16 @@ export default function EyeExaminationComprehensive() {
   ]);
 
   const tabs = [
-    { id: 'general-history', label: 'General History', icon: FileText },
-    { id: 'current-rx', label: 'Current Rx', icon: Glasses },
-    { id: 'new-rx', label: 'New Rx', icon: Eye },
-    { id: 'ophthalmoscopy', label: 'Ophthalmoscopy', icon: Eye },
-    { id: 'slit-lamp', label: 'Slit Lamp', icon: Microscope },
-    { id: 'additional-tests', label: 'Additional Tests', icon: Activity },
-    { id: 'tonometry', label: 'Tonometry', icon: Droplets },
-    { id: 'eye-sketch', label: 'Eye Sketch', icon: Palette },
-    { id: 'image-viewer', label: 'Image Viewer', icon: ImageIcon },
-    { id: 'summary', label: 'Summary', icon: ClipboardList },
+    { id: 'general-history', label: 'General History', icon: FileText, disabled: false },
+    { id: 'current-rx', label: 'Current Rx', icon: Glasses, disabled: false },
+    { id: 'new-rx', label: 'New Rx', icon: Eye, disabled: false },
+    { id: 'ophthalmoscopy', label: 'Ophthalmoscopy', icon: Eye, disabled: false },
+    { id: 'slit-lamp', label: 'Slit Lamp', icon: Microscope, disabled: false },
+    { id: 'additional-tests', label: 'Additional Tests', icon: Activity, disabled: false },
+    { id: 'tonometry', label: 'Tonometry', icon: Droplets, disabled: false },
+    { id: 'eye-sketch', label: 'Eye Sketch', icon: Palette, disabled: true },
+    { id: 'image-viewer', label: 'Image Viewer', icon: ImageIcon, disabled: true },
+    { id: 'summary', label: 'Summary', icon: ClipboardList, disabled: false },
   ];
 
   const currentTabIndex = tabs.findIndex(t => t.id === activeTab);
@@ -641,30 +648,120 @@ export default function EyeExaminationComprehensive() {
   const canGoNext = currentTabIndex < tabs.length - 1;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Persistent Header */}
-      <div className="bg-white border-b shadow-sm sticky top-0 z-10">
-        <div className="max-w-[1920px] mx-auto px-6 py-4">
+    <div className="min-h-screen bg-slate-50">
+      {/* Compact Header */}
+      <div className="bg-white border-b shadow-sm sticky top-0 z-50">
+        <div className="px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                <Eye className="h-5 w-5 text-white" />
+              <Button variant="ghost" size="sm" onClick={() => setLocation('/ecp/examinations')} className="gap-2">
+                <ChevronLeft className="h-4 w-4" />
+                Back
+              </Button>
+              
+              <Separator orientation="vertical" className="h-8" />
+              
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                  <Eye className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-base font-semibold text-slate-900">Eye Examination</h1>
+                  <p className="text-xs text-slate-500">
+                    {formData.generalHistory?.schedule.date ? format(new Date(formData.generalHistory.schedule.date), 'dd MMM yyyy') : format(new Date(), 'dd MMM yyyy')}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-slate-900">
-                  Eye Exam - {selectedPatient ? `${selectedPatient.name} - ${selectedPatient.customerNumber}` : 'New Patient'}
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  {formData.generalHistory?.schedule.date ? format(new Date(formData.generalHistory.schedule.date), 'PPP') : 'Today'}
-                </p>
+
+              <Separator orientation="vertical" className="h-8" />
+
+              <div className="flex items-center gap-2">
+                {selectedPatient ? (
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-slate-400" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{selectedPatient.name}</p>
+                      <p className="text-xs text-slate-500">#{selectedPatient.customerNumber} • DOB: {selectedPatient.dateOfBirth}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <User className="h-4 w-4 text-slate-400" />
+                    <Select
+                      value={formData.patientId}
+                      onValueChange={(value) => {
+                        const patient = patients.find(p => p.id === value);
+                        setSelectedPatient(patient || null);
+                        setFormData({ ...formData, patientId: value });
+                      }}
+                      disabled={!canEdit || !!id}
+                    >
+                      <SelectTrigger className="w-64 h-8">
+                        <SelectValue placeholder="Select patient..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {patients.map((patient) => (
+                          <SelectItem key={patient.id} value={patient.id}>
+                            {patient.name} - #{patient.customerNumber}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </>
+                )}
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setLocation('/ecp/examinations')}>
-                Cancel
-              </Button>
+
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <FileText className="h-4 w-4" />
+                    Previous ({previousExaminations.length})
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0" align="end">
+                  <div className="p-3 border-b bg-slate-50">
+                    <h3 className="font-semibold text-sm">Previous Examinations</h3>
+                  </div>
+                  <ScrollArea className="h-80">
+                    {previousExaminations.length > 0 ? (
+                      <div className="p-2 space-y-2">
+                        {previousExaminations.map((exam: any) => (
+                          <button
+                            key={exam.id}
+                            onClick={() => {
+                              if (confirm('Load this examination? Unsaved changes will be lost.')) {
+                                window.location.href = `/ecp/examination/${exam.id}`;
+                              }
+                            }}
+                            className="w-full text-left p-3 rounded-lg border hover:bg-slate-50 transition-colors"
+                          >
+                            <div className="flex items-start justify-between mb-1">
+                              <span className="text-sm font-medium">
+                                {format(new Date(exam.examinationDate), 'dd MMM yyyy')}
+                              </span>
+                              <Badge variant={exam.status === 'finalized' ? 'default' : 'secondary'} className="text-xs">
+                                {exam.status}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-slate-600 line-clamp-2">
+                              {exam.reasonForVisit || 'Eye Examination'}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center text-slate-500 text-sm">
+                        {selectedPatient ? 'No previous examinations' : 'Select a patient first'}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
+
               {canEdit && (
-                <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                <Button size="sm" onClick={handleSave} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">
                   <Save className="mr-2 h-4 w-4" />
                   {isSaving ? 'Saving...' : 'Save'}
                 </Button>
@@ -674,149 +771,35 @@ export default function EyeExaminationComprehensive() {
         </div>
       </div>
 
-      <div className="flex max-w-[1920px] mx-auto">
-        {/* Persistent Left Sidebar */}
-        <div className="w-64 bg-white border-r min-h-screen p-4 space-y-6">
-          {/* Patient Details */}
-          <div>
-            <h3 className="font-semibold text-sm text-slate-700 mb-3 flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Patient Details
-            </h3>
-            {selectedPatient ? (
-              <div className="space-y-2 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground">Name</p>
-                  <p className="font-medium">{selectedPatient.name}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Age</p>
-                  <p className="font-medium">{selectedPatient.age || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">DOB</p>
-                  <p className="font-medium">{selectedPatient.dateOfBirth}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Customer #</p>
-                  <p className="font-medium">{selectedPatient.customerNumber}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label className="text-xs">Select Patient</Label>
-                <Select
-                  value={formData.patientId}
-                  onValueChange={(value) => {
-                    const patient = patients.find(p => p.id === value);
-                    setSelectedPatient(patient || null);
-                    setFormData({ ...formData, patientId: value });
-                  }}
-                  disabled={!canEdit || !!id}
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Choose..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {patients.map((patient) => (
-                      <SelectItem key={patient.id} value={patient.id}>
-                        {patient.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Main Action Button */}
-          <Button 
-            onClick={handleSave} 
-            className="w-full" 
-            disabled={isSaving || !canEdit}
-          >
-            <Save className="mr-2 h-4 w-4" />
-            Eye Exam Save
-          </Button>
-
-          <Separator />
-
-          {/* Previous Records Navigation */}
-          <div className="space-y-2">
-            <h3 className="font-semibold text-sm text-slate-700 flex items-center gap-2">
-              <FileText className="h-3 w-3" />
-              Previous Exams
-            </h3>
-            <ScrollArea className="h-32">
-              {previousExaminations.length > 0 ? (
-                <div className="space-y-1">
-                  {previousExaminations.map((exam: any) => (
-                    <button
-                      key={exam.id}
-                      onClick={() => {
-                        if (confirm('Load this examination? Unsaved changes will be lost.')) {
-                          window.location.href = `/ecp/examination/${exam.id}`;
-                        }
-                      }}
-                      className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-100 transition-colors"
+      {/* Full Width Content - No Sidebar */}
+      <div className="flex-1 flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+          {/* Horizontal Tab Navigation */}
+          <div className="bg-white border-b sticky top-[57px] z-40">
+            <ScrollArea className="w-full">
+              <div className="px-6">
+                <TabsList className="inline-flex h-14 bg-transparent w-auto rounded-none p-0 gap-0">
+                  {tabs.map((tab) => (
+                    <TabsTrigger 
+                      key={tab.id} 
+                      value={tab.id} 
+                      disabled={tab.disabled}
+                      className="relative h-14 rounded-none border-b-2 border-transparent px-6 py-4 text-sm font-medium text-slate-600 transition-all hover:text-slate-900 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:bg-transparent disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      <div className="font-medium text-slate-700">
-                        {format(new Date(exam.examinationDate), 'dd MMM yyyy')}
-                      </div>
-                      <div className="text-slate-500 truncate">
-                        {exam.reasonForVisit || 'Eye Examination'}
-                      </div>
-                      <Badge 
-                        variant={exam.status === 'finalized' ? 'default' : 'secondary'}
-                        className="mt-1 text-xs"
-                      >
-                        {exam.status}
-                      </Badge>
-                    </button>
+                      <tab.icon className="h-4 w-4 mr-2" />
+                      <span>{tab.label}</span>
+                    </TabsTrigger>
                   ))}
-                </div>
-              ) : (
-                <div className="text-xs text-muted-foreground">
-                  {selectedPatient ? 'No previous exams found' : 'Select a patient first'}
-                </div>
-              )}
-            </ScrollArea>
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="font-semibold text-sm text-slate-700 flex items-center gap-2">
-              <Glasses className="h-3 w-3" />
-              Previous Specs
-            </h3>
-            <ScrollArea className="h-32">
-              <div className="text-xs text-muted-foreground">
-                Coming soon
+                </TabsList>
               </div>
             </ScrollArea>
           </div>
-        </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 p-6 space-y-6">
-          {/* Tab Navigation */}
-          <Card>
-            <CardContent className="p-4">
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <ScrollArea className="w-full">
-                  <TabsList className="inline-flex w-max">
-                    {tabs.map((tab) => (
-                      <TabsTrigger key={tab.id} value={tab.id} className="gap-2">
-                        <tab.icon className="h-4 w-4" />
-                        {tab.label}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </ScrollArea>
-
+          {/* Tab Content Container */}
+          <div className="flex-1 p-6 bg-slate-50 overflow-auto">
+              <div className="max-w-6xl mx-auto space-y-6">
                 {/* TAB 1: GENERAL HISTORY */}
-                <TabsContent value="general-history" className="space-y-4 mt-4">
+                <TabsContent value="general-history" className="space-y-4 m-0">
                   <GeneralHistoryTab
                     data={formData.generalHistory!}
                     onChange={(data) => setFormData({ ...formData, generalHistory: data })}
@@ -1054,38 +1037,45 @@ export default function EyeExaminationComprehensive() {
                     examinationDate={formData.examinationDate}
                   />
                 </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
 
-          {/* Navigation Footer */}
-          <div className="flex justify-between">
-            <Button
-              variant="outline"
-              onClick={() => setActiveTab(tabs[currentTabIndex - 1].id)}
-              disabled={!canGoPrevious}
-            >
-              <ChevronLeft className="mr-2 h-4 w-4" />
-              Previous
-            </Button>
-            <div className="flex gap-2">
-              {activeTab === 'summary' && canEdit && (
-                <Button onClick={handleFinalize} variant="default">
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Finalize Examination
+              {/* Navigation Footer */}
+              <div className="flex justify-between pt-4 border-t bg-white rounded-lg p-4 mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => setActiveTab(tabs[currentTabIndex - 1].id)}
+                  disabled={!canGoPrevious}
+                >
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Previous
                 </Button>
-              )}
+                <div className="flex gap-2">
+                  {activeTab === 'summary' && canEdit && (
+                    <Button onClick={handleFinalize} variant="default">
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Finalize Examination
+                    </Button>
+                  )}
+                  <Button 
+                    onClick={handlePrint} 
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Printer className="mr-2 h-4 w-4" />
+                    Print
+                  </Button>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setActiveTab(tabs[currentTabIndex + 1].id)}
+                  disabled={!canGoNext}
+                >
+                  Next
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => setActiveTab(tabs[currentTabIndex + 1].id)}
-              disabled={!canGoNext}
-            >
-              Next
-              <ChevronRight className="ml-2 h-4 w-4" />
-            </Button>
           </div>
-        </div>
+        </Tabs>
       </div>
     </div>
   );

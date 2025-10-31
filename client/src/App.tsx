@@ -44,7 +44,6 @@ import CompanyManagementPage from "@/pages/admin/CompanyManagementPage";
 import OpticalPOSPage from "@/pages/OpticalPOSPage";
 import InventoryManagement from "@/pages/InventoryManagement";
 import ExaminationList from "@/pages/ExaminationList";
-import EyeExamination from "@/pages/EyeExamination";
 import EyeExaminationComprehensive from "@/pages/EyeExaminationComprehensive";
 import AddOutsideRx from "@/pages/AddOutsideRx";
 import BIDashboardPage from "@/pages/BIDashboardPage";
@@ -220,8 +219,6 @@ function AuthenticatedApp() {
             <Route path="/ecp/examinations" component={ExaminationList} />
             <Route path="/ecp/examination/new" component={EyeExaminationComprehensive} />
             <Route path="/ecp/examination/:id" component={EyeExaminationComprehensive} />
-            <Route path="/ecp/examination-old/new" component={EyeExamination} />
-            <Route path="/ecp/examination-old/:id" component={EyeExamination} />
             <Route path="/ecp/outside-rx" component={AddOutsideRx} />
             <Route path="/ecp/pos" component={OpticalPOSPage} />
             <Route path="/ecp/invoices" component={InvoicesPage} />

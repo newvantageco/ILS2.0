@@ -1035,12 +1035,28 @@ export const eyeExaminations = pgTable("eye_examinations", {
   examinationDate: timestamp("examination_date").defaultNow().notNull(),
   status: examinationStatusEnum("status").notNull().default("in_progress"),
   reasonForVisit: text("reason_for_visit"),
+  
+  // Legacy fields (kept for backward compatibility)
   medicalHistory: jsonb("medical_history"),
   visualAcuity: jsonb("visual_acuity"),
   refraction: jsonb("refraction"),
   binocularVision: jsonb("binocular_vision"),
   eyeHealth: jsonb("eye_health"),
-  equipmentReadings: jsonb("equipment_readings"), // Store equipment measurement data
+  equipmentReadings: jsonb("equipment_readings"),
+  
+  // Comprehensive examination fields
+  generalHistory: jsonb("general_history"),
+  currentRx: jsonb("current_rx"),
+  newRx: jsonb("new_rx"),
+  ophthalmoscopy: jsonb("ophthalmoscopy"),
+  slitLamp: jsonb("slit_lamp"),
+  additionalTests: jsonb("additional_tests"),
+  tonometry: jsonb("tonometry"),
+  eyeSketch: jsonb("eye_sketch"),
+  images: jsonb("images"),
+  summary: jsonb("summary"),
+  finalized: boolean("finalized").default(false),
+  
   gosFormType: text("gos_form_type"),
   nhsVoucherCode: text("nhs_voucher_code"),
   notes: text("notes"),

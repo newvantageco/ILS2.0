@@ -2385,7 +2385,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      const examinations = await storage.getEyeExaminations(userId);
+      // Multi-tenancy: filter by patient ID if provided, otherwise by ECP
+      const patientId = req.query.patientId as string | undefined;
+      let examinations;
+      
+      if (patientId) {
+        examinations = await storage.getPatientExaminations(patientId, user.companyId || undefined);
+      } else {
+        examinations = await storage.getEyeExaminations(userId, user.companyId || undefined);
+      }
+      
       res.json(examinations);
     } catch (error) {
       console.error("Error fetching examinations:", error);
