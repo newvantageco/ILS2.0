@@ -47,6 +47,7 @@ import companiesRoutes from "./routes/companies";
 import inventoryRoutes from "./routes/inventory";
 import uploadRoutes from "./routes/upload";
 import examinationsRoutes from "./routes/examinations";
+import pythonAnalyticsRoutes from "./routes/pythonAnalytics";
 import { websocketService } from "./websocket";
 import path from "path";
 
@@ -108,6 +109,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Companies routes for multi-tenant onboarding
   app.use('/api/companies', isAuthenticated, companiesRoutes);
+
+  // Register Python Analytics routes (ML predictions, QC analysis, advanced analytics)
+  app.use(pythonAnalyticsRoutes);
 
   const FULL_PLAN = "full" as const;
   const FREE_ECP_PLAN = "free_ecp" as const;
