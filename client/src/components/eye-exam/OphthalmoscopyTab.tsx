@@ -37,7 +37,7 @@ interface OphthalmoscopyTabProps {
 
 export default function OphthalmoscopyTab({ data, onChange, readonly = false }: OphthalmoscopyTabProps) {
   const updateField = (path: string[], value: any) => {
-    const newData = { ...data };
+    const newData = JSON.parse(JSON.stringify(data)); // Deep clone to avoid mutation
     let current: any = newData;
     
     for (let i = 0; i < path.length - 1; i++) {

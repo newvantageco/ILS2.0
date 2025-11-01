@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
-import { Microscope, Checkbox as CheckIcon } from 'lucide-react';
+import { Microscope } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
 interface SlitLampData {
@@ -69,7 +69,7 @@ const GradingControl = ({
 
 export default function SlitLampTab({ data, onChange, readonly = false }: SlitLampTabProps) {
   const updateField = (path: string[], value: any) => {
-    const newData = { ...data };
+    const newData = JSON.parse(JSON.stringify(data)); // Deep clone to avoid mutation
     let current: any = newData;
     
     for (let i = 0; i < path.length - 1; i++) {

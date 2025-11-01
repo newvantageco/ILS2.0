@@ -53,11 +53,36 @@ interface NewRxTabProps {
 
 export default function NewRxTab({ data, onChange, readonly = false }: NewRxTabProps) {
   const updateField = (path: string[], value: any) => {
-    const newData = { ...data };
+    const newData = JSON.parse(JSON.stringify(data)); // Deep clone to avoid mutation
     let current: any = newData;
     
     for (let i = 0; i < path.length - 1; i++) {
-      if (!current[path[i]]) current[path[i]] = {};
+      if (!current[path[i]]) {
+        // Initialize with proper structure for nested objects
+        if (path[i] === 'secondPair') {
+          current[path[i]] = {
+            distanceRx: {
+              r: { sph: '', cyl: '', axis: '', prism: '', binocularAcuity: '' },
+              l: { sph: '', cyl: '', axis: '', prism: '', binocularAcuity: '' }
+            },
+            nearRx: {
+              r: { sph: '', cyl: '', axis: '', prism: '', binocularAcuity: '' },
+              l: { sph: '', cyl: '', axis: '', prism: '', binocularAcuity: '' }
+            },
+            intermediateRx: {
+              r: { sph: '', cyl: '', axis: '', prism: '', binocularAcuity: '' },
+              l: { sph: '', cyl: '', axis: '', prism: '', binocularAcuity: '' }
+            }
+          };
+        } else if (path[i] === 'distanceRx' || path[i] === 'nearRx' || path[i] === 'intermediateRx') {
+          current[path[i]] = {
+            r: { sph: '', cyl: '', axis: '', prism: '', binocularAcuity: '' },
+            l: { sph: '', cyl: '', axis: '', prism: '', binocularAcuity: '' }
+          };
+        } else {
+          current[path[i]] = {};
+        }
+      }
       current = current[path[i]];
     }
     

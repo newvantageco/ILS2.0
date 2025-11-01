@@ -35,11 +35,27 @@ interface CurrentRxTabProps {
 
 export default function CurrentRxTab({ data, onChange, readonly = false }: CurrentRxTabProps) {
   const updateField = (path: string[], value: any) => {
-    const newData = { ...data };
+    const newData = JSON.parse(JSON.stringify(data)); // Deep clone to avoid mutation
     let current: any = newData;
     
     for (let i = 0; i < path.length - 1; i++) {
-      if (!current[path[i]]) current[path[i]] = {};
+      if (!current[path[i]]) {
+        // Initialize with proper structure for nested objects
+        if (path[i] === 'contactLensRx') {
+          current[path[i]] = {
+            brand: '', name: '', fitting: '',
+            r: { sph: '', cyl: '', axis: '', add: '', colour: '', dominant: '', va: '', nearVa: '' },
+            l: { sph: '', cyl: '', axis: '', add: '', colour: '', dominant: '', va: '', nearVa: '' }
+          };
+        } else if (path[i] === 'secondaryPair') {
+          current[path[i]] = {
+            r: { sph: '', cyl: '', axis: '', add: '', prism: '', binocularAcuity: '' },
+            l: { sph: '', cyl: '', axis: '', add: '', prism: '', binocularAcuity: '' }
+          };
+        } else {
+          current[path[i]] = {};
+        }
+      }
       current = current[path[i]];
     }
     
