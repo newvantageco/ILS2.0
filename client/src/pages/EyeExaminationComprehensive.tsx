@@ -516,13 +516,14 @@ export default function EyeExaminationComprehensive() {
   const saveMutation = useMutation({
     mutationFn: async (data: Partial<EyeExaminationData>) => {
       const url = id ? `/api/examinations/${id}` : '/api/examinations';
-      const method = id ? 'PUT' : 'POST';
+      const method = id ? 'PATCH' : 'POST';
       
       // Send comprehensive data structure directly to backend
       const payload = {
         patientId: data.patientId,
         examinationDate: data.examinationDate || new Date().toISOString(),
         status: data.status || 'in_progress',
+        finalized: data.status === 'finalized',
         generalHistory: data.generalHistory,
         currentRx: data.currentRx,
         newRx: data.newRx,
@@ -583,9 +584,15 @@ export default function EyeExaminationComprehensive() {
   const handleFinalize = async () => {
     if (!canEdit) return;
     if (confirm('Finalize this examination? This cannot be undone.')) {
-      setFormData({ ...formData, status: 'finalized' });
-      await handleSave();
-      setLocation('/ecp/examinations');
+      const finalizedData = { ...formData, status: 'finalized' as const };
+      setFormData(finalizedData);
+      setIsSaving(true);
+      try {
+        await saveMutation.mutateAsync(finalizedData);
+        setLocation('/ecp/examinations');
+      } catch (error) {
+        console.error('Failed to finalize examination:', error);
+      }
     }
   };
 
