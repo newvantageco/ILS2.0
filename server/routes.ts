@@ -29,6 +29,8 @@ import { fromZodError } from "zod-validation-error";
 import { generatePurchaseOrderPDF } from "./pdfService";
 import { sendPurchaseOrderEmail, sendShipmentNotificationEmail } from "./emailService";
 import { pdfService, type OrderSheetData } from "./services/PDFService";
+import { labWorkTicketService, type LabWorkTicketData } from "./services/LabWorkTicketService";
+import { examinationFormService, type ExaminationFormData } from "./services/ExaminationFormService";
 import { emailService } from "./services/EmailService";
 import { z } from "zod";
 import { parseOMAFile, isValidOMAFile } from "@shared/omaParser";
@@ -44,6 +46,8 @@ import posRoutes from "./routes/pos";
 import analyticsRoutes from "./routes/analytics";
 import pdfGenerationRoutes from "./routes/pdfGeneration";
 import companiesRoutes from "./routes/companies";
+import onboardingRoutes from "./routes/onboarding";
+import auditLogRoutes from "./routes/auditLogs";
 import inventoryRoutes from "./routes/inventory";
 import uploadRoutes from "./routes/upload";
 import examinationsRoutes from "./routes/examinations";
@@ -89,6 +93,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register ECP Features routes (test rooms, GOC compliance, prescription templates)
   app.use('/api/ecp', ecpRoutes);
 
+  // Register Onboarding routes (automated multi-tenant signup with company creation)
+  app.use('/api/onboarding', onboardingRoutes);
+
   // Register POS (Point of Sale) routes for over-the-counter sales
   app.use('/api/pos', isAuthenticated, posRoutes);
 
@@ -109,6 +116,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Companies routes for multi-tenant onboarding
   app.use('/api/companies', isAuthenticated, companiesRoutes);
+
+  // Register Audit Log routes (admin-only HIPAA compliance)
+  app.use('/api/admin/audit-logs', auditLogRoutes);
 
   // Register Python Analytics routes (ML predictions, QC analysis, advanced analytics)
   app.use(pythonAnalyticsRoutes);
@@ -925,6 +935,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating order sheet PDF:", error);
       res.status(500).json({ message: "Failed to generate order sheet PDF" });
+    }
+  });
+
+  // Generate lab work ticket PDF
+  app.get('/api/orders/:id/lab-ticket', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const order = await storage.getOrder(req.params.id);
+      
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      // Only lab techs, engineers, and admins can generate lab work tickets
+      if (!user.role || !['lab_tech', 'engineer', 'admin', 'company_admin', 'platform_admin'].includes(user.role)) {
+        return res.status(403).json({ message: "Access denied. Lab work tickets are only available to lab personnel." });
+      }
+
+      // Build comprehensive lab work ticket data
+      const ticketData: LabWorkTicketData = {
+        orderInfo: {
+          orderId: order.id,
+          orderNumber: order.orderNumber || order.id.slice(-8).toUpperCase(),
+          customerId: order.customerReferenceNumber || order.patient?.id.slice(-6).toUpperCase(),
+          customerName: order.patient?.name || 'Unknown Patient',
+          dispenser: order.ecp?.organizationName || 'Unknown Dispenser',
+          phone: order.patient?.emergencyContactPhone || undefined,
+          dispenseDate: order.orderDate.toISOString().split('T')[0],
+          collectionDate: order.dueDate?.toISOString().split('T')[0] || undefined,
+          jobStatus: order.status,
+        },
+        frameInfo: {
+          sku: order.frameType || undefined,
+          description: order.frameType || 'Frame Not Specified',
+          pairType: 'R/L',
+        },
+        lensInfo: {
+          rightLensDesc: order.lensType,
+          leftLensDesc: order.lensType,
+          material: order.lensMaterial,
+          design: order.lensType,
+        },
+        prescription: {
+          right: {
+            sph: order.odSphere || undefined,
+            cyl: order.odCylinder || undefined,
+            axis: order.odAxis || undefined,
+            add: order.odAdd || undefined,
+            // Note: Prism values would need to be added to the order schema
+            hPrism: undefined,
+            hBase: undefined,
+            vPrism: undefined,
+            vBase: undefined,
+          },
+          left: {
+            sph: order.osSphere || undefined,
+            cyl: order.osCylinder || undefined,
+            axis: order.osAxis || undefined,
+            add: order.osAdd || undefined,
+            hPrism: undefined,
+            hBase: undefined,
+            vPrism: undefined,
+            vBase: undefined,
+          },
+        },
+        finishing: {
+          rightPD: order.pd ? (parseFloat(order.pd) / 2).toFixed(1) : undefined,
+          leftPD: order.pd ? (parseFloat(order.pd) / 2).toFixed(1) : undefined,
+          totalPD: order.pd || undefined,
+          rightHeight: undefined,
+          leftHeight: undefined,
+          rightOCHeight: undefined,
+          leftOCHeight: undefined,
+          rightInset: undefined,
+          leftInset: undefined,
+          bevelType: 'Auto',
+          drillCoords: undefined,
+          frameWrapAngle: undefined,
+          polish: 'Edge',
+        },
+        treatments: [order.coating],
+        labInstructions: order.notes || 'Follow standard laboratory procedures',
+        qualityControl: {
+          surfacingQC: false,
+          coatingQC: false,
+          finishingQC: false,
+          finalInspection: false,
+        },
+        metadata: {
+          ecpName: order.ecp?.organizationName || user.organizationName || 'Unknown Provider',
+          patientDOB: order.patient?.dateOfBirth || undefined,
+          notes: order.notes || undefined,
+        },
+      };
+
+      const pdfBuffer = await labWorkTicketService.generateLabWorkTicketPDF(ticketData);
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="lab-ticket-${ticketData.orderInfo.orderNumber}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating lab work ticket PDF:", error);
+      res.status(500).json({ message: "Failed to generate lab work ticket PDF" });
     }
   });
 
@@ -2228,6 +2347,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching patient:", error);
       res.status(500).json({ message: "Failed to fetch patient" });
+    }
+  });
+
+  // Generate patient examination form PDF
+  app.get('/api/patients/:id/examination-form', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // ECPs, lab staff, and admins can generate exam forms
+      if (!user.role || !['ecp', 'lab_tech', 'engineer', 'admin', 'company_admin', 'platform_admin'].includes(user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const patient = await storage.getPatient(req.params.id, user.companyId || undefined);
+      
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+
+      // Calculate age from date of birth
+      const calculateAge = (dob: string): number => {
+        const birthDate = new Date(dob);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        return age;
+      };
+
+      // Get the most recent order for habitual Rx
+      const recentOrders = await storage.getOrders({
+        ecpId: patient.ecpId,
+        companyId: user.companyId || undefined,
+        limit: 1
+      });
+      const lastOrder = recentOrders && recentOrders.length > 0 ? recentOrders[0] : null;
+
+      // Get the most recent examination if available (if method exists)
+      let lastExam = null;
+      try {
+        if (typeof (storage as any).getExaminationsForPatient === 'function') {
+          const examinations = await (storage as any).getExaminationsForPatient(patient.id);
+          lastExam = examinations && examinations.length > 0 ? examinations[0] : null;
+        }
+      } catch (err) {
+        // Method doesn't exist, continue without exam data
+      }
+
+      // Build examination form data
+      const formData: ExaminationFormData = {
+        patientDemographics: {
+          customerId: patient.customerNumber || patient.id.slice(-6).toUpperCase(),
+          title: (patient as any).title || undefined,
+          firstName: patient.name.split(' ')[0] || patient.name,
+          surname: patient.name.split(' ').slice(1).join(' ') || '',
+          dateOfBirth: patient.dateOfBirth || 'Not provided',
+          age: patient.dateOfBirth ? calculateAge(patient.dateOfBirth) : 0,
+          contact: patient.email || patient.emergencyContactPhone || 'Not provided',
+          address: [
+            (patient as any).addressLine1,
+            (patient as any).addressLine2,
+            (patient as any).city,
+            (patient as any).postalCode
+          ].filter(Boolean).join(', ') || undefined,
+          ethnicity: (patient as any).ethnicity || undefined,
+        },
+        appointmentDetails: {
+          appointmentDate: new Date().toLocaleDateString('en-GB'),
+          appointmentTime: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          appointmentType: undefined, // Can be populated from appointment system if integrated
+          appointmentReason: undefined,
+          nhsOrPrivate: 'Private', // Default, can be changed
+          lastSightTest: lastExam ? new Date(lastExam.examinationDate).toLocaleDateString('en-GB') : undefined,
+          lastContactLensCheck: undefined, // Can be populated if tracked
+        },
+        habitualRx: lastOrder ? {
+          right: {
+            sph: lastOrder.odSphere || undefined,
+            cyl: lastOrder.odCylinder || undefined,
+            axis: lastOrder.odAxis || undefined,
+            prism: undefined, // Add if available in future
+            add: lastOrder.odAdd || undefined,
+            type: lastOrder.lensType || undefined,
+            pd: lastOrder.pd ? (parseFloat(lastOrder.pd) / 2).toFixed(1) : undefined,
+            oc: undefined,
+            va: undefined,
+          },
+          left: {
+            sph: lastOrder.osSphere || undefined,
+            cyl: lastOrder.osCylinder || undefined,
+            axis: lastOrder.osAxis || undefined,
+            prism: undefined,
+            add: lastOrder.osAdd || undefined,
+            type: lastOrder.lensType || undefined,
+            pd: lastOrder.pd ? (parseFloat(lastOrder.pd) / 2).toFixed(1) : undefined,
+            oc: undefined,
+            va: undefined,
+          },
+        } : undefined,
+        clinicalNotes: {
+          appointmentNotes: req.query.notes as string || undefined,
+          previousNotes: (patient as any).notes || undefined,
+        },
+        practiceInfo: {
+          practiceName: user.organizationName || user.companyId || 'Optical Practice',
+          practiceAddress: undefined, // Can be populated from company settings
+          practicePhone: undefined, // Can be populated from company settings
+        },
+      };
+
+      const pdfBuffer = await examinationFormService.generateExaminationFormPDF(formData);
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="exam-form-${patient.customerNumber || patient.id.slice(-6)}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating examination form PDF:", error);
+      res.status(500).json({ message: "Failed to generate examination form PDF" });
     }
   });
 

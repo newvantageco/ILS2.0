@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -7,14 +8,23 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RoleSwitcherDropdown } from "@/components/RoleSwitcherDropdown";
+import { NotificationCenter } from "@/components/NotificationCenter";
 import { FloatingAiChat } from "@/components/FloatingAiChat";
 import { PageTransition } from "@/components/ui/PageTransition";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { ScrollToTop, ScrollProgress } from "@/components/ui/ScrollEnhancements";
 import { PWAInstallPrompt, OfflineIndicator } from "@/components/ui/PWAFeatures";
 import { NotificationProvider } from "@/components/ui/SmartNotifications";
+import { GlobalLoadingBar } from "@/components/ui/GlobalLoadingBar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { LogOut } from "lucide-react";
+import { useLocation } from "wouter";
+
+// Lazy-loaded route components (code splitting for performance)
+import * as LazyRoutes from "@/routes/lazyRoutes";
+
+// Re-import non-lazy components temporarily for backward compatibility
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
@@ -53,8 +63,27 @@ import AnalyticsDashboard from "@/pages/AnalyticsDashboard";
 import EquipmentPage from "@/pages/EquipmentPage";
 import ProductionTrackingPage from "@/pages/ProductionTrackingPage";
 import QualityControlPage from "@/pages/QualityControlPage";
-import { LogOut } from "lucide-react";
-import { useLocation } from "wouter";
+import EngineeringDashboardPage from "@/pages/EngineeringDashboardPage";
+import AuditLogsPage from "@/pages/AuditLogsPage";
+import PermissionsManagementPage from "@/pages/PermissionsManagementPage";
+import ReturnsManagementPage from "@/pages/ReturnsManagementPage";
+import NonAdaptsPage from "@/pages/NonAdaptsPage";
+import ComplianceDashboardPage from "@/pages/ComplianceDashboardPage";
+import PrescriptionTemplatesPage from "@/pages/PrescriptionTemplatesPage";
+import ClinicalProtocolsPage from "@/pages/ClinicalProtocolsPage";
+import AIForecastingDashboardPage from "@/pages/AIForecastingDashboardPage";
+
+// Loading fallback component
+function RouteLoadingFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-[50vh]">
+      <div className="text-center">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </div>
+    </div>
+  );
+}
 
 function AppLayout({ children, userRole }: { children: React.ReactNode; userRole: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin" }) {
   const { logout } = useAuth();
@@ -80,6 +109,7 @@ function AppLayout({ children, userRole }: { children: React.ReactNode; userRole
             <SidebarTrigger data-testid="button-sidebar-toggle" className="shrink-0" />
             <div className="flex items-center gap-1 sm:gap-2 ml-auto">
               <RoleSwitcherDropdown />
+              <NotificationCenter />
               <ThemeToggle />
               <Button 
                 variant="ghost" 
@@ -229,6 +259,9 @@ function AuthenticatedApp() {
             <Route path="/ecp/company" component={CompanyManagementPage} />
             <Route path="/ecp/bi-dashboard" component={BIDashboardPage} />
             <Route path="/ecp/analytics" component={AnalyticsDashboard} />
+            <Route path="/ecp/compliance" component={ComplianceDashboardPage} />
+            <Route path="/ecp/prescription-templates" component={PrescriptionTemplatesPage} />
+            <Route path="/ecp/clinical-protocols" component={ClinicalProtocolsPage} />
             <Route path="/order/:id" component={OrderDetailsPage} />
             <Route path="/ecp/returns">
               <div className="text-center py-12">
@@ -243,6 +276,9 @@ function AuthenticatedApp() {
           <>
             <Route path="/lab/dashboard" component={LabDashboard} />
             <Route path="/order/:id" component={OrderDetailsPage} />
+            <Route path="/lab/returns" component={ReturnsManagementPage} />
+            <Route path="/lab/non-adapts" component={NonAdaptsPage} />
+            <Route path="/lab/compliance" component={ComplianceDashboardPage} />
             <Route path="/lab/ai-assistant" component={AIAssistantPage} />
             <Route path="/lab/company" component={CompanyManagementPage} />
             <Route path="/lab/bi-dashboard" component={BIDashboardPage} />
@@ -254,6 +290,8 @@ function AuthenticatedApp() {
             </Route>
             <Route path="/lab/production" component={ProductionTrackingPage} />
             <Route path="/lab/quality" component={QualityControlPage} />
+            <Route path="/lab/engineering" component={EngineeringDashboardPage} />
+            <Route path="/lab/ai-forecasting" component={AIForecastingDashboardPage} />
             <Route path="/lab/analytics">
               <div className="text-center py-12">
                 <h2 className="text-2xl font-semibold">Analytics Hub</h2>
@@ -286,6 +324,14 @@ function AuthenticatedApp() {
             <Route path="/admin/dashboard" component={AdminDashboard} />
             <Route path="/admin/users" component={AdminDashboard} />
             <Route path="/admin/companies" component={CompanyManagementPage} />
+            <Route path="/admin/audit-logs" component={AuditLogsPage} />
+            <Route path="/admin/permissions" component={PermissionsManagementPage} />
+            <Route path="/admin/returns" component={ReturnsManagementPage} />
+            <Route path="/admin/non-adapts" component={NonAdaptsPage} />
+            <Route path="/admin/compliance" component={ComplianceDashboardPage} />
+            <Route path="/admin/prescription-templates" component={PrescriptionTemplatesPage} />
+            <Route path="/admin/clinical-protocols" component={ClinicalProtocolsPage} />
+            <Route path="/admin/ai-forecasting" component={AIForecastingDashboardPage} />
             <Route path="/admin/ai-assistant" component={AIAssistantPage} />
             <Route path="/admin/ai-settings" component={AISettingsPage} />
             <Route path="/admin/company" component={CompanyManagementPage} />
@@ -328,6 +374,9 @@ function AuthenticatedApp() {
             <Route path="/lab/production" component={ProductionTrackingPage} />
             <Route path="/lab/quality" component={QualityControlPage} />
             <Route path="/lab/equipment" component={EquipmentPage} />
+            <Route path="/lab/engineering" component={EngineeringDashboardPage} />
+            <Route path="/lab/returns" component={ReturnsManagementPage} />
+            <Route path="/lab/non-adapts" component={NonAdaptsPage} />
             <Route path="/lab/ai-assistant" component={AIAssistantPage} />
             <Route path="/lab/bi-dashboard" component={BIDashboardPage} />
             <Route path="/lab/queue">
@@ -339,6 +388,8 @@ function AuthenticatedApp() {
             
             {/* Admin Routes for Testing */}
             <Route path="/admin/dashboard" component={AdminDashboard} />
+            <Route path="/admin/audit-logs" component={AuditLogsPage} />
+            <Route path="/admin/permissions" component={PermissionsManagementPage} />
             <Route path="/admin/ai-assistant" component={AIAssistantPage} />
             <Route path="/admin/bi-dashboard" component={BIDashboardPage} />
             
@@ -377,6 +428,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <NotificationProvider>
+          <GlobalLoadingBar />
           <AuthenticatedApp />
           <FloatingAiChat />
           <Toaster />

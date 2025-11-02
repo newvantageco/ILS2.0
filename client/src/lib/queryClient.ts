@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { globalLoadingManager } from "./globalLoading";
 
 async function throwIfResNotOk(res: Response, clearCacheOnAuthFailure = true) {
   if (!res.ok) {
@@ -58,6 +59,16 @@ export const queryClient = new QueryClient({
     },
     mutations: {
       retry: false,
+      onMutate: () => {
+        // Start loading indicator for all mutations
+        return { endLoading: globalLoadingManager.start() };
+      },
+      onSettled: (_data, _error, _variables, context: any) => {
+        // End loading indicator
+        if (context?.endLoading) {
+          context.endLoading();
+        }
+      },
     },
   },
 });

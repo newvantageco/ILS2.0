@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Download, Mail } from "lucide-react";
+import { ChevronLeft, Download, Mail, FileText, ClipboardList } from "lucide-react";
 import { Link } from "wouter";
 import { OMAViewer } from "@/components/OMAViewer";
 import { useAuth } from "@/hooks/useAuth";
@@ -99,6 +99,86 @@ export default function OrderDetailsPage() {
       toast({
         title: "Error",
         description: error.message || "Failed to download PDF. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const downloadLabTicketMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/orders/${id}/lab-ticket`, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Accept": "application/pdf",
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Failed to download lab ticket" }));
+        throw new Error(errorData.message || "Failed to download lab ticket");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `lab-ticket-${orderId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Lab Ticket Downloaded",
+        description: "The lab work ticket PDF has been downloaded.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to download lab ticket. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const downloadExamFormMutation = useMutation({
+    mutationFn: async (patientId: string) => {
+      const response = await fetch(`/api/patients/${patientId}/examination-form`, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Accept": "application/pdf",
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Failed to download examination form" }));
+        throw new Error(errorData.message || "Failed to download examination form");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `exam-form-${patientId.slice(-6)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Exam Form Downloaded",
+        description: "The patient examination form PDF has been downloaded.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to download examination form. Please try again.",
         variant: "destructive",
       });
     },
@@ -211,6 +291,32 @@ export default function OrderDetailsPage() {
             <Download className="h-4 w-4 mr-2" />
             Download PDF
           </Button>
+          {(user?.role === 'lab_tech' || user?.role === 'engineer' || user?.role === 'admin' || user?.role === 'company_admin' || user?.role === 'platform_admin') && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadLabTicketMutation.mutate(orderId)}
+              disabled={downloadLabTicketMutation.isPending}
+              data-testid="button-download-lab-ticket"
+              className="border-blue-500 text-blue-700 hover:bg-blue-50"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Lab Ticket
+            </Button>
+          )}
+          {order?.patient && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadExamFormMutation.mutate(order.patientId)}
+              disabled={downloadExamFormMutation.isPending}
+              data-testid="button-download-exam-form"
+              className="border-green-500 text-green-700 hover:bg-green-50"
+            >
+              <ClipboardList className="h-4 w-4 mr-2" />
+              Print Exam Form
+            </Button>
+          )}
           <Button
             variant="default"
             size="sm"

@@ -865,6 +865,71 @@ export const userCustomPermissions = pgTable("user_custom_permissions", {
   index("idx_user_custom_permissions_user").on(table.userId),
 ]);
 
+// ============== AUDIT LOGS (HIPAA Compliance) ==============
+
+export const auditEventTypeEnum = pgEnum("audit_event_type", [
+  "access",
+  "create",
+  "read",
+  "update",
+  "delete",
+  "login",
+  "logout",
+  "auth_attempt",
+  "permission_change",
+  "export",
+  "print"
+]);
+
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  
+  // Who performed the action
+  userId: varchar("user_id").references(() => users.id),
+  userEmail: varchar("user_email"),
+  userRole: userRoleEnum("user_role"),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+  
+  // What action was performed
+  eventType: auditEventTypeEnum("event_type").notNull(),
+  resourceType: varchar("resource_type").notNull(), // 'patient', 'order', 'prescription', 'user', etc.
+  resourceId: varchar("resource_id"),
+  action: text("action").notNull(), // Human-readable description
+  
+  // Where the action occurred
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  endpoint: varchar("endpoint"), // e.g., '/api/patients/123'
+  method: varchar("method", { length: 10 }), // GET, POST, PUT, DELETE
+  
+  // Result of the action
+  statusCode: integer("status_code"),
+  success: boolean("success").notNull(),
+  errorMessage: text("error_message"),
+  
+  // Data changes (for updates)
+  changesBefore: jsonb("changes_before"), // State before update
+  changesAfter: jsonb("changes_after"), // State after update
+  metadata: jsonb("metadata"), // Additional context
+  
+  // HIPAA-specific fields
+  phiAccessed: boolean("phi_accessed").default(false), // Protected Health Information flag
+  phiFields: jsonb("phi_fields"), // List of PHI fields accessed (e.g., ['nhsNumber', 'dateOfBirth'])
+  justification: text("justification"), // Business justification for PHI access
+  
+  // Retention
+  retentionDate: timestamp("retention_date"), // When this log can be deleted (7+ years per GOC)
+}, (table) => [
+  index("idx_audit_logs_user").on(table.userId),
+  index("idx_audit_logs_company").on(table.companyId),
+  index("idx_audit_logs_timestamp").on(table.timestamp),
+  index("idx_audit_logs_resource").on(table.resourceType, table.resourceId),
+  index("idx_audit_logs_phi").on(table.phiAccessed),
+  index("idx_audit_logs_event_type").on(table.eventType),
+  index("idx_audit_logs_retention").on(table.retentionDate),
+]);
+
 export const patients = pgTable("patients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   customerNumber: varchar("customer_number", { length: 20 }).notNull().unique(),
@@ -2153,6 +2218,15 @@ export const insertUserCustomPermissionSchema = createInsertSchema(userCustomPer
 
 export type UserCustomPermission = typeof userCustomPermissions.$inferSelect;
 export type InsertUserCustomPermission = typeof userCustomPermissions.$inferInsert;
+
+// Audit Log schemas
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
 // Test Rooms schemas
 export const insertTestRoomSchema = createInsertSchema(testRooms);

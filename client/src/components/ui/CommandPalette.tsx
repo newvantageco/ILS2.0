@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   CommandDialog,
   CommandEmpty,
@@ -27,7 +28,10 @@ import {
   Receipt,
   DollarSign,
   LayoutDashboard,
+  Search,
+  UserPlus,
 } from "lucide-react";
+import type { OrderWithDetails } from "@shared/schema";
 
 interface CommandItem {
   label: string;
@@ -43,7 +47,15 @@ interface CommandPaletteProps {
 
 export function CommandPalette({ userRole }: CommandPaletteProps) {
   const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState("");
   const [, setLocation] = useLocation();
+
+  // Search for orders when user types an order number pattern
+  const { data: searchResults } = useQuery<OrderWithDetails[]>({
+    queryKey: ["/api/orders", `?search=${search}`],
+    enabled: search.length > 2 && open, // Only search when dialog is open and search is meaningful
+    staleTime: 30000, // 30 seconds
+  });
 
   // Define navigation items based on role
   const getNavigationItems = (): CommandItem[] => {
@@ -243,6 +255,34 @@ export function CommandPalette({ userRole }: CommandPaletteProps) {
 
   const navigationItems = getNavigationItems();
 
+  // Quick action items based on role
+  const getQuickActions = (): CommandItem[] => {
+    const actions: CommandItem[] = [];
+
+    if (userRole === "ecp") {
+      actions.push(
+        {
+          label: "Create New Patient",
+          icon: UserPlus,
+          path: "/ecp/patients?action=new",
+          shortcut: "⌘⇧P",
+          keywords: ["new", "patient", "create", "add"],
+        },
+        {
+          label: "Create New Order",
+          icon: ShoppingCart,
+          path: "/ecp/new-order",
+          shortcut: "⌘N",
+          keywords: ["new", "order", "create"],
+        }
+      );
+    }
+
+    return actions;
+  };
+
+  const quickActions = getQuickActions();
+
   // Keyboard shortcut listener
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -258,14 +298,78 @@ export function CommandPalette({ userRole }: CommandPaletteProps) {
 
   const handleSelect = (path: string) => {
     setOpen(false);
+    setSearch("");
     setLocation(path);
   };
 
+  // Reset search when dialog closes
+  React.useEffect(() => {
+    if (!open) {
+      setSearch("");
+    }
+  }, [open]);
+
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Search for pages, features, or actions..." />
+      <CommandInput 
+        placeholder="Search for pages, orders, or actions..." 
+        value={search}
+        onValueChange={setSearch}
+      />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
+
+        {/* Search Results */}
+        {searchResults && searchResults.length > 0 && (
+          <>
+            <CommandGroup heading="Orders">
+              {searchResults.slice(0, 5).map((order) => (
+                <CommandItem
+                  key={order.id}
+                  onSelect={() => handleSelect(`/order/${order.id}`)}
+                  className="flex items-center gap-2"
+                >
+                  <Search className="h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span className="font-medium">
+                      {order.patient.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Order #{order.id} - {order.status}
+                    </span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
+
+        {/* Quick Actions */}
+        {quickActions.length > 0 && (
+          <>
+            <CommandGroup heading="Quick Actions">
+              {quickActions.map((item) => (
+                <CommandItem
+                  key={item.path}
+                  onSelect={() => handleSelect(item.path)}
+                  className="flex items-center gap-2"
+                >
+                  <item.icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                  {item.shortcut && (
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {item.shortcut}
+                    </span>
+                  )}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
+
+        {/* Navigation */}
         <CommandGroup heading="Navigation">
           {navigationItems.map((item) => (
             <CommandItem
@@ -284,14 +388,16 @@ export function CommandPalette({ userRole }: CommandPaletteProps) {
           ))}
         </CommandGroup>
         <CommandSeparator />
-        <CommandGroup heading="Quick Actions">
+        
+        {/* System Actions */}
+        <CommandGroup heading="System">
           <CommandItem onSelect={() => window.location.href = "/api/logout"}>
             <span>Logout</span>
           </CommandItem>
-          <CommandItem onSelect={() => setLocation("/settings")}>
+          <CommandItem onSelect={() => handleSelect("/settings")}>
             <span>Open Settings</span>
           </CommandItem>
-          <CommandItem onSelect={() => setLocation("/help")}>
+          <CommandItem onSelect={() => handleSelect("/help")}>
             <span>Get Help</span>
           </CommandItem>
         </CommandGroup>

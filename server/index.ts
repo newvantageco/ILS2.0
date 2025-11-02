@@ -9,6 +9,12 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupLocalAuth } from "./localAuth";
 import { ensureMasterUser } from "./masterUser";
+import { 
+  securityHeaders, 
+  globalRateLimiter, 
+  authRateLimiter 
+} from "./middleware/security";
+import { auditMiddleware } from "./middleware/audit";
 
 const app = express();
 
@@ -17,6 +23,11 @@ declare module 'http' {
     rawBody: unknown
   }
 }
+
+// ============== SECURITY MIDDLEWARE (PRODUCTION HARDENING) ==============
+// Apply helmet.js security headers (HSTS, CSP, X-Frame-Options, etc.)
+app.use(securityHeaders);
+
 // Configure CORS
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
@@ -36,6 +47,17 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: false }));
 
+// ============== RATE LIMITING (DDoS Protection) ==============
+// Apply global rate limiter to all /api/* routes (100 req/15min per IP)
+app.use('/api', globalRateLimiter);
+
+// Apply strict auth rate limiter (5 attempts/15min per IP)
+app.use('/api/auth/login', authRateLimiter);
+app.use('/api/auth/login-email', authRateLimiter);
+app.use('/api/auth/signup', authRateLimiter);
+app.use('/api/auth/signup-email', authRateLimiter);
+app.use('/api/onboarding', authRateLimiter);
+
 if (process.env.NODE_ENV === "development") {
   const sessionSecret = process.env.SESSION_SECRET;
   if (!sessionSecret) {
@@ -47,8 +69,9 @@ if (process.env.NODE_ENV === "development") {
     resave: false,
     saveUninitialized: false,
     cookie: {
-      httpOnly: true,
-      secure: false,
+      httpOnly: true, // XSS protection
+      secure: false, // HTTP OK in development
+      sameSite: 'strict', // CSRF protection
     },
   }));
 
@@ -56,6 +79,11 @@ if (process.env.NODE_ENV === "development") {
   app.use(passport.session());
   setupLocalAuth();
 }
+
+// ============== AUDIT LOGGING (HIPAA Compliance) ==============
+// Apply audit logging middleware to all /api/* routes
+// This must come AFTER authentication to capture user info
+app.use('/api', auditMiddleware);
 
 app.use((req, res, next) => {
   const start = Date.now();

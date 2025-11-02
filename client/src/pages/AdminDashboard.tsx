@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { createOptimisticHandlers, optimisticArrayUpdate, optimisticRemove } from "@/lib/optimisticUpdates";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -56,22 +57,22 @@ export default function AdminDashboard() {
       const response = await apiRequest("PATCH", `/api/admin/users/${data.userId}`, data.updates);
       return await response.json();
     },
+    ...createOptimisticHandlers<User[], { userId: string; updates: any }>({
+      queryKey: ["/api/admin/users"],
+      updater: (oldData, variables) => {
+        return optimisticArrayUpdate(oldData, variables.userId, (user) => ({
+          ...user,
+          ...variables.updates,
+        })) || [];
+      },
+      successMessage: "User updated successfully",
+      errorMessage: "Failed to update user",
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
       setActionDialog({ type: null, user: null });
       setSuspensionReason("");
       setNewRole("");
-      toast({
-        title: "User updated successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Update failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
     },
   });
 
@@ -80,21 +81,17 @@ export default function AdminDashboard() {
       const response = await apiRequest("DELETE", `/api/admin/users/${userId}`);
       return await response.json();
     },
+    ...createOptimisticHandlers<User[], string>({
+      queryKey: ["/api/admin/users"],
+      updater: (oldData, userId) => {
+        return optimisticRemove(oldData, userId) || [];
+      },
+      successMessage: "User deleted successfully",
+      errorMessage: "Failed to delete user",
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
       setActionDialog({ type: null, user: null });
-      toast({
-        title: "User deleted successfully",
-        description: "The user account has been permanently deleted.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Delete failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
     },
   });
 

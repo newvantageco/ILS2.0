@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { createHmac } from 'crypto';
 import type { TLSSocket } from 'tls';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { AuthenticatedRequest } from './auth';
 import { eq } from 'drizzle-orm';
 import * as schema from '@shared/schema';
@@ -11,19 +13,28 @@ const REQUIRED_TLS_VERSION = 'TLSv1.3';
 const MIN_PASSWORD_LENGTH = 12;
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{12,}$/;
 
-// Security headers middleware
-export const securityHeaders = (req: Request, res: Response, next: NextFunction) => {
-  // Set security headers
-  res.set({
-    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY',
-    'X-XSS-Protection': '1; mode=block',
-    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';",
-    'Referrer-Policy': 'strict-origin-when-cross-origin'
-  });
-  next();
-};
+// Security headers middleware - Enhanced with helmet.js
+export const securityHeaders = helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // unsafe-eval needed for Vite HMR in dev
+      connectSrc: ["'self'", "https:", "wss:"],
+      frameSrc: ["'self'", "https://js.stripe.com"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Needed for some third-party integrations
+  hsts: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true,
+  },
+});
 
 // Enforce TLS version
 export const enforceTLS = (req: Request, res: Response, next: NextFunction) => {
@@ -148,3 +159,81 @@ export const validatePassword = (password: string): boolean => {
   
   return PASSWORD_PATTERN.test(password);
 };
+
+// ============== RATE LIMITING (DDoS Protection) ==============
+
+/**
+ * Global rate limiter for all API endpoints
+ * Limits: 100 requests per 15 minutes per IP
+ */
+export const globalRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+    retryAfter: '15 minutes',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req: Request) => req.path === '/health',
+});
+
+/**
+ * Strict rate limiter for authentication endpoints
+ * Limits: 5 attempts per 15 minutes per IP
+ * Prevents brute force attacks
+ */
+export const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: {
+    error: 'Too many authentication attempts, please try again later.',
+    retryAfter: '15 minutes',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+});
+
+/**
+ * Rate limiter for write operations
+ * Limits: 30 requests per 15 minutes per IP
+ */
+export const writeRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: {
+    error: 'Too many write requests, please slow down.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req: Request) => req.method === 'GET' || req.method === 'HEAD',
+});
+
+/**
+ * Rate limiter for file uploads
+ * Limits: 10 uploads per hour per IP
+ */
+export const uploadRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: {
+    error: 'Upload limit exceeded, please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/**
+ * Rate limiter for AI endpoints
+ * Limits: 20 requests per hour per IP (prevents API cost abuse)
+ */
+export const aiRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  message: {
+    error: 'AI request limit exceeded, please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

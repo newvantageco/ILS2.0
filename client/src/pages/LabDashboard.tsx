@@ -16,6 +16,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { createOptimisticHandlers, optimisticArrayUpdate } from "@/lib/optimisticUpdates";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -83,13 +84,19 @@ export default function LabDashboard() {
       const response = await apiRequest("PATCH", `/api/orders/${id}/status`, { status });
       return await response.json();
     },
+    ...createOptimisticHandlers<OrderWithDetails[], { id: string; status: string }>({
+      queryKey: ordersQueryKey,
+      updater: (oldData, variables) => {
+        return optimisticArrayUpdate(oldData, variables.id, (order) => ({
+          ...order,
+          status: variables.status as any,
+        })) || [];
+      },
+      successMessage: "Status updated",
+      errorMessage: "Failed to update status",
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-      toast({
-        title: "Status updated",
-        description: "Order status has been updated successfully.",
-      });
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
