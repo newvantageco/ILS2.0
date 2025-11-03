@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Table,
   TableBody,
@@ -50,9 +51,13 @@ interface Examination {
 
 export default function ExaminationList() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('all');
+  
+  // Check if user is optometrist (can create clinical examinations)
+  const canCreateExamination = user?.enhancedRole === 'optometrist' || user?.role === 'ecp' || user?.role === 'platform_admin' || user?.role === 'admin';
 
   const { data: examinations = [], isLoading, refetch } = useQuery<Examination[]>({
     queryKey: ['/api/examinations', { status: statusFilter, date: dateFilter }],
@@ -115,10 +120,12 @@ export default function ExaminationList() {
               <ExternalLink className="mr-2 h-5 w-5 text-amber-600" />
               Add Outside Rx
             </Button>
-            <Button onClick={() => setLocation('/ecp/examination/new')} size="lg">
-              <Plus className="mr-2 h-5 w-5" />
-              New Examination
-            </Button>
+            {canCreateExamination && (
+              <Button onClick={() => setLocation('/ecp/examination/new')} size="lg">
+                <Plus className="mr-2 h-5 w-5" />
+                New Examination
+              </Button>
+            )}
           </div>
         </div>
 
@@ -249,7 +256,7 @@ export default function ExaminationList() {
                     ? 'Try adjusting your filters'
                     : 'Create your first examination to get started'}
                 </p>
-                {!searchTerm && statusFilter === 'all' && (
+                {!searchTerm && statusFilter === 'all' && canCreateExamination && (
                   <Button 
                     onClick={() => setLocation('/ecp/examination/new')} 
                     className="mt-4"

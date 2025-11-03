@@ -10,6 +10,15 @@ vite.config.ts.*
 .replit
 replit.nix
 
+# Logs directory
+logs/
+!logs/README.md
+
+# Python virtual environment
+python-service/venv/
+python-service/__pycache__/
+python-service/*.pyc
+
 # Uploaded files
 uploads/
 !uploads/.gitkeep

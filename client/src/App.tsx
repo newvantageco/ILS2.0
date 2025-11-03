@@ -511,6 +511,10 @@ function AuthenticatedApp() {
             <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/company-admin/suppliers" component={CompanyAdminPage} />
             <Route path="/company-admin/settings" component={SettingsPage} />
+            <Route path="/company-admin/analytics" component={AnalyticsDashboard} />
+            <Route path="/company-admin/ai-assistant" component={AIAssistantPage} />
+            <Route path="/admin/permissions" component={PermissionsManagementPage} />
+            <Route path="/ecp/company" component={CompanyManagementPage} />
           </>
         )}
 

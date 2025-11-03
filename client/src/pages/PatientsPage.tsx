@@ -25,6 +25,7 @@ import { format } from "date-fns";
 import AddPatientModal from "@/components/AddPatientModal";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Patient {
   id: string;
@@ -41,6 +42,10 @@ interface Patient {
 export default function PatientsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const { user } = useAuth();
+  
+  // Check if user is optometrist (can create clinical examinations)
+  const canCreateExamination = user?.enhancedRole === 'optometrist' || user?.role === 'ecp' || user?.role === 'platform_admin' || user?.role === 'admin';
 
   const { data: patients, isLoading } = useQuery<Patient[]>({
     queryKey: ["/api/patients"],
@@ -197,16 +202,18 @@ export default function PatientsPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Link href={`/ecp/examination/new?patientId=${patient.id}`}>
-                            <Button 
-                              size="sm" 
-                              variant="default"
-                              data-testid={`button-new-test-${patient.id}`}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              New Examination
-                            </Button>
-                          </Link>
+                          {canCreateExamination && (
+                            <Link href={`/ecp/examination/new?patientId=${patient.id}`}>
+                              <Button 
+                                size="sm" 
+                                variant="default"
+                                data-testid={`button-new-test-${patient.id}`}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                New Examination
+                              </Button>
+                            </Link>
+                          )}
                           <Button 
                             size="sm" 
                             variant="outline"
