@@ -40,7 +40,7 @@ router.post(
       const { orderId } = req.params;
       const { status, details } = req.body;
 
-  const update = await orderTrackingService.updateOrderStatus(orderId, status, details);
+      const update = await orderTrackingService.updateOrderStatus(orderId, status, details, req);
       res.json(update);
     } catch (error) {
       console.error('Error updating order status:', error);

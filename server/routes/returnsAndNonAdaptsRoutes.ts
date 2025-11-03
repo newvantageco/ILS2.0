@@ -5,6 +5,7 @@ import { isAuthenticated } from '../replitAuth';
 import { z } from 'zod';
 import { fromZodError } from 'zod-validation-error';
 import type { User } from '../../shared/schema';
+import { addCreationTimestamp, addUpdateTimestamp } from '../utils/timestamps';
 
 // Schema definitions
 const returnCreateSchema = z.object({
@@ -74,11 +75,12 @@ router.post('/returns',
       if (!userId) {
         return res.status(401).json({ error: 'User ID not found' });
       }
-      const result = await service.createReturn({
+      const returnData = addCreationTimestamp({
         ...validatedData,
         createdBy: userId,
         metadata: {}
-      });
+      }, req);
+      const result = await service.createReturn(returnData);
       res.status(201).json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -131,10 +133,23 @@ router.patch('/returns/:id/status',
   async (req, res) => {
     try {
       const validatedData = returnStatusUpdateSchema.parse(req.body);
-      const updated = await service.updateReturnStatus(req.params.id, {
+      
+      // Get existing return for change tracking
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.setDate(now.getDate() - 30));
+      const [existingReturn] = await service.getReturnsByDateRange(thirtyDaysAgo, new Date())
+        .then(returns => returns.filter(r => r.id === req.params.id));
+      
+      if (!existingReturn) {
+        return res.status(404).json({ error: 'Return not found' });
+      }
+      
+      const updateData = addUpdateTimestamp({
         status: validatedData.status,
         processingNotes: validatedData.processingNotes,
-      });
+      }, req, existingReturn);
+      
+      const updated = await service.updateReturnStatus(req.params.id, updateData);
       if (!updated) {
         return res.status(404).json({ error: 'Return not found' });
       }
@@ -163,12 +178,13 @@ router.post('/non-adapts',
       if (!userId) {
         return res.status(401).json({ error: 'User ID not found' });
       }
-      const result = await service.createNonAdapt({
+      const nonAdaptData = addCreationTimestamp({
         orderId: validatedData.orderId,
         reportedBy: userId,
         patientFeedback: validatedData.description,
         symptoms: [],
-      });
+      }, req);
+      const result = await service.createNonAdapt(nonAdaptData);
       res.status(201).json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {

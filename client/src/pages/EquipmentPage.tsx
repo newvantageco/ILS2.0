@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,7 @@ import {
   FileText,
   Edit,
   Trash2,
+  Eye,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -477,6 +478,12 @@ export default function EquipmentPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
+                          <Link href={`/lab/equipment/${item.id}`}>
+                            <Button size="sm" variant="default">
+                              <Eye className="w-4 h-4 mr-1" />
+                              View
+                            </Button>
+                          </Link>
                           <Button
                             size="sm"
                             variant="outline"

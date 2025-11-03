@@ -39,10 +39,12 @@ import {
   AlertTriangle,
   TrendingUp,
   BarChart3,
+  Activity,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface ProductionStats {
   pending: number;
@@ -51,6 +53,11 @@ interface ProductionStats {
   completed: number;
   totalToday: number;
   averageCompletionTime: number;
+}
+
+interface VelocityData {
+  date: string;
+  completed: number;
 }
 
 interface Order {
@@ -128,6 +135,15 @@ export default function ProductionTrackingPage() {
 
   const { data: bottlenecks } = useQuery<Bottleneck[]>({
     queryKey: ["/api/production/bottlenecks"],
+  });
+
+  const { data: velocity } = useQuery<VelocityData[]>({
+    queryKey: ["/api/production/velocity"],
+    queryFn: async () => {
+      const response = await fetch('/api/production/velocity?days=7');
+      if (!response.ok) throw new Error('Failed to fetch velocity');
+      return response.json();
+    },
   });
 
   const { data: timeline } = useQuery<TimelineEvent[]>({
@@ -249,6 +265,7 @@ export default function ProductionTrackingPage() {
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="stages">Production Stages</TabsTrigger>
           <TabsTrigger value="bottlenecks">Bottlenecks</TabsTrigger>
+          <TabsTrigger value="velocity">Velocity</TabsTrigger>
         </TabsList>
 
         {/* Orders Tab */}
@@ -395,6 +412,80 @@ export default function ProductionTrackingPage() {
                   ))}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Velocity Tab */}
+        <TabsContent value="velocity">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Production Velocity
+              </CardTitle>
+              <CardDescription>Completed orders per day over the last 7 days</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {velocity && velocity.length > 0 ? (
+                <>
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={velocity}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="date" 
+                          tickFormatter={(value) => {
+                            const date = new Date(value);
+                            return format(date, 'MMM dd');
+                          }}
+                        />
+                        <YAxis />
+                        <Tooltip 
+                          labelFormatter={(value) => {
+                            const date = new Date(value as string);
+                            return format(date, 'MMMM dd, yyyy');
+                          }}
+                          formatter={(value: number) => [`${value} orders`, 'Completed']}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="completed" 
+                          stroke="#10b981" 
+                          strokeWidth={2}
+                          dot={{ fill: '#10b981', r: 4 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="mt-6 grid grid-cols-3 gap-4 text-center">
+                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                      <p className="text-2xl font-bold text-green-700">
+                        {velocity.reduce((sum, day) => sum + day.completed, 0)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Total Completed</p>
+                    </div>
+                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-2xl font-bold text-blue-700">
+                        {(velocity.reduce((sum, day) => sum + day.completed, 0) / velocity.length).toFixed(1)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Daily Average</p>
+                    </div>
+                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                      <p className="text-2xl font-bold text-purple-700">
+                        {Math.max(...velocity.map(d => d.completed))}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Peak Day</p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No velocity data available</p>
+                  <p className="text-sm">Complete some orders to see production trends</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

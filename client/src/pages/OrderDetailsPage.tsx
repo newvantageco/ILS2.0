@@ -3,13 +3,26 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Download, Mail, FileText, ClipboardList } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ChevronLeft, Download, Mail, FileText, ClipboardList, Truck, FileDown, AlertTriangle, Package, MessageSquare, Send } from "lucide-react";
 import { Link } from "wouter";
 import { OMAViewer } from "@/components/OMAViewer";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { CardSkeleton } from "@/components/ui/CardSkeleton";
+import { TimestampDisplay } from "@/components/ui/TimestampDisplay";
+import { ChangeHistoryDialog } from "@/components/ui/ChangeHistoryDialog";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type Order = {
   id: string;
@@ -37,6 +50,17 @@ type Order = {
   omaParsedData: Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
+  updatedBy?: string;
+  changeHistory?: Array<{
+    timestamp: string;
+    userId: string;
+    userName: string;
+    userEmail: string;
+    action: "created" | "updated" | "deleted" | "status_changed";
+    changes?: Record<string, { old: any; new: any }>;
+    ipAddress?: string;
+  }>;
   patient: {
     name: string;
     dateOfBirth: string | null;
@@ -208,6 +232,131 @@ export default function OrderDetailsPage() {
     },
   });
 
+  // Shipping Management
+  const [showShippingDialog, setShowShippingDialog] = useState(false);
+  const [shippingData, setShippingData] = useState({
+    trackingNumber: "",
+    carrier: "",
+    shippedDate: new Date().toISOString().split('T')[0],
+  });
+
+  // Consultation Logs
+  const [showConsultDialog, setShowConsultDialog] = useState(false);
+  const [consultResponse, setConsultResponse] = useState("");
+
+  const { data: consultLogs } = useQuery({
+    queryKey: ['/api/orders', orderId, 'consult-logs'],
+    queryFn: async () => {
+      const response = await fetch(`/api/orders/${orderId}/consult-logs`);
+      if (!response.ok) throw new Error('Failed to fetch consultation logs');
+      return response.json();
+    },
+    enabled: !!orderId && showConsultDialog,
+  });
+
+  const respondToConsultMutation = useMutation({
+    mutationFn: async ({ id, response }: { id: string; response: string }) => {
+      const res = await apiRequest("PATCH", `/api/consult-logs/${id}/respond`, { response });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to respond");
+      }
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/orders', orderId, 'consult-logs'] });
+      setConsultResponse("");
+      toast({ title: "Response sent successfully" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send response",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const shipOrderMutation = useMutation({
+    mutationFn: async (data: typeof shippingData) => {
+      const res = await apiRequest("POST", `/api/orders/${orderId}/ship`, data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to mark as shipped");
+      }
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/orders', orderId] });
+      setShowShippingDialog(false);
+      setShippingData({ trackingNumber: "", carrier: "", shippedDate: new Date().toISOString().split('T')[0] });
+      toast({
+        title: "Order Shipped",
+        description: "The order has been marked as shipped with tracking information.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // OMA Export
+  const downloadOMAMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/orders/${id}/oma`, {
+        method: "GET",
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to download OMA file");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `order-${orderId}.oma`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    },
+    onSuccess: () => {
+      toast({
+        title: "OMA File Downloaded",
+        description: "The OMA file has been downloaded successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to download OMA file.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Risk Analysis
+  const { data: riskAnalysis } = useQuery({
+    queryKey: ['/api/orders/analyze-risk', orderId],
+    queryFn: async () => {
+      const response = await fetch(`/api/orders/analyze-risk`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+      });
+      if (!response.ok) throw new Error("Failed to analyze risk");
+      return response.json();
+    },
+    enabled: !!orderId,
+  });
+
   if (!orderId) {
     return (
       <div className="text-center py-12">
@@ -275,12 +424,31 @@ export default function OrderDetailsPage() {
             <p className="text-muted-foreground text-sm mt-1">
               Order #{orderId.slice(0, 8)}
             </p>
+            {order.updatedAt && (
+              <div className="mt-2">
+                <TimestampDisplay
+                  timestamp={order.updatedAt}
+                  userName={order.updatedBy}
+                  action="updated"
+                  showIcon={true}
+                  className="text-xs"
+                />
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3">
           <Badge className={statusColors[order.status] || ""} data-testid="badge-order-status">
             {order.status.toUpperCase()}
           </Badge>
+          {order.changeHistory && order.changeHistory.length > 0 && (
+            <ChangeHistoryDialog
+              title="Order Change History"
+              history={order.changeHistory}
+              triggerLabel="View History"
+              triggerVariant="outline"
+            />
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -327,8 +495,228 @@ export default function OrderDetailsPage() {
             <Mail className="h-4 w-4 mr-2" />
             Email Order
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => downloadOMAMutation.mutate(orderId)}
+            disabled={downloadOMAMutation.isPending}
+            data-testid="button-download-oma"
+            className="border-purple-500 text-purple-700 hover:bg-purple-50"
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            Export OMA
+          </Button>
+          {(user?.role === 'lab_tech' || user?.role === 'engineer' || user?.role === 'admin' || user?.role === 'platform_admin') && 
+           order.status !== 'delivered' && order.status !== 'cancelled' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowShippingDialog(true)}
+              data-testid="button-mark-shipped"
+              className="border-orange-500 text-orange-700 hover:bg-orange-50"
+            >
+              <Truck className="h-4 w-4 mr-2" />
+              Mark Shipped
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowConsultDialog(true)}
+            data-testid="button-consult-logs"
+            className="border-blue-500 text-blue-700 hover:bg-blue-50"
+          >
+            <MessageSquare className="h-4 w-4 mr-2" />
+            Consultation Logs
+          </Button>
         </div>
       </div>
+
+      {/* Risk Analysis Card */}
+      {riskAnalysis && (
+        <Card className="border-amber-200 bg-amber-50/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-900">
+              <AlertTriangle className="h-5 w-5" />
+              Risk Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Risk Score:</span>
+                <Badge 
+                  variant={riskAnalysis.score > 7 ? "destructive" : riskAnalysis.score > 4 ? "default" : "secondary"}
+                  className="text-lg px-3 py-1"
+                >
+                  {riskAnalysis.score}/10
+                </Badge>
+              </div>
+              {riskAnalysis.factors && riskAnalysis.factors.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium mb-2">Risk Factors:</p>
+                  <ul className="space-y-1">
+                    {riskAnalysis.factors.map((factor: string, idx: number) => (
+                      <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                        <span className="text-amber-600 mt-0.5">•</span>
+                        <span>{factor}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {riskAnalysis.recommendations && riskAnalysis.recommendations.length > 0 && (
+                <div className="mt-3 pt-3 border-t">
+                  <p className="text-sm font-medium mb-2">Recommendations:</p>
+                  <ul className="space-y-1">
+                    {riskAnalysis.recommendations.map((rec: string, idx: number) => (
+                      <li key={idx} className="text-sm text-green-700 flex items-start gap-2">
+                        <Package className="h-3 w-3 mt-0.5" />
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Shipping Dialog */}
+      <Dialog open={showShippingDialog} onOpenChange={setShowShippingDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark Order as Shipped</DialogTitle>
+            <DialogDescription>
+              Enter shipping details for order #{orderId.slice(0, 8)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="carrier">Carrier *</Label>
+              <Input
+                id="carrier"
+                placeholder="e.g., FedEx, UPS, USPS"
+                value={shippingData.carrier}
+                onChange={(e) => setShippingData({ ...shippingData, carrier: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="trackingNumber">Tracking Number *</Label>
+              <Input
+                id="trackingNumber"
+                placeholder="Enter tracking number"
+                value={shippingData.trackingNumber}
+                onChange={(e) => setShippingData({ ...shippingData, trackingNumber: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="shippedDate">Shipped Date *</Label>
+              <Input
+                id="shippedDate"
+                type="date"
+                value={shippingData.shippedDate}
+                onChange={(e) => setShippingData({ ...shippingData, shippedDate: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowShippingDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => shipOrderMutation.mutate(shippingData)}
+              disabled={!shippingData.carrier || !shippingData.trackingNumber || shipOrderMutation.isPending}
+            >
+              {shipOrderMutation.isPending ? "Saving..." : "Mark as Shipped"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Consultation Logs Dialog */}
+      <Dialog open={showConsultDialog} onOpenChange={setShowConsultDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Lab-ECP Consultation Logs
+            </DialogTitle>
+            <DialogDescription>
+              Communication history between lab and eye care provider for order #{orderId.slice(0, 8)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {consultLogs && consultLogs.length > 0 ? (
+              consultLogs.map((log: any, index: number) => (
+                <div key={log.id} className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-medium text-sm">{log.userName || 'Unknown User'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(log.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <Badge variant={log.status === 'resolved' ? 'default' : 'secondary'}>
+                      {log.status}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Question:</p>
+                    <p className="text-sm">{log.question}</p>
+                  </div>
+                  {log.response && (
+                    <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                      <p className="text-sm font-medium text-blue-900">Lab Response:</p>
+                      <p className="text-sm text-blue-800">{log.response}</p>
+                      {log.respondedAt && (
+                        <p className="text-xs text-blue-600 mt-1">
+                          Responded: {new Date(log.respondedAt).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {!log.response && (user?.role === 'lab_tech' || user?.role === 'engineer') && (
+                    <div className="mt-3 space-y-2">
+                      <Label htmlFor={`response-${log.id}`}>Respond to Consultation</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id={`response-${log.id}`}
+                          placeholder="Enter your response..."
+                          value={consultResponse}
+                          onChange={(e) => setConsultResponse(e.target.value)}
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            if (consultResponse.trim()) {
+                              respondToConsultMutation.mutate({ id: log.id, response: consultResponse });
+                            }
+                          }}
+                          disabled={!consultResponse.trim() || respondToConsultMutation.isPending}
+                        >
+                          <Send className="h-4 w-4 mr-1" />
+                          Send
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p>No consultation logs for this order</p>
+                <p className="text-sm">Questions and responses will appear here</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>

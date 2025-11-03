@@ -35,6 +35,7 @@ import { emailService } from "./services/EmailService";
 import { z } from "zod";
 import { parseOMAFile, isValidOMAFile } from "@shared/omaParser";
 import { normalizeEmail } from "./utils/normalizeEmail";
+import { addCreationTimestamp, addUpdateTimestamp } from "./utils/timestamps";
 import { registerAiEngineRoutes } from "./routes/aiEngine";
 import { registerAiIntelligenceRoutes } from "./routes/aiIntelligence";
 import { registerAiAssistantRoutes } from "./routes/aiAssistant";
@@ -2492,11 +2493,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User must be associated with a company" });
       }
 
-      const patientData = {
+      const patientData = addCreationTimestamp({
         ...req.body,
         companyId: user.companyId,
         ecpId: userId,
-      };
+      }, req);
 
       const patient = await storage.createPatient(patientData);
       res.status(201).json(patient);
@@ -2529,7 +2530,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const updatedPatient = await storage.updatePatient(req.params.id, req.body);
+      const patientData = addUpdateTimestamp(req.body, req, patient);
+      const updatedPatient = await storage.updatePatient(req.params.id, patientData);
       res.json(updatedPatient);
     } catch (error) {
       console.error("Error updating patient:", error);
@@ -2886,10 +2888,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: validationError.message, errors: validation.error.issues });
       }
 
-      const prescription = await storage.createPrescription({
+      const prescriptionData = addCreationTimestamp({
         ...validation.data,
         companyId: user.companyId!,
-      }, userId);
+      }, req);
+
+      const prescription = await storage.createPrescription(prescriptionData, userId);
       res.status(201).json(prescription);
     } catch (error) {
       console.error("Error creating prescription:", error);

@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, FileText, Plus, Copy, Edit2, BookOpen, Clock, CheckCircle2 } from "lucide-react";
+import { Search, FileText, Plus, Copy, Edit2, BookOpen, Clock, CheckCircle2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 
@@ -77,8 +77,11 @@ export default function ClinicalProtocolsPage() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingProtocol, setEditingProtocol] = useState<ClinicalProtocol | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [protocolToDelete, setProtocolToDelete] = useState<ClinicalProtocol | null>(null);
   
   // Form state
   const [protocolForm, setProtocolForm] = useState({
@@ -150,6 +153,30 @@ export default function ClinicalProtocolsPage() {
     },
   });
 
+  // Delete protocol mutation
+  const deleteProtocol = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("DELETE", `/api/clinical-protocols/${id}`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clinical-protocols"] });
+      toast({
+        title: "Protocol Deleted",
+        description: "The clinical protocol has been deleted successfully.",
+      });
+      setDeleteDialogOpen(false);
+      setProtocolToDelete(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete protocol",
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetForm = () => {
     setProtocolForm({
       title: "",
@@ -208,7 +235,8 @@ export default function ClinicalProtocolsPage() {
     const matchesSearch = protocol.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       protocol.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === "all" || protocol.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesStatus = selectedStatus === "all" || protocol.status === selectedStatus;
+    return matchesSearch && matchesCategory && matchesStatus;
   });
 
   const getStatusBadge = (status: string) => {
@@ -449,6 +477,19 @@ export default function ClinicalProtocolsPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  {PROTOCOL_STATUS.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -513,6 +554,17 @@ export default function ClinicalProtocolsPage() {
                         <Button variant="ghost" size="sm" onClick={() => openDuplicateDialog(protocol)}>
                           <Copy className="h-4 w-4" />
                         </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            setProtocolToDelete(protocol);
+                            setDeleteDialogOpen(true);
+                          }}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -522,6 +574,40 @@ export default function ClinicalProtocolsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Protocol</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{protocolToDelete?.title}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setProtocolToDelete(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (protocolToDelete) {
+                  deleteProtocol.mutate(protocolToDelete.id);
+                }
+              }}
+              disabled={deleteProtocol.isPending}
+            >
+              {deleteProtocol.isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -44,6 +44,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from "recharts";
 
 interface QCStats {
   totalInspections: number;
@@ -52,6 +53,11 @@ interface QCStats {
   needsReview: number;
   passRate: number;
   commonDefects: { type: string; count: number }[];
+}
+
+interface DefectTrend {
+  date: string;
+  defects: number;
 }
 
 interface Order {
@@ -104,6 +110,15 @@ export default function QualityControlPage() {
 
   const { data: metrics } = useQuery<QCMetrics>({
     queryKey: ["/api/quality-control/metrics"],
+  });
+
+  const { data: defectTrends } = useQuery<DefectTrend[]>({
+    queryKey: ["/api/quality-control/defect-trends"],
+    queryFn: async () => {
+      const response = await fetch('/api/quality-control/defect-trends?days=30');
+      if (!response.ok) throw new Error('Failed to fetch defect trends');
+      return response.json();
+    },
   });
 
   const { data: standardMeasurements } = useQuery<{ parameter: string; tolerance: number }[]>({
@@ -276,6 +291,7 @@ export default function QualityControlPage() {
           <TabsTrigger value="queue">Inspection Queue</TabsTrigger>
           <TabsTrigger value="metrics">Metrics</TabsTrigger>
           <TabsTrigger value="defects">Common Defects</TabsTrigger>
+          <TabsTrigger value="trends">Defect Trends</TabsTrigger>
         </TabsList>
 
         {/* Queue Tab */}
@@ -424,6 +440,102 @@ export default function QualityControlPage() {
                   ))}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Defect Trends Tab */}
+        <TabsContent value="trends">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Defect Trends (30 Days)
+              </CardTitle>
+              <CardDescription>Track defect occurrences over time to identify patterns</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {defectTrends && defectTrends.length > 0 ? (
+                <>
+                  <div className="h-[300px] w-full mb-6">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={defectTrends}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="date" 
+                          tickFormatter={(value) => {
+                            const date = new Date(value);
+                            return format(date, 'MMM dd');
+                          }}
+                        />
+                        <YAxis />
+                        <Tooltip 
+                          labelFormatter={(value) => {
+                            const date = new Date(value as string);
+                            return format(date, 'MMMM dd, yyyy');
+                          }}
+                          formatter={(value: number) => [`${value} defects`, 'Count']}
+                        />
+                        <Bar 
+                          dataKey="defects" 
+                          fill="#ef4444" 
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-4 text-center mt-6">
+                    <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                      <p className="text-2xl font-bold text-red-700">
+                        {defectTrends.reduce((sum, day) => sum + day.defects, 0)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Total Defects</p>
+                    </div>
+                    <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                      <p className="text-2xl font-bold text-orange-700">
+                        {(defectTrends.reduce((sum, day) => sum + day.defects, 0) / defectTrends.length).toFixed(1)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Daily Average</p>
+                    </div>
+                    <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <p className="text-2xl font-bold text-yellow-700">
+                        {Math.max(...defectTrends.map(d => d.defects))}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Peak Day</p>
+                    </div>
+                  </div>
+
+                  {/* Trend Insights */}
+                  <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4" />
+                      Trend Analysis
+                    </h4>
+                    <div className="text-sm text-blue-700 space-y-1">
+                      {(() => {
+                        const recentAvg = defectTrends.slice(-7).reduce((sum, d) => sum + d.defects, 0) / 7;
+                        const olderAvg = defectTrends.slice(0, 7).reduce((sum, d) => sum + d.defects, 0) / 7;
+                        const change = ((recentAvg - olderAvg) / olderAvg) * 100;
+                        
+                        if (change > 20) {
+                          return <p>⚠️ Defect rate increased by {change.toFixed(1)}% in the last week. Investigation recommended.</p>;
+                        } else if (change < -20) {
+                          return <p>✅ Defect rate improved by {Math.abs(change).toFixed(1)}% in the last week. Quality initiatives are working!</p>;
+                        } else {
+                          return <p>📊 Defect rate is stable with {change > 0 ? 'a slight increase' : 'a slight decrease'} of {Math.abs(change).toFixed(1)}%.</p>;
+                        }
+                      })()}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No defect trend data available</p>
+                  <p className="text-sm">Perform quality inspections to build trend history</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

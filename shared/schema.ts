@@ -423,6 +423,11 @@ export const companies = pgTable("companies", {
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  
+  // Timestamp tracking
+  createdBy: varchar("created_by", { length: 255 }),
+  updatedBy: varchar("updated_by", { length: 255 }),
+  changeHistory: jsonb("change_history").default(sql`'[]'::jsonb`),
 }, (table) => [
   index("idx_companies_status").on(table.status),
   index("idx_companies_type").on(table.type),
@@ -965,6 +970,11 @@ export const patients = pgTable("patients", {
   nextExaminationDue: timestamp("next_examination_due"),
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  
+  // Timestamp tracking
+  createdBy: varchar("created_by", { length: 255 }),
+  updatedBy: varchar("updated_by", { length: 255 }),
+  changeHistory: jsonb("change_history").default(sql`'[]'::jsonb`),
 });
 
 export const orders = pgTable("orders", {
@@ -1011,6 +1021,11 @@ export const orders = pgTable("orders", {
   orderDate: timestamp("order_date").defaultNow().notNull(),
   dueDate: timestamp("due_date"),
   completedAt: timestamp("completed_at"),
+  
+  // Timestamp tracking
+  createdBy: varchar("created_by", { length: 255 }),
+  updatedBy: varchar("updated_by", { length: 255 }),
+  changeHistory: jsonb("change_history").default(sql`'[]'::jsonb`),
 });
 
 export const consultLogs = pgTable("consult_logs", {
@@ -1242,6 +1257,11 @@ export const prescriptions = pgTable("prescriptions", {
   digitalSignature: text("digital_signature"),
   signedAt: timestamp("signed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  
+  // Timestamp tracking
+  createdBy: varchar("created_by", { length: 255 }),
+  updatedBy: varchar("updated_by", { length: 255 }),
+  changeHistory: jsonb("change_history").default(sql`'[]'::jsonb`),
 }, (table) => [
   index("idx_prescriptions_test_room").on(table.testRoomName),
   index("idx_prescriptions_goc_number").on(table.prescriberGocNumber),
