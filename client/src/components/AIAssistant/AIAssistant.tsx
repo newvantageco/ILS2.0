@@ -96,15 +96,17 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
     setError(null);
 
     try {
-      const response = await fetch('/api/ai/query', {
+      const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          question: inputQuery,
-          query_type: queryType
+          message: inputQuery,
+          context: {
+            queryType: queryType
+          }
         })
       });
 
@@ -116,19 +118,20 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
         } else if (response.status === 403) {
           throw new Error('This feature is not available in your subscription plan.');
         } else {
-          throw new Error(errorData.detail || 'Failed to get response from AI');
+          throw new Error(errorData.error || 'Failed to get response from AI');
         }
       }
 
-      const data = await response.json();
+      const result = await response.json();
+      const data = result.data;
 
       const assistantMessage: Message = {
         id: `msg-${Date.now()}-assistant`,
         role: 'assistant',
         content: data.answer,
         timestamp: new Date(),
-        fromCache: data.from_cache,
-        tokensUsed: data.metadata?.tokens_used
+        fromCache: false,
+        tokensUsed: data.metadata?.tokensUsed
       };
 
       setMessages(prev => [...prev, assistantMessage]);

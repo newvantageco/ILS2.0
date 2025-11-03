@@ -115,11 +115,11 @@ export class ExternalAIService {
   }
 
   /**
-   * Generate AI response with automatic provider selection
+   * Generate AI response with automatic provider selection and tool support
    */
   async generateResponse(
     messages: AIMessage[],
-    config: ExternalAIConfig
+    config: ExternalAIConfig & { tools?: any[], onToolCall?: (toolName: string, args: any) => Promise<any> }
   ): Promise<AIResponse> {
     const { provider, model } = config;
 
@@ -163,7 +163,7 @@ export class ExternalAIService {
    */
   private async generateOpenAIResponse(
     messages: AIMessage[],
-    config: ExternalAIConfig
+    config: ExternalAIConfig & { tools?: any[], onToolCall?: (toolName: string, args: any) => Promise<any> }
   ): Promise<AIResponse> {
     if (!this.openaiClient) {
       throw new Error("OpenAI client not initialized");
@@ -171,10 +171,11 @@ export class ExternalAIService {
 
     this.logger.info("Generating OpenAI response", {
       model: config.model,
-      messageCount: messages.length
+      messageCount: messages.length,
+      hasTools: !!config.tools
     });
 
-    const completion = await this.openaiClient.chat.completions.create({
+    const requestConfig: any = {
       model: config.model as OpenAIModel,
       messages: messages.map(m => ({
         role: m.role,
@@ -182,7 +183,74 @@ export class ExternalAIService {
       })),
       max_tokens: config.maxTokens || 2000,
       temperature: config.temperature ?? 0.7,
-    });
+    };
+
+    // Add tools if provided
+    if (config.tools && config.tools.length > 0) {
+      requestConfig.tools = config.tools.map((tool: any) => ({
+        type: "function",
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.parameters
+        }
+      }));
+      requestConfig.tool_choice = "auto";
+    }
+
+    let completion = await this.openaiClient.chat.completions.create(requestConfig);
+
+    // Handle tool calls
+    let toolCallResults: any[] = [];
+    while (completion.choices[0].finish_reason === 'tool_calls' && config.onToolCall) {
+      const toolCalls = completion.choices[0].message.tool_calls || [];
+      
+      this.logger.info(`AI wants to use ${toolCalls.length} tools`);
+
+      // Execute each tool call
+      for (const toolCall of toolCalls) {
+        if (toolCall.type !== 'function') continue;
+        
+        const toolName = toolCall.function.name;
+        const toolArgs = JSON.parse(toolCall.function.arguments);
+        
+        this.logger.info(`Executing tool: ${toolName}`, toolArgs);
+        
+        try {
+          const result = await config.onToolCall(toolName, toolArgs);
+          toolCallResults.push({
+            tool_call_id: toolCall.id,
+            role: "tool" as const,
+            name: toolName,
+            content: JSON.stringify(result)
+          });
+        } catch (error) {
+          toolCallResults.push({
+            tool_call_id: toolCall.id,
+            role: "tool" as const,
+            name: toolName,
+            content: JSON.stringify({ error: (error as Error).message })
+          });
+        }
+      }
+
+      // Add assistant message with tool calls
+      const assistantMessage = {
+        role: "assistant" as const,
+        content: completion.choices[0].message.content || "",
+        tool_calls: completion.choices[0].message.tool_calls
+      };
+
+      // Continue the conversation with tool results
+      const updatedMessages = [
+        ...requestConfig.messages,
+        assistantMessage,
+        ...toolCallResults
+      ];
+
+      requestConfig.messages = updatedMessages;
+      completion = await this.openaiClient.chat.completions.create(requestConfig);
+    }
 
     const usage = completion.usage!;
     const content = completion.choices[0].message.content || "";
@@ -327,5 +395,115 @@ Always provide accurate, professional, and helpful responses.`;
       anthropicAvailable: this.anthropicAvailable,
       availableProviders: this.getAvailableProviders(),
     };
+  }
+
+  /**
+   * Get available tools/functions for the AI to use
+   */
+  getAvailableTools(): any[] {
+    return [
+      {
+        name: "get_patient_info",
+        description: "Search for patient information by name or get details about a specific patient. Use this when user asks about a patient.",
+        parameters: {
+          type: "object",
+          properties: {
+            search: {
+              type: "string",
+              description: "Patient name or ID to search for"
+            }
+          },
+          required: ["search"]
+        }
+      },
+      {
+        name: "check_inventory",
+        description: "Check inventory levels, search for specific items, or get stock information. Use this when user asks about products, frames, lenses, or stock levels.",
+        parameters: {
+          type: "object",
+          properties: {
+            search: {
+              type: "string",
+              description: "Product name, SKU, or category to search for"
+            },
+            checkLowStock: {
+              type: "boolean",
+              description: "Set to true to specifically check for low stock items"
+            }
+          },
+          required: ["search"]
+        }
+      },
+      {
+        name: "get_sales_data",
+        description: "Get sales information, revenue data, or order statistics for a time period. Use this when user asks about sales, revenue, or business performance.",
+        parameters: {
+          type: "object",
+          properties: {
+            timeframe: {
+              type: "string",
+              enum: ["today", "week", "month", "quarter", "year", "custom"],
+              description: "Time period for sales data"
+            },
+            startDate: {
+              type: "string",
+              description: "Start date for custom timeframe (YYYY-MM-DD)"
+            },
+            endDate: {
+              type: "string",
+              description: "End date for custom timeframe (YYYY-MM-DD)"
+            },
+            metric: {
+              type: "string",
+              enum: ["total_revenue", "order_count", "average_order_value", "top_products"],
+              description: "Specific metric to retrieve"
+            }
+          },
+          required: ["timeframe"]
+        }
+      },
+      {
+        name: "search_orders",
+        description: "Search for orders by order number, patient name, status, or date range. Use this when user asks about specific orders or order status.",
+        parameters: {
+          type: "object",
+          properties: {
+            search: {
+              type: "string",
+              description: "Order number or patient name to search for"
+            },
+            status: {
+              type: "string",
+              enum: ["pending", "processing", "ready", "completed", "cancelled"],
+              description: "Filter by order status"
+            },
+            dateRange: {
+              type: "string",
+              enum: ["today", "week", "month"],
+              description: "Filter by date range"
+            }
+          },
+          required: []
+        }
+      },
+      {
+        name: "get_examination_records",
+        description: "Get eye examination records for a patient including prescriptions and test results. Use this when user asks about patient examination history or prescriptions.",
+        parameters: {
+          type: "object",
+          properties: {
+            patientId: {
+              type: "string",
+              description: "The patient ID"
+            },
+            patientName: {
+              type: "string",
+              description: "Patient name if ID not known"
+            }
+          },
+          required: []
+        }
+      }
+    ];
   }
 }

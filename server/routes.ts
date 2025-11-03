@@ -42,6 +42,7 @@ import { registerAiAssistantRoutes } from "./routes/aiAssistant";
 import { registerMetricsRoutes } from "./routes/metrics";
 import { registerPermissionRoutes } from "./routes/permissions";
 import { registerMasterAiRoutes } from "./routes/masterAi";
+import { createUnifiedAIRoutes } from "./routes/unified-ai";
 import ecpRoutes from "./routes/ecp";
 import posRoutes from "./routes/pos";
 import analyticsRoutes from "./routes/analytics";
@@ -104,6 +105,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register AI Assistant routes (progressive learning assistant)
   registerAiAssistantRoutes(app);
+  
+  // Register Unified AI routes (consolidated AI chat endpoint)
+  app.use('/api/ai', createUnifiedAIRoutes(storage));
   
   // Register Metrics Dashboard routes
   registerMetricsRoutes(app);
