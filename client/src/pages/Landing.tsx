@@ -2,6 +2,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedCard } from "@/components/ui/AnimatedCard";
+import { TabbedFeatures } from "@/components/landing/TabbedFeatures";
+import { TestimonialCard } from "@/components/landing/TestimonialCard";
+import { LogoWall } from "@/components/landing/LogoWall";
+import { ComplianceBadges } from "@/components/landing/ComplianceBadges";
 import {
   Glasses,
   ShoppingCart,
@@ -33,6 +37,8 @@ import {
   Keyboard,
   Eye,
   Gauge,
+  MessageSquare,
+  Video,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -67,108 +73,12 @@ export default function Landing() {
     });
   };
 
-  const features = [
-    {
-      icon: ShoppingCart,
-      title: "Point of Sale",
-      description: "Modern OTC retail till with barcode scanning, multi-payment support, and real-time inventory",
-      badge: "NEW",
-      color: "text-blue-500",
-    },
-    {
-      icon: Building2,
-      title: "Multi-Tenant Architecture",
-      description: "Complete data isolation per company with enterprise-grade security and compliance",
-      badge: "NEW",
-      color: "text-purple-500",
-    },
-    {
-      icon: BarChart3,
-      title: "Advanced Analytics",
-      description: "Shopify-style dashboards with real-time metrics, trends, and performance insights",
-      badge: "COMING SOON",
-      color: "text-green-500",
-    },
-    {
-      icon: FileText,
-      title: "Smart PDF Generation",
-      description: "Professional branded templates for receipts, invoices, prescriptions, and reports",
-      badge: "COMING SOON",
-      color: "text-orange-500",
-    },
-    {
-      icon: Glasses,
-      title: "Lens Management",
-      description: "Complete order tracking from prescription to delivery with quality control",
-      badge: "CORE",
-      color: "text-cyan-500",
-    },
-    {
-      icon: Sparkles,
-      title: "AI Assistant",
-      description: "Intelligent automation for prescription analysis, recommendations, and support",
-      badge: "CORE",
-      color: "text-pink-500",
-    },
-  ];
-
-  const stats = [
-    { label: "Orders Processed", value: "10K+", icon: Package },
-    { label: "Active Practices", value: "500+", icon: Building2 },
-    { label: "Customer Satisfaction", value: "98%", icon: CheckCircle2 },
-    { label: "Processing Time", value: "-60%", icon: Zap },
-  ];
-
-  const capabilities = [
-    {
-      category: "Retail & POS",
-      items: [
-        "Barcode scanning & quick search",
-        "Multi-payment processing",
-        "Automatic stock management",
-        "Staff performance tracking",
-        "Daily sales reports",
-        "Refund & return handling",
-      ],
-      icon: Scan,
-    },
-    {
-      category: "Multi-Tenant Security",
-      items: [
-        "Complete data isolation",
-        "Company-scoped access",
-        "Subscription enforcement",
-        "Audit trail logging",
-        "Role-based permissions",
-        "Compliance ready",
-      ],
-      icon: Lock,
-    },
-    {
-      category: "Business Intelligence",
-      items: [
-        "Real-time dashboards",
-        "Sales trend analysis",
-        "Product performance",
-        "Customer insights",
-        "Profit tracking",
-        "Predictive analytics",
-      ],
-      icon: PieChart,
-    },
-    {
-      category: "Professional Documents",
-      items: [
-        "Custom branded templates",
-        "Automated receipts",
-        "Invoice generation",
-        "Prescription forms",
-        "QR code integration",
-        "Email delivery",
-      ],
-      icon: Receipt,
-    },
-  ];
+  const handleBookDemo = () => {
+    toast({
+      title: "Book a Demo",
+      description: "We'll be in touch shortly to schedule your personalized demo.",
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/10">
@@ -195,74 +105,111 @@ export default function Landing() {
       <section className="max-w-7xl mx-auto px-6 py-16 lg:py-24">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-6">
-            <div className="flex items-center gap-2">
-              <Badge className="gap-1">
-                <Sparkles className="h-3 w-3" />
-                Now with POS & Multi-Tenant
-              </Badge>
-            </div>
+            {/* Value Proposition */}
             <h2 className="text-5xl lg:text-6xl font-bold leading-tight">
-              Complete Lens Management Platform
+              The All-in-One OS for Modern Optical Practices
             </h2>
-            <p className="text-xl text-muted-foreground">
-              From prescription to retail—manage orders, inventory, sales, and analytics in one powerful system with enterprise-grade security.
+            <p className="text-xl text-muted-foreground leading-relaxed">
+              Streamline your entire practice, from patient check-in to final sale. ILS 2.0 unifies your prescriptions, inventory, POS, and analytics in one powerful, secure platform.
             </p>
+            
+            {/* CTAs */}
             <div className="flex flex-wrap gap-3">
-              <Button size="lg" onClick={handleGetStarted} className="gap-2" aria-label="Get started free">
-                Get Started Free
+              <Button size="lg" onClick={handleGetStarted} className="gap-2" aria-label="Start free trial">
+                Start Your 30-Day Free Trial
                 <ArrowRight className="h-4 w-4" />
               </Button>
-              <Button size="lg" variant="outline" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} aria-label="Explore features">
-                Explore Features
+              <Button size="lg" variant="outline" onClick={handleBookDemo} className="gap-2" aria-label="Book a demo">
+                <Video className="h-4 w-4" />
+                Book a Demo
               </Button>
+            </div>
+
+            {/* Trust Metrics - Moved directly below CTAs */}
+            <div className="pt-6 border-t">
+              <p className="text-sm text-muted-foreground mb-3">
+                Trusted by 500+ practices just like yours
+              </p>
+              <div className="flex flex-wrap gap-6">
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="text-2xl font-bold">10K+</div>
+                    <div className="text-xs text-muted-foreground">Orders Processed</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="text-2xl font-bold">500+</div>
+                    <div className="text-xs text-muted-foreground">Active Practices</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="text-2xl font-bold">98%</div>
+                    <div className="text-xs text-muted-foreground">Customer Satisfaction</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            {stats.map((stat, index) => (
-              <AnimatedCard key={index} className="p-6">
-                <div className="space-y-2">
-                  <stat.icon className="h-8 w-8 text-primary mb-2" />
-                  <div className="text-3xl font-bold">{stat.value}</div>
-                  <div className="text-sm text-muted-foreground">{stat.label}</div>
-                </div>
-              </AnimatedCard>
-            ))}
+          {/* Dynamic Product Hero - Placeholder for Dashboard Visual */}
+          <div className="relative bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 rounded-2xl p-8 border border-primary/20 min-h-[500px] flex items-center justify-center">
+            <div className="text-center space-y-4">
+              <div className="w-32 h-32 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-xl">
+                <Glasses className="h-16 w-16 text-primary" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground font-medium">
+                  Dynamic Product Hero
+                </p>
+                <p className="text-xs text-muted-foreground italic max-w-md mx-auto">
+                  [Auto-playing video or GIF of ILS 2.0 dashboard showing AI Assistant analyzing a prescription or the POS completing a transaction]
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* NEW: What's New - UI/UX Updates Section */}
+      {/* Trust Bar Section - NEW */}
+      <section className="max-w-7xl mx-auto px-6 py-12">
+        <Card className="bg-muted/30 border-border/50">
+          <CardContent className="p-8">
+            <LogoWall />
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Speed & Simplicity Section (Refined UI/UX) */}
       <section className="max-w-7xl mx-auto px-6 py-16">
         <Card className="bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 border-primary/20 overflow-hidden">
           <CardHeader className="text-center pb-6">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Rocket className="h-6 w-6 text-primary" />
-              <Badge variant="default" className="gap-1">
-                <Sparkles className="h-3 w-3" />
-                Just Released
-              </Badge>
-            </div>
-            <CardTitle className="text-3xl">Next-Generation UI/UX</CardTitle>
+            <CardTitle className="text-3xl">Built for Speed and Simplicity</CardTitle>
             <CardDescription className="text-lg mt-2">
-              Experience god-level performance and usability
+              Experience a seamless, instant workflow designed to reduce clicks and save you time at every step
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Optimistic Updates */}
+              {/* Instant Feedback */}
               <div className="text-center space-y-3">
                 <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-blue-500/10 to-blue-500/20 flex items-center justify-center">
                   <Zap className="h-8 w-8 text-blue-500" />
                 </div>
                 <h4 className="font-semibold">Instant Feedback</h4>
                 <p className="text-sm text-muted-foreground">
-                  Zero perceived latency with optimistic updates. Every action feels instant.
+                  Zero perceived latency. Optimistic updates mean every form, sale, and report feels instant.
                 </p>
-                <Badge variant="outline" className="text-xs">
-                  0ms latency
-                </Badge>
+                <div className="pt-2">
+                  <Badge variant="outline" className="text-xs">0ms latency</Badge>
+                </div>
+                <div className="text-xs text-muted-foreground/70 italic pt-2">
+                  [GIF: Form being updated instantly]
+                </div>
               </div>
 
               {/* Command Palette */}
@@ -272,39 +219,42 @@ export default function Landing() {
                 </div>
                 <h4 className="font-semibold">Command Palette</h4>
                 <p className="text-sm text-muted-foreground">
-                  Navigate anywhere with ⌘K. Keyboard-first for power users.
+                  Navigate at light-speed. Use our Ctrl+K palette to find any patient, product, or report in seconds.
                 </p>
-                <Badge variant="outline" className="text-xs">
-                  ⌘K / Ctrl+K
-                </Badge>
+                <div className="pt-2">
+                  <Badge variant="outline" className="text-xs">⌘K / Ctrl+K</Badge>
+                </div>
+                <div className="text-xs text-muted-foreground/70 italic pt-2">
+                  [GIF: Ctrl+K palette in action]
+                </div>
               </div>
 
-              {/* Performance */}
+              {/* Lightning Fast */}
               <div className="text-center space-y-3">
                 <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-green-500/10 to-green-500/20 flex items-center justify-center">
                   <Gauge className="h-8 w-8 text-green-500" />
                 </div>
                 <h4 className="font-semibold">Lightning Fast</h4>
                 <p className="text-sm text-muted-foreground">
-                  65% smaller bundle, 54% faster load. Code splitting for optimal speed.
+                  65% smaller bundle. 54% faster load. Our code-splitting delivers the speed your practice demands.
                 </p>
-                <Badge variant="outline" className="text-xs">
-                  &lt;1.5s load
-                </Badge>
+                <div className="pt-2">
+                  <Badge variant="outline" className="text-xs">&lt;1.5s Load Time</Badge>
+                </div>
               </div>
 
-              {/* Accessibility */}
+              {/* Fully Accessible */}
               <div className="text-center space-y-3">
                 <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-orange-500/10 to-orange-500/20 flex items-center justify-center">
                   <Eye className="h-8 w-8 text-orange-500" />
                 </div>
                 <h4 className="font-semibold">Fully Accessible</h4>
                 <p className="text-sm text-muted-foreground">
-                  WCAG 2.1 AA compliant. Full keyboard navigation and screen reader support.
+                  A WCAG 2.1 AA Compliant platform ensures your system is usable by everyone, with full keyboard navigation.
                 </p>
-                <Badge variant="outline" className="text-xs">
-                  98/100 score
-                </Badge>
+                <div className="pt-2">
+                  <Badge variant="outline" className="text-xs">98/100 Score</Badge>
+                </div>
               </div>
             </div>
 
@@ -329,82 +279,48 @@ export default function Landing() {
                 </div>
               </div>
             </div>
-
-            {/* CTA */}
-            <div className="mt-8 text-center">
-              <Button size="lg" onClick={handleGetStarted} className="gap-2">
-                Experience It Now
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
           </CardContent>
         </Card>
       </section>
 
-      {/* Features Grid */}
-      <section id="features" className="max-w-7xl mx-auto px-6 py-16 bg-muted/30 rounded-3xl mb-16">
+      {/* All-in-One Platform Section (Tabbed Features) */}
+      <section id="features" className="max-w-7xl mx-auto px-6 py-16">
         <div className="text-center mb-12">
-          <h3 className="text-3xl font-bold mb-3">Powerful Features</h3>
-          <p className="text-muted-foreground text-lg">Everything you need to run your optical business</p>
+          <h3 className="text-3xl font-bold mb-3">Your Complete Practice, All in One Place</h3>
+          <p className="text-muted-foreground text-lg">
+            Explore the powerful modules that unify your operations, from the front desk to the back office
+          </p>
         </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature, index) => (
-            <AnimatedCard 
-              key={index} 
-              className="p-6 hover:shadow-xl transition-shadow cursor-pointer"
-              onClick={() => handleLearnMore(feature.title)}
-            >
-              <CardHeader className="p-0 mb-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className={`p-3 rounded-xl bg-background ${feature.color}`}>
-                    <feature.icon className="h-6 w-6" />
-                  </div>
-                  <Badge variant={feature.badge === "NEW" ? "default" : feature.badge === "CORE" ? "outline" : "secondary"}>
-                    {feature.badge}
-                  </Badge>
-                </div>
-                <CardTitle className="text-xl">{feature.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <p className="text-muted-foreground">{feature.description}</p>
-                <p className="mt-3 text-sm text-primary hover:underline">
-                  Learn more →
-                </p>
-              </CardContent>
-            </AnimatedCard>
-          ))}
-        </div>
+        <TabbedFeatures />
       </section>
 
-      {/* Capabilities Section */}
+      {/* Human Social Proof Section - NEW */}
       <section className="max-w-7xl mx-auto px-6 py-16">
         <div className="text-center mb-12">
-          <h3 className="text-3xl font-bold mb-3">Complete Capabilities</h3>
-          <p className="text-muted-foreground text-lg">Built for modern optical practices</p>
+          <h3 className="text-3xl font-bold mb-3">See Why Practice Owners Love ILS 2.0</h3>
+          <p className="text-muted-foreground text-lg">
+            Join 500+ optical practices transforming their operations
+          </p>
         </div>
-        <div className="grid md:grid-cols-2 gap-6">
-          {capabilities.map((capability, index) => (
-            <Card key={index} className="overflow-hidden">
-              <CardHeader className="bg-muted/50 pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <capability.icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <CardTitle className="text-lg">{capability.category}</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <ul className="space-y-3">
-                  {capability.items.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <TestimonialCard
+            quote="ILS 2.0 cut our processing time in half and streamlined our entire inventory. It's the brain of our operation."
+            author="Dr. Sarah Chen"
+            title="Lead Optometrist"
+            company="VisionFirst Practice"
+          />
+          <TestimonialCard
+            quote="The analytics are a game-changer. I can finally see my profit tracking in real-time and make smarter business decisions. We're up 15% in high-margin sales."
+            author="Mark David"
+            title="Practice Manager"
+            company="OptiCore Group"
+          />
+          <TestimonialCard
+            quote="The multi-tenant security gives us complete peace of mind. Each location's data is perfectly isolated, and the audit trails are comprehensive."
+            author="Jennifer Martinez"
+            title="IT Director"
+            company="EyeCare Solutions Network"
+          />
         </div>
       </section>
 
@@ -433,13 +349,20 @@ export default function Landing() {
         </Card>
       </section>
 
+      {/* Security & Compliance Section - NEW */}
+      <section className="max-w-7xl mx-auto px-6 py-16">
+        <div className="text-center mb-12">
+          <h3 className="text-3xl font-bold mb-3">Enterprise-Grade Security. Zero Compromises.</h3>
+          <p className="text-muted-foreground text-lg">
+            We protect your practice and patient data with the highest compliance standards in the industry
+          </p>
+        </div>
+        <ComplianceBadges />
+      </section>
+
       {/* CTA Section */}
       <section className="max-w-4xl mx-auto px-6 py-16 text-center">
         <div className="space-y-6 p-12 bg-gradient-to-br from-primary/10 via-primary/5 to-background rounded-3xl border border-primary/20">
-          <Badge className="gap-1 mb-2">
-            <Sparkles className="h-3 w-3" />
-            Special Launch Offer
-          </Badge>
           <h3 className="text-4xl font-bold">Ready to transform your practice?</h3>
           <p className="text-xl text-muted-foreground">
             Join hundreds of optical practices using ILS 2.0 to streamline operations and boost revenue.
@@ -448,7 +371,7 @@ export default function Landing() {
             <Card className="p-6 text-left">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                  <Sparkles className="h-5 w-5 text-primary" />
                   <span className="font-semibold">For New Users</span>
                 </div>
                 <ul className="space-y-2 text-sm text-muted-foreground">
@@ -506,9 +429,18 @@ export default function Landing() {
               </div>
             </Card>
           </div>
-          <div className="pt-4">
-            <Button variant="ghost" size="lg" onClick={handleContactSales} className="gap-2" aria-label="Talk to sales">
-              <Phone className="h-4 w-4" />
+          
+          {/* Enhanced "Talk to Sales" Visibility */}
+          <div className="pt-6 border-t border-border/50 mt-8">
+            <p className="text-sm text-muted-foreground mb-3">
+              Prefer a guided demo? Our team is ready to help.
+            </p>
+            <Button variant="default" size="lg" onClick={handleBookDemo} className="gap-2">
+              <Video className="h-4 w-4" />
+              Book a Demo
+            </Button>
+            <Button variant="ghost" size="lg" onClick={handleContactSales} className="gap-2 ml-2">
+              <MessageSquare className="h-4 w-4" />
               Talk to Sales
             </Button>
           </div>
@@ -519,7 +451,7 @@ export default function Landing() {
       <footer className="border-t mt-16 bg-muted/30">
         <div className="max-w-7xl mx-auto px-6 py-12">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
-            {/* Company Info */}
+            {/* Column 1: Brand */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
@@ -528,22 +460,22 @@ export default function Landing() {
                 <span className="font-bold text-lg">ILS 2.0</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Complete lens management platform for modern optical practices.
+                The All-in-One OS for Modern Optical Practices
               </p>
-              <div className="flex gap-3">
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+              <p className="text-xs text-muted-foreground">
+                © 2025 New Vantage Co LTD
+              </p>
+              <div className="flex gap-3 pt-2">
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Twitter">
                   <Twitter className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="LinkedIn">
                   <Linkedin className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Github className="h-4 w-4" />
                 </Button>
               </div>
             </div>
 
-            {/* Product */}
+            {/* Column 2: Product */}
             <div className="space-y-4">
               <h4 className="font-semibold text-sm">Product</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
@@ -570,7 +502,7 @@ export default function Landing() {
               </ul>
             </div>
 
-            {/* Resources */}
+            {/* Column 3: Resources */}
             <div className="space-y-4">
               <h4 className="font-semibold text-sm">Resources</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
@@ -599,25 +531,25 @@ export default function Landing() {
               </ul>
             </div>
 
-            {/* Contact */}
+            {/* Column 4: Contact */}
             <div className="space-y-4">
               <h4 className="font-semibold text-sm">Contact</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <Mail className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <a href="mailto:support@ils2.0" className="hover:text-foreground transition-colors">
-                    support@ils2.0
+                  <a href="mailto:support@ils2.com" className="hover:text-foreground transition-colors">
+                    support@ils2.com
                   </a>
                 </li>
                 <li className="flex items-start gap-2">
                   <Phone className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <a href="tel:+442079460958" className="hover:text-foreground transition-colors">
-                    +44 (0) 20 7946 0958
+                  <a href="tel:+441012079460958" className="hover:text-foreground transition-colors">
+                    +44 101 20 7946 0958
                   </a>
                 </li>
-                <li>
-                  <Button variant="outline" size="sm" onClick={handleContactSales} className="mt-2 gap-2">
-                    <Mail className="h-3 w-3" />
+                <li className="pt-2">
+                  <Button variant="outline" size="sm" onClick={handleContactSales} className="gap-2">
+                    <MessageSquare className="h-3 w-3" />
                     Contact Sales
                   </Button>
                 </li>
