@@ -48,6 +48,7 @@ import InventoryPage from "@/pages/InventoryPage";
 import InvoicesPage from "@/pages/InvoicesPage";
 import EyeTestPage from "@/pages/EyeTestPage";
 import TestRoomsPage from "@/pages/TestRoomsPage";
+import TestRoomBookingsPage from "@/pages/TestRoomBookingsPage";
 import AIAssistantPage from "@/pages/AIAssistantPage";
 import AISettingsPage from "@/pages/AISettingsPage";
 import CompanyManagementPage from "@/pages/admin/CompanyManagementPage";
@@ -72,6 +73,9 @@ import ComplianceDashboardPage from "@/pages/ComplianceDashboardPage";
 import PrescriptionTemplatesPage from "@/pages/PrescriptionTemplatesPage";
 import ClinicalProtocolsPage from "@/pages/ClinicalProtocolsPage";
 import AIForecastingDashboardPage from "@/pages/AIForecastingDashboardPage";
+import EquipmentDetailPage from "@/pages/EquipmentDetailPage";
+import BusinessAnalyticsPage from "@/pages/BusinessAnalyticsPage";
+import AIModelManagementPage from "@/pages/AIModelManagementPage";
 
 // Loading fallback component
 function RouteLoadingFallback() {
@@ -252,6 +256,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/outside-rx" component={AddOutsideRx} />
             <Route path="/ecp/pos" component={OpticalPOSPage} />
             <Route path="/ecp/invoices" component={InvoicesPage} />
+            <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/ecp/test-rooms" component={TestRoomsPage} />
             <Route path="/ecp/new-order" component={NewOrderPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
@@ -262,6 +267,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/compliance" component={ComplianceDashboardPage} />
             <Route path="/ecp/prescription-templates" component={PrescriptionTemplatesPage} />
             <Route path="/ecp/clinical-protocols" component={ClinicalProtocolsPage} />
+            <Route path="/ecp/analytics" component={BusinessAnalyticsPage} />
             <Route path="/order/:id" component={OrderDetailsPage} />
             <Route path="/ecp/returns">
               <div className="text-center py-12">
@@ -276,6 +282,7 @@ function AuthenticatedApp() {
           <>
             <Route path="/lab/dashboard" component={LabDashboard} />
             <Route path="/order/:id" component={OrderDetailsPage} />
+            <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/lab/returns" component={ReturnsManagementPage} />
             <Route path="/lab/non-adapts" component={NonAdaptsPage} />
             <Route path="/lab/compliance" component={ComplianceDashboardPage} />
@@ -292,13 +299,9 @@ function AuthenticatedApp() {
             <Route path="/lab/quality" component={QualityControlPage} />
             <Route path="/lab/engineering" component={EngineeringDashboardPage} />
             <Route path="/lab/ai-forecasting" component={AIForecastingDashboardPage} />
-            <Route path="/lab/analytics">
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-semibold">Analytics Hub</h2>
-                <p className="text-muted-foreground mt-2">Root cause analysis and data correlation</p>
-              </div>
-            </Route>
+            <Route path="/lab/analytics" component={BusinessAnalyticsPage} />
             <Route path="/lab/equipment" component={EquipmentPage} />
+            <Route path="/lab/equipment/:id" component={EquipmentDetailPage} />
             <Route path="/lab/rnd">
               <div className="text-center py-12">
                 <h2 className="text-2xl font-semibold">R&D Projects</h2>
@@ -324,6 +327,7 @@ function AuthenticatedApp() {
             <Route path="/admin/dashboard" component={AdminDashboard} />
             <Route path="/admin/users" component={AdminDashboard} />
             <Route path="/admin/companies" component={CompanyManagementPage} />
+            <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/admin/audit-logs" component={AuditLogsPage} />
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
             <Route path="/admin/returns" component={ReturnsManagementPage} />
@@ -336,6 +340,8 @@ function AuthenticatedApp() {
             <Route path="/admin/ai-settings" component={AISettingsPage} />
             <Route path="/admin/company" component={CompanyManagementPage} />
             <Route path="/admin/bi-dashboard" component={BIDashboardPage} />
+            <Route path="/admin/analytics" component={BusinessAnalyticsPage} />
+            <Route path="/admin/ai-models" component={AIModelManagementPage} />
             <Route path="/admin/platform">
               <div className="text-center py-12">
                 <h2 className="text-2xl font-semibold">Platform Settings</h2>
@@ -350,7 +356,9 @@ function AuthenticatedApp() {
             <Route path="/platform-admin/dashboard" component={PlatformAdminPage} />
             <Route path="/platform-admin/users" component={PlatformAdminPage} />
             <Route path="/platform-admin/companies" component={PlatformAdminPage} />
+            <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/platform-admin/settings" component={SettingsPage} />
+            <Route path="/platform-admin/ai-models" component={AIModelManagementPage} />
             
             {/* ECP Routes for Testing */}
             <Route path="/ecp/dashboard" component={ECPDashboard} />
@@ -403,6 +411,7 @@ function AuthenticatedApp() {
             <Route path="/company-admin/dashboard" component={CompanyAdminPage} />
             <Route path="/company-admin/profile" component={CompanyAdminPage} />
             <Route path="/company-admin/users" component={CompanyAdminPage} />
+            <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/company-admin/suppliers" component={CompanyAdminPage} />
             <Route path="/company-admin/settings" component={SettingsPage} />
           </>
