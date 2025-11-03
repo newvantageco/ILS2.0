@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +57,7 @@ interface AIResponse {
 
 export default function AIAssistantPage() {
   console.log('[AIAssistantPage] Component mounted');
+  const [location] = useLocation();
   const [question, setQuestion] = useState("");
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -63,6 +65,17 @@ export default function AIAssistantPage() {
   const [feedbackRating, setFeedbackRating] = useState(5);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+
+  // Handle pre-filled question from URL query parameter
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const prefilledQuestion = params.get('q');
+    if (prefilledQuestion) {
+      setQuestion(decodeURIComponent(prefilledQuestion));
+      // Optionally auto-submit
+      // setTimeout(() => askMutation.mutate(), 500);
+    }
+  }, [location]);
 
   // Fetch conversations
   const { data: conversations, isLoading: conversationsLoading, error: conversationsError } = useQuery<Conversation[]>({

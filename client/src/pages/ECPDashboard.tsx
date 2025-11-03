@@ -5,7 +5,9 @@ import { ConsultLogManager } from "@/components/ConsultLogManager";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatCardSkeleton, OrderCardSkeleton } from "@/components/ui/CardSkeleton";
-import { Package, Clock, CheckCircle, AlertCircle, Plus } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Package, Clock, CheckCircle, AlertCircle, Plus, Brain, Sparkles, MessageSquare, TrendingUp, Lightbulb, Zap } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -33,6 +35,15 @@ export default function ECPDashboard() {
     queryKey: ["/api/orders"],
   });
 
+  const { data: aiUsage } = useQuery<{
+    queriesUsed: number;
+    queriesLimit: number;
+    cacheHits: number;
+    subscriptionTier: string;
+  }>({
+    queryKey: ["/api/ai/usage/stats"],
+  });
+
   useEffect(() => {
     if (statsError && isUnauthorizedError(statsError as Error)) {
       toast({
@@ -56,6 +67,70 @@ export default function ECPDashboard() {
   }, [ordersError, toast]);
 
   const recentOrders = orders?.slice(0, 6) || [];
+
+  // AI Quick Actions based on dashboard context
+  const getAIQuickActions = () => {
+    const actions = [];
+    
+    if (stats?.pending && stats.pending > 5) {
+      actions.push({
+        id: 'pending-orders',
+        title: 'High pending orders',
+        question: `I have ${stats.pending} pending orders. What should I prioritize and how can I process them efficiently?`,
+        icon: AlertCircle,
+        color: 'text-orange-600'
+      });
+    }
+    
+    if (stats?.inProduction && stats.inProduction > 10) {
+      actions.push({
+        id: 'production-tracking',
+        title: 'Track production orders',
+        question: `I have ${stats.inProduction} orders in production. How can I track their progress and estimate completion times?`,
+        icon: Clock,
+        color: 'text-blue-600'
+      });
+    }
+    
+    if (recentOrders.length > 0) {
+      actions.push({
+        id: 'order-analysis',
+        title: 'Analyze recent orders',
+        question: `Can you analyze my recent orders and provide insights on common lens types, coatings, and patient trends?`,
+        icon: TrendingUp,
+        color: 'text-green-600'
+      });
+    }
+    
+    // Default actions if no specific context
+    if (actions.length === 0) {
+      actions.push(
+        {
+          id: 'inventory-check',
+          title: 'Check inventory status',
+          question: 'What should I know about managing my lens inventory effectively?',
+          icon: Package,
+          color: 'text-primary'
+        },
+        {
+          id: 'patient-management',
+          title: 'Patient management tips',
+          question: 'What are best practices for managing patient records and prescriptions?',
+          icon: Lightbulb,
+          color: 'text-purple-600'
+        }
+      );
+    }
+    
+    return actions.slice(0, 3); // Limit to 3 actions
+  };
+
+  const quickActions = getAIQuickActions();
+
+  const handleQuickAction = async (question: string) => {
+    // Navigate to AI Assistant with pre-filled question
+    setLocation(`/ecp/ai-assistant?q=${encodeURIComponent(question)}`);
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -104,6 +179,86 @@ export default function ECPDashboard() {
           />
         </div>
       )}
+
+      {/* AI Assistant Quick Access Card */}
+      <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-primary/10 to-background">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Brain className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  AI Assistant
+                  <Badge variant="secondary" className="text-xs">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    {aiUsage?.subscriptionTier || "Active"}
+                  </Badge>
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Get instant help with your business</CardDescription>
+              </div>
+            </div>
+            <Button onClick={() => setLocation("/ecp/ai-assistant")} className="gap-2 w-full sm:w-auto" size="sm">
+              <MessageSquare className="h-4 w-4" />
+              Open AI Chat
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            <div className="text-center p-2 sm:p-3 rounded-lg bg-background/50">
+              <div className="text-lg sm:text-2xl font-bold text-primary">{aiUsage?.queriesUsed || 0}</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground mt-1">Queries Used</div>
+            </div>
+            <div className="text-center p-2 sm:p-3 rounded-lg bg-background/50">
+              <div className="text-lg sm:text-2xl font-bold text-green-600">{aiUsage?.cacheHits || 0}</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground mt-1">Cache Hits</div>
+            </div>
+            <div className="text-center p-2 sm:p-3 rounded-lg bg-background/50">
+              <div className="text-lg sm:text-2xl font-bold text-blue-600">
+                {aiUsage?.queriesLimit ? Math.round(((aiUsage.queriesLimit - (aiUsage.queriesUsed || 0)) / aiUsage.queriesLimit) * 100) : 100}%
+              </div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground mt-1">Available</div>
+            </div>
+          </div>
+          <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" size="sm" className="flex-1 text-xs sm:text-sm" onClick={() => setLocation("/ecp/ai-assistant")}>
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+              View Analytics
+            </Button>
+            <Button variant="outline" size="sm" className="flex-1 text-xs sm:text-sm" onClick={() => setLocation("/settings")}>
+              Upgrade Plan
+            </Button>
+          </div>
+
+          {/* AI Quick Actions */}
+          {quickActions.length > 0 && (
+            <div className="mt-4 pt-4 border-t">
+              <div className="flex items-center gap-2 mb-3">
+                <Zap className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Quick AI Actions</span>
+              </div>
+              <div className="space-y-2">
+                {quickActions.map((action) => (
+                  <button
+                    key={action.id}
+                    onClick={() => handleQuickAction(action.question)}
+                    className="w-full text-left p-2 rounded-lg hover:bg-background/80 transition-colors border border-border/50 hover:border-primary/50 group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <action.icon className={`h-4 w-4 ${action.color} group-hover:scale-110 transition-transform`} />
+                      <span className="text-xs sm:text-sm font-medium group-hover:text-primary transition-colors">
+                        {action.title}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="space-y-3 sm:space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

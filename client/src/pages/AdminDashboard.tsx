@@ -15,7 +15,7 @@ import { StatCardSkeleton } from "@/components/ui/CardSkeleton";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserCheck, UserX, Clock, CheckCircle, XCircle, Ban, Shield, Trash2, UserPlus } from "lucide-react";
+import { Users, UserCheck, UserX, Clock, CheckCircle, XCircle, Ban, Shield, Trash2, UserPlus, Brain, TrendingUp, Zap, AlertTriangle, Lightbulb } from "lucide-react";
 
 type User = {
   id: string;
@@ -51,6 +51,88 @@ export default function AdminDashboard() {
   }>({
     queryKey: ["/api/admin/stats"],
   });
+
+  const { data: aiStats } = useQuery<{
+    totalQueries: number;
+    activeUsers: number;
+    cacheHitRate: number;
+    rateLimitHits: number;
+  }>({
+    queryKey: ["/api/admin/ai-stats"],
+  });
+
+  // AI Quick Actions for admin based on system state
+  const getAdminAIQuickActions = () => {
+    const actions = [];
+    
+    if (stats?.pending && stats.pending > 5) {
+      actions.push({
+        id: 'pending-users',
+        title: `${stats.pending} pending approvals`,
+        question: `I have ${stats.pending} users pending approval. What criteria should I use to evaluate them and how can I streamline the approval process?`,
+        icon: AlertTriangle,
+        color: 'text-orange-600'
+      });
+    }
+    
+    if (stats?.suspended && stats.suspended > 3) {
+      actions.push({
+        id: 'suspended-users',
+        title: `${stats.suspended} suspended accounts`,
+        question: `There are ${stats.suspended} suspended accounts. How should I review and manage suspended users?`,
+        icon: Ban,
+        color: 'text-red-600'
+      });
+    }
+    
+    if (aiStats?.rateLimitHits && aiStats.rateLimitHits > 10) {
+      actions.push({
+        id: 'rate-limits',
+        title: 'High rate limit hits',
+        question: `I'm seeing ${aiStats.rateLimitHits} rate limit hits. How can I optimize AI usage and adjust limits for better user experience?`,
+        icon: Zap,
+        color: 'text-yellow-600'
+      });
+    }
+    
+    if (aiStats?.cacheHitRate && aiStats.cacheHitRate < 50) {
+      actions.push({
+        id: 'cache-optimization',
+        title: 'Low cache hit rate',
+        question: `The AI cache hit rate is ${aiStats.cacheHitRate}%. How can I improve caching to reduce costs and improve performance?`,
+        icon: TrendingUp,
+        color: 'text-blue-600'
+      });
+    }
+    
+    // Default admin actions
+    if (actions.length === 0) {
+      actions.push(
+        {
+          id: 'user-management',
+          title: 'User management tips',
+          question: 'What are best practices for managing users, roles, and permissions at scale?',
+          icon: Shield,
+          color: 'text-primary'
+        },
+        {
+          id: 'platform-optimization',
+          title: 'Platform optimization',
+          question: 'How can I optimize the platform for better performance and user satisfaction?',
+          icon: Lightbulb,
+          color: 'text-purple-600'
+        }
+      );
+    }
+    
+    return actions.slice(0, 3);
+  };
+
+  const adminQuickActions = getAdminAIQuickActions();
+
+  const handleAdminQuickAction = (question: string) => {
+    window.location.href = `/admin/ai-assistant?q=${encodeURIComponent(question)}`;
+  };
 
   const updateUserMutation = useMutation({
     mutationFn: async (data: { userId: string; updates: any }) => {
@@ -240,6 +322,73 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI System Statistics */}
+      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-background">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Brain className="h-5 w-5 text-primary" />
+            <CardTitle>AI System Statistics</CardTitle>
+          </div>
+          <CardDescription>Platform-wide AI Assistant usage and performance</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center p-4 rounded-lg bg-background border">
+              <div className="text-2xl font-bold text-primary">{aiStats?.totalQueries || 0}</div>
+              <div className="text-xs text-muted-foreground mt-1">Total Queries</div>
+            </div>
+            <div className="text-center p-4 rounded-lg bg-background border">
+              <div className="text-2xl font-bold text-green-600">{aiStats?.activeUsers || 0}</div>
+              <div className="text-xs text-muted-foreground mt-1">Active Users</div>
+            </div>
+            <div className="text-center p-4 rounded-lg bg-background border">
+              <div className="text-2xl font-bold text-blue-600">{aiStats?.cacheHitRate || 0}%</div>
+              <div className="text-xs text-muted-foreground mt-1">Cache Hit Rate</div>
+            </div>
+            <div className="text-center p-4 rounded-lg bg-background border">
+              <div className="text-2xl font-bold text-orange-600">{aiStats?.rateLimitHits || 0}</div>
+              <div className="text-xs text-muted-foreground mt-1">Rate Limit Hits</div>
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Button variant="outline" size="sm" className="flex-1">
+              <TrendingUp className="h-4 w-4 mr-2" />
+              View AI Analytics
+            </Button>
+            <Button variant="outline" size="sm" className="flex-1">
+              <Zap className="h-4 w-4 mr-2" />
+              AI Settings
+            </Button>
+          </div>
+
+          {/* Admin AI Quick Actions */}
+          {adminQuickActions.length > 0 && (
+            <div className="mt-4 pt-4 border-t">
+              <div className="flex items-center gap-2 mb-3">
+                <Lightbulb className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">AI Suggested Actions</span>
+              </div>
+              <div className="space-y-2">
+                {adminQuickActions.map((action) => (
+                  <button
+                    key={action.id}
+                    onClick={() => handleAdminQuickAction(action.question)}
+                    className="w-full text-left p-2 rounded-lg hover:bg-background/80 transition-colors border border-border/50 hover:border-primary/50 group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <action.icon className={`h-4 w-4 ${action.color} group-hover:scale-110 transition-transform`} />
+                      <span className="text-xs sm:text-sm font-medium group-hover:text-primary transition-colors">
+                        {action.title}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Users Table */}
       <Card>

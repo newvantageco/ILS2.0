@@ -156,11 +156,12 @@ export async function processUpload(
   const uploadResults = [];
 
   for (const file of files) {
-    const result = await storageService.upload(file.buffer, {
+    const uploadFile = file as Express.Multer.File;
+    const result = await storageService.upload(uploadFile.buffer, {
       companyId,
       category,
-      filename: file.originalname,
-      contentType: file.mimetype,
+      filename: uploadFile.originalname,
+      contentType: uploadFile.mimetype,
       isPublic: category === 'products', // Product images are public
     });
 

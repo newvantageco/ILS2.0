@@ -30,6 +30,7 @@
     "migrate-storage:verify": "tsx scripts/migrate-storage.ts verify"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.1.0",
     "@anthropic-ai/sdk": "^0.68.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
@@ -79,6 +80,7 @@
     "@types/nodemailer": "^7.0.3",
     "@types/pdfkit": "^0.17.3",
     "@types/qrcode": "^1.5.6",
+    "antd": "^5.28.0",
     "axios": "^1.13.0",
     "bcrypt": "^6.0.0",
     "class-variance-authority": "^0.7.1",

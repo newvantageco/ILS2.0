@@ -112,7 +112,7 @@ export function registerProprietaryAIRoutes(app: Express, storage: IStorage) {
    * GET /api/proprietary-ai/conversation/:id
    * Get conversation with messages
    */
-  router.get("/conversation/:id", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/proprietary-ai/conversation/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const user = req.user;
       const conversationId = req.params.id;
@@ -127,7 +127,7 @@ export function registerProprietaryAIRoutes(app: Express, storage: IStorage) {
         return res.status(403).json({ error: "Access denied" });
       }
 
-      const messages = await storage.getAiMessagesByConversation(conversationId);
+      const messages = await storage.getAiMessages(conversationId);
 
       res.json({ conversation, messages });
     } catch (error) {
@@ -140,19 +140,21 @@ export function registerProprietaryAIRoutes(app: Express, storage: IStorage) {
    * POST /api/proprietary-ai/feedback
    * Provide feedback on AI response
    */
-  router.post("/feedback", requireAuth, async (req: Request, res: Response) => {
+  app.post("/api/proprietary-ai/feedback", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const user = req.user;
+      const user = await getAuthenticatedUser(req, storage);
+
       const { messageId, rating, helpful, accurate, comments } = req.body;
 
-      if (!user) {
+      if (!user || !user.id) {
         return res.status(401).json({ error: "Unauthorized" });
       }
 
       const feedback = await storage.createAiFeedback({
         messageId,
         userId: user.id,
-        rating: rating ? parseInt(rating) : null,
+        companyId: user.companyId,
+        rating: rating ? parseInt(rating) : 0,
         helpful: helpful === true,
         accurate: accurate === true,
         comments: comments || null,
@@ -170,22 +172,22 @@ export function registerProprietaryAIRoutes(app: Express, storage: IStorage) {
    * GET /api/proprietary-ai/stats
    * Get AI usage statistics for company
    */
-  router.get("/stats", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/proprietary-ai/stats", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const user = req.user;
+      const user = await getAuthenticatedUser(req, storage);
 
       if (!user || !user.companyId) {
         return res.status(403).json({ error: "User must belong to a company" });
       }
 
-      const conversations = await storage.getAiConversationsByCompany(user.companyId);
+      const conversations = await storage.getAiConversations(user.companyId);
       const learningData = await storage.getAiLearningDataByCompany(user.companyId);
       const knowledgeBase = await storage.getAiKnowledgeBaseByCompany(user.companyId);
 
       // Calculate stats
       const totalConversations = conversations.length;
       const totalMessages = await Promise.all(
-        conversations.map(c => storage.getAiMessagesByConversation(c.id))
+        conversations.map((c: any) => storage.getAiMessages(c.id))
       ).then(results => results.flat().length);
 
       const externalAIUsage = learningData.filter(l => 
@@ -220,9 +222,9 @@ export function registerProprietaryAIRoutes(app: Express, storage: IStorage) {
    * GET /api/proprietary-ai/learning-progress
    * Get learning progress for company
    */
-  router.get("/learning-progress", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/proprietary-ai/learning-progress", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const user = req.user;
+      const user = await getAuthenticatedUser(req, storage);
 
       if (!user || !user.companyId) {
         return res.status(403).json({ error: "User must belong to a company" });
@@ -268,6 +270,5 @@ export function registerProprietaryAIRoutes(app: Express, storage: IStorage) {
     }
   });
 
-  app.use("/api/proprietary-ai", router);
   logger.info("Proprietary AI routes registered");
 }

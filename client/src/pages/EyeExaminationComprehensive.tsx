@@ -315,7 +315,7 @@ export default function EyeExaminationComprehensive() {
   const urlParams = new URLSearchParams(window.location.search);
   const urlPatientId = urlParams.get('patientId');
 
-  const canEdit = user?.enhancedRole === 'optometrist' || user?.role === 'ecp' || user?.role === 'platform_admin' || user?.role === 'admin';
+  const canEdit = user?.enhancedRole === 'optometrist' || user?.role === 'ecp' || user?.role === 'platform_admin' || user?.role === 'admin' || user?.role === 'company_admin';
 
   // Form state - comprehensive data structure
   const [formData, setFormData] = useState<Partial<EyeExaminationData>>({
@@ -323,7 +323,7 @@ export default function EyeExaminationComprehensive() {
     generalHistory: {
       schedule: {
         date: new Date().toISOString(),
-        seenBy: '',
+        seenBy: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '',
         healthcare: 'private',
       },
       reasonForVisit: '',
@@ -510,8 +510,22 @@ export default function EyeExaminationComprehensive() {
         const patient = patients.find((p: Patient) => p.id === examData.patientId);
         if (patient) setSelectedPatient(patient);
       }
+    } else if (user && !id) {
+      // For new examinations, auto-populate seenBy with current user
+      setFormData(prev => ({
+        ...prev,
+        generalHistory: {
+          ...prev.generalHistory,
+          schedule: {
+            ...prev.generalHistory?.schedule,
+            date: new Date().toISOString(),
+            seenBy: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+            healthcare: (prev.generalHistory?.schedule?.healthcare || 'private') as 'private' | 'nhs',
+          },
+        } as any,
+      }));
     }
-  }, [examination, patients]);
+  }, [examination, patients, user, id]);
 
   const saveMutation = useMutation({
     mutationFn: async (data: Partial<EyeExaminationData>) => {

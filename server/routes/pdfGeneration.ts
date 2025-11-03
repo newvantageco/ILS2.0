@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import AdvancedPDFService from '../services/AdvancedPDFService';
+import ProfessionalPDFService from '../services/ProfessionalPDFService';
 import { db } from '../db';
 import { pdfTemplates } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
@@ -7,6 +8,7 @@ import { z } from 'zod';
 
 const router = Router();
 const pdfService = AdvancedPDFService.getInstance();
+const professionalPdfService = ProfessionalPDFService.getInstance();
 
 /**
  * POST /api/pdf/receipt/:transactionId
@@ -272,6 +274,129 @@ router.delete('/templates/:id', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error deleting template:', error);
     res.status(500).json({ error: 'Failed to delete template' });
+  }
+});
+
+/**
+ * POST /api/pdf/prescription/:prescriptionId
+ * Generate professional prescription PDF with GOC compliance
+ */
+router.post('/prescription/:prescriptionId', async (req: Request, res: Response) => {
+  try {
+    const { prescriptionId } = req.params;
+
+    const pdfBuffer = await professionalPdfService.generatePrescriptionPDF(prescriptionId);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=prescription_${prescriptionId.substring(0, 8)}.pdf`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error generating prescription PDF:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate prescription PDF',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/pdf/order-slip/:orderId
+ * Generate professional lab order slip PDF
+ */
+router.post('/order-slip/:orderId', async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+
+    const pdfBuffer = await professionalPdfService.generateOrderSlipPDF(orderId);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=order_slip_${orderId.substring(0, 8)}.pdf`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error generating order slip PDF:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate order slip PDF',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/pdf/customer-info/:patientId
+ * Generate comprehensive patient information sheet PDF
+ */
+router.post('/customer-info/:patientId', async (req: Request, res: Response) => {
+  try {
+    const { patientId } = req.params;
+
+    const pdfBuffer = await professionalPdfService.generateCustomerInfoPDF(patientId);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=patient_info_${patientId.substring(0, 8)}.pdf`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error generating customer info PDF:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate customer info PDF',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/pdf/preview/prescription/:prescriptionId
+ * Preview prescription PDF (returns inline instead of attachment)
+ */
+router.get('/preview/prescription/:prescriptionId', async (req: Request, res: Response) => {
+  try {
+    const { prescriptionId } = req.params;
+
+    const pdfBuffer = await professionalPdfService.generatePrescriptionPDF(prescriptionId);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=prescription_${prescriptionId.substring(0, 8)}.pdf`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error previewing prescription PDF:', error);
+    res.status(500).json({ error: 'Failed to preview prescription PDF' });
+  }
+});
+
+/**
+ * GET /api/pdf/preview/order-slip/:orderId
+ * Preview order slip PDF
+ */
+router.get('/preview/order-slip/:orderId', async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+
+    const pdfBuffer = await professionalPdfService.generateOrderSlipPDF(orderId);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=order_slip_${orderId.substring(0, 8)}.pdf`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error previewing order slip PDF:', error);
+    res.status(500).json({ error: 'Failed to preview order slip PDF' });
+  }
+});
+
+/**
+ * GET /api/pdf/preview/customer-info/:patientId
+ * Preview customer info PDF
+ */
+router.get('/preview/customer-info/:patientId', async (req: Request, res: Response) => {
+  try {
+    const { patientId } = req.params;
+
+    const pdfBuffer = await professionalPdfService.generateCustomerInfoPDF(patientId);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=patient_info_${patientId.substring(0, 8)}.pdf`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error previewing customer info PDF:', error);
+    res.status(500).json({ error: 'Failed to preview customer info PDF' });
   }
 });
 

@@ -299,9 +299,11 @@ class FeatureFlagsService {
   async getFlagsForTarget(targetId: string): Promise<Record<string, boolean>> {
     const result: Record<string, boolean> = {};
 
-    for (const flag of this.flags.values()) {
-      result[flag.key] = await this.isEnabled(flag.key, targetId);
-    }
+    this.flags.forEach(flag => {
+      this.isEnabled(flag.key, targetId).then(enabled => {
+        result[flag.key] = enabled;
+      });
+    });
 
     return result;
   }

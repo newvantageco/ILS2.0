@@ -10,9 +10,9 @@ const router = Router();
 // Apply authentication to all routes
 router.use(authenticateUser);
 
-// Helper function to check if user is optometrist
+// Helper function to check if user is optometrist or admin
 const isOptometrist = (user: any): boolean => {
-  return user.enhancedRole === 'optometrist' || user.role === 'ecp' || user.role === 'platform_admin' || user.role === 'admin';
+  return user.enhancedRole === 'optometrist' || user.role === 'ecp' || user.role === 'platform_admin' || user.role === 'admin' || user.role === 'company_admin';
 };
 
 // Validation schema for comprehensive examination data

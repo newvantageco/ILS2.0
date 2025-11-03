@@ -39,7 +39,7 @@ function requireAdmin(req: Request, res: Response, next: Function) {
     return res.status(401).json({ error: 'Authentication required' });
   }
   
-  if (user.role !== 'admin' && user.role !== 'platform_admin') {
+  if (user.role !== 'admin' && user.role !== 'platform_admin' && user.role !== 'company_admin') {
     return res.status(403).json({ 
       error: 'Access denied',
       message: 'Admin privileges required to view audit logs'

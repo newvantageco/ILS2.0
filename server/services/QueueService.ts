@@ -417,9 +417,11 @@ class QueueService {
   async getAllQueueStats(): Promise<Record<JobType, any>> {
     const stats: Record<string, any> = {};
 
-    for (const [queueType] of this.queues) {
-      stats[queueType] = await this.getQueueStats(queueType);
-    }
+    this.queues.forEach((queue, queueType) => {
+      this.getQueueStats(queueType).then(queueStats => {
+        stats[queueType] = queueStats;
+      });
+    });
 
     return stats;
   }

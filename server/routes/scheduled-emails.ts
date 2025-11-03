@@ -12,7 +12,7 @@ router.post('/trigger/prescription-reminders', authenticateUser, async (req: Req
     const user = (req as any).user;
     
     // Only admins can manually trigger
-    if (user.role !== 'admin' && user.role !== 'platform_admin') {
+    if (user.role !== 'admin' && user.role !== 'platform_admin' && user.role !== 'company_admin') {
       return res.status(403).json({ message: 'Forbidden: Admin access required' });
     }
 
@@ -36,7 +36,7 @@ router.post('/trigger/recall-notifications', authenticateUser, async (req: Reque
     const user = (req as any).user;
     
     // Only admins can manually trigger
-    if (user.role !== 'admin' && user.role !== 'platform_admin') {
+    if (user.role !== 'admin' && user.role !== 'platform_admin' && user.role !== 'company_admin') {
       return res.status(403).json({ message: 'Forbidden: Admin access required' });
     }
 

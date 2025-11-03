@@ -14,8 +14,21 @@ declare global {
     interface Request {
       tenantId?: string;
       companyData?: any;
+      tenantContext?: TenantContext;
     }
   }
+}
+
+/**
+ * Tenant context interface for AI and multi-tenant operations
+ */
+export interface TenantContext {
+  tenantId: string;
+  tenantCode?: string;
+  subscriptionTier?: string;
+  aiQueriesLimit?: number;
+  aiQueriesUsed?: number;
+  features?: Record<string, boolean>;
 }
 
 /**
@@ -67,6 +80,21 @@ export const setTenantContext = async (
     }
 
     req.companyData = company;
+
+    // Set enhanced tenant context for AI operations
+    const companyAny = company as any;
+    req.tenantContext = {
+      tenantId: user.companyId,
+      tenantCode: companyAny.code || company.id,
+      subscriptionTier: companyAny.subscriptionTier || 'basic',
+      aiQueriesLimit: companyAny.aiQueriesLimit || 1000,
+      aiQueriesUsed: companyAny.aiQueriesUsed || 0,
+      features: {
+        sales_queries: true,
+        inventory_queries: true,
+        patient_analytics: companyAny.subscriptionTier === 'professional' || companyAny.subscriptionTier === 'enterprise'
+      }
+    };
 
     next();
   } catch (error) {
@@ -211,6 +239,12 @@ export class TenantDB {
   // Add helper methods that automatically include tenant filter
   // Example: this.query(orders).where(eq(orders.companyId, this.tenantId))
 }
+
+/**
+ * Middleware to extract tenant context from authenticated user
+ * Alias for setTenantContext for consistency across codebase
+ */
+export const extractTenantContext = setTenantContext;
 
 export default {
   setTenantContext,

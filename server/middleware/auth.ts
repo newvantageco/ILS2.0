@@ -34,7 +34,7 @@ export const authenticateUser: RequestHandler = async (req, res, next) => {
       id: user.id,
       email: user.email,
       role: user.role,
-      companyId: user.companyId
+      companyId: user.companyId || undefined
     };
     next();
   } catch (error) {
@@ -57,6 +57,11 @@ export const requireRole = (allowedRoles: typeof roleEnum.enumValues[number][]) 
     next();
   }) as RequestHandler;
 };
+
+/**
+ * Alias for authenticateUser (used in some routes)
+ */
+export const requireAuth = authenticateUser;
 
 async function validateToken(token: string) {
   try {

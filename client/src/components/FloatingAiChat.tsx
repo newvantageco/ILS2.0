@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { Bot, X, Minus, Maximize2, Send, Loader2 } from "lucide-react";
+import { Bot, X, Minus, Maximize2, Send, Loader2, Sparkles, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
@@ -20,6 +22,23 @@ export function FloatingAiChat() {
   const [input, setInput] = useState("");
   const [conversationId, setConversationId] = useState<string | undefined>();
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Fetch AI usage stats
+  const { data: aiUsage } = useQuery<{
+    queriesUsed: number;
+    queriesLimit: number;
+    cacheHits: number;
+    subscriptionTier: string;
+  }>({
+    queryKey: ["/api/ai/usage/stats"],
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  const usagePercentage = aiUsage?.queriesLimit
+    ? Math.round((aiUsage.queriesUsed / aiUsage.queriesLimit) * 100)
+    : 0;
+
+  const isNearLimit = usagePercentage > 80;
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -112,7 +131,15 @@ export function FloatingAiChat() {
       <div className="flex items-center justify-between p-4 border-b bg-primary text-primary-foreground rounded-t-lg">
         <div className="flex items-center gap-2">
           <Bot className="w-5 h-5" />
-          <span className="font-semibold">AI Assistant</span>
+          <div>
+            <span className="font-semibold">AI Assistant</span>
+            {aiUsage?.subscriptionTier && (
+              <Badge variant="secondary" className="ml-2 text-xs">
+                <Sparkles className="h-3 w-3 mr-1" />
+                {aiUsage.subscriptionTier}
+              </Badge>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -140,6 +167,30 @@ export function FloatingAiChat() {
 
       {!isMinimized && (
         <>
+          {/* Usage Indicator */}
+          {aiUsage && (
+            <div className="px-4 pt-3 pb-2 border-b bg-muted/30">
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-muted-foreground">
+                  {aiUsage.queriesUsed} / {aiUsage.queriesLimit} queries
+                </span>
+                <span className={cn(
+                  "font-medium",
+                  isNearLimit ? "text-orange-600" : "text-muted-foreground"
+                )}>
+                  {usagePercentage}% used
+                </span>
+              </div>
+              <Progress value={usagePercentage} className="h-1" />
+              {isNearLimit && (
+                <div className="flex items-center gap-1 mt-2 text-xs text-orange-600">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>Approaching query limit</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Messages */}
           <ScrollArea className="flex-1 p-4" ref={scrollRef}>
             {messages.length === 0 ? (

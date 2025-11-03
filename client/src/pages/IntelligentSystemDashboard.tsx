@@ -14,7 +14,7 @@ export const IntelligentSystemDashboard: React.FC = () => {
   const [lastAnalysisTime, setLastAnalysisTime] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user?.role === 'ecp') {
+    if (user?.role === 'ecp' || user?.role === 'company_admin' || user?.role === 'admin' || user?.role === 'platform_admin') {
       loadAlerts();
       loadRecommendations();
     }

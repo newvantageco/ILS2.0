@@ -57,7 +57,7 @@ export default function ExaminationList() {
   const [dateFilter, setDateFilter] = useState<string>('all');
   
   // Check if user is optometrist (can create clinical examinations)
-  const canCreateExamination = user?.enhancedRole === 'optometrist' || user?.role === 'ecp' || user?.role === 'platform_admin' || user?.role === 'admin';
+  const canCreateExamination = user?.enhancedRole === 'optometrist' || user?.role === 'ecp' || user?.role === 'platform_admin' || user?.role === 'admin' || user?.role === 'company_admin';
 
   const { data: examinations = [], isLoading, refetch } = useQuery<Examination[]>({
     queryKey: ['/api/examinations', { status: statusFilter, date: dateFilter }],

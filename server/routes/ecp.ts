@@ -77,7 +77,7 @@ router.post('/test-rooms', isAuthenticated, async (req: any, res: Response) => {
     }
 
     // Check if user has admin permissions
-    if (user[0].role !== 'company_admin' && user[0].role !== 'admin') {
+    if (user[0].role !== 'company_admin' && user[0].role !== 'admin' && user[0].role !== 'platform_admin') {
       return res.status(403).json({ message: "Only admins can create test rooms" });
     }
 
@@ -115,7 +115,7 @@ router.put('/test-rooms/:id', isAuthenticated, async (req: any, res: Response) =
     }
 
     // Check if user has admin permissions
-    if (user[0].role !== 'company_admin' && user[0].role !== 'admin') {
+    if (user[0].role !== 'company_admin' && user[0].role !== 'admin' && user[0].role !== 'platform_admin') {
       return res.status(403).json({ message: "Only admins can update test rooms" });
     }
 
@@ -156,7 +156,7 @@ router.delete('/test-rooms/:id', isAuthenticated, async (req: any, res: Response
     }
 
     // Check if user has admin permissions
-    if (user[0].role !== 'company_admin' && user[0].role !== 'admin') {
+    if (user[0].role !== 'company_admin' && user[0].role !== 'admin' && user[0].role !== 'platform_admin') {
       return res.status(403).json({ message: "Only admins can delete test rooms" });
     }
 
@@ -682,8 +682,8 @@ router.post('/prescription-templates', isAuthenticated, async (req: any, res: Re
     }
 
     // Only ECPs can create prescription templates
-    if (user[0].role !== 'ecp' && user[0].role !== 'company_admin' && user[0].role !== 'admin') {
-      return res.status(403).json({ message: "Only ECPs can create prescription templates" });
+    if (user[0].role !== 'ecp' && user[0].role !== 'company_admin' && user[0].role !== 'admin' && user[0].role !== 'platform_admin') {
+      return res.status(403).json({ message: "Only ECPs and admins can create prescription templates" });
     }
 
     const validation = insertPrescriptionTemplateSchema.safeParse({
@@ -820,7 +820,7 @@ router.post('/clinical-protocols', isAuthenticated, async (req: any, res: Respon
     }
 
     // Only admins and ECPs can create protocols
-    if (user[0].role !== 'company_admin' && user[0].role !== 'admin' && user[0].role !== 'ecp') {
+    if (user[0].role !== 'company_admin' && user[0].role !== 'admin' && user[0].role !== 'ecp' && user[0].role !== 'platform_admin') {
       return res.status(403).json({ message: "Insufficient permissions" });
     }
 
@@ -859,7 +859,7 @@ router.put('/clinical-protocols/:id', isAuthenticated, async (req: any, res: Res
     }
 
     // Only admins can update protocols
-    if (user[0].role !== 'company_admin' && user[0].role !== 'admin') {
+    if (user[0].role !== 'company_admin' && user[0].role !== 'admin' && user[0].role !== 'platform_admin') {
       return res.status(403).json({ message: "Only admins can update protocols" });
     }
 
