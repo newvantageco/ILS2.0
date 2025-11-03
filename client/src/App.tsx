@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, lazy } from "react";
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -21,61 +21,72 @@ import { useAuth } from "@/hooks/useAuth";
 import { LogOut } from "lucide-react";
 import { useLocation } from "wouter";
 
-// Lazy-loaded route components (code splitting for performance)
-import * as LazyRoutes from "@/routes/lazyRoutes";
+// Code-split route components for optimal performance
+// Only load the code for pages users actually visit
+const Landing = lazy(() => import("@/pages/Landing"));
+const Login = lazy(() => import("@/pages/Login"));
+const NotFound = lazy(() => import("@/pages/not-found"));
+const WelcomePage = lazy(() => import("@/pages/WelcomePage"));
+const SignupPage = lazy(() => import("@/pages/SignupPage"));
+const PendingApprovalPage = lazy(() => import("@/pages/PendingApprovalPage"));
+const AccountSuspendedPage = lazy(() => import("@/pages/AccountSuspendedPage"));
+const OnboardingFlow = lazy(() => import("@/pages/OnboardingFlow"));
+const EmailLoginPage = lazy(() => import("@/pages/EmailLoginPage"));
+const EmailSignupPage = lazy(() => import("@/pages/EmailSignupPage"));
 
-// Re-import non-lazy components temporarily for backward compatibility
-import Landing from "@/pages/Landing";
-import Login from "@/pages/Login";
-import NotFound from "@/pages/not-found";
-import ECPDashboard from "@/pages/ECPDashboard";
-import LabDashboard from "@/pages/LabDashboard";
-import SupplierDashboard from "@/pages/SupplierDashboard";
-import NewOrderPage from "@/pages/NewOrderPage";
-import OrderDetailsPage from "@/pages/OrderDetailsPage";
-import SettingsPage from "@/pages/SettingsPage";
-import SignupPage from "@/pages/SignupPage";
-import PendingApprovalPage from "@/pages/PendingApprovalPage";
-import AccountSuspendedPage from "@/pages/AccountSuspendedPage";
-import OnboardingFlow from "@/pages/OnboardingFlow";
-import AdminDashboard from "@/pages/AdminDashboard";
-import EmailLoginPage from "@/pages/EmailLoginPage";
-import EmailSignupPage from "@/pages/EmailSignupPage";
-import GitHubPushPage from "@/pages/github-push";
-import PatientsPage from "@/pages/PatientsPage";
-import PrescriptionsPage from "@/pages/PrescriptionsPage";
-import InventoryPage from "@/pages/InventoryPage";
-import InvoicesPage from "@/pages/InvoicesPage";
-import EyeTestPage from "@/pages/EyeTestPage";
-import TestRoomsPage from "@/pages/TestRoomsPage";
-import TestRoomBookingsPage from "@/pages/TestRoomBookingsPage";
-import AIAssistantPage from "@/pages/AIAssistantPage";
-import AISettingsPage from "@/pages/AISettingsPage";
-import CompanyManagementPage from "@/pages/admin/CompanyManagementPage";
-import OpticalPOSPage from "@/pages/OpticalPOSPage";
-import InventoryManagement from "@/pages/InventoryManagement";
-import ExaminationList from "@/pages/ExaminationList";
-import EyeExaminationComprehensive from "@/pages/EyeExaminationComprehensive";
-import AddOutsideRx from "@/pages/AddOutsideRx";
-import BIDashboardPage from "@/pages/BIDashboardPage";
-import PlatformAdminPage from "@/pages/PlatformAdminPage";
-import CompanyAdminPage from "@/pages/CompanyAdminPage";
-import AnalyticsDashboard from "@/pages/AnalyticsDashboard";
-import EquipmentPage from "@/pages/EquipmentPage";
-import ProductionTrackingPage from "@/pages/ProductionTrackingPage";
-import QualityControlPage from "@/pages/QualityControlPage";
-import EngineeringDashboardPage from "@/pages/EngineeringDashboardPage";
-import AuditLogsPage from "@/pages/AuditLogsPage";
-import PermissionsManagementPage from "@/pages/PermissionsManagementPage";
-import ReturnsManagementPage from "@/pages/ReturnsManagementPage";
-import NonAdaptsPage from "@/pages/NonAdaptsPage";
-import ComplianceDashboardPage from "@/pages/ComplianceDashboardPage";
-import PrescriptionTemplatesPage from "@/pages/PrescriptionTemplatesPage";
-import ClinicalProtocolsPage from "@/pages/ClinicalProtocolsPage";
-import AIForecastingDashboardPage from "@/pages/AIForecastingDashboardPage";
-import EquipmentDetailPage from "@/pages/EquipmentDetailPage";
-import BusinessAnalyticsPage from "@/pages/BusinessAnalyticsPage";
-import AIModelManagementPage from "@/pages/AIModelManagementPage";
+// Dashboards
+const ECPDashboard = lazy(() => import("@/pages/ECPDashboard"));
+const LabDashboard = lazy(() => import("@/pages/LabDashboard"));
+const SupplierDashboard = lazy(() => import("@/pages/SupplierDashboard"));
+const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
+const PlatformAdminPage = lazy(() => import("@/pages/PlatformAdminPage"));
+const CompanyAdminPage = lazy(() => import("@/pages/CompanyAdminPage"));
+
+// ECP Pages
+const PatientsPage = lazy(() => import("@/pages/PatientsPage"));
+const PrescriptionsPage = lazy(() => import("@/pages/PrescriptionsPage"));
+const InventoryPage = lazy(() => import("@/pages/InventoryPage"));
+const InventoryManagement = lazy(() => import("@/pages/InventoryManagement"));
+const InvoicesPage = lazy(() => import("@/pages/InvoicesPage"));
+const EyeTestPage = lazy(() => import("@/pages/EyeTestPage"));
+const TestRoomsPage = lazy(() => import("@/pages/TestRoomsPage"));
+const TestRoomBookingsPage = lazy(() => import("@/pages/TestRoomBookingsPage"));
+const OpticalPOSPage = lazy(() => import("@/pages/OpticalPOSPage"));
+const ExaminationList = lazy(() => import("@/pages/ExaminationList"));
+const EyeExaminationComprehensive = lazy(() => import("@/pages/EyeExaminationComprehensive"));
+const AddOutsideRx = lazy(() => import("@/pages/AddOutsideRx"));
+const PrescriptionTemplatesPage = lazy(() => import("@/pages/PrescriptionTemplatesPage"));
+const ClinicalProtocolsPage = lazy(() => import("@/pages/ClinicalProtocolsPage"));
+
+// Lab Pages
+const ProductionTrackingPage = lazy(() => import("@/pages/ProductionTrackingPage"));
+const QualityControlPage = lazy(() => import("@/pages/QualityControlPage"));
+const EngineeringDashboardPage = lazy(() => import("@/pages/EngineeringDashboardPage"));
+const EquipmentPage = lazy(() => import("@/pages/EquipmentPage"));
+const EquipmentDetailPage = lazy(() => import("@/pages/EquipmentDetailPage"));
+const ReturnsManagementPage = lazy(() => import("@/pages/ReturnsManagementPage"));
+const NonAdaptsPage = lazy(() => import("@/pages/NonAdaptsPage"));
+const AIForecastingDashboardPage = lazy(() => import("@/pages/AIForecastingDashboardPage"));
+
+// Shared Pages
+const NewOrderPage = lazy(() => import("@/pages/NewOrderPage"));
+const OrderDetailsPage = lazy(() => import("@/pages/OrderDetailsPage"));
+const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
+const AIAssistantPage = lazy(() => import("@/pages/AIAssistantPage"));
+const BIDashboardPage = lazy(() => import("@/pages/BIDashboardPage"));
+const CompanyManagementPage = lazy(() => import("@/pages/admin/CompanyManagementPage"));
+const AnalyticsDashboard = lazy(() => import("@/pages/AnalyticsDashboard"));
+const BusinessAnalyticsPage = lazy(() => import("@/pages/BusinessAnalyticsPage"));
+
+// Admin Pages
+const AISettingsPage = lazy(() => import("@/pages/AISettingsPage"));
+const AuditLogsPage = lazy(() => import("@/pages/AuditLogsPage"));
+const PermissionsManagementPage = lazy(() => import("@/pages/PermissionsManagementPage"));
+const ComplianceDashboardPage = lazy(() => import("@/pages/ComplianceDashboardPage"));
+const AIModelManagementPage = lazy(() => import("@/pages/AIModelManagementPage"));
+
+// Other
+const GitHubPushPage = lazy(() => import("@/pages/github-push"));
 
 // Loading fallback component
 function RouteLoadingFallback() {
@@ -128,9 +139,11 @@ function AppLayout({ children, userRole }: { children: React.ReactNode; userRole
             </div>
           </header>
           <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8">
-            <PageTransition>
-              {children}
-            </PageTransition>
+            <Suspense fallback={<RouteLoadingFallback />}>
+              <PageTransition>
+                {children}
+              </PageTransition>
+            </Suspense>
           </main>
         </div>
       </div>
@@ -144,17 +157,29 @@ function AuthenticatedApp() {
   const { user, isLoading } = useAuth();
   const [location] = useLocation();
 
-  // Public routes (accessible without auth)
+  // Public routes (accessible without auth) - wrapped in Suspense
   if (location === '/login') {
-    return <Login />;
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Login />
+      </Suspense>
+    );
   }
 
   if (location === '/email-login') {
-    return <EmailLoginPage />;
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <EmailLoginPage />
+      </Suspense>
+    );
   }
   
   if (location === '/email-signup') {
-    return <EmailSignupPage />;
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <EmailSignupPage />
+      </Suspense>
+    );
   }
 
   if (isLoading) {
@@ -169,47 +194,59 @@ function AuthenticatedApp() {
   }
 
   if (!user) {
-    return <Landing />;
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Landing />
+      </Suspense>
+    );
   }
 
   // Handle users who need to complete signup
   if (!user.role) {
     return (
-      <Switch>
-        <Route path="/signup" component={SignupPage} />
-        <Route path="/onboarding" component={OnboardingFlow} />
-        <Route><Redirect to="/signup" /></Route>
-      </Switch>
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Switch>
+          <Route path="/signup" component={SignupPage} />
+          <Route path="/onboarding" component={OnboardingFlow} />
+          <Route><Redirect to="/signup" /></Route>
+        </Switch>
+      </Suspense>
     );
   }
   
   // Handle users who completed signup but no company
   if (!user.companyId && user.role !== 'platform_admin') {
     return (
-      <Switch>
-        <Route path="/onboarding" component={OnboardingFlow} />
-        <Route><Redirect to="/onboarding" /></Route>
-      </Switch>
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Switch>
+          <Route path="/onboarding" component={OnboardingFlow} />
+          <Route><Redirect to="/onboarding" /></Route>
+        </Switch>
+      </Suspense>
     );
   }
 
   // Handle pending approval status
   if (user.accountStatus === 'pending') {
     return (
-      <Switch>
-        <Route path="/pending-approval" component={PendingApprovalPage} />
-        <Route><Redirect to="/pending-approval" /></Route>
-      </Switch>
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Switch>
+          <Route path="/pending-approval" component={PendingApprovalPage} />
+          <Route><Redirect to="/pending-approval" /></Route>
+        </Switch>
+      </Suspense>
     );
   }
 
   // Handle suspended accounts
   if (user.accountStatus === 'suspended') {
     return (
-      <Switch>
-        <Route path="/account-suspended" component={AccountSuspendedPage} />
-        <Route><Redirect to="/account-suspended" /></Route>
-      </Switch>
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Switch>
+          <Route path="/account-suspended" component={AccountSuspendedPage} />
+          <Route><Redirect to="/account-suspended" /></Route>
+        </Switch>
+      </Suspense>
     );
   }
 
@@ -236,12 +273,15 @@ function AuthenticatedApp() {
   };
 
   if (location === "/" || location === "") {
-    return <Redirect to={`${getRoleBasePath()}/dashboard`} />;
+    return <Redirect to="/welcome" />;
   }
 
   return (
     <AppLayout userRole={userRole}>
       <Switch>
+        {/* Welcome/Home Page - Shows platform capabilities */}
+        <Route path="/welcome" component={WelcomePage} />
+
         {userRole === "ecp" && (
           <>
             <Route path="/ecp/dashboard" component={ECPDashboard} />
