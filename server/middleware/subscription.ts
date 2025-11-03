@@ -2,6 +2,7 @@ import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { db } from '../db';
 import { users, companies } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
+import { isPlatformAdmin } from '../utils/rbac';
 
 export interface SubscriptionInfo {
   userPlan: 'free_ecp' | 'full';
@@ -29,19 +30,14 @@ export const checkSubscription: RequestHandler = async (req, res, next) => {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    // Platform admin gets all access
-    if (user.role === 'platform_admin') {
-      authReq.subscription = {
-        userPlan: 'full',
-        companyPlan: 'full',
-        allowedFeatures: ['all'],
-        isPlatformAdmin: true,
-        isActive: true
-      };
-      return next();
+    // Get user ID from different auth sources
+    const userId = user.id || user.claims?.sub;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'User ID not found' });
     }
 
-    // Get user subscription details
+    // Get user subscription details from database
     const [userDetails] = await db
       .select({
         subscriptionPlan: users.subscriptionPlan,
@@ -50,10 +46,22 @@ export const checkSubscription: RequestHandler = async (req, res, next) => {
         role: users.role
       })
       .from(users)
-      .where(eq(users.id, user.id));
+      .where(eq(users.id, userId));
 
     if (!userDetails) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Platform admin gets all access (check from database using RBAC)
+    if (isPlatformAdmin(userDetails.role as any)) {
+      authReq.subscription = {
+        userPlan: 'full',
+        companyPlan: 'full',
+        allowedFeatures: ['all'],
+        isPlatformAdmin: true,
+        isActive: true
+      };
+      return next();
     }
 
     if (!userDetails.isActive) {

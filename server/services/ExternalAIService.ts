@@ -16,9 +16,10 @@ import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { createLogger, type Logger } from "../utils/logger";
 
-export type AIProvider = 'openai' | 'anthropic';
+export type AIProvider = 'openai' | 'anthropic' | 'ollama';
 export type OpenAIModel = 'gpt-4' | 'gpt-4-turbo-preview' | 'gpt-3.5-turbo';
 export type AnthropicModel = 'claude-3-opus-20240229' | 'claude-3-sonnet-20240229' | 'claude-3-haiku-20240307';
+export type OllamaModel = 'llama3.1:latest' | 'llama3.1' | 'llama2' | 'mistral' | 'codellama';
 
 export interface ExternalAIConfig {
   provider: AIProvider;
@@ -50,8 +51,12 @@ export class ExternalAIService {
   private logger: Logger;
   private openaiClient: OpenAI | null = null;
   private anthropicClient: Anthropic | null = null;
+  private ollamaClient: OpenAI | null = null;
   private openaiAvailable: boolean = false;
   private anthropicAvailable: boolean = false;
+  private ollamaAvailable: boolean = false;
+  private ollamaBaseUrl: string = '';
+  private ollamaModel: string = 'llama3.1:latest';
 
   constructor() {
     this.logger = createLogger("ExternalAIService");
@@ -63,7 +68,7 @@ export class ExternalAIService {
    */
   private initializeClients(): void {
     // Initialize OpenAI
-    if (process.env.OPENAI_API_KEY) {
+    if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.startsWith('sk-')) {
       try {
         this.openaiClient = new OpenAI({
           apiKey: process.env.OPENAI_API_KEY,
@@ -74,11 +79,11 @@ export class ExternalAIService {
         this.logger.error("Failed to initialize OpenAI client", error as Error);
       }
     } else {
-      this.logger.warn("OPENAI_API_KEY not found in environment");
+      this.logger.warn("OPENAI_API_KEY not found or invalid in environment");
     }
 
     // Initialize Anthropic
-    if (process.env.ANTHROPIC_API_KEY) {
+    if (process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.startsWith('sk-ant-')) {
       try {
         this.anthropicClient = new Anthropic({
           apiKey: process.env.ANTHROPIC_API_KEY,
@@ -89,11 +94,34 @@ export class ExternalAIService {
         this.logger.error("Failed to initialize Anthropic client", error as Error);
       }
     } else {
-      this.logger.warn("ANTHROPIC_API_KEY not found in environment");
+      this.logger.warn("ANTHROPIC_API_KEY not found or invalid in environment");
     }
 
-    if (!this.openaiAvailable && !this.anthropicAvailable) {
-      this.logger.error("No AI providers available. Please set OPENAI_API_KEY or ANTHROPIC_API_KEY");
+    // Initialize Ollama (Local Llama)
+    if (process.env.OLLAMA_BASE_URL || process.env.USE_LOCAL_AI === 'true') {
+      try {
+        this.ollamaBaseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        this.ollamaModel = process.env.OLLAMA_MODEL || 'llama3.1:latest';
+        
+        // Ollama uses OpenAI-compatible API
+        this.ollamaClient = new OpenAI({
+          baseURL: `${this.ollamaBaseUrl}/v1`,
+          apiKey: 'ollama', // Ollama doesn't require a real API key
+        });
+        
+        this.ollamaAvailable = true;
+        this.logger.info(`Ollama client initialized at ${this.ollamaBaseUrl} with model ${this.ollamaModel}`);
+      } catch (error) {
+        this.logger.error("Failed to initialize Ollama client", error as Error);
+      }
+    } else {
+      this.logger.info("Ollama/Local AI not configured. Set OLLAMA_BASE_URL or USE_LOCAL_AI=true to enable");
+    }
+
+    if (!this.openaiAvailable && !this.anthropicAvailable && !this.ollamaAvailable) {
+      this.logger.error("No AI providers available. Please set OPENAI_API_KEY, ANTHROPIC_API_KEY, or configure Ollama");
+    } else {
+      this.logger.info(`Available AI providers: ${this.getAvailableProviders().join(', ')}`);
     }
   }
 
@@ -101,7 +129,7 @@ export class ExternalAIService {
    * Check if any AI provider is available
    */
   isAvailable(): boolean {
-    return this.openaiAvailable || this.anthropicAvailable;
+    return this.openaiAvailable || this.anthropicAvailable || this.ollamaAvailable;
   }
 
   /**
@@ -111,6 +139,7 @@ export class ExternalAIService {
     const providers: AIProvider[] = [];
     if (this.openaiAvailable) providers.push('openai');
     if (this.anthropicAvailable) providers.push('anthropic');
+    if (this.ollamaAvailable) providers.push('ollama');
     return providers;
   }
 
@@ -123,36 +152,64 @@ export class ExternalAIService {
   ): Promise<AIResponse> {
     const { provider, model } = config;
 
+    // Prefer Ollama if available and configured for local AI
+    if (process.env.USE_LOCAL_AI === 'true' && this.ollamaAvailable && provider !== 'openai' && provider !== 'anthropic') {
+      try {
+        this.logger.info("Using local Ollama AI");
+        return await this.generateOllamaResponse(messages, {
+          ...config,
+          provider: 'ollama',
+          model: this.ollamaModel
+        });
+      } catch (error) {
+        this.logger.error(`Ollama failed, falling back to cloud providers`, error as Error);
+      }
+    }
+
     // Try primary provider
     try {
       if (provider === 'openai' && this.openaiAvailable) {
         return await this.generateOpenAIResponse(messages, config);
       } else if (provider === 'anthropic' && this.anthropicAvailable) {
         return await this.generateAnthropicResponse(messages, config);
+      } else if (provider === 'ollama' && this.ollamaAvailable) {
+        return await this.generateOllamaResponse(messages, config);
       }
     } catch (error) {
       this.logger.error(`Primary provider ${provider} failed, attempting fallback`, error as Error);
     }
 
-    // Try fallback provider
-    try {
-      if (provider === 'openai' && this.anthropicAvailable) {
-        this.logger.info("Falling back to Anthropic");
-        return await this.generateAnthropicResponse(messages, {
-          ...config,
-          provider: 'anthropic',
-          model: 'claude-3-sonnet-20240229'
-        });
-      } else if (provider === 'anthropic' && this.openaiAvailable) {
-        this.logger.info("Falling back to OpenAI");
-        return await this.generateOpenAIResponse(messages, {
-          ...config,
-          provider: 'openai',
-          model: 'gpt-4-turbo-preview'
-        });
+    // Try fallback providers in order of preference
+    const fallbackOrder: AIProvider[] = ['ollama', 'anthropic', 'openai'];
+    for (const fallbackProvider of fallbackOrder) {
+      if (fallbackProvider === provider) continue; // Skip the one we just tried
+      
+      try {
+        if (fallbackProvider === 'ollama' && this.ollamaAvailable) {
+          this.logger.info("Falling back to Ollama (local)");
+          return await this.generateOllamaResponse(messages, {
+            ...config,
+            provider: 'ollama',
+            model: this.ollamaModel
+          });
+        } else if (fallbackProvider === 'anthropic' && this.anthropicAvailable) {
+          this.logger.info("Falling back to Anthropic");
+          return await this.generateAnthropicResponse(messages, {
+            ...config,
+            provider: 'anthropic',
+            model: 'claude-3-sonnet-20240229'
+          });
+        } else if (fallbackProvider === 'openai' && this.openaiAvailable) {
+          this.logger.info("Falling back to OpenAI");
+          return await this.generateOpenAIResponse(messages, {
+            ...config,
+            provider: 'openai',
+            model: 'gpt-4-turbo-preview'
+          });
+        }
+      } catch (fallbackError) {
+        this.logger.error(`Fallback provider ${fallbackProvider} also failed`, fallbackError as Error);
       }
-    } catch (fallbackError) {
-      this.logger.error("Fallback provider also failed", fallbackError as Error);
     }
 
     throw new Error("No AI providers available or all providers failed");
@@ -333,6 +390,55 @@ export class ExternalAIService {
   }
 
   /**
+   * Generate response using Ollama (local Llama models)
+   */
+  private async generateOllamaResponse(
+    messages: AIMessage[],
+    config: ExternalAIConfig & { tools?: any[], onToolCall?: (toolName: string, args: any) => Promise<any> }
+  ): Promise<AIResponse> {
+    if (!this.ollamaClient) {
+      throw new Error("Ollama client not initialized");
+    }
+
+    this.logger.info("Generating Ollama response", {
+      model: this.ollamaModel,
+      messageCount: messages.length,
+      baseUrl: this.ollamaBaseUrl
+    });
+
+    try {
+      const completion = await this.ollamaClient.chat.completions.create({
+        model: this.ollamaModel,
+        messages: messages.map(m => ({
+          role: m.role,
+          content: m.content
+        })),
+        max_tokens: config.maxTokens || 2000,
+        temperature: config.temperature ?? 0.7,
+      });
+
+      const usage = completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+      const content = completion.choices[0]?.message?.content || "";
+
+      return {
+        content,
+        model: this.ollamaModel,
+        provider: 'ollama',
+        tokensUsed: {
+          prompt: usage.prompt_tokens,
+          completion: usage.completion_tokens,
+          total: usage.total_tokens,
+        },
+        estimatedCost: 0, // Local models are free!
+        finishReason: completion.choices[0]?.finish_reason || 'stop',
+      };
+    } catch (error) {
+      this.logger.error("Ollama request failed", error as Error);
+      throw new Error(`Ollama API error: ${(error as Error).message}`);
+    }
+  }
+
+  /**
    * Get OpenAI pricing per token (in dollars)
    */
   private getOpenAICostPerToken(model: string): { prompt: number; completion: number } {
@@ -393,7 +499,11 @@ Always provide accurate, professional, and helpful responses.`;
     return {
       openaiAvailable: this.openaiAvailable,
       anthropicAvailable: this.anthropicAvailable,
+      ollamaAvailable: this.ollamaAvailable,
+      ollamaBaseUrl: this.ollamaBaseUrl,
+      ollamaModel: this.ollamaModel,
       availableProviders: this.getAvailableProviders(),
+      preferLocalAI: process.env.USE_LOCAL_AI === 'true',
     };
   }
 

@@ -19,6 +19,7 @@
 
 import type { Express, Request, Response } from "express";
 import { isAuthenticated } from "../replitAuth";
+import { checkSubscription } from "../middleware/subscription";
 import { AIAssistantService } from "../services/AIAssistantService";
 import { storage } from "../storage";
 import { z } from "zod";
@@ -81,6 +82,7 @@ export function registerAiAssistantRoutes(app: Express): void {
    * POST /api/ai-assistant/ask
    * 
    * Ask the AI assistant a question
+   * Protected by authentication and subscription check
    * 
    * Request body:
    * {
@@ -89,7 +91,7 @@ export function registerAiAssistantRoutes(app: Express): void {
    *   context?: object
    * }
    */
-  app.post("/api/ai-assistant/ask", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/ai-assistant/ask", isAuthenticated, checkSubscription, async (req: any, res: Response) => {
     try {
       const user = await getAuthenticatedUser(req);
       
@@ -161,11 +163,12 @@ export function registerAiAssistantRoutes(app: Express): void {
    * GET /api/ai-assistant/conversations
    * 
    * Get user's conversations
+   * Protected by authentication and subscription check
    * 
    * Query params:
    * ?limit=20&offset=0
    */
-  app.get("/api/ai-assistant/conversations", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/ai-assistant/conversations", isAuthenticated, checkSubscription, async (req: any, res: Response) => {
     try {
       const user = await getAuthenticatedUser(req);
       if (!user.companyId) {
@@ -193,8 +196,9 @@ export function registerAiAssistantRoutes(app: Express): void {
    * GET /api/ai-assistant/conversations/:id
    * 
    * Get specific conversation with all messages
+   * Protected by authentication and subscription check
    */
-  app.get("/api/ai-assistant/conversations/:id", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/ai-assistant/conversations/:id", isAuthenticated, checkSubscription, async (req: any, res: Response) => {
     try {
       const user = await getAuthenticatedUser(req);
       const { id } = req.params;
@@ -235,6 +239,7 @@ export function registerAiAssistantRoutes(app: Express): void {
    * POST /api/ai-assistant/conversations/:id/feedback
    * 
    * Provide feedback on an AI response
+   * Protected by authentication and subscription check
    * 
    * Request body:
    * {
@@ -245,7 +250,7 @@ export function registerAiAssistantRoutes(app: Express): void {
    *   comments?: string
    * }
    */
-  app.post("/api/ai-assistant/conversations/:id/feedback", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/ai-assistant/conversations/:id/feedback", isAuthenticated, checkSubscription, async (req: any, res: Response) => {
     try {
       const user = await getAuthenticatedUser(req);
       const { id: conversationId } = req.params;
@@ -295,6 +300,7 @@ export function registerAiAssistantRoutes(app: Express): void {
    * POST /api/ai-assistant/knowledge/upload
    * 
    * Upload a document to the knowledge base
+   * Protected by authentication and subscription check
    * 
    * Multipart form data:
    * - file: the document file
@@ -302,6 +308,7 @@ export function registerAiAssistantRoutes(app: Express): void {
    */
   app.post("/api/ai-assistant/knowledge/upload", 
     isAuthenticated, 
+    checkSubscription,
     upload.single('file'), 
     async (req: any, res: Response) => {
       try {
@@ -353,11 +360,12 @@ export function registerAiAssistantRoutes(app: Express): void {
    * GET /api/ai-assistant/knowledge
    * 
    * Get company's knowledge base
+   * Protected by authentication and subscription check
    * 
    * Query params:
    * ?category=pricing&active=true
    */
-  app.get("/api/ai-assistant/knowledge", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/ai-assistant/knowledge", isAuthenticated, checkSubscription, async (req: any, res: Response) => {
     try {
       const user = await getAuthenticatedUser(req);
       if (!user.companyId) {
@@ -385,8 +393,9 @@ export function registerAiAssistantRoutes(app: Express): void {
    * DELETE /api/ai-assistant/knowledge/:id
    * 
    * Delete a knowledge base entry
+   * Protected by authentication and subscription check
    */
-  app.delete("/api/ai-assistant/knowledge/:id", isAuthenticated, async (req: any, res: Response) => {
+  app.delete("/api/ai-assistant/knowledge/:id", isAuthenticated, checkSubscription, async (req: any, res: Response) => {
     try {
       const user = await getAuthenticatedUser(req);
       const { id } = req.params;
@@ -424,8 +433,9 @@ export function registerAiAssistantRoutes(app: Express): void {
    * GET /api/ai-assistant/learning-progress
    * 
    * Get company's AI learning progress
+   * Protected by authentication and subscription check
    */
-  app.get("/api/ai-assistant/learning-progress", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/ai-assistant/learning-progress", isAuthenticated, checkSubscription, async (req: any, res: Response) => {
     try {
       const user = await getAuthenticatedUser(req);
       if (!user.companyId) {
@@ -482,8 +492,9 @@ export function registerAiAssistantRoutes(app: Express): void {
    * GET /api/ai-assistant/stats
    * 
    * Get AI usage statistics for company
+   * Protected by authentication and subscription check
    */
-  app.get("/api/ai-assistant/stats", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/ai-assistant/stats", isAuthenticated, checkSubscription, async (req: any, res: Response) => {
     try {
       const user = await getAuthenticatedUser(req);
       
@@ -541,13 +552,14 @@ export function registerAiAssistantRoutes(app: Express): void {
    * POST /api/ai-assistant/train
    * 
    * Start training the neural network for the company
+   * Protected by authentication and subscription check
    * 
    * Body: {
    *   epochs?: number,
    *   batchSize?: number
    * }
    */
-  app.post("/api/ai-assistant/train", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/ai-assistant/train", isAuthenticated, checkSubscription, async (req: any, res: Response) => {
     try {
       const user = await getAuthenticatedUser(req);
       if (!user.companyId) {
@@ -591,8 +603,9 @@ export function registerAiAssistantRoutes(app: Express): void {
    * GET /api/ai-assistant/training-status
    * 
    * Get neural network training status
+   * Protected by authentication and subscription check
    */
-  app.get("/api/ai-assistant/training-status", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/ai-assistant/training-status", isAuthenticated, checkSubscription, async (req: any, res: Response) => {
     try {
       const user = await getAuthenticatedUser(req);
       if (!user.companyId) {
@@ -620,8 +633,9 @@ export function registerAiAssistantRoutes(app: Express): void {
    * GET /api/ai-assistant/settings
    * 
    * Get AI provider settings and availability
+   * Protected by authentication and subscription check
    */
-  app.get("/api/ai-assistant/settings", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/ai-assistant/settings", isAuthenticated, checkSubscription, async (req: any, res: Response) => {
     try {
       const user = await getAuthenticatedUser(req);
       if (!user.companyId) {
@@ -664,8 +678,9 @@ export function registerAiAssistantRoutes(app: Express): void {
    * PUT /api/ai-assistant/settings
    * 
    * Update AI provider settings (stored in user session for now)
+   * Protected by authentication and subscription check
    */
-  app.put("/api/ai-assistant/settings", isAuthenticated, async (req: any, res: Response) => {
+  app.put("/api/ai-assistant/settings", isAuthenticated, checkSubscription, async (req: any, res: Response) => {
     try {
       const user = await getAuthenticatedUser(req);
       if (!user.companyId) {

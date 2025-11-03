@@ -43,6 +43,7 @@ import { registerMetricsRoutes } from "./routes/metrics";
 import { registerPermissionRoutes } from "./routes/permissions";
 import { registerMasterAiRoutes } from "./routes/masterAi";
 import { createUnifiedAIRoutes } from "./routes/unified-ai";
+import userManagementRoutes from "./routes/userManagement";
 import ecpRoutes from "./routes/ecp";
 import posRoutes from "./routes/pos";
 import analyticsRoutes from "./routes/analytics";
@@ -144,6 +145,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Companies routes for multi-tenant onboarding
   app.use('/api/companies', isAuthenticated, companiesRoutes);
+
+  // Register User Management routes (RBAC-protected with company isolation)
+  app.use('/api/users', isAuthenticated, userManagementRoutes);
 
   // Register Audit Log routes (admin-only HIPAA compliance)
   app.use('/api/admin/audit-logs', auditLogRoutes);

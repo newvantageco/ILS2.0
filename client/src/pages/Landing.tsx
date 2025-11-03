@@ -39,13 +39,17 @@ import {
   Gauge,
   MessageSquare,
   Video,
+  Bot,
+  X,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 export default function Landing() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [showAIDemo, setShowAIDemo] = useState(false);
 
   const handleGetStarted = () => {
     setLocation("/email-signup");
@@ -576,6 +580,66 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+
+      {/* AI Assistant Demo - Bottom Right */}
+      {showAIDemo && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <Card className="w-96 shadow-2xl border-primary/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">AI Assistant Demo</CardTitle>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowAIDemo(false)}
+                  className="h-8 w-8"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <CardDescription>
+                Try asking about ophthalmic knowledge or practice management
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-muted/50 rounded-lg p-4 text-sm space-y-2">
+                <p className="text-muted-foreground">
+                  <strong>Sample questions:</strong>
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
+                  <li>What is progressive lens design?</li>
+                  <li>How do I manage inventory?</li>
+                  <li>Explain astigmatism correction</li>
+                </ul>
+              </div>
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Sign in to access the full AI Assistant with your practice data
+                </p>
+                <Button onClick={handleSignIn} className="gap-2">
+                  <LogIn className="h-4 w-4" />
+                  Sign In to Try AI
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* AI Demo Trigger Button */}
+      {!showAIDemo && (
+        <Button
+          onClick={() => setShowAIDemo(true)}
+          className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-2xl gap-2 p-0"
+          size="icon"
+          aria-label="Open AI Assistant Demo"
+        >
+          <Bot className="h-6 w-6" />
+        </Button>
+      )}
     </div>
   );
 }
