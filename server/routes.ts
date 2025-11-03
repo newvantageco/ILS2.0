@@ -53,6 +53,9 @@ import inventoryRoutes from "./routes/inventory";
 import uploadRoutes from "./routes/upload";
 import examinationsRoutes from "./routes/examinations";
 import pythonAnalyticsRoutes from "./routes/pythonAnalytics";
+import emailRoutes from "./routes/emails";
+import scheduledEmailRoutes from "./routes/scheduled-emails";
+import orderEmailRoutes from "./routes/order-emails";
 import { websocketService } from "./websocket";
 import path from "path";
 
@@ -72,6 +75,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   if (process.env.NODE_ENV !== 'development') {
     await setupReplitAuth(app);
   }
+
+  // Logout route - works for both development and production
+  app.get("/api/logout", (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({ message: "Logout failed" });
+      }
+      // Clear session
+      req.session?.destroy((err) => {
+        if (err) {
+          console.error("Session destroy error:", err);
+        }
+        // Clear cookie
+        res.clearCookie('connect.sid');
+        // Redirect to home page
+        res.redirect('/');
+      });
+    });
+  });
 
   // Register AI Engine routes
   registerAiEngineRoutes(app);
@@ -120,6 +143,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Audit Log routes (admin-only HIPAA compliance)
   app.use('/api/admin/audit-logs', auditLogRoutes);
+
+  // Register Email Tracking & Communication routes (invoices, reminders, recalls with analytics)
+  app.use('/api/emails', emailRoutes);
+  app.use('/api/scheduled-emails', scheduledEmailRoutes);
+  app.use('/api/order-emails', orderEmailRoutes);
 
   // Register Python Analytics routes (ML predictions, QC analysis, advanced analytics)
   app.use(pythonAnalyticsRoutes);
@@ -388,6 +416,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
+
+      // Update the session with the new role
+      if (req.user && req.user.claims) {
+        req.user.claims.role = role;
+      }
+
+      // Log the role switch for audit
+      console.log(`User ${userId} switched role to ${role}`);
 
       res.json(updatedUser);
     } catch (error) {

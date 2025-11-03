@@ -54,6 +54,39 @@ export const analyticsEventTypeEnum = pgEnum("analytics_event_type", [
   "non_adapt_reported"
 ]);
 
+export const emailTypeEnum = pgEnum("email_type", [
+  "invoice",
+  "receipt",
+  "prescription_reminder",
+  "recall_notification",
+  "appointment_reminder",
+  "order_confirmation",
+  "order_update",
+  "marketing",
+  "general"
+]);
+
+export const emailStatusEnum = pgEnum("email_status", [
+  "queued",
+  "sent",
+  "delivered",
+  "opened",
+  "clicked",
+  "bounced",
+  "failed",
+  "spam"
+]);
+
+export const emailEventTypeEnum = pgEnum("email_event_type", [
+  "sent",
+  "delivered",
+  "opened",
+  "clicked",
+  "bounced",
+  "spam",
+  "unsubscribed"
+]);
+
 export const qualityIssueTypeEnum = pgEnum("quality_issue_type", [
   "surface_defect",
   "coating_defect",
@@ -2403,6 +2436,295 @@ export type InsertPosTransactionItem = typeof posTransactionItems.$inferInsert;
 
 export type PdfTemplate = typeof pdfTemplates.$inferSelect;
 export type InsertPdfTemplate = typeof pdfTemplates.$inferInsert;
+
+// ============================================
+// Inventory Movement Audit Trail
+// ============================================
+
+export const movementTypeEnum = pgEnum("movement_type", [
+  "sale",           // Product sold via POS
+  "refund",         // Product returned/refunded
+  "adjustment",     // Manual stock adjustment
+  "received",       // Stock received from supplier
+  "transfer_out",   // Transferred to another location
+  "transfer_in",    // Received from another location
+  "damaged",        // Marked as damaged/lost
+  "initial"         // Initial stock entry
+]);
+
+export const inventoryMovements = pgTable("inventory_movements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: "cascade" }).notNull(),
+  productId: varchar("product_id").references(() => products.id, { onDelete: "cascade" }).notNull(),
+  
+  // Movement details
+  movementType: movementTypeEnum("movement_type").notNull(),
+  quantity: integer("quantity").notNull(), // Positive or negative
+  previousStock: integer("previous_stock").notNull(),
+  newStock: integer("new_stock").notNull(),
+  
+  // Reference tracking
+  referenceType: varchar("reference_type", { length: 50 }), // 'pos_transaction', 'manual_adjustment', 'purchase_order'
+  referenceId: varchar("reference_id"), // ID of related transaction/order
+  
+  // Audit information
+  reason: text("reason"),
+  notes: text("notes"),
+  performedBy: varchar("performed_by").references(() => users.id).notNull(),
+  
+  // Location tracking (for multi-location support)
+  locationId: varchar("location_id"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_inventory_movements_company").on(table.companyId),
+  index("idx_inventory_movements_product").on(table.productId),
+  index("idx_inventory_movements_type").on(table.movementType),
+  index("idx_inventory_movements_date").on(table.createdAt),
+  index("idx_inventory_movements_performed_by").on(table.performedBy),
+]);
+
+// Product Variants for SKU management
+export const productVariants = pgTable("product_variants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").references(() => products.id, { onDelete: "cascade" }).notNull(),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: "cascade" }).notNull(),
+  
+  // Variant details
+  variantSku: varchar("variant_sku", { length: 100 }).notNull(),
+  variantName: varchar("variant_name", { length: 255 }).notNull(),
+  
+  // Variant attributes
+  color: varchar("color", { length: 50 }),
+  size: varchar("size", { length: 50 }),
+  style: varchar("style", { length: 100 }),
+  attributes: jsonb("attributes"), // Additional custom attributes
+  
+  // Pricing (can override parent product)
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }),
+  cost: decimal("cost", { precision: 10, scale: 2 }),
+  
+  // Stock tracking
+  stockQuantity: integer("stock_quantity").default(0).notNull(),
+  lowStockThreshold: integer("low_stock_threshold").default(10),
+  
+  // Variant specific data
+  barcode: varchar("barcode", { length: 100 }),
+  imageUrl: text("image_url"),
+  
+  isActive: boolean("is_active").default(true),
+  displayOrder: integer("display_order").default(0),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_product_variants_product").on(table.productId),
+  index("idx_product_variants_company").on(table.companyId),
+  index("idx_product_variants_sku").on(table.variantSku),
+  index("idx_product_variants_barcode").on(table.barcode),
+]);
+
+// Low Stock Alerts
+export const lowStockAlerts = pgTable("low_stock_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: "cascade" }).notNull(),
+  productId: varchar("product_id").references(() => products.id, { onDelete: "cascade" }).notNull(),
+  variantId: varchar("variant_id").references(() => productVariants.id, { onDelete: "cascade" }),
+  
+  // Alert details
+  alertType: varchar("alert_type", { length: 50 }).notNull(), // 'low_stock', 'out_of_stock', 'reorder_point'
+  currentStock: integer("current_stock").notNull(),
+  threshold: integer("threshold").notNull(),
+  
+  // Status
+  status: varchar("status", { length: 50 }).default("active"), // 'active', 'acknowledged', 'resolved'
+  acknowledgedBy: varchar("acknowledged_by").references(() => users.id),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  resolvedAt: timestamp("resolved_at"),
+  
+  // Auto-reorder suggestion
+  suggestedReorderQuantity: integer("suggested_reorder_quantity"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_low_stock_alerts_company").on(table.companyId),
+  index("idx_low_stock_alerts_product").on(table.productId),
+  index("idx_low_stock_alerts_status").on(table.status),
+]);
+
+// ============================================
+// Email Tracking & Communication System
+// ============================================
+
+// Email templates for reusable email content
+export const emailTemplates = pgTable("email_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id).notNull(),
+  
+  // Template details
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  emailType: emailTypeEnum("email_type").notNull(),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  htmlContent: text("html_content").notNull(),
+  textContent: text("text_content"),
+  
+  // Template variables (e.g., {{customerName}}, {{invoiceNumber}})
+  variables: jsonb("variables"), // Array of available variable names
+  
+  // Settings
+  isActive: boolean("is_active").default(true).notNull(),
+  isDefault: boolean("is_default").default(false), // Default template for this type
+  
+  createdBy: varchar("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_email_templates_company").on(table.companyId),
+  index("idx_email_templates_type").on(table.emailType),
+  index("idx_email_templates_active").on(table.isActive),
+]);
+
+// Email logs - all sent emails with tracking
+export const emailLogs = pgTable("email_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id).notNull(),
+  
+  // Recipient info
+  recipientEmail: varchar("recipient_email", { length: 255 }).notNull(),
+  recipientName: varchar("recipient_name", { length: 255 }),
+  patientId: varchar("patient_id").references(() => patients.id),
+  
+  // Email details
+  emailType: emailTypeEnum("email_type").notNull(),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  htmlContent: text("html_content").notNull(),
+  textContent: text("text_content"),
+  
+  // Tracking
+  status: emailStatusEnum("status").default("queued").notNull(),
+  trackingId: varchar("tracking_id", { length: 100 }).unique(), // Unique tracking pixel ID
+  
+  // Related entities
+  templateId: varchar("template_id").references(() => emailTemplates.id),
+  relatedEntityType: varchar("related_entity_type", { length: 50 }), // 'invoice', 'appointment', 'prescription'
+  relatedEntityId: varchar("related_entity_id"), // ID of invoice, appointment, etc.
+  
+  // Delivery info
+  sentBy: varchar("sent_by").references(() => users.id).notNull(),
+  sentAt: timestamp("sent_at"),
+  deliveredAt: timestamp("delivered_at"),
+  
+  // Engagement tracking
+  openCount: integer("open_count").default(0).notNull(),
+  firstOpenedAt: timestamp("first_opened_at"),
+  lastOpenedAt: timestamp("last_opened_at"),
+  clickCount: integer("click_count").default(0).notNull(),
+  firstClickedAt: timestamp("first_clicked_at"),
+  lastClickedAt: timestamp("last_clicked_at"),
+  
+  // Error handling
+  errorMessage: text("error_message"),
+  retryCount: integer("retry_count").default(0).notNull(),
+  
+  // Metadata
+  metadata: jsonb("metadata"), // Store additional context
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_email_logs_company").on(table.companyId),
+  index("idx_email_logs_recipient").on(table.recipientEmail),
+  index("idx_email_logs_patient").on(table.patientId),
+  index("idx_email_logs_type").on(table.emailType),
+  index("idx_email_logs_status").on(table.status),
+  index("idx_email_logs_sent_at").on(table.sentAt),
+  index("idx_email_logs_tracking_id").on(table.trackingId),
+  index("idx_email_logs_related").on(table.relatedEntityType, table.relatedEntityId),
+]);
+
+// Email tracking events - detailed event log for analytics
+export const emailTrackingEvents = pgTable("email_tracking_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  emailLogId: varchar("email_log_id").references(() => emailLogs.id).notNull(),
+  
+  // Event details
+  eventType: emailEventTypeEnum("event_type").notNull(),
+  eventData: jsonb("event_data"), // Click URL, bounce reason, etc.
+  
+  // User agent and location tracking
+  userAgent: text("user_agent"),
+  ipAddress: varchar("ip_address", { length: 45 }), // IPv4 or IPv6
+  location: jsonb("location"), // City, country, coordinates if available
+  device: varchar("device", { length: 50 }), // 'desktop', 'mobile', 'tablet'
+  
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+}, (table) => [
+  index("idx_email_tracking_events_log").on(table.emailLogId),
+  index("idx_email_tracking_events_type").on(table.eventType),
+  index("idx_email_tracking_events_timestamp").on(table.timestamp),
+]);
+
+// Insert and validation schemas
+export const insertInventoryMovementSchema = createInsertSchema(inventoryMovements, {
+  quantity: z.number().int().refine(val => val !== 0, {
+    message: 'Quantity cannot be zero',
+  }),
+  movementType: z.enum(["sale", "refund", "adjustment", "received", "transfer_out", "transfer_in", "damaged", "initial"]),
+});
+
+export const insertProductVariantSchema = createInsertSchema(productVariants, {
+  variantSku: z.string().min(1, "Variant SKU is required"),
+  variantName: z.string().min(1, "Variant name is required"),
+});
+
+export const updateProductVariantSchema = insertProductVariantSchema.partial();
+
+export const insertLowStockAlertSchema = createInsertSchema(lowStockAlerts, {
+  alertType: z.enum(["low_stock", "out_of_stock", "reorder_point"]),
+  currentStock: z.number().int().min(0),
+  threshold: z.number().int().min(0),
+});
+
+export const insertEmailTemplateSchema = createInsertSchema(emailTemplates, {
+  name: z.string().min(1, "Template name is required"),
+  subject: z.string().min(1, "Subject is required"),
+  htmlContent: z.string().min(1, "HTML content is required"),
+  emailType: z.enum(["invoice", "receipt", "prescription_reminder", "recall_notification", "appointment_reminder", "order_confirmation", "order_update", "marketing", "general"]),
+});
+
+export const updateEmailTemplateSchema = insertEmailTemplateSchema.partial();
+
+export const insertEmailLogSchema = createInsertSchema(emailLogs, {
+  recipientEmail: z.string().email("Valid email is required"),
+  subject: z.string().min(1, "Subject is required"),
+  htmlContent: z.string().min(1, "HTML content is required"),
+  emailType: z.enum(["invoice", "receipt", "prescription_reminder", "recall_notification", "appointment_reminder", "order_confirmation", "order_update", "marketing", "general"]),
+});
+
+export const insertEmailTrackingEventSchema = createInsertSchema(emailTrackingEvents, {
+  eventType: z.enum(["sent", "delivered", "opened", "clicked", "bounced", "spam", "unsubscribed"]),
+});
+
+// Type exports
+export type InventoryMovement = typeof inventoryMovements.$inferSelect;
+export type InsertInventoryMovement = typeof inventoryMovements.$inferInsert;
+
+export type ProductVariant = typeof productVariants.$inferSelect;
+export type InsertProductVariant = typeof productVariants.$inferInsert;
+
+export type LowStockAlert = typeof lowStockAlerts.$inferSelect;
+export type InsertLowStockAlert = typeof lowStockAlerts.$inferInsert;
+
+export type EmailTemplate = typeof emailTemplates.$inferSelect;
+export type InsertEmailTemplate = typeof emailTemplates.$inferInsert;
+
+export type EmailLog = typeof emailLogs.$inferSelect;
+export type InsertEmailLog = typeof emailLogs.$inferInsert;
+
+export type EmailTrackingEvent = typeof emailTrackingEvents.$inferSelect;
+export type InsertEmailTrackingEvent = typeof emailTrackingEvents.$inferInsert;
 
 export type Equipment = typeof equipment.$inferSelect;
 export type InsertEquipment = typeof equipment.$inferInsert;

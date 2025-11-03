@@ -1,4 +1,5 @@
 import { Suspense, lazy } from "react";
+import React from "react";
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -85,6 +86,10 @@ const PermissionsManagementPage = lazy(() => import("@/pages/PermissionsManageme
 const ComplianceDashboardPage = lazy(() => import("@/pages/ComplianceDashboardPage"));
 const AIModelManagementPage = lazy(() => import("@/pages/AIModelManagementPage"));
 
+// Email & Communications
+const EmailAnalyticsPage = lazy(() => import("@/pages/EmailAnalyticsPage"));
+const EmailTemplatesPage = lazy(() => import("@/pages/EmailTemplatesPage"));
+
 // Other
 const GitHubPushPage = lazy(() => import("@/pages/github-push"));
 
@@ -94,10 +99,57 @@ function RouteLoadingFallback() {
     <div className="flex items-center justify-center min-h-[50vh]">
       <div className="text-center">
         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-sm text-muted-foreground">Loading...</p>
+        <p className="text-sm text-muted-foreground">Loading page...</p>
       </div>
     </div>
   );
+}
+
+// Error boundary for catching component loading errors
+class RouteErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Route error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="text-center p-6 max-w-md">
+            <div className="text-destructive mb-4">
+              <svg className="w-16 h-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold mb-2">Something went wrong</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              This page failed to load. Please try refreshing or navigating to another page.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
 }
 
 function AppLayout({ children, userRole }: { children: React.ReactNode; userRole: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin" }) {
@@ -278,9 +330,10 @@ function AuthenticatedApp() {
 
   return (
     <AppLayout userRole={userRole}>
-      <Switch>
-        {/* Welcome/Home Page - Shows platform capabilities */}
-        <Route path="/welcome" component={WelcomePage} />
+      <RouteErrorBoundary>
+        <Switch>
+          {/* Welcome/Home Page - Shows platform capabilities */}
+          <Route path="/welcome" component={WelcomePage} />
 
         {userRole === "ecp" && (
           <>
@@ -304,6 +357,8 @@ function AuthenticatedApp() {
             <Route path="/ecp/company" component={CompanyManagementPage} />
             <Route path="/ecp/bi-dashboard" component={BIDashboardPage} />
             <Route path="/ecp/analytics" component={AnalyticsDashboard} />
+            <Route path="/ecp/email-analytics" component={EmailAnalyticsPage} />
+            <Route path="/ecp/email-templates" component={EmailTemplatesPage} />
             <Route path="/ecp/compliance" component={ComplianceDashboardPage} />
             <Route path="/ecp/prescription-templates" component={PrescriptionTemplatesPage} />
             <Route path="/ecp/clinical-protocols" component={ClinicalProtocolsPage} />
@@ -378,6 +433,8 @@ function AuthenticatedApp() {
             <Route path="/admin/ai-forecasting" component={AIForecastingDashboardPage} />
             <Route path="/admin/ai-assistant" component={AIAssistantPage} />
             <Route path="/admin/ai-settings" component={AISettingsPage} />
+            <Route path="/admin/email-analytics" component={EmailAnalyticsPage} />
+            <Route path="/admin/email-templates" component={EmailTemplatesPage} />
             <Route path="/admin/company" component={CompanyManagementPage} />
             <Route path="/admin/bi-dashboard" component={BIDashboardPage} />
             <Route path="/admin/analytics" component={BusinessAnalyticsPage} />
@@ -459,6 +516,11 @@ function AuthenticatedApp() {
 
         <Route path="/settings" component={SettingsPage} />
         <Route path="/github-push" component={GitHubPushPage} />
+        
+        {/* Email System Routes - Common for all roles */}
+        <Route path="/email-analytics" component={EmailAnalyticsPage} />
+        <Route path="/email-templates" component={EmailTemplatesPage} />
+        
         <Route path="/help">
           <div className="text-center py-12">
             <h2 className="text-2xl font-semibold">Help & Documentation</h2>
@@ -468,6 +530,7 @@ function AuthenticatedApp() {
 
         <Route component={NotFound} />
       </Switch>
+      </RouteErrorBoundary>
     </AppLayout>
   );
 }

@@ -10,6 +10,7 @@ import {
   posTransactions,
   posTransactionItems,
   products,
+  inventoryMovements,
   insertPosTransactionSchema,
   insertPosTransactionItemSchema,
 } from '@shared/schema';
@@ -227,13 +228,32 @@ router.post('/transactions',
 
           createdItems.push(transactionItem);
 
-          // Update stock (trigger will handle this, but we can do it explicitly too)
+          // Update stock
+          const previousStock = await db.query.products.findFirst({
+            where: eq(products.id, item.productId),
+            columns: { stockQuantity: true },
+          });
+
           await tx.update(products)
             .set({
               stockQuantity: sql`${products.stockQuantity} - ${item.quantity}`,
               updatedAt: new Date(),
             })
             .where(eq(products.id, item.productId));
+
+          // Log inventory movement
+          await tx.insert(inventoryMovements).values({
+            productId: item.productId,
+            movementType: 'sale',
+            quantity: -item.quantity, // Negative for stock reduction
+            previousStock: previousStock?.stockQuantity || 0,
+            newStock: (previousStock?.stockQuantity || 0) - item.quantity,
+            referenceType: 'pos_transaction',
+            referenceId: transaction.id,
+            reason: 'POS Sale',
+            notes: `Transaction: ${transaction.transactionNumber}`,
+            performedBy: staffId,
+          } as any);
         }
 
         return {
@@ -434,12 +454,31 @@ router.post('/transactions/:id/refund',
             .where(eq(posTransactionItems.transactionId, id));
 
           for (const item of items) {
+            const previousStock = await tx.query.products.findFirst({
+              where: eq(products.id, item.productId),
+              columns: { stockQuantity: true },
+            });
+
             await tx.update(products)
               .set({
                 stockQuantity: sql`${products.stockQuantity} + ${item.quantity}`,
                 updatedAt: new Date(),
               })
               .where(eq(products.id, item.productId));
+
+            // Log inventory movement for refund
+            await tx.insert(inventoryMovements).values({
+              productId: item.productId,
+              movementType: 'refund',
+              quantity: item.quantity, // Positive for stock addition
+              previousStock: previousStock?.stockQuantity || 0,
+              newStock: (previousStock?.stockQuantity || 0) + item.quantity,
+              referenceType: 'pos_transaction',
+              referenceId: id,
+              reason: reason,
+              notes: `Refund for transaction: ${transaction.transactionNumber}`,
+              performedBy: req.user!.id,
+            } as any);
           }
         }
 

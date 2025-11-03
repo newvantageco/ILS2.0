@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Beaker, ChevronDown, Check, Package, Shield } from "lucide-react";
+import { Users, Beaker, ChevronDown, Check, Package, Shield, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const roleConfig: Record<string, { label: string; icon: any; color: string }> = {
@@ -69,7 +69,10 @@ export function RoleSwitcherDropdown() {
       return await res.json() as User;
     },
     onSuccess: (data: User) => {
-      // Redirect to appropriate dashboard with full page reload to refresh session
+      // Clear React Query cache to ensure fresh data
+      queryClient.clear();
+      
+      // Redirect to appropriate dashboard
       const role = data.role;
       if (!role) return;
       
@@ -86,10 +89,8 @@ export function RoleSwitcherDropdown() {
         description: `You are now viewing as ${roleConfig[role]?.label || role}`,
       });
       
-      // Full page reload to refresh session and avoid stale auth state
-      setTimeout(() => {
-        window.location.href = path;
-      }, 500);
+      // Immediate page reload for clean state refresh
+      window.location.href = path;
     },
     onError: (error: any) => {
       toast({
@@ -116,8 +117,13 @@ export function RoleSwitcherDropdown() {
           size="sm" 
           className="gap-2"
           data-testid="button-role-switcher"
+          disabled={switchRoleMutation.isPending}
         >
-          <CurrentIcon className="h-4 w-4" />
+          {switchRoleMutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <CurrentIcon className="h-4 w-4" />
+          )}
           <span className="hidden sm:inline">
             {config?.label || currentRole}
           </span>
@@ -142,7 +148,11 @@ export function RoleSwitcherDropdown() {
               className="gap-2 cursor-pointer"
               data-testid={`menu-item-switch-${role}`}
             >
-              <RoleIcon className="h-4 w-4" />
+              {switchRoleMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RoleIcon className="h-4 w-4" />
+              )}
               <span className="flex-1">{roleConf.label}</span>
               {isActive && <Check className="h-4 w-4 text-primary" />}
             </DropdownMenuItem>

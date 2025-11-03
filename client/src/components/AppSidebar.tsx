@@ -42,6 +42,7 @@ import {
   AlertTriangle,
   FileType,
   BookOpen,
+  Mail,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -79,6 +80,8 @@ const menuItems = {
     analytics: [
       { title: "AI Assistant", url: "/ecp/ai-assistant", icon: Brain },
       { title: "Analytics", url: "/ecp/analytics", icon: LineChart },
+      { title: "Email Analytics", url: "/ecp/email-analytics", icon: Mail },
+      { title: "Email Templates", url: "/ecp/email-templates", icon: FileType },
       { title: "BI Dashboard", url: "/ecp/bi-dashboard", icon: BarChart3 },
       { title: "Compliance", url: "/ecp/compliance", icon: Shield },
       { title: "Prescription Templates", url: "/ecp/prescription-templates", icon: FileType },
@@ -142,6 +145,8 @@ const menuItems = {
     { title: "Platform Settings", url: "/admin/platform", icon: Shield },
     { title: "AI Assistant", url: "/admin/ai-assistant", icon: Brain },
     { title: "AI Settings", url: "/admin/ai-settings", icon: Settings },
+    { title: "Email Analytics", url: "/admin/email-analytics", icon: Mail },
+    { title: "Email Templates", url: "/admin/email-templates", icon: FileType },
     { title: "BI Dashboard", url: "/admin/bi-dashboard", icon: BarChart3 },
   ],
   platform_admin: [

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Search, User, Check, Package, X, ArrowLeft } from "lucide-react";
+import { Search, User, Check, Package, X, ArrowLeft, Mail } from "lucide-react";
 import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { useEmail } from "@/hooks/use-email";
 import {
   CustomerProfile,
   PrescriptionData,
@@ -43,15 +44,22 @@ interface Product {
 
 export default function OpticalPOSPage() {
   const { toast } = useToast();
+  const { sendEmail, generateInvoiceHtml, sending: sendingEmail } = useEmail();
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerProfile | null>(null);
   const [customers, setCustomers] = useState<CustomerProfile[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [productSearchQuery, setProductSearchQuery] = useState("");
+  const [barcodeInput, setBarcodeInput] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [lastTransaction, setLastTransaction] = useState<any>(null);
+  const [showEmailSuccess, setShowEmailSuccess] = useState(false);
 
   // Prescription state
   const [prescription, setPrescription] = useState<PrescriptionData>({
@@ -98,11 +106,12 @@ export default function OpticalPOSPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/pos/products?inStock=true&category=Frames');
+      const response = await fetch('/api/pos/products?inStock=true');
       if (!response.ok) throw new Error('Failed to fetch products');
       
       const data = await response.json();
       setProducts(data.products);
+      setFilteredProducts(data.products);
     } catch (error) {
       toast({
         title: 'Error',
@@ -113,6 +122,27 @@ export default function OpticalPOSPage() {
       setLoading(false);
     }
   };
+
+  // Filter products based on search and category
+  useEffect(() => {
+    let filtered = [...products];
+
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(p => p.category === selectedCategory);
+    }
+
+    if (productSearchQuery.trim()) {
+      const query = productSearchQuery.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.name?.toLowerCase().includes(query) ||
+        p.brand?.toLowerCase().includes(query) ||
+        p.model?.toLowerCase().includes(query) ||
+        p.sku?.toLowerCase().includes(query)
+      );
+    }
+
+    setFilteredProducts(filtered);
+  }, [products, selectedCategory, productSearchQuery]);
 
   const filteredCustomers = customers.filter((customer) => {
     if (!searchQuery.trim()) return true; // Show all if search is empty
@@ -128,6 +158,39 @@ export default function OpticalPOSPage() {
            customerNumber.includes(query) ||
            phone.includes(query);
   });
+
+  const handleBarcodeSearch = async (barcode: string) => {
+    if (!barcode.trim()) return;
+
+    try {
+      const response = await fetch(`/api/pos/products/barcode/${encodeURIComponent(barcode)}`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        toast({
+          title: 'Product Not Found',
+          description: error.error || 'No product found with this barcode',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const product = await response.json();
+      handleProductSelect(product);
+      setBarcodeInput("");
+      
+      toast({
+        title: 'Product Found',
+        description: `${product.brand} ${product.model || product.name} added`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to lookup barcode',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleProductSelect = (product: Product) => {
     setSelectedProduct(product);
@@ -211,6 +274,46 @@ export default function OpticalPOSPage() {
     });
   };
 
+  const handleSendInvoiceEmail = async () => {
+    if (!lastTransaction || !lastTransaction.customer.email) {
+      toast({
+        title: "Cannot Send Email",
+        description: "No transaction or customer email available.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const htmlContent = generateInvoiceHtml(
+        lastTransaction.transaction,
+        lastTransaction.customer,
+        lastTransaction.items
+      );
+
+      await sendEmail({
+        to: lastTransaction.customer.email,
+        toName: lastTransaction.customer.name,
+        subject: `Invoice #${lastTransaction.transaction.transactionNumber || lastTransaction.transaction.id}`,
+        htmlContent,
+        textContent: `Invoice for transaction ${lastTransaction.transaction.transactionNumber}. Total: $${lastTransaction.items.reduce((sum: number, item: any) => sum + (parseFloat(item.unitPrice) * item.quantity), 0).toFixed(2)}`,
+        emailType: "invoice",
+        patientId: lastTransaction.customer.id,
+        relatedEntityType: "pos_transaction",
+        relatedEntityId: lastTransaction.transaction.id,
+        metadata: {
+          transactionNumber: lastTransaction.transaction.transactionNumber,
+          total: lastTransaction.items.reduce((sum: number, item: any) => sum + (parseFloat(item.unitPrice) * item.quantity), 0),
+        },
+      });
+
+      setShowEmailSuccess(true);
+      setTimeout(() => setShowEmailSuccess(false), 3000);
+    } catch (error) {
+      // Error already handled by useEmail hook
+    }
+  };
+
   const handleProceedToPayment = async () => {
     if (!selectedCustomer) {
       toast({
@@ -274,9 +377,33 @@ export default function OpticalPOSPage() {
 
       const result = await response.json();
 
+      // Store transaction for email sending
+      setLastTransaction({
+        transaction: result.transaction,
+        customer: selectedCustomer,
+        items: [
+          {
+            productName: selectedProduct.name,
+            quantity: 1,
+            unitPrice: selectedProduct.unitPrice,
+          },
+        ],
+      });
+
       toast({
         title: "Sale Complete",
         description: `Transaction ${result.transaction.transactionNumber} completed. Total: $${calculateTotal()}`,
+        action: selectedCustomer.email ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleSendInvoiceEmail()}
+            disabled={sendingEmail}
+          >
+            <Mail className="h-4 w-4 mr-2" />
+            {sendingEmail ? 'Sending...' : 'Email Invoice'}
+          </Button>
+        ) : undefined,
       });
 
       // Clear selection
@@ -381,15 +508,65 @@ export default function OpticalPOSPage() {
         {/* Product Selection */}
         <Separator className="bg-gray-300/50 my-6" />
         <div className="space-y-3">
-          <Label className="text-base font-semibold text-gray-900">Select Frame</Label>
+          <Label className="text-base font-semibold text-gray-900">Products</Label>
+          
+          {/* Barcode Scanner */}
+          <div className="flex gap-2">
+            <Input
+              placeholder="Scan or enter barcode..."
+              value={barcodeInput}
+              onChange={(e) => setBarcodeInput(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleBarcodeSearch(barcodeInput);
+                }
+              }}
+              className="flex-1 text-sm"
+            />
+            <Button
+              size="sm"
+              onClick={() => handleBarcodeSearch(barcodeInput)}
+              disabled={!barcodeInput.trim()}
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Product Search */}
+          <Input
+            placeholder="Search products..."
+            value={productSearchQuery}
+            onChange={(e) => setProductSearchQuery(e.target.value)}
+            className="text-sm"
+          />
+
+          {/* Category Filter */}
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Products</SelectItem>
+              <SelectItem value="Frames">Frames</SelectItem>
+              <SelectItem value="Lenses">Lenses</SelectItem>
+              <SelectItem value="Contact Lenses">Contact Lenses</SelectItem>
+              <SelectItem value="Solutions">Solutions</SelectItem>
+              <SelectItem value="Accessories">Accessories</SelectItem>
+              <SelectItem value="Cases">Cases</SelectItem>
+              <SelectItem value="Cleaning">Cleaning</SelectItem>
+            </SelectContent>
+          </Select>
+
           <ScrollArea className="h-56">
             <div className="space-y-3 -mr-2 pr-2">
               {loading ? (
                 <div className="text-center py-6 text-gray-500 text-sm">Loading products...</div>
-              ) : products.length === 0 ? (
-                <div className="text-center py-6 text-gray-500 text-sm">No frames available</div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="text-center py-6 text-gray-500 text-sm">
+                  {productSearchQuery || selectedCategory !== "all" ? 'No products found' : 'No products available'}
+                </div>
               ) : (
-                products.map((product) => (
+                filteredProducts.map((product) => (
                   <button
                     key={product.id}
                     onClick={() => handleProductSelect(product)}
@@ -400,7 +577,12 @@ export default function OpticalPOSPage() {
                     }`}
                   >
                     <div className="font-medium truncate">{product.brand} {product.model || product.name}</div>
-                    <div className="text-xs opacity-80 mt-1">${product.unitPrice}</div>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-xs opacity-80">${product.unitPrice}</span>
+                      {product.category && (
+                        <span className="text-xs opacity-60">{product.category}</span>
+                      )}
+                    </div>
                   </button>
                 ))
               )}

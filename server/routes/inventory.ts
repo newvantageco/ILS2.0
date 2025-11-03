@@ -6,7 +6,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../db';
-import { products, insertProductSchema } from '@shared/schema';
+import { products, insertProductSchema, inventoryMovements } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { validateBody, validateQuery, validateParams } from '../middleware/zodValidation';
 
@@ -70,6 +70,20 @@ router.post('/products',
         colorOptions: productData.colorOptions || null,
         imageUrl: productData.imageUrl || null,
       } as any).returning();
+
+      // Log initial stock if any
+      if (productData.stockQuantity > 0) {
+        await db.insert(inventoryMovements).values({
+          productId: newProduct.id,
+          movementType: 'initial',
+          quantity: productData.stockQuantity,
+          previousStock: 0,
+          newStock: productData.stockQuantity,
+          referenceType: 'manual_adjustment',
+          reason: 'Initial product creation',
+          performedBy: ecpId,
+        } as any);
+      }
 
       res.status(201).json({
         success: true,
@@ -248,9 +262,18 @@ router.post('/products/:id/adjust',
         .where(eq(products.id, id))
         .returning();
 
-      // Log the adjustment (you can create a separate table for this)
-      // For now, we'll just return the result
-      console.log(`Stock adjusted for product ${id}: ${quantity} (Reason: ${reason}) by user ${userId}`);
+      // Log the movement
+      await db.insert(inventoryMovements).values({
+        productId: id,
+        movementType: 'adjustment',
+        quantity,
+        previousStock: product.stockQuantity,
+        newStock: newQuantity,
+        referenceType: 'manual_adjustment',
+        reason,
+        notes: `Manual stock adjustment by user`,
+        performedBy: userId,
+      } as any);
 
       res.json({
         success: true,
@@ -406,6 +429,168 @@ router.post('/bulk-stock-update',
       console.error('Failed to process bulk stock update:', error);
       res.status(500).json({ 
         error: 'Failed to process bulk stock update',
+        message: error.message,
+      });
+    }
+  }
+);
+
+// ============================================
+// Inventory Movement History
+// ============================================
+
+/**
+ * Get inventory movement history for a product
+ */
+router.get('/products/:id/movements',
+  validateParams(z.object({ id: z.string().uuid() })),
+  validateQuery(z.object({
+    limit: z.coerce.number().optional().default(50),
+    offset: z.coerce.number().optional().default(0),
+  })),
+  async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { limit, offset } = req.query;
+      const companyId = req.user!.companyId;
+
+      // Verify product belongs to company
+      const product = await db.query.products.findFirst({
+        where: and(
+          eq(products.id, id),
+          eq(products.companyId, companyId)
+        ),
+      });
+
+      if (!product) {
+        return res.status(404).json({ error: 'Product not found' });
+      }
+
+      const movements = await db.query.inventoryMovements.findMany({
+        where: eq(inventoryMovements.productId, id),
+        orderBy: (movements, { desc }) => [desc(movements.createdAt)],
+        limit: Number(limit) || 50,
+        offset: Number(offset) || 0,
+        with: {
+          performedBy: {
+            columns: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      // Get total count
+      const [{ count }] = await db.select({ count: sql<number>`count(*)` })
+        .from(inventoryMovements)
+        .where(eq(inventoryMovements.productId, id));
+
+      res.json({
+        movements,
+        total: count,
+        limit,
+        offset,
+        product: {
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          currentStock: product.stockQuantity,
+        },
+      });
+    } catch (error: any) {
+      console.error('Failed to fetch inventory movements:', error);
+      res.status(500).json({ 
+        error: 'Failed to fetch inventory movements',
+        message: error.message,
+      });
+    }
+  }
+);
+
+/**
+ * Get all inventory movements with filters
+ */
+router.get('/movements',
+  validateQuery(z.object({
+    productId: z.string().uuid().optional(),
+    movementType: z.string().optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    limit: z.coerce.number().optional().default(100),
+    offset: z.coerce.number().optional().default(0),
+  })),
+  async (req: Request, res: Response) => {
+    try {
+      const { productId, movementType, startDate, endDate, limit, offset } = req.query;
+      const companyId = req.user!.companyId;
+
+      const conditions = [];
+
+      // Join with products to filter by company
+      if (productId) {
+        conditions.push(eq(inventoryMovements.productId, productId as string));
+      }
+
+      if (movementType) {
+        conditions.push(eq(inventoryMovements.movementType, movementType as any));
+      }
+
+      if (startDate) {
+        conditions.push(sql`${inventoryMovements.createdAt} >= ${new Date(startDate as string)}`);
+      }
+
+      if (endDate) {
+        conditions.push(sql`${inventoryMovements.createdAt} <= ${new Date(endDate as string)}`);
+      }
+
+      const movements = await db.select({
+        id: inventoryMovements.id,
+        productId: inventoryMovements.productId,
+        productName: products.name,
+        productSku: products.sku,
+        movementType: inventoryMovements.movementType,
+        quantity: inventoryMovements.quantity,
+        previousStock: inventoryMovements.previousStock,
+        newStock: inventoryMovements.newStock,
+        referenceType: inventoryMovements.referenceType,
+        referenceId: inventoryMovements.referenceId,
+        reason: inventoryMovements.reason,
+        notes: inventoryMovements.notes,
+        performedBy: inventoryMovements.performedBy,
+        createdAt: inventoryMovements.createdAt,
+      })
+        .from(inventoryMovements)
+        .leftJoin(products, eq(inventoryMovements.productId, products.id))
+        .where(and(
+          eq(products.companyId, companyId),
+          ...conditions
+        ))
+        .orderBy(sql`${inventoryMovements.createdAt} DESC`)
+        .limit(Number(limit) || 100)
+        .offset(Number(offset) || 0);
+
+      // Get total count
+      const [{ count }] = await db.select({ count: sql<number>`count(*)` })
+        .from(inventoryMovements)
+        .leftJoin(products, eq(inventoryMovements.productId, products.id))
+        .where(and(
+          eq(products.companyId, companyId),
+          ...conditions
+        ));
+
+      res.json({
+        movements,
+        total: count,
+        limit,
+        offset,
+      });
+    } catch (error: any) {
+      console.error('Failed to fetch inventory movements:', error);
+      res.status(500).json({ 
+        error: 'Failed to fetch inventory movements',
         message: error.message,
       });
     }

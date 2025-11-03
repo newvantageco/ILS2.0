@@ -15,6 +15,7 @@ import {
   authRateLimiter 
 } from "./middleware/security";
 import { auditMiddleware } from "./middleware/audit";
+import { scheduledEmailService } from "./services/ScheduledEmailService";
 
 const app = express();
 
@@ -177,6 +178,10 @@ app.use((req, res, next) => {
       log(`Environment: ${app.get("env")}`);
       log(`API server running at http://${host}:${port}`);
       log(`Frontend available at http://localhost:${port}`);
+      
+      // Start scheduled email jobs
+      scheduledEmailService.startAllJobs();
+      log(`Scheduled email jobs started (prescription reminders, recall notifications)`);
     });
 
     // Handle server errors

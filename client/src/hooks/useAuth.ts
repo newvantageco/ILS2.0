@@ -10,17 +10,16 @@ export function useAuth() {
   });
 
   const logout = async () => {
-    try {
-      // Clear the React Query cache
-      queryClient.clear();
-      
-      // Call the logout endpoint which will clear session and redirect
-      window.location.href = "/api/logout";
-    } catch (error) {
-      console.error("Logout error:", error);
-      // Force redirect to landing page even if there's an error
-      window.location.href = "/";
-    }
+    // Clear the React Query cache immediately
+    queryClient.clear();
+    
+    // Clear any local storage
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Force navigation to logout endpoint which will clear session
+    // Using direct window navigation ensures clean redirect
+    window.location.href = "/api/logout";
   };
 
   return {

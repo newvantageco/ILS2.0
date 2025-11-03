@@ -17,11 +17,20 @@ import {
   Mail,
   Search,
   DollarSign,
+  RefreshCw,
+  TrendingUp,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
+import { 
+  fetchGBPToUSDRate, 
+  convertGBPToUSD, 
+  formatGBP, 
+  formatUSD,
+  clearCachedRate 
+} from "@/lib/currency";
 
 interface InvoiceLineItem {
   id: string;
@@ -50,7 +59,40 @@ interface Invoice {
 
 export default function InvoicesPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string>("");
+  const [isRefreshingRate, setIsRefreshingRate] = useState(false);
   const { toast } = useToast();
+
+  // Fetch exchange rate on mount
+  useEffect(() => {
+    loadExchangeRate();
+  }, []);
+
+  const loadExchangeRate = async () => {
+    setIsRefreshingRate(true);
+    try {
+      const rate = await fetchGBPToUSDRate();
+      setExchangeRate(rate);
+      setLastUpdated(new Date().toLocaleTimeString('en-GB', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      }));
+    } catch (error) {
+      console.error('Failed to load exchange rate:', error);
+    } finally {
+      setIsRefreshingRate(false);
+    }
+  };
+
+  const handleRefreshRate = async () => {
+    clearCachedRate();
+    await loadExchangeRate();
+    toast({
+      title: "Exchange Rate Updated",
+      description: `New rate: £1 = $${exchangeRate?.toFixed(4)}`,
+    });
+  };
 
   const { data: invoices, isLoading } = useQuery<Invoice[]>({
     queryKey: ["/api/invoices"],
@@ -162,15 +204,48 @@ export default function InvoicesPage() {
   const pendingAmount = invoices?.filter(inv => inv.status !== "paid" && inv.status !== "cancelled")
     .reduce((sum, inv) => sum + parseFloat(inv.totalAmount), 0) || 0;
 
+  // Convert totals to USD
+  const totalRevenueUSD = exchangeRate ? convertGBPToUSD(totalRevenue, exchangeRate) : 0;
+  const pendingAmountUSD = exchangeRate ? convertGBPToUSD(pendingAmount, exchangeRate) : 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Invoices</h1>
           <p className="text-muted-foreground mt-1">
-            View and manage all sales invoices
+            View and manage all sales invoices (in GBP)
           </p>
         </div>
+        
+        {/* Exchange Rate Display */}
+        <Card className="w-auto">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-blue-500" />
+              <div>
+                <div className="text-xs text-muted-foreground">GBP → USD Rate</div>
+                <div className="font-bold text-lg">
+                  {exchangeRate ? `£1 = $${exchangeRate.toFixed(4)}` : 'Loading...'}
+                </div>
+                {lastUpdated && (
+                  <div className="text-xs text-muted-foreground">
+                    Updated: {lastUpdated}
+                  </div>
+                )}
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleRefreshRate}
+              disabled={isRefreshingRate}
+              title="Refresh exchange rate"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshingRate ? 'animate-spin' : ''}`} />
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Summary Stats */}
@@ -182,7 +257,12 @@ export default function InvoicesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatGBP(totalRevenue)}</div>
+            {exchangeRate && (
+              <div className="text-sm text-muted-foreground mt-1">
+                {formatUSD(totalRevenueUSD)} USD
+              </div>
+            )}
           </CardContent>
         </Card>
         
@@ -207,7 +287,12 @@ export default function InvoicesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${pendingAmount.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatGBP(pendingAmount)}</div>
+            {exchangeRate && (
+              <div className="text-sm text-muted-foreground mt-1">
+                {formatUSD(pendingAmountUSD)} USD
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -249,72 +334,81 @@ export default function InvoicesPage() {
                     <TableHead>Invoice #</TableHead>
                     <TableHead>Patient</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>Amount</TableHead>
+                    <TableHead>Amount (GBP)</TableHead>
+                    <TableHead>Amount (USD)</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Payment</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredInvoices.map((invoice) => (
-                    <TableRow key={invoice.id} data-testid={`row-invoice-${invoice.id}`}>
-                      <TableCell className="font-medium">
-                        {invoice.invoiceNumber}
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{invoice.patient?.name || "N/A"}</div>
-                          {invoice.patient?.email && (
-                            <div className="text-xs text-muted-foreground">{invoice.patient.email}</div>
+                  {filteredInvoices.map((invoice) => {
+                    const gbpAmount = parseFloat(invoice.totalAmount);
+                    const usdAmount = exchangeRate ? convertGBPToUSD(gbpAmount, exchangeRate) : 0;
+                    
+                    return (
+                      <TableRow key={invoice.id} data-testid={`row-invoice-${invoice.id}`}>
+                        <TableCell className="font-medium">
+                          {invoice.invoiceNumber}
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{invoice.patient?.name || "N/A"}</div>
+                            {invoice.patient?.email && (
+                              <div className="text-xs text-muted-foreground">{invoice.patient.email}</div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(invoice.invoiceDate), "MMM dd, yyyy")}
+                        </TableCell>
+                        <TableCell className="font-semibold">
+                          {formatGBP(gbpAmount)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {exchangeRate ? formatUSD(usdAmount) : 'Loading...'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(invoice.status)} variant="secondary">
+                            {invoice.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {invoice.paymentMethod ? (
+                            <span className="capitalize">{invoice.paymentMethod}</span>
+                          ) : (
+                            <span className="text-muted-foreground">N/A</span>
                           )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(invoice.invoiceDate), "MMM dd, yyyy")}
-                      </TableCell>
-                      <TableCell className="font-semibold">
-                        ${parseFloat(invoice.totalAmount).toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(invoice.status)} variant="secondary">
-                          {invoice.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {invoice.paymentMethod ? (
-                          <span className="capitalize">{invoice.paymentMethod}</span>
-                        ) : (
-                          <span className="text-muted-foreground">N/A</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => downloadPdfMutation.mutate(invoice.id)}
-                            disabled={downloadPdfMutation.isPending}
-                            data-testid={`button-download-pdf-${invoice.id}`}
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            PDF
-                          </Button>
-                          {invoice.patient?.email && (
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
                             <Button
                               size="sm"
-                              variant="default"
-                              onClick={() => emailMutation.mutate(invoice.id)}
-                              disabled={emailMutation.isPending}
-                              data-testid={`button-email-invoice-${invoice.id}`}
+                              variant="outline"
+                              onClick={() => downloadPdfMutation.mutate(invoice.id)}
+                              disabled={downloadPdfMutation.isPending}
+                              data-testid={`button-download-pdf-${invoice.id}`}
                             >
-                              <Mail className="h-4 w-4 mr-2" />
-                              Email
+                              <Download className="h-4 w-4 mr-2" />
+                              PDF
                             </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            {invoice.patient?.email && (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => emailMutation.mutate(invoice.id)}
+                                disabled={emailMutation.isPending}
+                                data-testid={`button-email-invoice-${invoice.id}`}
+                              >
+                                <Mail className="h-4 w-4 mr-2" />
+                                Email
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
