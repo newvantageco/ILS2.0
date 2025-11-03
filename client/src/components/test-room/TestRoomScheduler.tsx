@@ -77,10 +77,11 @@ export function TestRoomScheduler({ testRoomId, onBookingCreated }: TestRoomSche
       setSelectedSlot(null);
       onBookingCreated?.(data);
     },
-    onError: () => {
+    onError: (error: Error) => {
+      console.error("Booking creation error:", error);
       toast({
         title: "Error",
-        description: "Failed to create booking. Please try again.",
+        description: error.message || "Failed to create booking. Please try again.",
         variant: "destructive",
       });
     },

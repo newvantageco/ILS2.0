@@ -257,18 +257,32 @@ router.get('/test-room-bookings/date/:date/room/:roomId', isAuthenticated, async
 // Create test room booking
 router.post('/test-room-bookings', isAuthenticated, async (req: any, res: Response) => {
   try {
+    console.log('=== Booking Creation Request ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
     const userId = req.user?.claims?.sub;
     if (!userId) {
+      console.log('Error: No userId found');
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!user.length || !user[0].companyId) {
+      console.log('Error: User not found or no companyId');
       return res.status(403).json({ message: "User must belong to a company" });
     }
 
     // Check for booking conflicts
-    const { testRoomId, startTime, endTime, bookingDate } = req.body;
+    const { testRoomId, startTime, endTime, bookingDate, appointmentType, patientId } = req.body;
+    
+    console.log('Extracted fields:', { testRoomId, startTime, endTime, bookingDate, appointmentType, patientId });
+    
+    // Validate required fields
+    if (!testRoomId || !startTime || !endTime || !bookingDate) {
+      console.log('Error: Missing required fields');
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
     const conflicts = await db
       .select()
       .from(testRoomBookings)
@@ -276,30 +290,59 @@ router.post('/test-room-bookings', isAuthenticated, async (req: any, res: Respon
         and(
           eq(testRoomBookings.testRoomId, testRoomId),
           eq(testRoomBookings.status, 'scheduled'),
+          sql`DATE(${testRoomBookings.bookingDate}) = DATE(${bookingDate})`,
           sql`${testRoomBookings.startTime} < ${endTime}`,
           sql`${testRoomBookings.endTime} > ${startTime}`
         )
       );
 
+    console.log('Conflicts found:', conflicts.length);
+
     if (conflicts.length > 0) {
+      console.log('Conflict details:', conflicts);
       return res.status(409).json({ 
         message: "Booking conflict detected", 
         conflicts 
       });
     }
 
+    console.log('Creating booking with values:', {
+      testRoomId,
+      bookingDate: new Date(bookingDate),
+      startTime: new Date(startTime),
+      endTime: new Date(endTime),
+      appointmentType: appointmentType || null,
+      patientId: patientId || null,
+      userId,
+      status: 'scheduled',
+      isRemoteSession: false,
+    });
+
     const [booking] = await db
       .insert(testRoomBookings)
       .values({
-        ...req.body,
+        testRoomId,
+        bookingDate: new Date(bookingDate),
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        appointmentType: appointmentType || null,
+        patientId: patientId || null,
         userId,
+        status: 'scheduled',
+        isRemoteSession: false,
       })
       .returning();
 
+    console.log('Booking created successfully:', booking.id);
     res.status(201).json(booking);
   } catch (error) {
-    console.error("Error creating booking:", error);
-    res.status(500).json({ message: "Failed to create booking" });
+    console.error("=== Error creating booking ===");
+    console.error("Error details:", error);
+    console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+    res.status(500).json({ 
+      message: "Failed to create booking", 
+      error: error instanceof Error ? error.message : String(error) 
+    });
   }
 });
 
