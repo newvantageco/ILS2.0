@@ -79,6 +79,13 @@ const CompanyManagementPage = lazy(() => import("@/pages/admin/CompanyManagement
 const AnalyticsDashboard = lazy(() => import("@/pages/AnalyticsDashboard"));
 const BusinessAnalyticsPage = lazy(() => import("@/pages/BusinessAnalyticsPage"));
 
+// BI Dashboard Components
+const PracticePulseDashboard = lazy(() => import("@/components/bi/PracticePulseDashboard").then(m => ({ default: m.PracticePulseDashboard })));
+const FinancialDashboard = lazy(() => import("@/components/bi/FinancialDashboard").then(m => ({ default: m.FinancialDashboard })));
+const OperationalDashboard = lazy(() => import("@/components/bi/OperationalDashboard").then(m => ({ default: m.OperationalDashboard })));
+const PatientDashboard = lazy(() => import("@/components/bi/PatientDashboard").then(m => ({ default: m.PatientDashboard })));
+const PlatformAIDashboard = lazy(() => import("@/components/bi/PlatformAIDashboard").then(m => ({ default: m.PlatformAIDashboard })));
+
 // Admin Pages
 const AISettingsPage = lazy(() => import("@/pages/AISettingsPage"));
 const AuditLogsPage = lazy(() => import("@/pages/AuditLogsPage"));
@@ -357,6 +364,11 @@ function AuthenticatedApp() {
             <Route path="/ecp/company" component={CompanyManagementPage} />
             <Route path="/ecp/bi-dashboard" component={BIDashboardPage} />
             <Route path="/ecp/analytics" component={AnalyticsDashboard} />
+            <Route path="/ecp/analytics/practice-pulse" component={PracticePulseDashboard} />
+            <Route path="/ecp/analytics/financial" component={FinancialDashboard} />
+            <Route path="/ecp/analytics/operational" component={OperationalDashboard} />
+            <Route path="/ecp/analytics/patient" component={PatientDashboard} />
+            <Route path="/ecp/analytics/ai-insights" component={PlatformAIDashboard} />
             <Route path="/ecp/email-analytics" component={EmailAnalyticsPage} />
             <Route path="/ecp/email-templates" component={EmailTemplatesPage} />
             <Route path="/ecp/compliance" component={ComplianceDashboardPage} />
@@ -384,6 +396,10 @@ function AuthenticatedApp() {
             <Route path="/lab/ai-assistant" component={AIAssistantPage} />
             <Route path="/lab/company" component={CompanyManagementPage} />
             <Route path="/lab/bi-dashboard" component={BIDashboardPage} />
+            <Route path="/lab/analytics/practice-pulse" component={PracticePulseDashboard} />
+            <Route path="/lab/analytics/financial" component={FinancialDashboard} />
+            <Route path="/lab/analytics/operational" component={OperationalDashboard} />
+            <Route path="/lab/analytics/patient" component={PatientDashboard} />
             <Route path="/lab/queue">
               <div className="text-center py-12">
                 <h2 className="text-2xl font-semibold">Order Queue</h2>
@@ -414,6 +430,10 @@ function AuthenticatedApp() {
             <Route path="/supplier/ai-assistant" component={AIAssistantPage} />
             <Route path="/supplier/company" component={CompanyManagementPage} />
             <Route path="/supplier/bi-dashboard" component={BIDashboardPage} />
+            <Route path="/supplier/analytics/practice-pulse" component={PracticePulseDashboard} />
+            <Route path="/supplier/analytics/financial" component={FinancialDashboard} />
+            <Route path="/supplier/analytics/operational" component={OperationalDashboard} />
+            <Route path="/supplier/analytics/patient" component={PatientDashboard} />
           </>
         )}
 
@@ -438,6 +458,11 @@ function AuthenticatedApp() {
             <Route path="/admin/company" component={CompanyManagementPage} />
             <Route path="/admin/bi-dashboard" component={BIDashboardPage} />
             <Route path="/admin/analytics" component={BusinessAnalyticsPage} />
+            <Route path="/admin/analytics/practice-pulse" component={PracticePulseDashboard} />
+            <Route path="/admin/analytics/financial" component={FinancialDashboard} />
+            <Route path="/admin/analytics/operational" component={OperationalDashboard} />
+            <Route path="/admin/analytics/patient" component={PatientDashboard} />
+            <Route path="/admin/analytics/ai-insights" component={PlatformAIDashboard} />
             <Route path="/admin/ai-models" component={AIModelManagementPage} />
             <Route path="/admin/platform">
               <div className="text-center py-12">

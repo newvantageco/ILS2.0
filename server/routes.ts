@@ -36,13 +36,12 @@ import { z } from "zod";
 import { parseOMAFile, isValidOMAFile } from "@shared/omaParser";
 import { normalizeEmail } from "./utils/normalizeEmail";
 import { addCreationTimestamp, addUpdateTimestamp } from "./utils/timestamps";
-import { registerAiEngineRoutes } from "./routes/aiEngine";
-import { registerAiIntelligenceRoutes } from "./routes/aiIntelligence";
-import { registerAiAssistantRoutes } from "./routes/aiAssistant";
 import { registerMetricsRoutes } from "./routes/metrics";
+import { registerBiRoutes } from "./routes/bi";
+import { registerMasterAIRoutes } from "./routes/master-ai";
+import { registerPlatformAIRoutes } from "./routes/platform-ai";
 import { registerPermissionRoutes } from "./routes/permissions";
-import { registerMasterAiRoutes } from "./routes/masterAi";
-import { createUnifiedAIRoutes } from "./routes/unified-ai";
+import { registerAdminRoutes } from "./routes/admin";
 import userManagementRoutes from "./routes/userManagement";
 import ecpRoutes from "./routes/ecp";
 import posRoutes from "./routes/pos";
@@ -98,26 +97,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Register AI Engine routes
-  registerAiEngineRoutes(app);
+  // =============================================================================
+  // CONSOLIDATED AI SYSTEM (2 Services)
+  // =============================================================================
   
-  // Register AI Intelligence routes (demand forecasting, anomaly detection, bottleneck prevention)
-  registerAiIntelligenceRoutes(app);
+  // Master AI: Tenant intelligence & assistance (chat, tools, learning)
+  registerMasterAIRoutes(app, storage);
   
-  // Register AI Assistant routes (progressive learning assistant)
-  registerAiAssistantRoutes(app);
+  // Platform AI: Python ML analytics & predictions (forecasting, insights)
+  registerPlatformAIRoutes(app);
   
-  // Register Unified AI routes (consolidated AI chat endpoint)
-  app.use('/api/ai', createUnifiedAIRoutes(storage));
+  // =============================================================================
   
   // Register Metrics Dashboard routes
   registerMetricsRoutes(app);
   
+  // Register Business Intelligence Dashboard routes
+  registerBiRoutes(app);
+  
   // Register Permission Management routes
   registerPermissionRoutes(app);
-
-  // Register Master AI Training routes (platform admin only)
-  registerMasterAiRoutes(app);
+  
+  // Register Admin Management routes (platform_admin only)
+  registerAdminRoutes(app);
   
   // Register ECP Features routes (test rooms, GOC compliance, prescription templates)
   app.use('/api/ecp', ecpRoutes);
@@ -650,7 +652,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         omaParsedData = parseOMAFile(omaFileContent);
       }
 
-      // Create order with patient ID and ECP ID
+      // Use OrderService for LIMS integration (Flow 1: Order Submission)
+      // If LIMS is not configured, OrderService will skip LIMS validation
+      try {
+        const { OrderService } = await import('./services/OrderService');
+        const { LimsClient } = await import('@ils/lims-client');
+        
+        // Initialize LIMS client if configured
+        let limsClient = null;
+        if (process.env.LIMS_API_BASE_URL && process.env.LIMS_API_KEY) {
+          limsClient = new LimsClient({
+            baseUrl: process.env.LIMS_API_BASE_URL,
+            apiKey: process.env.LIMS_API_KEY,
+            webhookSecret: process.env.LIMS_WEBHOOK_SECRET || '',
+          });
+        }
+        
+        // Use OrderService if LIMS is configured, otherwise fallback to direct storage
+        if (limsClient && process.env.ENABLE_LIMS_VALIDATION !== 'false') {
+          const orderService = new OrderService(limsClient, storage, {
+            enableLimsValidation: true,
+          });
+          
+          const order = await orderService.submitOrder({
+            ...orderData,
+            companyId: user.companyId,
+            patientId: patient.id,
+            ecpId: userId,
+            omaFileContent: omaFileContent || null,
+            omaFilename: omaFilename || null,
+            omaParsedData: omaParsedData as any,
+          } as any, userId);
+          
+          return res.status(201).json(order);
+        }
+      } catch (limsError: any) {
+        // If LIMS is not available or OrderService fails, log but continue with direct storage
+        // This allows the platform to work without LIMS in development/testing
+        console.warn("LIMS integration unavailable, creating order directly:", limsError.message);
+      }
+
+      // Fallback: Create order directly if LIMS is not configured
       const order = await storage.createOrder({
         ...orderData,
         companyId: user.companyId,
@@ -662,8 +704,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } as any);
 
       res.status(201).json(order);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating order:", error);
+      
+      // Handle LIMS validation errors specifically
+      if (error.message?.includes('LIMS') || error.message?.includes('validation') || error.message?.includes('LIMS')) {
+        return res.status(400).json({ 
+          message: "Order validation failed", 
+          error: error.message,
+          details: error.details || undefined
+        });
+      }
+      
       res.status(500).json({ message: "Failed to create order" });
     }
   });

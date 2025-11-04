@@ -288,6 +288,291 @@ router.put("/companies/:companyId/subscription", isPlatformAdmin, async (req: an
   }
 });
 
+/**
+ * PUT /api/admin/users/:userId/subscription
+ * Assign/change subscription plan for a specific user by ID
+ * Platform admin can grant paid plans without payment
+ */
+router.put("/users/:userId/subscription", isPlatformAdmin, async (req: any, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const { plan, reason } = req.body;
+
+    if (!["free_ecp", "full"].includes(plan)) {
+      return res.status(400).json({ error: "Invalid subscription plan. Must be 'free_ecp' or 'full'" });
+    }
+
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const oldPlan = user.subscriptionPlan || "free_ecp";
+
+    // Update user subscription
+    await storage.updateUser(userId, {
+      subscriptionPlan: plan as any,
+    });
+
+    // Log the change if user has a company
+    const adminUserId = req.user?.claims?.sub || req.user?.id;
+    if (user.companyId) {
+      await storage.createSubscriptionHistory({
+        companyId: user.companyId,
+        eventType: "updated",
+        oldPlan: oldPlan as any,
+        newPlan: plan as any,
+        changedBy: adminUserId,
+        reason: reason || `User subscription manually changed by platform admin for ${user.email}`,
+        metadata: { 
+          targetUserId: userId,
+          targetUserEmail: user.email
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Subscription plan updated for ${user.email}`,
+      data: {
+        userId: user.id,
+        email: user.email,
+        oldPlan,
+        newPlan: plan,
+      }
+    });
+  } catch (error: any) {
+    console.error("Error updating user subscription:", error);
+    res.status(500).json({ 
+      error: "Failed to update user subscription",
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/admin/users/subscription/by-email
+ * Assign/change subscription plan for a user by email address
+ * Platform admin can grant paid plans to any user without payment
+ */
+router.post("/users/subscription/by-email", isPlatformAdmin, async (req: any, res: Response) => {
+  try {
+    const { email, plan, reason } = req.body;
+
+    // Validate inputs
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: "Email address is required" });
+    }
+
+    if (!["free_ecp", "full"].includes(plan)) {
+      return res.status(400).json({ error: "Invalid subscription plan. Must be 'free_ecp' or 'full'" });
+    }
+
+    // Find user by email
+    const user = await storage.getUserByEmail(email.toLowerCase());
+    if (!user) {
+      return res.status(404).json({ 
+        error: "User not found",
+        message: `No user found with email: ${email}`
+      });
+    }
+
+    const oldPlan = user.subscriptionPlan || "free_ecp";
+
+    // Update user subscription
+    await storage.updateUser(user.id, {
+      subscriptionPlan: plan as any,
+    });
+
+    // Log the change if user has a company
+    const adminUserId = req.user?.claims?.sub || req.user?.id;
+    if (user.companyId) {
+      await storage.createSubscriptionHistory({
+        companyId: user.companyId,
+        eventType: "updated",
+        oldPlan: oldPlan as any,
+        newPlan: plan as any,
+        changedBy: adminUserId,
+        reason: reason || `User subscription manually assigned by platform admin to ${email}`,
+        metadata: { 
+          targetUserId: user.id,
+          targetUserEmail: email,
+          assignedByAdmin: true
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `${plan === 'full' ? 'Full paid' : 'Free'} subscription assigned to ${email}`,
+      data: {
+        userId: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        oldPlan,
+        newPlan: plan,
+        companyId: user.companyId,
+        assignedAt: new Date().toISOString()
+      }
+    });
+  } catch (error: any) {
+    console.error("Error assigning subscription by email:", error);
+    res.status(500).json({ 
+      error: "Failed to assign subscription",
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/admin/users/subscription/bulk
+ * Bulk assign subscriptions to multiple users by email
+ * Platform admin can grant paid plans to multiple users at once
+ */
+router.post("/users/subscription/bulk", isPlatformAdmin, async (req: any, res: Response) => {
+  try {
+    const { emails, plan, reason } = req.body;
+
+    // Validate inputs
+    if (!Array.isArray(emails) || emails.length === 0) {
+      return res.status(400).json({ error: "emails must be a non-empty array" });
+    }
+
+    if (!["free_ecp", "full"].includes(plan)) {
+      return res.status(400).json({ error: "Invalid subscription plan. Must be 'free_ecp' or 'full'" });
+    }
+
+    const results = {
+      success: [],
+      failed: [],
+      notFound: []
+    };
+
+    const adminUserId = req.user?.claims?.sub || req.user?.id;
+
+    // Process each email
+    for (const email of emails) {
+      try {
+        const user = await storage.getUserByEmail(email.toLowerCase());
+        
+        if (!user) {
+          results.notFound.push({ email, reason: "User not found" });
+          continue;
+        }
+
+        const oldPlan = user.subscriptionPlan || "free_ecp";
+
+        // Update user subscription
+        await storage.updateUser(user.id, {
+          subscriptionPlan: plan as any,
+        });
+
+        // Log the change if user has a company
+        if (user.companyId) {
+          await storage.createSubscriptionHistory({
+            companyId: user.companyId,
+            eventType: "updated",
+            oldPlan: oldPlan as any,
+            newPlan: plan as any,
+            changedBy: adminUserId,
+            reason: reason || `Bulk subscription assignment by platform admin`,
+            metadata: { 
+              targetUserId: user.id,
+              targetUserEmail: email,
+              bulkOperation: true
+            }
+          });
+        }
+
+        results.success.push({
+          email: user.email,
+          userId: user.id,
+          oldPlan,
+          newPlan: plan
+        });
+
+      } catch (error: any) {
+        results.failed.push({
+          email,
+          reason: error.message
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Bulk subscription assignment completed`,
+      data: {
+        totalProcessed: emails.length,
+        successCount: results.success.length,
+        failedCount: results.failed.length,
+        notFoundCount: results.notFound.length,
+        results
+      }
+    });
+  } catch (error: any) {
+    console.error("Error bulk assigning subscriptions:", error);
+    res.status(500).json({ 
+      error: "Failed to bulk assign subscriptions",
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/admin/users/search
+ * Search for users by email or name (platform admin only)
+ */
+router.get("/users/search", isPlatformAdmin, async (req: any, res: Response) => {
+  try {
+    const { q } = req.query;
+
+    if (!q || typeof q !== 'string') {
+      return res.status(400).json({ error: "Search query 'q' is required" });
+    }
+
+    const searchTerm = q.toLowerCase();
+    const allUsers = await storage.getUsers();
+
+    // Search by email, first name, or last name
+    const matchingUsers = allUsers.filter(user => 
+      user.email.toLowerCase().includes(searchTerm) ||
+      user.firstName?.toLowerCase().includes(searchTerm) ||
+      user.lastName?.toLowerCase().includes(searchTerm)
+    );
+
+    // Limit results and don't send passwords
+    const results = matchingUsers.slice(0, 50).map(user => ({
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      subscriptionPlan: user.subscriptionPlan,
+      companyId: user.companyId,
+      isActive: user.isActive,
+      createdAt: user.createdAt
+    }));
+
+    res.json({
+      success: true,
+      data: results,
+      meta: {
+        total: matchingUsers.length,
+        showing: results.length,
+        searchTerm
+      }
+    });
+  } catch (error: any) {
+    console.error("Error searching users:", error);
+    res.status(500).json({ 
+      error: "Failed to search users",
+      message: error.message
+    });
+  }
+});
+
 export function registerAdminRoutes(app: any) {
   app.use("/api/admin", router);
 }

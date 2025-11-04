@@ -111,10 +111,10 @@ export default function Landing() {
           <div className="space-y-6">
             {/* Value Proposition */}
             <h2 className="text-5xl lg:text-6xl font-bold leading-tight">
-              The All-in-One OS for Modern Optical Practices
+              The AI-Powered Operating System for Modern Optical Practices
             </h2>
             <p className="text-xl text-muted-foreground leading-relaxed">
-              Streamline your entire practice, from patient check-in to final sale. ILS 2.0 unifies your prescriptions, inventory, POS, and analytics in one powerful, secure platform.
+              Transform your practice with intelligent automation. ILS 2.0 combines prescription management, inventory control, point-of-sale, business intelligence, and an AI assistant trained on ophthalmic knowledge—all in one HIPAA-compliant, multi-tenant platform.
             </p>
             
             {/* CTAs */}
@@ -132,28 +132,28 @@ export default function Landing() {
             {/* Trust Metrics - Moved directly below CTAs */}
             <div className="pt-6 border-t">
               <p className="text-sm text-muted-foreground mb-3">
-                Trusted by 500+ practices just like yours
+                Enterprise-grade platform trusted by optical professionals worldwide
               </p>
               <div className="flex flex-wrap gap-6">
                 <div className="flex items-center gap-2">
-                  <Package className="h-5 w-5 text-primary" />
+                  <Bot className="h-5 w-5 text-primary" />
                   <div>
-                    <div className="text-2xl font-bold">10K+</div>
-                    <div className="text-xs text-muted-foreground">Orders Processed</div>
+                    <div className="text-2xl font-bold">AI-Powered</div>
+                    <div className="text-xs text-muted-foreground">Llama 3.1 8B Model</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-primary" />
+                  <Shield className="h-5 w-5 text-primary" />
                   <div>
-                    <div className="text-2xl font-bold">500+</div>
-                    <div className="text-xs text-muted-foreground">Active Practices</div>
+                    <div className="text-2xl font-bold">HIPAA</div>
+                    <div className="text-xs text-muted-foreground">Compliant Platform</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                  <Zap className="h-5 w-5 text-primary" />
                   <div>
-                    <div className="text-2xl font-bold">98%</div>
-                    <div className="text-xs text-muted-foreground">Customer Satisfaction</div>
+                    <div className="text-2xl font-bold">&lt;1.5s</div>
+                    <div className="text-xs text-muted-foreground">Average Load Time</div>
                   </div>
                 </div>
               </div>
@@ -184,6 +184,117 @@ export default function Landing() {
         <Card className="bg-muted/30 border-border/50">
           <CardContent className="p-8">
             <LogoWall />
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* AI Intelligence Showcase - NEW */}
+      <section className="max-w-7xl mx-auto px-6 py-16">
+        <Card className="bg-gradient-to-br from-purple-500/5 via-blue-500/5 to-primary/5 border-primary/20 overflow-hidden">
+          <CardHeader className="text-center pb-6">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <Bot className="h-8 w-8 text-primary" />
+              <CardTitle className="text-3xl">AI-Powered Intelligence Built In</CardTitle>
+            </div>
+            <CardDescription className="text-lg mt-2 max-w-3xl mx-auto">
+              Not just another chatbot. Our AI Assistant is a fine-tuned Llama 3.1 8B model trained on ophthalmic knowledge, integrated with your practice data through secure RAG technology.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Clinical Knowledge */}
+              <Card className="bg-background/50">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-blue-500/10">
+                      <BookOpen className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <CardTitle className="text-lg">Ophthalmic Knowledge Base</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Ask clinical questions and get instant, accurate answers from our fine-tuned model:
+                  </p>
+                  <div className="space-y-2">
+                    <div className="bg-muted/50 rounded p-3 text-xs">
+                      <p className="text-primary font-medium mb-1">Q: "What is progressive lens design?"</p>
+                      <p className="text-muted-foreground">Instant expert-level explanation...</p>
+                    </div>
+                    <div className="bg-muted/50 rounded p-3 text-xs">
+                      <p className="text-primary font-medium mb-1">Q: "Explain astigmatism correction"</p>
+                      <p className="text-muted-foreground">Detailed clinical guidance...</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    Fine-tuned on Llama 3.1 8B
+                  </Badge>
+                </CardContent>
+              </Card>
+
+              {/* Business Analytics */}
+              <Card className="bg-background/50">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-green-500/10">
+                      <PieChart className="h-5 w-5 text-green-500" />
+                    </div>
+                    <CardTitle className="text-lg">Natural Language Analytics</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Query your sales, inventory, and patient data using plain English:
+                  </p>
+                  <div className="space-y-2">
+                    <div className="bg-muted/50 rounded p-3 text-xs">
+                      <p className="text-primary font-medium mb-1">Q: "Top 3 selling products last month?"</p>
+                      <p className="text-muted-foreground">Instant database insights...</p>
+                    </div>
+                    <div className="bg-muted/50 rounded p-3 text-xs">
+                      <p className="text-primary font-medium mb-1">Q: "Which items are low in stock?"</p>
+                      <p className="text-muted-foreground">Real-time inventory status...</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    <Lock className="h-3 w-3 mr-1" />
+                    HIPAA-Compliant RAG
+                  </Badge>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* AI Features Grid */}
+            <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 rounded-lg bg-muted/30">
+                <Shield className="h-6 w-6 mx-auto mb-2 text-primary" />
+                <div className="text-sm font-medium">Multi-Tenant</div>
+                <div className="text-xs text-muted-foreground mt-1">Complete data isolation</div>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-muted/30">
+                <Lock className="h-6 w-6 mx-auto mb-2 text-primary" />
+                <div className="text-sm font-medium">HIPAA Safe</div>
+                <div className="text-xs text-muted-foreground mt-1">Anonymized patient data</div>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-muted/30">
+                <Zap className="h-6 w-6 mx-auto mb-2 text-primary" />
+                <div className="text-sm font-medium">Real-Time</div>
+                <div className="text-xs text-muted-foreground mt-1">Live database queries</div>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-muted/30">
+                <CheckCircle2 className="h-6 w-6 mx-auto mb-2 text-primary" />
+                <div className="text-sm font-medium">Audit Trail</div>
+                <div className="text-xs text-muted-foreground mt-1">Full compliance logging</div>
+              </div>
+            </div>
+
+            {/* Technical Details */}
+            <div className="mt-6 p-4 bg-muted/20 rounded-lg border border-border/50">
+              <p className="text-xs text-muted-foreground text-center">
+                <strong>Powered by:</strong> Llama 3.1 8B (Fine-tuned) • LlamaIndex RAG • FastAPI • JWT Auth • PostgreSQL • Multi-Tenant Architecture
+              </p>
+            </div>
           </CardContent>
         </Card>
       </section>
@@ -464,7 +575,7 @@ export default function Landing() {
                 <span className="font-bold text-lg">ILS 2.0</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                The All-in-One OS for Modern Optical Practices
+                The AI-Powered Operating System for Modern Optical Practices
               </p>
               <p className="text-xs text-muted-foreground">
                 © 2025 New Vantage Co LTD

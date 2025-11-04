@@ -39,12 +39,7 @@ export const checkSubscription: RequestHandler = async (req, res, next) => {
 
     // Get user subscription details from database
     const [userDetails] = await db
-      .select({
-        subscriptionPlan: users.subscriptionPlan,
-        companyId: users.companyId,
-        isActive: users.isActive,
-        role: users.role
-      })
+      .select()
       .from(users)
       .where(eq(users.id, userId));
 
@@ -75,7 +70,7 @@ export const checkSubscription: RequestHandler = async (req, res, next) => {
         companyPlan: 'free_ecp',
         allowedFeatures: ['ophthalmic_knowledge'],
         isPlatformAdmin: false,
-        isActive: false
+        isActive: true  // Changed from false to true - allow basic access
       };
       return next();
     }
@@ -106,6 +101,20 @@ export const checkSubscription: RequestHandler = async (req, res, next) => {
 
     // Check if AI is enabled for company
     if (!companyDetails.aiEnabled) {
+      // Allow if user has individual subscription or is on free tier (knowledge base only)
+      if (userDetails.subscriptionPlan === 'full' || userDetails.subscriptionPlan === 'free_ecp') {
+        authReq.subscription = {
+          userPlan: userDetails.subscriptionPlan,
+          companyPlan: 'free_ecp',
+          allowedFeatures: userDetails.subscriptionPlan === 'full' 
+            ? ['ophthalmic_knowledge', 'patient_analytics', 'inventory', 'sales', 'data_queries']
+            : ['ophthalmic_knowledge'],
+          isPlatformAdmin: false,
+          isActive: true
+        };
+        return next();
+      }
+      
       return res.status(403).json({ 
         error: 'AI features are not enabled for your company',
         message: 'Please contact support to enable AI features'
@@ -142,9 +151,18 @@ export const checkSubscription: RequestHandler = async (req, res, next) => {
     };
 
     next();
-  } catch (error) {
+  } catch (error: any) {
     console.error('Subscription check error:', error);
-    res.status(500).json({ error: 'Subscription validation failed' });
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      userId: (req as any).user?.id,
+      email: (req as any).user?.email
+    });
+    res.status(500).json({ 
+      error: 'Subscription validation failed',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 

@@ -291,7 +291,10 @@ router.put('/:id', requireCompanyOrPlatformAdmin, async (req, res) => {
       lastName: z.string().min(1).optional(),
       role: z.string().optional(),
       isActive: z.boolean().optional(),
-      subscriptionPlan: z.enum(['full', 'free_ecp']).optional()
+      subscriptionPlan: z.enum(['full', 'free_ecp']).optional(),
+      // Platform admin can update these additional fields
+      isVerified: z.boolean().optional(),
+      accountStatus: z.string().optional()
     });
 
     const validation = schema.safeParse(req.body);
@@ -314,6 +317,14 @@ router.put('/:id', requireCompanyOrPlatformAdmin, async (req, res) => {
       }
     }
 
+    // Only platform admin can change subscription plan directly
+    if (updates.subscriptionPlan && !isPlatformAdmin(userRole)) {
+      return res.status(403).json({
+        error: 'Access denied',
+        message: 'Only platform administrators can modify subscription plans'
+      });
+    }
+
     // Build update object with proper typing
     const updateData: any = {
       updatedAt: new Date()
@@ -324,6 +335,12 @@ router.put('/:id', requireCompanyOrPlatformAdmin, async (req, res) => {
     if (updates.role) updateData.role = updates.role;
     if (updates.isActive !== undefined) updateData.isActive = updates.isActive;
     if (updates.subscriptionPlan) updateData.subscriptionPlan = updates.subscriptionPlan;
+    
+    // Platform admin only fields
+    if (isPlatformAdmin(userRole)) {
+      if (updates.isVerified !== undefined) updateData.isVerified = updates.isVerified;
+      if (updates.accountStatus) updateData.accountStatus = updates.accountStatus;
+    }
 
     // Update user
     const [updatedUser] = await db
