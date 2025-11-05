@@ -10,7 +10,6 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RoleSwitcherDropdown } from "@/components/RoleSwitcherDropdown";
 import { NotificationCenter } from "@/components/NotificationCenter";
-import { NotificationBell } from "@/components/NotificationBell";
 import { FloatingAiChat } from "@/components/FloatingAiChat";
 import { PageTransition } from "@/components/ui/PageTransition";
 import { CommandPalette } from "@/components/ui/CommandPalette";
@@ -216,7 +215,6 @@ function AppLayout({ children, userRole }: { children: React.ReactNode; userRole
             <SidebarTrigger data-testid="button-sidebar-toggle" className="shrink-0" />
             <div className="flex items-center gap-1 sm:gap-2 ml-auto">
               <RoleSwitcherDropdown />
-              <NotificationBell />
               <NotificationCenter />
               <ThemeToggle />
               <Button 
