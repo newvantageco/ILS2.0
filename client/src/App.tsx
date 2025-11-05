@@ -10,6 +10,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RoleSwitcherDropdown } from "@/components/RoleSwitcherDropdown";
 import { NotificationCenter } from "@/components/NotificationCenter";
+import { NotificationBell } from "@/components/NotificationBell";
 import { FloatingAiChat } from "@/components/FloatingAiChat";
 import { PageTransition } from "@/components/ui/PageTransition";
 import { CommandPalette } from "@/components/ui/CommandPalette";
@@ -74,6 +75,7 @@ const NewOrderPage = lazy(() => import("@/pages/NewOrderPage"));
 const OrderDetailsPage = lazy(() => import("@/pages/OrderDetailsPage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
 const AIAssistantPage = lazy(() => import("@/pages/AIAssistantPage"));
+const AIPurchaseOrdersPage = lazy(() => import("@/pages/AIPurchaseOrdersPage"));
 const BIDashboardPage = lazy(() => import("@/pages/BIDashboardPage"));
 const CompanyManagementPage = lazy(() => import("@/pages/admin/CompanyManagementPage"));
 const AnalyticsDashboard = lazy(() => import("@/pages/AnalyticsDashboard"));
@@ -183,6 +185,7 @@ function AppLayout({ children, userRole }: { children: React.ReactNode; userRole
             <SidebarTrigger data-testid="button-sidebar-toggle" className="shrink-0" />
             <div className="flex items-center gap-1 sm:gap-2 ml-auto">
               <RoleSwitcherDropdown />
+              <NotificationBell />
               <NotificationCenter />
               <ThemeToggle />
               <Button 
@@ -361,6 +364,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/new-order" component={NewOrderPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
+            <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />
             <Route path="/ecp/company" component={CompanyManagementPage} />
             <Route path="/ecp/bi-dashboard" component={BIDashboardPage} />
             <Route path="/ecp/analytics" component={AnalyticsDashboard} />

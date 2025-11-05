@@ -50,22 +50,23 @@ export function FloatingAiChat() {
   // Ask AI mutation
   const askMutation = useMutation({
     mutationFn: async (question: string) => {
-      const response = await fetch("/api/ai-assistant/ask", {
+      const response = await fetch("/api/master-ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          question,
+          query: question,
           conversationId,
         }),
         credentials: "include",
       });
 
       if (!response.ok) {
-        throw new Error("Failed to get AI response");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to get AI response");
       }
 
       const data = await response.json();
-      return data.data;
+      return data;
     },
     onSuccess: (data) => {
       // Add assistant message
@@ -74,7 +75,7 @@ export function FloatingAiChat() {
         {
           id: Date.now().toString() + "-assistant",
           role: "assistant",
-          content: data.answer,
+          content: data.response || data.answer || "I apologize, I couldn't process that request.",
           timestamp: new Date(),
         },
       ]);
@@ -83,6 +84,18 @@ export function FloatingAiChat() {
       if (data.conversationId) {
         setConversationId(data.conversationId);
       }
+    },
+    onError: (error: Error) => {
+      // Add error message
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString() + "-error",
+          role: "assistant",
+          content: `I encountered an error: ${error.message}. Please try again or contact support if the issue persists.`,
+          timestamp: new Date(),
+        },
+      ]);
     },
   });
 

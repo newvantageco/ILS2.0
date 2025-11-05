@@ -39,7 +39,10 @@ import { addCreationTimestamp, addUpdateTimestamp } from "./utils/timestamps";
 import { registerMetricsRoutes } from "./routes/metrics";
 import { registerBiRoutes } from "./routes/bi";
 import { registerMasterAIRoutes } from "./routes/master-ai";
-import { registerPlatformAIRoutes } from "./routes/platform-ai";
+import { registerAINotificationRoutes } from "./routes/ai-notifications";
+import { registerAutonomousPORoutes } from "./routes/ai-purchase-orders";
+import { registerDemandForecastingRoutes } from "./routes/demand-forecasting";
+// import { registerPlatformAIRoutes } from "./routes/platform-ai"; // Disabled - schema issues
 import { registerPermissionRoutes } from "./routes/permissions";
 import { registerAdminRoutes } from "./routes/admin";
 import userManagementRoutes from "./routes/userManagement";
@@ -98,14 +101,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // =============================================================================
-  // CONSOLIDATED AI SYSTEM (2 Services)
+  // CONSOLIDATED AI SYSTEM (1 Service Active)
   // =============================================================================
   
   // Master AI: Tenant intelligence & assistance (chat, tools, learning)
   registerMasterAIRoutes(app, storage);
   
-  // Platform AI: Python ML analytics & predictions (forecasting, insights)
-  registerPlatformAIRoutes(app);
+  // AI Notifications: Proactive insights & daily briefings
+  registerAINotificationRoutes(app);
+  
+  // Autonomous Purchasing: AI-generated purchase orders
+  registerAutonomousPORoutes(app);
+  
+  // Demand Forecasting: Predictive AI for inventory & staffing (Chunk 5)
+  registerDemandForecastingRoutes(app);
+  
+  // Platform AI: Python ML analytics & predictions (DISABLED - schema issues)
+  // registerPlatformAIRoutes(app);
   
   // =============================================================================
   

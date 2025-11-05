@@ -16,6 +16,8 @@ import {
 } from "./middleware/security";
 import { auditMiddleware } from "./middleware/audit";
 import { scheduledEmailService } from "./services/ScheduledEmailService";
+import { startDailyBriefingCron } from "./jobs/dailyBriefingCron";
+import { startInventoryMonitoringCron } from "./jobs/inventoryMonitoringCron";
 
 const app = express();
 
@@ -182,6 +184,14 @@ app.use((req, res, next) => {
       // Start scheduled email jobs
       scheduledEmailService.startAllJobs();
       log(`Scheduled email jobs started (prescription reminders, recall notifications)`);
+      
+      // Start daily AI briefing cron job
+      startDailyBriefingCron();
+      log(`Daily AI briefing cron job started (8:00 AM daily)`);
+      
+      // Start autonomous inventory monitoring cron job
+      startInventoryMonitoringCron();
+      log(`Inventory monitoring cron job started (9:00 AM & 3:00 PM daily)`);
     });
 
     // Handle server errors

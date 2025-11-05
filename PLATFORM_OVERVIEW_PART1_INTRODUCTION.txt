@@ -1,0 +1,1093 @@
+================================================================================
+INTEGRATED LENS SYSTEM (ILS) - PLATFORM OVERVIEW
+PART 1: INTRODUCTION, ARCHITECTURE & CORE FEATURES
+================================================================================
+Generated: November 4, 2025
+Repository: ILS2.0 (newvantageco)
+Version: 1.0.0
+Status: Production-Ready (Core Features)
+
+================================================================================
+TABLE OF CONTENTS - PART 1
+================================================================================
+1. Executive Summary
+2. System Architecture
+3. Technology Stack
+4. Business Model & Value Proposition
+5. Target Users & Stakeholders
+6. Core Features (Fully Functional)
+7. Authentication & Security
+
+================================================================================
+1. EXECUTIVE SUMMARY
+================================================================================
+
+PROJECT NAME: Integrated Lens System (ILS)
+TYPE: Enterprise-grade SaaS Platform
+INDUSTRY: Optical/Eyecare Management
+DEPLOYMENT: Web-based (React + Express)
+DATABASE: PostgreSQL (Neon Serverless)
+
+DESCRIPTION:
+The Integrated Lens System is a comprehensive web-based platform designed to
+manage optical lab operations, lens orders, prescription management, and
+practice workflows for the eyecare industry. It serves as a unified solution
+for Eye Care Professionals (ECPs), Lab Technicians, Engineers, Suppliers, and
+Administrators.
+
+PRIMARY CAPABILITIES:
+- Complete lens order management (submission to delivery)
+- Patient and prescription management
+- Point-of-sale system for optical practices
+- Multi-tenant architecture (multiple companies/practices)
+- Lab production workflow management
+- Supplier relationship and purchase order management
+- Advanced analytics and business intelligence
+- AI-powered assistant (planned/partial)
+
+CURRENT STATE ASSESSMENT (November 2025):
+✅ FULLY FUNCTIONAL:
+   - Order Management System (90%)
+   - Patient Management (95%)
+   - Authentication & Authorization (95%)
+   - Point of Sale System (85%)
+   - Supplier Management (90%)
+   - Purchase Orders (90%)
+   - Admin Dashboard (90%)
+   - OMA File Support (85%)
+   - Multi-Role System (95%)
+   - Email Notifications (90%)
+   - PDF Generation (90%)
+   - Eye Examination Recording (80%)
+
+⚠️ PARTIALLY FUNCTIONAL:
+   - Multi-Tenant Architecture (70% - backend complete, setup needed)
+   - Business Intelligence Dashboard (40%)
+   - Analytics Dashboard (40%)
+   - Equipment Management (20%)
+
+❌ PLANNED/NON-FUNCTIONAL:
+   - AI Assistant (5% - frontend exists, no backend integration)
+   - ML Forecasting (0% - code written, not exposed)
+   - Neural Network Learning (0%)
+
+HONEST ASSESSMENT:
+ILS is a robust, production-ready optical lab management platform with modern
+UI/UX and solid core functionality. The documentation extensively describes
+AI capabilities, but audit reveals these are largely aspirational. The core
+business operations (orders, patients, prescriptions, POS, invoicing) work
+excellently and are ready for deployment.
+
+================================================================================
+2. SYSTEM ARCHITECTURE
+================================================================================
+
+HIGH-LEVEL ARCHITECTURE:
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           CLIENT LAYER (React)                           │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │ Browser (Chrome, Safari, Firefox, Edge)                          │  │
+│  │                                                                    │  │
+│  │ React 18 + TypeScript                                            │  │
+│  │ TanStack Query (data fetching & caching)                         │  │
+│  │ Wouter (routing)                                                 │  │
+│  │ shadcn/ui + Radix UI (components)                                │  │
+│  │ Tailwind CSS (styling)                                           │  │
+│  └───────────────────────────────┬──────────────────────────────────┘  │
+└─────────────────────────────────┼──────────────────────────────────────┘
+                                  │
+                       HTTP/HTTPS (REST API)
+                       Fetch API + React Query
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      API LAYER (Express Server)                          │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │ Node.js 18+ with Express 4.x                                     │  │
+│  │                                                                    │  │
+│  │ Middleware:                                                       │  │
+│  │ • Authentication (Passport.js - Local & OpenID)                 │  │
+│  │ • Session Management (express-session + PostgreSQL)             │  │
+│  │ • CORS (cross-origin resource sharing)                          │  │
+│  │ • Helmet (security headers)                                      │  │
+│  │ • Rate Limiting (express-rate-limit)                            │  │
+│  │ • File Upload (multer)                                          │  │
+│  │ • JSON Body Parser                                              │  │
+│  │                                                                    │  │
+│  │ Route Handlers:                                                   │  │
+│  │ /api/auth/* - Authentication endpoints                          │  │
+│  │ /api/orders/* - Order management                                │  │
+│  │ /api/patients/* - Patient records                               │  │
+│  │ /api/pos/* - Point of sale operations                           │  │
+│  │ /api/ecp/* - ECP-specific features                              │  │
+│  │ /api/admin/* - Admin functions                                  │  │
+│  │ /api/companies/* - Multi-tenant company management              │  │
+│  │ /api/analytics/* - Business analytics                           │  │
+│  │ /api/ai-assistant/* - AI assistant (partial)                    │  │
+│  └───────────────────────────────┬──────────────────────────────────┘  │
+└─────────────────────────────────┼──────────────────────────────────────┘
+                                  │
+                         Drizzle ORM (SQL)
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      DATABASE LAYER (PostgreSQL)                         │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │ Neon Serverless PostgreSQL                                       │  │
+│  │                                                                    │  │
+│  │ Core Tables (40+):                                               │  │
+│  │ • users - User accounts & authentication                         │  │
+│  │ • user_roles - Multi-role assignments                            │  │
+│  │ • companies - Multi-tenant organizations                         │  │
+│  │ • company_relationships - Inter-company connections              │  │
+│  │ • patients - Patient records                                     │  │
+│  │ • orders - Lens orders                                           │  │
+│  │ • products - Inventory items                                     │  │
+│  │ • invoices - Financial records                                   │  │
+│  │ • prescriptions - Optical prescriptions                          │  │
+│  │ • suppliers - Vendor management                                  │  │
+│  │ • purchase_orders - PO tracking                                  │  │
+│  │ • sessions - User sessions                                       │  │
+│  │ • ai_conversations - AI chat history (planned)                   │  │
+│  │ • ai_knowledge_base - Document storage (planned)                 │  │
+│  │ • analytics_events - Event tracking                              │  │
+│  │ • audit_logs - System audit trail                                │  │
+│  │ • email_tracking - Email delivery status                         │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
+
+EXTERNAL SERVICES INTEGRATION:
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         EXTERNAL SERVICES                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Stripe (Payments & Subscriptions)                                      │
+│  ├─ Customer management                                                 │
+│  ├─ Subscription billing                                                │
+│  ├─ Payment processing                                                  │
+│  └─ Webhook events                                                      │
+│                                                                          │
+│  Resend (Email Delivery)                                                │
+│  ├─ Transactional emails                                                │
+│  ├─ Order confirmations                                                 │
+│  ├─ Invoice delivery                                                    │
+│  └─ Notifications                                                       │
+│                                                                          │
+│  OpenAI / Anthropic (AI - Planned)                                      │
+│  ├─ Natural language processing                                         │
+│  ├─ Business intelligence                                               │
+│  └─ Predictive analytics                                                │
+│                                                                          │
+│  Ollama (Local AI - Optional)                                           │
+│  ├─ Privacy-first AI                                                    │
+│  ├─ Offline capabilities                                                │
+│  └─ Cost reduction                                                      │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+DEPLOYMENT ARCHITECTURE:
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           PRODUCTION SETUP                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Frontend (Static Assets)                                               │
+│  └─ Built with Vite → Served by Express                                │
+│                                                                          │
+│  Backend (Node.js Server)                                               │
+│  └─ Express app on port 3000 (configurable)                            │
+│                                                                          │
+│  Database (PostgreSQL)                                                  │
+│  └─ Neon Serverless (cloud-hosted)                                     │
+│                                                                          │
+│  File Storage                                                           │
+│  ├─ Local filesystem (development)                                     │
+│  └─ AWS S3 (production - optional)                                     │
+│                                                                          │
+│  Session Storage                                                        │
+│  └─ PostgreSQL (connect-pg-simple)                                     │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+DATA FLOW:
+1. User interacts with React frontend
+2. TanStack Query manages API calls and caching
+3. Fetch API sends HTTP requests to Express backend
+4. Express middleware validates session and permissions
+5. Route handlers process requests
+6. Drizzle ORM executes type-safe SQL queries
+7. PostgreSQL returns data
+8. Express formats response
+9. React Query caches and updates UI
+10. React re-renders with new data
+
+SECURITY LAYERS:
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Layer 1: Network Security                                              │
+│  • HTTPS encryption (TLS 1.2+)                                          │
+│  • CORS policies                                                        │
+│  • Rate limiting                                                        │
+│  • Security headers (Helmet.js)                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Layer 2: Authentication                                                │
+│  • Password hashing (bcrypt, 10 rounds)                                │
+│  • Session management (HTTP-only cookies)                               │
+│  • Multi-factor authentication (planned)                                │
+│  • Account approval workflow                                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Layer 3: Authorization                                                 │
+│  • Role-based access control (RBAC)                                     │
+│  • Multi-tenant data isolation (companyId scoping)                      │
+│  • Route-level permission checks                                        │
+│  • Feature-level access control                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Layer 4: Data Security                                                 │
+│  • SQL injection prevention (parameterized queries)                     │
+│  • XSS protection (React escaping + CSP)                                │
+│  • Input validation (Zod schemas)                                       │
+│  • Output sanitization                                                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Layer 5: Audit & Monitoring                                            │
+│  • Audit logs for sensitive operations                                  │
+│  • Session tracking                                                     │
+│  • Error logging                                                        │
+│  • Performance monitoring                                               │
+└─────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+3. TECHNOLOGY STACK
+================================================================================
+
+FRONTEND TECHNOLOGIES:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Framework & Core                                                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│ React 18.3.1             - UI framework with hooks & concurrent features│
+│ TypeScript 5.6.3         - Type-safe JavaScript                         │
+│ Vite 5.4.20             - Fast build tool and dev server                │
+│ Wouter 3.3.5            - Lightweight routing (~1.5KB)                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ State Management & Data Fetching                                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│ TanStack Query 5.60.5   - Server state management & caching             │
+│ React Hook Form 7.55.0  - Form state management                         │
+│ Zod 3.24.2              - Schema validation                             │
+├─────────────────────────────────────────────────────────────────────────┤
+│ UI Component Libraries                                                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ shadcn/ui               - Copy-paste component collection               │
+│ Radix UI                - Unstyled, accessible components               │
+│ Ant Design 5.28.0       - Enterprise UI components                      │
+│ Material-UI 7.3.4       - Google Material Design components             │
+│ Lucide React 0.453.0    - Icon library (2000+ icons)                    │
+│ React Icons 5.4.0       - Popular icon packs                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Styling                                                                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Tailwind CSS 3.4.18     - Utility-first CSS framework                   │
+│ PostCSS 8.5.6           - CSS transformations                           │
+│ Emotion 11.14.0         - CSS-in-JS                                     │
+│ Framer Motion 11.18.2   - Animations library                            │
+│ next-themes 0.4.6       - Dark mode support                             │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Data Visualization                                                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Recharts 2.15.4         - Chart library built on D3                     │
+│ TanStack Table 8.21.3   - Headless table library                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Utilities                                                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│ date-fns 3.6.0          - Date manipulation                             │
+│ axios 1.13.0            - HTTP client                                   │
+│ clsx 2.1.1              - Conditional classnames                        │
+│ cmdk 1.1.1              - Command palette                               │
+│ vaul 1.1.2              - Drawer component                              │
+└─────────────────────────────────────────────────────────────────────────┘
+
+BACKEND TECHNOLOGIES:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Server Framework                                                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Node.js 18+             - JavaScript runtime                            │
+│ Express 4.21.2          - Web application framework                     │
+│ TypeScript 5.6.3        - Type-safe development                         │
+│ tsx 4.20.5              - TypeScript execution                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Database & ORM                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│ PostgreSQL 8.16.3       - Relational database                           │
+│ Neon Serverless         - Serverless Postgres platform                  │
+│ Drizzle ORM 0.44.7      - Type-safe SQL query builder                   │
+│ Drizzle Kit 0.31.5      - Database migrations                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Authentication & Security                                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Passport.js 0.7.0       - Authentication middleware                     │
+│ passport-local 1.0.0    - Email/password strategy                       │
+│ openid-client 6.8.1     - OpenID Connect (Replit Auth)                 │
+│ bcrypt 6.0.0            - Password hashing                              │
+│ express-session 1.18.1  - Session management                            │
+│ connect-pg-simple 10.0  - PostgreSQL session store                      │
+│ helmet 8.1.0            - Security headers                              │
+│ cors 2.8.5              - CORS middleware                               │
+│ express-rate-limit 8.2  - Rate limiting                                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│ File Handling                                                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│ multer 2.0.2            - File upload middleware                        │
+│ @aws-sdk/client-s3 3.700 - AWS S3 integration (optional)               │
+├─────────────────────────────────────────────────────────────────────────┤
+│ PDF & Document Generation                                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│ pdfkit 0.17.2           - PDF document generation                       │
+│ qrcode 1.5.4            - QR code generation                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Email                                                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│ resend 6.2.2            - Modern email API                              │
+│ nodemailer 7.0.10       - Email sending (fallback)                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Payments                                                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│ stripe 19.1.0           - Payment processing & subscriptions            │
+├─────────────────────────────────────────────────────────────────────────┤
+│ AI & Machine Learning (Planned)                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│ openai 6.7.0            - OpenAI API integration                        │
+│ @anthropic-ai/sdk 0.68  - Claude AI integration                         │
+│ @tensorflow/tfjs 4.22   - Machine learning (Node.js)                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Utilities                                                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│ zod 3.24.2              - Schema validation                             │
+│ axios 1.13.0            - HTTP client                                   │
+│ node-cron 4.2.1         - Job scheduling                                │
+│ ws 8.18.0               - WebSocket support                             │
+│ memoizee 0.4.17         - Function memoization                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+DEVELOPMENT & TESTING:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Testing Frameworks                                                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Jest 29.7.0             - Unit testing framework                        │
+│ Vitest 4.0.5            - Vite-native testing                           │
+│ Playwright 1.56.1       - E2E testing                                   │
+│ Testing Library 16.3.0  - Component testing                             │
+│ Supertest 7.1.4         - API testing                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Build Tools                                                             │
+├─────────────────────────────────────────────────────────────────────────┤
+│ esbuild 0.25.0          - Fast JavaScript bundler                       │
+│ Vite 5.4.20             - Frontend build tool                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Code Quality                                                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│ TypeScript 5.6.3        - Type checking                                 │
+│ ESLint (optional)       - Linting                                       │
+│ Prettier (optional)     - Code formatting                               │
+└─────────────────────────────────────────────────────────────────────────┘
+
+DATABASE FEATURES:
+- PostgreSQL 14+
+- JSONB for flexible data storage
+- Full-text search capabilities
+- UUID primary keys
+- Indexes for performance
+- Foreign key constraints
+- Enum types for status fields
+- Timestamp tracking (created_at, updated_at)
+- Soft deletes (where applicable)
+- Sequences for auto-incrementing
+
+================================================================================
+4. BUSINESS MODEL & VALUE PROPOSITION
+================================================================================
+
+BUSINESS MODEL:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ SaaS Subscription Platform                                              │
+│ • Recurring revenue through monthly/annual subscriptions                │
+│ • Multi-tenant architecture (shared infrastructure, isolated data)      │
+│ • Freemium model with upgrade path                                      │
+│ • Stripe-powered billing and payments                                   │
+└─────────────────────────────────────────────────────────────────────────┘
+
+SUBSCRIPTION PLANS:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ FREE ECP PLAN                                                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Target: Individual practitioners, small practices                       │
+│ Price: FREE                                                             │
+│                                                                          │
+│ Included Features:                                                      │
+│ ✓ Basic patient management                                             │
+│ ✓ Limited order submissions                                            │
+│ ✓ Basic prescription tracking                                          │
+│ ✓ Read-only access to many features                                    │
+│                                                                          │
+│ Restrictions:                                                           │
+│ ✗ No lab production features                                           │
+│ ✗ No advanced analytics                                                │
+│ ✗ Limited POS functionality                                            │
+│ ✗ No supplier management                                               │
+│ ✗ Basic support only                                                   │
+│                                                                          │
+│ Purpose: Lead generation and market entry                               │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ FULL EXPERIENCE PLAN                                                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Target: Established practices, labs, suppliers                          │
+│ Price: TBD (contact sales)                                              │
+│                                                                          │
+│ Included Features:                                                      │
+│ ✓ Complete order management                                            │
+│ ✓ Full patient management                                              │
+│ ✓ Complete POS system                                                  │
+│ ✓ Lab production workflows                                             │
+│ ✓ Supplier coordination                                                │
+│ ✓ Advanced analytics & reporting                                       │
+│ ✓ Multi-user support                                                   │
+│ ✓ Priority support                                                     │
+│ ✓ All integrations                                                     │
+│ ✓ Custom branding options                                              │
+│ ✓ API access                                                           │
+│                                                                          │
+│ Purpose: Primary revenue source                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+VALUE PROPOSITIONS BY STAKEHOLDER:
+
+FOR EYE CARE PROFESSIONALS (ECPs):
+✓ Streamlined order submission to multiple labs
+✓ Digital patient record management (no more paper)
+✓ Integrated point-of-sale for complete practice management
+✓ Prescription management with compliance tracking
+✓ Eye examination documentation
+✓ Invoice generation and financial tracking
+✓ Test room booking system
+✓ Order status visibility in real-time
+
+FOR LAB TECHNICIANS & ENGINEERS:
+✓ Centralized production queue (no missed orders)
+✓ Order status tracking throughout manufacturing
+✓ Quality control workflows
+✓ Equipment management capabilities
+✓ Technical documentation access
+✓ Work ticket generation
+✓ Production analytics
+
+FOR SUPPLIERS:
+✓ Direct order visibility from multiple labs
+✓ Purchase order tracking
+✓ Delivery status management
+✓ Technical document sharing
+✓ Relationship management
+✓ Order fulfillment tracking
+
+FOR ADMINISTRATORS:
+✓ Multi-tenant company management
+✓ User approval workflows
+✓ Role-based access control
+✓ System-wide analytics
+✓ Subscription management
+✓ Platform configuration
+✓ Audit logging
+
+REVENUE STREAMS:
+1. Subscription Fees (Primary)
+   - Monthly recurring revenue (MRR)
+   - Annual prepayment discounts
+   - Per-user pricing models (planned)
+
+2. Transaction Fees (Planned)
+   - Percentage of orders processed
+   - Stripe Connect marketplace fees
+
+3. Professional Services (Planned)
+   - Implementation and onboarding
+   - Training and certification
+   - Custom development
+
+4. Add-on Modules (Planned)
+   - Advanced inventory management
+   - Advanced analytics
+   - Custom integrations
+   - White-label branding
+
+COST STRUCTURE:
+- Infrastructure: Database hosting (Neon), Server hosting
+- Development: Ongoing feature development and maintenance
+- Support: Customer success and technical support
+- Third-party Services: Stripe fees, Email service (Resend), AI APIs
+- Marketing: Customer acquisition
+- Operations: Business management
+
+KEY DIFFERENTIATORS:
+1. Modern Technology Stack (faster, more reliable than legacy systems)
+2. Comprehensive Workflow Coverage (order-to-delivery complete)
+3. Multi-Tenant Architecture (scalable for growth)
+4. OMA File Support (rare in optical software)
+5. Mobile-Friendly Design (work from anywhere)
+6. Excellent User Experience (intuitive, modern interface)
+7. Integration-Ready (Stripe, Email, PDF, APIs)
+
+================================================================================
+5. TARGET USERS & STAKEHOLDERS
+================================================================================
+
+USER ROLES & PERMISSIONS:
+
+1. EYE CARE PROFESSIONALS (ECPs)
+   ├─ Optometrists: Comprehensive eye examinations, prescriptions
+   ├─ Dispensers: Product fitting, sales, dispensing
+   └─ Practice Owners: Full practice management
+
+   PRIMARY USE CASES:
+   • Submit lens orders to labs
+   • Manage patient records (CRUD operations)
+   • Conduct and record eye examinations
+   • Generate and track prescriptions
+   • Point-of-sale transactions
+   • Invoice generation
+   • Book test rooms
+   • Track order status
+   • Financial reporting
+
+   DASHBOARD: /ecp/dashboard
+   KEY PAGES: Orders, Patients, POS, Examinations, Prescriptions
+
+2. LAB TECHNICIANS
+   DESCRIPTION: Production staff who manufacture lens orders
+
+   PRIMARY USE CASES:
+   • View incoming order queue
+   • Update order status (in_production, quality_check, etc.)
+   • Generate work tickets
+   • Log production notes
+   • Quality assurance checks
+   • Equipment status updates
+   • Material tracking
+
+   DASHBOARD: /lab/dashboard
+   KEY PAGES: Production Queue, Work Tickets, Quality Control
+
+3. LAB ENGINEERS
+   DESCRIPTION: Technical specialists for complex orders
+
+   PRIMARY USE CASES:
+   • Review complex prescriptions
+   • Technical consultation on difficult orders
+   • Quality control and validation
+   • Equipment calibration
+   • Standards compliance verification
+   • Troubleshoot production issues
+   • Create technical documentation
+
+   DASHBOARD: /engineering/dashboard
+   KEY PAGES: Complex Orders, Technical Docs, Equipment
+
+4. SUPPLIERS
+   DESCRIPTION: Material and equipment vendors
+
+   PRIMARY USE CASES:
+   • Receive purchase orders from labs
+   • Track order fulfillment
+   • Update delivery status
+   • Upload technical specifications
+   • Manage product catalogs
+   • Maintain supplier profile
+   • Communication with labs
+
+   DASHBOARD: /supplier/dashboard
+   KEY PAGES: Purchase Orders, Products, Documents
+
+5. ADMINISTRATORS (Multi-Level)
+   
+   a) PLATFORM ADMIN (Super Admin)
+      • Full system access
+      • Manage all companies
+      • Create company admins
+      • System configuration
+      • Subscription management
+      • Platform analytics
+   
+   b) COMPANY ADMIN
+      • Manage single company
+      • User management within company
+      • Company settings
+      • Subscription oversight
+      • Company analytics
+   
+   c) ADMIN (General)
+      • User approval workflow
+      • Role assignments
+      • Basic configuration
+      • Reporting
+
+   DASHBOARD: /admin/dashboard, /platform-admin/dashboard
+   KEY PAGES: User Management, Companies, Analytics, Settings
+
+6. RETAIL ASSISTANT
+   DESCRIPTION: Front-desk staff, sales support
+
+   PRIMARY USE CASES:
+   • Point-of-sale transactions
+   • Basic customer service
+   • Product dispensing
+   • Appointment scheduling (planned)
+   • Basic order status lookups
+
+   DASHBOARD: /ecp/pos
+   KEY PAGES: POS, Inventory
+
+STAKEHOLDER ECOSYSTEM:
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│    ┌─────────────────────────────────────────────────────────────┐     │
+│    │                  INTEGRATED LENS SYSTEM                      │     │
+│    └──────────────────────┬───────────────────────────────────────┘     │
+│                           │                                             │
+│        ┌──────────────────┼──────────────────┐                          │
+│        │                  │                  │                          │
+│   ┌────▼─────┐      ┌─────▼──────┐    ┌─────▼──────┐                   │
+│   │   ECPs   │◄────►│    Labs    │◄──►│ Suppliers  │                   │
+│   │(Practices│      │(Production)│    │ (Vendors)  │                   │
+│   └────┬─────┘      └─────┬──────┘    └─────┬──────┘                   │
+│        │                  │                  │                          │
+│        │                  │                  │                          │
+│   ┌────▼─────┐      ┌─────▼──────┐    ┌─────▼──────┐                   │
+│   │ Patients │      │  Lab Techs │    │ Materials  │                   │
+│   │          │      │  Engineers │    │  Products  │                   │
+│   └──────────┘      └────────────┘    └────────────┘                   │
+│                                                                          │
+│        Managed by: Platform Admins & Company Admins                     │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+USER STATISTICS (Typical Deployment):
+- Small Practice: 1-5 users
+- Medium Practice: 5-15 users
+- Large Practice/Lab: 15-50 users
+- Enterprise Lab: 50-200+ users
+
+================================================================================
+6. CORE FEATURES (FULLY FUNCTIONAL)
+================================================================================
+
+6.1 ORDER MANAGEMENT SYSTEM ✅ 90% COMPLETE
+────────────────────────────────────────────────────────────────────────────
+
+DESCRIPTION:
+Complete lifecycle management of lens orders from initial submission through
+delivery, with status tracking and multi-role collaboration.
+
+FEATURES:
+✅ Multi-step order creation wizard
+✅ OMA file upload and automatic parsing
+✅ Prescription data entry and validation
+   - Sphere (SPH)
+   - Cylinder (CYL)
+   - Axis
+   - Add power
+   - Prism
+   - Pupillary distance (PD)
+✅ Lens specification selection
+   - Lens type (single vision, bifocal, progressive)
+   - Material (CR-39, polycarbonate, high-index)
+   - Coating (anti-reflective, blue light, photochromic)
+✅ Frame information capture
+✅ Patient association
+✅ Status tracking with timeline
+✅ Customer reference numbers
+✅ Order search and filtering
+✅ Bulk status updates (lab dashboard)
+✅ Order details with full history
+✅ File attachment support
+
+ORDER LIFECYCLE STATUSES:
+1. pending        → Initial submission, awaiting lab review
+2. in_production  → Manufacturing in progress
+3. quality_check  → QC inspection phase
+4. shipped        → Dispatched to ECP
+5. completed      → Delivered and confirmed
+6. on_hold        → Temporarily paused (issues, materials, etc.)
+7. cancelled      → Order cancelled
+
+STATUS CHANGE PERMISSIONS:
+- ECP: Can create orders, view status
+- Lab Tech: Can update to in_production, quality_check
+- Engineer: Can update to any status
+- Admin: Full control
+
+API ENDPOINTS:
+POST   /api/orders              - Create new order
+GET    /api/orders              - List all orders (company-scoped)
+GET    /api/orders/:id          - Get order details
+PATCH  /api/orders/:id/status   - Update order status
+PATCH  /api/orders/:id/oma      - Upload/update OMA file
+GET    /api/orders/:id/oma      - Retrieve OMA data
+DELETE /api/orders/:id/oma      - Remove OMA file
+
+DATABASE SCHEMA (orders table):
+- id (UUID, primary key)
+- company_id (UUID, foreign key)
+- patient_id (UUID, foreign key)
+- order_number (auto-generated)
+- customer_reference (optional)
+- status (enum)
+- prescription (JSONB) - flexible prescription data
+- lens_specifications (JSONB)
+- frame_info (JSONB)
+- oma_data (JSONB) - parsed OMA file
+- notes (text)
+- created_by (UUID)
+- created_at, updated_at (timestamps)
+
+FRONTEND COMPONENTS:
+- NewOrderPage.tsx (650+ lines) - Multi-step order creation
+- OrderDetailsPage.tsx - Full order view with timeline
+- LabDashboard.tsx - Production queue management
+
+6.2 PATIENT MANAGEMENT ✅ 95% COMPLETE
+────────────────────────────────────────────────────────────────────────────
+
+DESCRIPTION:
+Comprehensive patient record management with auto-generated customer numbers
+and full CRUD operations.
+
+FEATURES:
+✅ Create patient records
+✅ Auto-generated customer numbers (format: CUST-XXXXXX)
+✅ Patient demographics
+   - First name, Last name
+   - Date of birth
+   - Email, Phone
+   - Address (street, city, state, zip, country)
+✅ Search and filter patients
+✅ Associate patients with orders
+✅ Patient history tracking
+✅ Edit patient information
+✅ Delete patients (with confirmation)
+✅ Patient list with pagination
+✅ Quick patient selection in order creation
+
+CUSTOMER NUMBER GENERATION:
+- PostgreSQL sequence: patient_customer_number_seq
+- Format: CUST-{6-digit-number}
+- Examples: CUST-000001, CUST-000042, CUST-123456
+- Automatically assigned on patient creation
+- Unique across the entire system
+
+API ENDPOINTS:
+GET    /api/patients        - List patients (company-scoped)
+POST   /api/patients        - Create new patient
+GET    /api/patients/:id    - Get patient details
+PATCH  /api/patients/:id    - Update patient
+DELETE /api/patients/:id    - Delete patient
+
+DATABASE SCHEMA (patients table):
+- id (UUID, primary key)
+- company_id (UUID, foreign key)
+- customer_number (auto-generated, indexed)
+- first_name (required)
+- last_name (required)
+- date_of_birth (date)
+- email (unique within company)
+- phone
+- address, city, state, zip_code, country
+- created_at, updated_at (timestamps)
+
+FRONTEND COMPONENTS:
+- PatientsPage.tsx - Patient list and management
+- Patient selection dropdown in NewOrderPage.tsx
+
+6.3 OMA FILE SUPPORT ✅ 85% COMPLETE
+────────────────────────────────────────────────────────────────────────────
+
+DESCRIPTION:
+Upload, parse, and visualize OMA (Optical Manufacturing Automation) files
+containing frame tracing data and measurements from optical equipment.
+
+FEATURES:
+✅ Drag-and-drop file upload
+✅ Real-time file parsing and validation
+✅ Extract prescription data from OMA files
+✅ Extract frame measurements
+   - A measurement (lens width)
+   - B measurement (lens height)
+   - DBL (Distance Between Lenses)
+   - ED (Effective Diameter)
+✅ Extract boxing system coordinates
+✅ Extract tracing points (X/Y coordinates for frame shape)
+✅ Visual frame tracing display
+✅ Integration with order creation
+✅ OMA viewer component
+✅ Error handling for malformed files
+
+SUPPORTED DATA EXTRACTION:
+Prescription Data:
+- Sphere (SPH)
+- Cylinder (CYL)
+- Axis
+- Add power
+- Prism
+- Base direction
+
+Frame Measurements:
+- A (horizontal lens size)
+- B (vertical lens size)
+- DBL (bridge size)
+- ED (effective diameter)
+- DBC (Distance Between Centers)
+
+Tracing Data:
+- X/Y coordinate arrays
+- Frame shape visualization
+- Segment height
+- Pantoscopic tilt
+- Wrap angle
+
+FILE FORMAT:
+- .oma extension
+- Text-based format
+- Regex-based parsing
+- Validation for required fields
+
+API ENDPOINTS:
+PATCH  /api/orders/:id/oma   - Upload OMA file
+GET    /api/orders/:id/oma   - Get OMA data
+DELETE /api/orders/:id/oma   - Delete OMA file
+
+TECHNICAL IMPLEMENTATION:
+- Parser: shared/omaParser.ts (200+ lines)
+- Upload Component: OMAFileUpload.tsx
+- Viewer: OMAViewer.tsx
+- Validation: isValidOMAFile()
+- Storage: JSONB in orders.oma_data
+
+6.4 POINT OF SALE (POS) SYSTEM ✅ 85% COMPLETE
+────────────────────────────────────────────────────────────────────────────
+
+DESCRIPTION:
+Complete point-of-sale system for optical practices, including inventory
+management, invoicing, and payment processing.
+
+FEATURES:
+✅ Product inventory management
+✅ Invoice generation
+✅ Prescription management
+✅ Sales transaction recording
+✅ Multiple payment methods (cash, card, mixed)
+✅ Receipt generation
+✅ Multi-tender transactions
+✅ Product categories
+✅ Stock level tracking
+✅ Tax calculation
+✅ Discount application
+
+PRODUCT TYPES:
+- Frames (eyeglass frames)
+- Contact Lenses
+- Solutions (cleaning, storage)
+- Services (eye exams, adjustments, repairs)
+- Accessories (cases, cleaning cloths)
+
+INVENTORY FEATURES:
+✅ Product CRUD operations
+✅ Stock level tracking
+✅ SKU management
+✅ Pricing control
+✅ Category organization
+✅ Low stock alerts (planned)
+✅ Stock adjustment history
+
+INVOICE FEATURES:
+✅ Line item management
+✅ Tax calculation (configurable rate)
+✅ Discount application (percentage or fixed)
+✅ Multiple payment methods
+✅ Invoice status (draft, paid, void, partial)
+✅ PDF invoice generation
+✅ Customer association
+✅ Due date tracking
+✅ Payment tracking
+
+PRESCRIPTION FEATURES:
+✅ Create prescriptions
+✅ Link to patients
+✅ OD (Right Eye) and OS (Left Eye) data
+✅ Expiration date tracking
+✅ Prescription status
+✅ History tracking
+
+API ENDPOINTS:
+GET    /api/pos/products       - List products
+POST   /api/pos/products       - Create product
+PATCH  /api/pos/products/:id   - Update product
+DELETE /api/pos/products/:id   - Delete product
+GET    /api/pos/invoices       - List invoices
+POST   /api/pos/invoices       - Create invoice
+PATCH  /api/pos/invoices/:id   - Update invoice
+GET    /api/pos/prescriptions  - List prescriptions
+POST   /api/pos/prescriptions  - Create prescription
+
+FRONTEND PAGES:
+- OpticalPOSPage.tsx - Point of sale interface
+- InventoryPage.tsx - Product management
+- InvoicesPage.tsx - Invoice list and details
+- PrescriptionsPage.tsx - Prescription management
+
+DATABASE TABLES:
+- products (inventory)
+- invoices (sales transactions)
+- invoice_line_items (invoice details)
+- prescriptions (optical prescriptions)
+
+================================================================================
+7. AUTHENTICATION & SECURITY
+================================================================================
+
+AUTHENTICATION METHODS:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ 1. Email/Password (Local Auth) - PRIMARY                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│ • User registration with email and password                             │
+│ • Password requirements: minimum 12 characters                          │
+│ • bcrypt hashing (10 rounds)                                           │
+│ • Email normalization (lowercase, trimmed)                              │
+│ • Session-based authentication                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│ 2. Replit Auth (OpenID Connect) - ALTERNATIVE                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│ • OAuth 2.0 / OpenID Connect flow                                      │
+│ • Single sign-on (SSO) capability                                       │
+│ • Automatic account provisioning                                        │
+└─────────────────────────────────────────────────────────────────────────┘
+
+SESSION MANAGEMENT:
+- express-session with PostgreSQL store (connect-pg-simple)
+- HTTP-only cookies (secure in production)
+- Session expiration: 24 hours (configurable)
+- Automatic session cleanup
+- Session tracking in sessions table
+
+ACCOUNT LIFECYCLE:
+┌────────────────────────────────────────────────────────────────────────┐
+│ Step 1: Registration                                                   │
+│ • User submits signup form with email/password                        │
+│ • System validates input                                              │
+│ • Password hashed with bcrypt                                         │
+│ • Account created with status = 'pending'                             │
+├────────────────────────────────────────────────────────────────────────┤
+│ Step 2: Pending Approval                                               │
+│ • User can login but sees "Pending Approval" page                     │
+│ • Limited access (cannot use main features)                           │
+│ • Admin notification (planned)                                         │
+├────────────────────────────────────────────────────────────────────────┤
+│ Step 3: Admin Review                                                   │
+│ • Admin views user in admin dashboard                                 │
+│ • Reviews organization, role requests                                 │
+│ • Decides: Approve or Reject                                          │
+├────────────────────────────────────────────────────────────────────────┤
+│ Step 4: Activation                                                     │
+│ • Admin clicks "Approve"                                              │
+│ • Status changed to 'active'                                          │
+│ • User gains full access on next login                                │
+│ • Email notification sent (planned)                                    │
+├────────────────────────────────────────────────────────────────────────┤
+│ Step 5: Ongoing Management                                             │
+│ • Admin can suspend account (status = 'suspended')                    │
+│ • Admin can reactivate (status = 'active')                            │
+│ • Admin can modify roles                                              │
+└────────────────────────────────────────────────────────────────────────┘
+
+ROLE-BASED ACCESS CONTROL (RBAC):
+User Roles:
+- ecp              - Eye Care Professional
+- lab_tech         - Lab Technician
+- engineer         - Lab Engineer
+- supplier         - Supplier/Vendor
+- admin            - System Administrator
+- platform_admin   - Super Administrator
+- company_admin    - Company Administrator
+- owner            - Practice Owner
+- optometrist      - Clinical Optometrist
+- dispenser        - Optical Dispenser
+- retail_assistant - Sales Associate
+
+Multi-Role Support:
+✅ Users can have multiple roles
+✅ Active role selection via role switcher
+✅ Role-specific dashboards
+✅ Role-specific permissions
+
+AUTHORIZATION PATTERNS:
+1. Route-Level Protection
+   - isAuthenticated middleware (all protected routes)
+   - Role-based middleware (requireRole(['admin', 'engineer']))
+   - Company scoping (automatic via companyId in session)
+
+2. Feature-Level Protection
+   - denyFreePlanAccess() for premium features
+   - Frontend role checks (conditional rendering)
+   - Permission-based UI elements
+
+3. Data-Level Protection
+   - Multi-tenant data isolation (WHERE company_id = ?)
+   - Cross-tenant access blocked (403 Forbidden)
+   - User can only access their company's data
+
+SECURITY FEATURES:
+✅ Password complexity enforcement (12+ characters)
+✅ bcrypt password hashing (10 rounds, salt included)
+✅ HTTP-only session cookies
+✅ CORS configuration
+✅ Helmet security headers
+✅ Rate limiting (express-rate-limit)
+✅ SQL injection prevention (parameterized queries via Drizzle ORM)
+✅ XSS protection (React escaping + Content Security Policy)
+✅ Input validation (Zod schemas on all endpoints)
+✅ Output sanitization
+✅ Session timeout and cleanup
+✅ CSRF protection (session-based)
+
+MASTER USER BOOTSTRAP (OPTIONAL):
+For initial setup or emergency access, a master user can be auto-created:
+
+Environment Variables:
+MASTER_USER_EMAIL=master@example.com
+MASTER_USER_PASSWORD=yourSecurePassword123
+MASTER_USER_FIRST_NAME=Master
+MASTER_USER_LAST_NAME=Admin
+MASTER_USER_ORGANIZATION=Platform Control
+
+Features:
+- Auto-provisioned on server startup
+- All roles assigned automatically
+- Status set to 'active' (bypasses approval)
+- Secure password hashing
+- Can switch between all roles
+- Full system access
+
+API ENDPOINTS:
+POST   /api/auth/signup          - Register new user
+POST   /api/auth/login           - Email/password login
+POST   /api/auth/logout          - Logout and destroy session
+GET    /api/auth/user            - Get current user info
+GET    /api/auth/bootstrap       - Initial app load with user
+GET    /api/auth/available-roles - Get user's assigned roles
+POST   /api/auth/switch-role     - Switch active role
+
+AUDIT LOGGING:
+✅ Track user logins
+✅ Track sensitive operations
+✅ Track status changes
+✅ Store in audit_logs table
+✅ Include: timestamp, user, action, details, IP address
+
+================================================================================
+END OF PART 1
+================================================================================
+Next: PART 2 - Advanced Features, API Reference & Database Schema

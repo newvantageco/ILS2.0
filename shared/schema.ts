@@ -2729,3 +2729,293 @@ export type InsertEmailTrackingEvent = typeof emailTrackingEvents.$inferInsert;
 export type Equipment = typeof equipment.$inferSelect;
 export type InsertEquipment = typeof equipment.$inferInsert;
 
+// ============================================
+// AI Notifications & Proactive Insights
+// ============================================
+
+export const aiNotificationTypeEnum = pgEnum("ai_notification_type", [
+  "briefing",
+  "alert",
+  "reminder",
+  "insight"
+]);
+
+export const aiNotificationPriorityEnum = pgEnum("ai_notification_priority", [
+  "critical",
+  "high", 
+  "medium",
+  "low"
+]);
+
+/**
+ * AI-generated notifications and proactive insights
+ * Stores daily briefings, alerts, and recommendations
+ */
+export const aiNotifications = pgTable("ai_notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id), // null = all users in company
+  
+  type: aiNotificationTypeEnum("type").notNull(),
+  priority: aiNotificationPriorityEnum("priority").default("medium").notNull(),
+  
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  summary: text("summary"), // Short preview for list view
+  
+  recommendation: text("recommendation"), // AI-generated action recommendation
+  actionUrl: text("action_url"), // Where to navigate when clicked
+  actionLabel: text("action_label"), // Button text (e.g., "View Inventory")
+  
+  data: jsonb("data"), // Supporting data (e.g., product details, metrics)
+  
+  isRead: boolean("is_read").default(false).notNull(),
+  readAt: timestamp("read_at"),
+  
+  isDismissed: boolean("is_dismissed").default(false).notNull(),
+  dismissedAt: timestamp("dismissed_at"),
+  
+  expiresAt: timestamp("expires_at"), // Auto-hide after this date
+  
+  generatedBy: varchar("generated_by", { length: 50 }).default("proactive_insights"), // Which service created it
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ai_notifications_company").on(table.companyId, table.createdAt),
+  index("idx_ai_notifications_user").on(table.userId, table.isRead),
+  index("idx_ai_notifications_priority").on(table.priority, table.createdAt),
+]);
+
+export const insertAiNotificationSchema = createInsertSchema(aiNotifications, {
+  type: z.enum(["briefing", "alert", "reminder", "insight"]),
+  priority: z.enum(["critical", "high", "medium", "low"]),
+  title: z.string().min(1, "Title is required"),
+  message: z.string().min(1, "Message is required"),
+});
+
+export const updateAiNotificationSchema = insertAiNotificationSchema.partial();
+
+export type AiNotification = typeof aiNotifications.$inferSelect;
+export type InsertAiNotification = typeof aiNotifications.$inferInsert;
+
+// ============================================
+// AI Purchase Orders (Autonomous Purchasing)
+// ============================================
+
+export const aiPoStatusEnum = pgEnum("ai_po_status", ["draft", "pending_review", "approved", "rejected", "converted"]);
+
+export const aiPurchaseOrders = pgTable("ai_purchase_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  
+  // AI Generation Info
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+  generatedBy: varchar("generated_by", { length: 50 }).default("autonomous_purchasing"),
+  aiModel: varchar("ai_model", { length: 50 }), // Which AI model generated this
+  
+  // Purchase Order Details
+  supplierId: varchar("supplier_id").references(() => users.id), // Suggested supplier
+  supplierName: text("supplier_name"), // Cached for display
+  estimatedTotal: decimal("estimated_total", { precision: 10, scale: 2 }),
+  
+  // AI Justification
+  reason: text("reason").notNull(), // Why this PO is needed (e.g., "Low stock alert: 5 items below threshold")
+  aiAnalysis: jsonb("ai_analysis"), // Full AI analysis data (metrics, trends, predictions)
+  confidence: decimal("confidence", { precision: 5, scale: 2 }), // AI confidence score (0-100)
+  
+  // Approval Workflow
+  status: aiPoStatusEnum("status").default("pending_review").notNull(),
+  reviewedById: varchar("reviewed_by_id").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"), // Human feedback on approval/rejection
+  
+  // Conversion to Official PO
+  convertedPoId: varchar("converted_po_id").references(() => purchaseOrders.id),
+  convertedAt: timestamp("converted_at"),
+  
+  // Metadata
+  expiresAt: timestamp("expires_at"), // Auto-expire old drafts
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ai_po_company_status").on(table.companyId, table.status),
+  index("idx_ai_po_generated_at").on(table.generatedAt),
+  index("idx_ai_po_supplier").on(table.supplierId),
+]);
+
+export const aiPurchaseOrderItems = pgTable("ai_purchase_order_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  aiPoId: varchar("ai_po_id").notNull().references(() => aiPurchaseOrders.id, { onDelete: 'cascade' }),
+  
+  // Product Info
+  productId: varchar("product_id").references(() => products.id),
+  productName: text("product_name").notNull(),
+  productSku: varchar("product_sku", { length: 100 }),
+  
+  // Quantities
+  currentStock: integer("current_stock"), // Current inventory level
+  lowStockThreshold: integer("low_stock_threshold"), // Reorder point
+  recommendedQuantity: integer("recommended_quantity").notNull(), // AI-calculated optimal order qty
+  
+  // Pricing
+  estimatedUnitPrice: decimal("estimated_unit_price", { precision: 10, scale: 2 }),
+  estimatedTotalPrice: decimal("estimated_total_price", { precision: 10, scale: 2 }),
+  
+  // AI Reasoning
+  urgency: varchar("urgency", { length: 20 }).default("medium"), // critical, high, medium, low
+  stockoutRisk: decimal("stockout_risk", { precision: 5, scale: 2 }), // Probability of running out (0-100)
+  leadTimeDays: integer("lead_time_days"), // Expected delivery time
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ai_po_items_po").on(table.aiPoId),
+  index("idx_ai_po_items_product").on(table.productId),
+]);
+
+export const insertAiPurchaseOrderSchema = createInsertSchema(aiPurchaseOrders, {
+  status: z.enum(["draft", "pending_review", "approved", "rejected", "converted"]).optional(),
+  reason: z.string().min(1, "Reason is required"),
+  estimatedTotal: z.string().optional(),
+  confidence: z.string().optional(),
+});
+
+export const insertAiPurchaseOrderItemSchema = createInsertSchema(aiPurchaseOrderItems, {
+  recommendedQuantity: z.number().min(1, "Quantity must be at least 1"),
+  productName: z.string().min(1, "Product name is required"),
+});
+
+export type AiPurchaseOrder = typeof aiPurchaseOrders.$inferSelect;
+export type InsertAiPurchaseOrder = typeof aiPurchaseOrders.$inferInsert;
+export type AiPurchaseOrderItem = typeof aiPurchaseOrderItems.$inferSelect;
+export type InsertAiPurchaseOrderItem = typeof aiPurchaseOrderItems.$inferInsert;
+
+// ============== CHUNK 5: DEMAND FORECASTING TABLES ==============
+
+// Enum for forecast horizon
+export const forecastHorizonEnum = pgEnum("forecast_horizon", ["week", "month", "quarter", "year"]);
+export const forecastMethodEnum = pgEnum("forecast_method", ["moving_average", "exponential_smoothing", "linear_regression", "seasonal_decomposition", "ai_ml"]);
+
+// Demand forecasts - ML predictions for future inventory needs
+export const demandForecasts = pgTable("demand_forecasts", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  productId: varchar("product_id").notNull().references(() => products.id),
+  
+  // Forecast details
+  forecastDate: timestamp("forecast_date").notNull(), // Date being predicted
+  predictedDemand: integer("predicted_demand").notNull(), // Predicted units
+  confidenceInterval: decimal("confidence_interval", { precision: 5, scale: 2 }), // 0-100%
+  
+  // Methodology
+  forecastMethod: forecastMethodEnum("forecast_method").default("ai_ml").notNull(),
+  horizon: forecastHorizonEnum("horizon").default("week").notNull(),
+  
+  // Context data used for prediction
+  historicalAverage: decimal("historical_average", { precision: 10, scale: 2 }),
+  trendFactor: decimal("trend_factor", { precision: 5, scale: 2 }), // -100 to +100
+  seasonalityFactor: decimal("seasonality_factor", { precision: 5, scale: 2 }), // 0-200
+  
+  // Actual results (filled in later for accuracy tracking)
+  actualDemand: integer("actual_demand"),
+  accuracyScore: decimal("accuracy_score", { precision: 5, scale: 2 }), // MAPE or MAE
+  
+  // Model metadata
+  modelVersion: varchar("model_version", { length: 50 }),
+  confidence: decimal("confidence", { precision: 5, scale: 2 }).notNull(), // AI confidence 0-100
+  
+  // Timestamps
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_demand_forecasts_company").on(table.companyId),
+  index("idx_demand_forecasts_product").on(table.productId),
+  index("idx_demand_forecasts_date").on(table.forecastDate),
+  index("idx_demand_forecasts_generated").on(table.generatedAt),
+]);
+
+// Seasonal patterns - detected recurring patterns
+export const seasonalPatterns = pgTable("seasonal_patterns", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  productId: varchar("product_id").references(() => products.id), // null = company-wide
+  
+  // Pattern identification
+  patternType: varchar("pattern_type", { length: 50 }).notNull(), // "weekly", "monthly", "yearly", "holiday"
+  patternName: varchar("pattern_name", { length: 255 }).notNull(), // e.g., "Back to School", "Summer Peak"
+  
+  // Pattern details
+  peakPeriod: varchar("peak_period", { length: 100 }), // e.g., "August", "Q4", "Week 12"
+  demandMultiplier: decimal("demand_multiplier", { precision: 5, scale: 2 }).notNull(), // 0.5 = 50% below avg, 2.0 = 200% of avg
+  
+  // Statistical significance
+  confidence: decimal("confidence", { precision: 5, scale: 2 }).notNull(), // 0-100%
+  observationCount: integer("observation_count").notNull(), // Number of times pattern observed
+  
+  // Metadata
+  firstObserved: timestamp("first_observed").notNull(),
+  lastObserved: timestamp("last_observed").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_seasonal_patterns_company").on(table.companyId),
+  index("idx_seasonal_patterns_product").on(table.productId),
+  index("idx_seasonal_patterns_type").on(table.patternType),
+]);
+
+// Forecast accuracy tracking - measure model performance
+export const forecastAccuracyMetrics = pgTable("forecast_accuracy_metrics", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  productId: varchar("product_id").references(() => products.id), // null = company-wide
+  
+  // Time period
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  
+  // Accuracy metrics
+  mape: decimal("mape", { precision: 5, scale: 2 }), // Mean Absolute Percentage Error
+  mae: decimal("mae", { precision: 10, scale: 2 }), // Mean Absolute Error
+  rmse: decimal("rmse", { precision: 10, scale: 2 }), // Root Mean Square Error
+  
+  // Counts
+  totalForecasts: integer("total_forecasts").notNull(),
+  accurateForecasts: integer("accurate_forecasts").notNull(), // Within 10% of actual
+  
+  // Model info
+  forecastMethod: forecastMethodEnum("forecast_method").notNull(),
+  modelVersion: varchar("model_version", { length: 50 }),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_forecast_accuracy_company").on(table.companyId),
+  index("idx_forecast_accuracy_period").on(table.periodStart, table.periodEnd),
+]);
+
+// Export types
+export const insertDemandForecastSchema = createInsertSchema(demandForecasts, {
+  predictedDemand: z.number().min(0),
+  confidence: z.string().optional(),
+  forecastDate: z.date(),
+});
+
+export const insertSeasonalPatternSchema = createInsertSchema(seasonalPatterns, {
+  patternName: z.string().min(1),
+  demandMultiplier: z.string(),
+  confidence: z.string(),
+});
+
+export const insertForecastAccuracyMetricSchema = createInsertSchema(forecastAccuracyMetrics, {
+  totalForecasts: z.number().min(0),
+  accurateForecasts: z.number().min(0),
+});
+
+export type DemandForecast = typeof demandForecasts.$inferSelect;
+export type InsertDemandForecast = typeof demandForecasts.$inferInsert;
+export type SeasonalPattern = typeof seasonalPatterns.$inferSelect;
+export type InsertSeasonalPattern = typeof seasonalPatterns.$inferInsert;
+export type ForecastAccuracyMetric = typeof forecastAccuracyMetrics.$inferSelect;
+export type InsertForecastAccuracyMetric = typeof forecastAccuracyMetrics.$inferInsert;
+

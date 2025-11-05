@@ -84,65 +84,91 @@ export default function AIForecastingDashboardPage() {
 
   // Generate forecast
   const { data: forecastResponse, isLoading: forecastLoading, refetch: refetchForecast } = useQuery({
-    queryKey: ["/api/ai/forecast/generate", forecastDays],
+    queryKey: ["/api/demand-forecasting/generate", forecastDays],
     queryFn: async () => {
-      const response = await apiRequest("POST", "/api/ai/forecast/generate", {
+      const response = await apiRequest("POST", "/api/demand-forecasting/generate", {
         daysAhead: parseInt(forecastDays),
       });
       return await response.json();
     },
   });
 
-  // Get staffing recommendations
-  const { data: staffingResponse, refetch: refetchStaffing } = useQuery({
-    queryKey: ["/api/ai/forecast/staffing", staffingDays],
+  // Get recommendations (includes staffing and surges)
+  const { data: recommendationsResponse, refetch: refetchRecommendations } = useQuery({
+    queryKey: ["/api/demand-forecasting/recommendations", staffingDays],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/api/ai/forecast/staffing?daysAhead=${staffingDays}`);
+      const response = await apiRequest("GET", `/api/demand-forecasting/recommendations?daysAhead=${staffingDays}`);
       return await response.json();
     },
   });
 
   // Get surge periods
   const { data: surgeResponse, refetch: refetchSurge } = useQuery({
-    queryKey: ["/api/ai/forecast/surge", surgeDays],
+    queryKey: ["/api/demand-forecasting/surge-periods", surgeDays],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/api/ai/forecast/surge?daysAhead=${surgeDays}`);
+      const response = await apiRequest("GET", `/api/demand-forecasting/surge-periods?daysAhead=${surgeDays}`);
       return await response.json();
     },
   });
 
   // Get seasonal patterns
   const { data: patternsResponse } = useQuery({
-    queryKey: ["/api/ai/forecast/patterns"],
+    queryKey: ["/api/demand-forecasting/patterns"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/ai/forecast/patterns");
+      const response = await apiRequest("GET", "/api/demand-forecasting/patterns");
       return await response.json();
     },
   });
 
   // Get forecast metrics
   const { data: metricsResponse } = useQuery({
-    queryKey: ["/api/ai/forecast/metrics"],
+    queryKey: ["/api/demand-forecasting/accuracy"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/ai/forecast/metrics");
+      const response = await apiRequest("GET", "/api/demand-forecasting/accuracy?period=30");
       return await response.json();
     },
   });
 
-  const forecast: ForecastData[] = forecastResponse?.data || [];
-  const staffing: StaffingRecommendation[] = staffingResponse?.data || [];
-  const surgePeriods: SurgePeriod[] = surgeResponse?.data || [];
-  const patterns: SeasonalPattern[] = patternsResponse?.data || [];
-  const metrics: ForecastMetrics = metricsResponse?.data || {
-    accuracy: 0,
-    mae: 0,
-    rmse: 0,
-    lastUpdated: new Date().toISOString(),
+  const forecast: ForecastData[] = (forecastResponse?.forecasts || []).map((f: any) => ({
+    date: f.forecastDate,
+    predictedOrders: f.predictedDemand,
+    confidence: parseFloat(f.confidence || "0"),
+    lowerBound: f.predictedDemand * 0.8, // Approximation based on confidence
+    upperBound: f.predictedDemand * 1.2,
+  }));
+  
+  const staffing: StaffingRecommendation[] = (recommendationsResponse?.recommendations?.staffing || []).map((s: any) => ({
+    date: s.date,
+    recommendedStaff: s.labTechs + s.engineers,
+    currentStaff: Math.floor((s.labTechs + s.engineers) * 0.8), // Mock current staff
+    gap: Math.ceil((s.labTechs + s.engineers) * 0.2),
+    reason: s.reasoning,
+  }));
+  
+  const surgePeriods: SurgePeriod[] = (surgeResponse?.surges || []).map((s: any) => ({
+    startDate: s.startDate,
+    endDate: s.endDate,
+    peakVolume: s.peakValue,
+    surgePercentage: ((s.peakValue - 50) / 50) * 100, // Approximation
+    recommendation: s.recommendations[0] || "Prepare for increased demand",
+  }));
+  
+  const patterns: SeasonalPattern[] = (patternsResponse?.patterns || []).map((p: any) => ({
+    month: p.patternName,
+    averageOrders: parseFloat(p.demandMultiplier) * 50, // Scale to orders
+    trend: parseFloat(p.confidence) > 70 ? "up" : "stable",
+  }));
+  
+  const metrics: ForecastMetrics = {
+    accuracy: (metricsResponse?.metrics?.accuracy || 0) / 100,
+    mae: metricsResponse?.metrics?.mae || 0,
+    rmse: metricsResponse?.metrics?.rmse || 0,
+    lastUpdated: metricsResponse?.metrics?.lastUpdated || new Date().toISOString(),
   };
 
   const handleRefresh = () => {
     refetchForecast();
-    refetchStaffing();
+    refetchRecommendations();
     refetchSurge();
   };
 

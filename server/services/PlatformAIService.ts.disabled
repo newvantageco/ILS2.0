@@ -18,7 +18,7 @@ import { eq, and, gte, lte, desc } from 'drizzle-orm';
 import { 
   dailyPracticeMetrics, 
   inventoryPerformanceMetrics,
-  testRoomBookings,
+  // testRoomBookings, // TODO: Add this table to bi-schema.ts
   platformPracticeComparison
 } from '../../shared/bi-schema';
 
@@ -227,13 +227,22 @@ export class PlatformAIService {
   }
 
   /**
-   * Analyze booking patterns
+   * Analyze booking patterns (DISABLED - requires testRoomBookings table)
    */
   async analyzeBookingPatterns(
     companyId: string,
     startDate: Date,
     endDate: Date
   ): Promise<BookingAnalysis> {
+    // TODO: Implement when testRoomBookings table is added to bi-schema
+    return {
+      utilization_rate: 0,
+      peak_hours: [],
+      no_show_rate: 0,
+      insights: ['Booking analysis requires testRoomBookings table implementation']
+    };
+    
+    /* DISABLED UNTIL TABLE EXISTS
     const cacheKey = `bookings_${companyId}_${startDate.toISOString()}_${endDate.toISOString()}`;
     const cached = this.getCached<BookingAnalysis>(cacheKey);
     if (cached) return cached;
@@ -262,6 +271,7 @@ export class PlatformAIService {
 
     this.setCache(cacheKey, analysis);
     return analysis;
+    */
   }
 
   /**

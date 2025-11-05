@@ -22,6 +22,7 @@ import { createLogger, type Logger } from "../utils/logger";
 import { ExternalAIService, type AIMessage } from "./ExternalAIService";
 import { AIService } from "./aiService";
 import type { TenantContext } from "../middleware/tenantContext";
+import { AIDataAccess, type QueryContext } from "./AIDataAccess";
 
 export interface MasterAIQuery {
   message: string;
@@ -459,7 +460,42 @@ export class MasterAIService {
    */
   private async executeTool(toolName: string, args: any, companyId: string): Promise<any> {
     try {
+      // Create query context for all data access operations
+      const context: QueryContext = {
+        companyId,
+        userId: args.userId || 'system',
+        timeframe: args.timeframe ? {
+          start: new Date(args.timeframe.start),
+          end: new Date(args.timeframe.end)
+        } : undefined
+      };
+
       switch (toolName) {
+        case 'get_revenue_data':
+          return await AIDataAccess.getRevenueData(context);
+
+        case 'get_order_stats':
+          return await AIDataAccess.getOrderStats(context);
+
+        case 'get_low_stock':
+          return await AIDataAccess.getLowStockItems(context, args.threshold || 10);
+
+        case 'get_top_products':
+          return await AIDataAccess.getTopSellingProducts(context, args.limit || 10);
+
+        case 'get_patient_stats':
+          return await AIDataAccess.getPatientStats(context);
+
+        case 'search_patients':
+          return await AIDataAccess.searchPatients(context, args.searchTerm || '');
+
+        case 'get_pending_orders':
+          return await AIDataAccess.getPendingOrders(context);
+
+        case 'get_company_info':
+          return await AIDataAccess.getCompanyInfo(context);
+
+        // Legacy tools (keeping for backward compatibility)
         case 'get_patient_info':
           return await this.toolGetPatientInfo(args, companyId);
 

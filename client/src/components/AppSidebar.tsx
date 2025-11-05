@@ -79,6 +79,7 @@ const menuItems = {
     ],
     analytics: [
       { title: "AI Assistant", url: "/ecp/ai-assistant", icon: Brain },
+      { title: "AI Purchase Orders", url: "/ecp/ai-purchase-orders", icon: ShoppingCart },
       { title: "Analytics", url: "/ecp/analytics", icon: LineChart },
       { title: "Email Analytics", url: "/ecp/email-analytics", icon: Mail },
       { title: "Email Templates", url: "/ecp/email-templates", icon: FileType },
