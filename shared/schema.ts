@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, jsonb, index, pgEnum, integer, decimal, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, jsonb, index, pgEnum, integer, decimal, boolean, date, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -434,7 +434,9 @@ export const companies = pgTable("companies", {
   // Shopify Integration
   shopifyEnabled: boolean("shopify_enabled").default(false),
   shopifyShopUrl: varchar("shopify_shop_url"), // e.g., mystore.myshopify.com
+  shopifyShopName: varchar("shopify_shop_name"), // Short name (e.g., mystore)
   shopifyAccessToken: varchar("shopify_access_token"), // Encrypted in production
+  shopifyWebhookSecret: varchar("shopify_webhook_secret"), // For HMAC verification
   shopifyApiVersion: varchar("shopify_api_version").default("2024-10"),
   shopifyAutoSync: boolean("shopify_auto_sync").default(false), // Auto-sync customers as patients
   shopifyLastSyncAt: timestamp("shopify_last_sync_at"),
@@ -1488,6 +1490,11 @@ export const products = pgTable("products", {
   taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).default("0"), // Tax percentage
   isActive: boolean("is_active").default(true), // Product active status
   isPrescriptionRequired: boolean("is_prescription_required").default(false), // Requires Rx
+  // Shopify integration fields
+  shopifyProductId: varchar("shopify_product_id"),
+  shopifyVariantId: varchar("shopify_variant_id"),
+  shopifyInventoryItemId: varchar("shopify_inventory_item_id"),
+  lastShopifySync: timestamp("last_shopify_sync"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -3018,4 +3025,443 @@ export type SeasonalPattern = typeof seasonalPatterns.$inferSelect;
 export type InsertSeasonalPattern = typeof seasonalPatterns.$inferInsert;
 export type ForecastAccuracyMetric = typeof forecastAccuracyMetrics.$inferSelect;
 export type InsertForecastAccuracyMetric = typeof forecastAccuracyMetrics.$inferInsert;
+
+// ============== CHUNK 6: COMPANY MARKETPLACE ==============
+
+// Enums for marketplace
+export const relationshipTypeEnum = pgEnum("relationship_type", [
+  "ecp_to_lab",
+  "lab_to_supplier", 
+  "ecp_to_supplier",
+  "lab_to_lab", // For lab networks
+]);
+
+export const connectionStatusEnum = pgEnum("connection_status", [
+  "pending",
+  "active",
+  "rejected",
+  "disconnected",
+]);
+
+// Company relationships - the network graph
+export const companyRelationships = pgTable("company_relationships", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyAId: varchar("company_a_id").notNull().references(() => companies.id),
+  companyBId: varchar("company_b_id").notNull().references(() => companies.id),
+  relationshipType: relationshipTypeEnum("relationship_type").notNull(),
+  status: connectionStatusEnum("status").notNull().default("pending"),
+  
+  // Connection metadata
+  initiatedByCompanyId: varchar("initiated_by_company_id").notNull().references(() => companies.id),
+  connectionTerms: text("connection_terms"), // Custom agreements, pricing notes
+  connectionMessage: text("connection_message"), // Initial request message
+  
+  // Workflow tracking
+  requestedAt: timestamp("requested_at").defaultNow().notNull(),
+  approvedAt: timestamp("approved_at"),
+  rejectedAt: timestamp("rejected_at"),
+  disconnectedAt: timestamp("disconnected_at"),
+  
+  // Who reviewed the request
+  reviewedByUserId: varchar("reviewed_by_user_id").references(() => users.id),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_company_relationships_a").on(table.companyAId),
+  index("idx_company_relationships_b").on(table.companyBId),
+  index("idx_company_relationships_status").on(table.status),
+  index("idx_company_relationships_type").on(table.relationshipType),
+]);
+
+// Connection requests - pending approvals inbox
+export const connectionRequests = pgTable("connection_requests", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  fromCompanyId: varchar("from_company_id").notNull().references(() => companies.id),
+  toCompanyId: varchar("to_company_id").notNull().references(() => companies.id),
+  fromUserId: varchar("from_user_id").notNull().references(() => users.id),
+  
+  // Request details
+  message: text("message"),
+  requestedRelationshipType: relationshipTypeEnum("requested_relationship_type").notNull(),
+  proposedTerms: text("proposed_terms"),
+  
+  // Status tracking
+  status: connectionStatusEnum("status").notNull().default("pending"),
+  reviewedByUserId: varchar("reviewed_by_user_id").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  responseMessage: text("response_message"),
+  
+  // Auto-expiration
+  expiresAt: timestamp("expires_at"), // Auto-reject after 7 days
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_connection_requests_from").on(table.fromCompanyId),
+  index("idx_connection_requests_to").on(table.toCompanyId),
+  index("idx_connection_requests_status").on(table.status),
+]);
+
+// Company marketplace profiles (extends companies table)
+export const companyProfiles = pgTable("company_profiles", {
+  id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: varchar("company_id").notNull().references(() => companies.id).unique(),
+  
+  // Marketplace visibility
+  isMarketplaceVisible: boolean("is_marketplace_visible").default(true).notNull(),
+  marketplaceVerified: boolean("marketplace_verified").default(false).notNull(),
+  featuredUntil: timestamp("featured_until"), // Premium feature
+  
+  // Profile content
+  profileHeadline: varchar("profile_headline", { length: 200 }),
+  profileDescription: text("profile_description"),
+  tagline: varchar("tagline", { length: 100 }), // Short catchy phrase
+  
+  // Services and capabilities
+  specialties: jsonb("specialties").default(sql`'[]'::jsonb`), // Array of service codes
+  certifications: jsonb("certifications").default(sql`'[]'::jsonb`), // Licenses, accreditations
+  equipment: jsonb("equipment").default(sql`'[]'::jsonb`), // Lab equipment list
+  
+  // Service details
+  serviceArea: varchar("service_area", { length: 200 }), // "Greater London", "California, USA"
+  turnaroundTimeDays: integer("turnaround_time_days"), // Average completion time
+  minimumOrderValue: decimal("minimum_order_value", { precision: 10, scale: 2 }),
+  rushServiceAvailable: boolean("rush_service_available").default(false),
+  shippingMethods: jsonb("shipping_methods").default(sql`'[]'::jsonb`),
+  
+  // Media
+  logoUrl: varchar("logo_url", { length: 500 }),
+  bannerImageUrl: varchar("banner_image_url", { length: 500 }),
+  galleryImages: jsonb("gallery_images").default(sql`'[]'::jsonb`), // Array of image URLs
+  
+  // Contact preferences
+  websiteUrl: varchar("website_url", { length: 500 }),
+  contactEmail: varchar("contact_email", { length: 255 }),
+  contactPhone: varchar("contact_phone", { length: 50 }),
+  publicAddress: jsonb("public_address"), // May differ from billing address
+  
+  // Stats (denormalized for performance)
+  totalConnections: integer("total_connections").default(0).notNull(),
+  totalOrders: integer("total_orders").default(0).notNull(),
+  averageRating: decimal("average_rating", { precision: 3, scale: 2 }),
+  totalReviews: integer("total_reviews").default(0).notNull(),
+  
+  // SEO
+  slug: varchar("slug", { length: 255 }).unique(), // URL-friendly company name
+  metaDescription: text("meta_description"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_company_profiles_visible").on(table.isMarketplaceVisible),
+  index("idx_company_profiles_slug").on(table.slug),
+  index("idx_company_profiles_service_area").on(table.serviceArea),
+]);
+
+// Export types
+export const insertCompanyRelationshipSchema = createInsertSchema(companyRelationships);
+export const insertConnectionRequestSchema = createInsertSchema(connectionRequests);
+export const insertCompanyProfileSchema = createInsertSchema(companyProfiles);
+
+export type CompanyRelationship = typeof companyRelationships.$inferSelect;
+export type InsertCompanyRelationship = typeof companyRelationships.$inferInsert;
+export type ConnectionRequest = typeof connectionRequests.$inferSelect;
+export type InsertConnectionRequest = typeof connectionRequests.$inferInsert;
+export type CompanyProfile = typeof companyProfiles.$inferSelect;
+export type InsertCompanyProfile = typeof companyProfiles.$inferInsert;
+
+// ============================================================================
+// CHUNK 7: CROSS-TENANT ANALYTICS (Platform Admin Revenue Stream)
+// ============================================================================
+// Tables for aggregated, anonymized insights across all companies
+// Enables platform to monetize industry data and market intelligence
+
+/**
+ * Market Insights - Aggregated industry data for monetization
+ * Examples: "Average lens cost in UK", "Top-selling frame brands nationwide"
+ */
+export const marketInsights = pgTable("market_insights", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  
+  // Insight metadata
+  insightType: varchar("insight_type", { length: 100 }).notNull(), // 'pricing', 'inventory', 'patient_metrics', 'operational'
+  category: varchar("category", { length: 100 }).notNull(), // 'lenses', 'frames', 'services', 'equipment'
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  // Time period
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  
+  // Geographic scope
+  region: varchar("region", { length: 100 }), // 'UK', 'London', 'North America', null = global
+  country: varchar("country", { length: 100 }),
+  
+  // Data aggregation
+  dataPoints: jsonb("data_points").$type<{
+    metric: string;
+    value: number;
+    unit?: string;
+    percentile?: number;
+  }[]>().notNull(), // Array of metric values
+  
+  // Sample size (for transparency)
+  companiesIncluded: integer("companies_included").notNull(), // Must be >= minimum threshold
+  recordsAnalyzed: integer("records_analyzed").notNull(),
+  
+  // Confidence metrics
+  confidenceLevel: decimal("confidence_level", { precision: 5, scale: 2 }), // 0-100%
+  marginOfError: decimal("margin_of_error", { precision: 5, scale: 2 }),
+  
+  // Monetization
+  accessLevel: varchar("access_level", { length: 50 }).notNull().default('free'), // 'free', 'premium', 'enterprise'
+  price: decimal("price", { precision: 10, scale: 2 }), // Price in cents
+  
+  // Metadata
+  generatedBy: varchar("generated_by", { length: 255 }), // 'system' or userId
+  status: varchar("status", { length: 50 }).notNull().default('draft'), // 'draft', 'published', 'archived'
+  publishedAt: timestamp("published_at"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_market_insights_type").on(table.insightType),
+  index("idx_market_insights_category").on(table.category),
+  index("idx_market_insights_region").on(table.region),
+  index("idx_market_insights_period").on(table.periodStart, table.periodEnd),
+  index("idx_market_insights_status").on(table.status),
+  index("idx_market_insights_access").on(table.accessLevel),
+]);
+
+/**
+ * Platform Statistics - High-level metrics for platform monitoring
+ * Used for internal dashboards and investor reporting
+ */
+export const platformStatistics = pgTable("platform_statistics", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  
+  // Time period
+  date: date("date").notNull(), // Daily granularity
+  periodType: varchar("period_type", { length: 50 }).notNull().default('daily'), // 'daily', 'weekly', 'monthly'
+  
+  // Company metrics
+  totalCompanies: integer("total_companies").notNull().default(0),
+  activeCompanies: integer("active_companies").notNull().default(0), // Active in last 30 days
+  newCompaniesAdded: integer("new_companies_added").notNull().default(0),
+  companiesByType: jsonb("companies_by_type").$type<{
+    ecp: number;
+    lab: number;
+    supplier: number;
+    hybrid: number;
+  }>(),
+  
+  // User metrics
+  totalUsers: integer("total_users").notNull().default(0),
+  activeUsers: integer("active_users").notNull().default(0), // Active in last 30 days
+  newUsersAdded: integer("new_users_added").notNull().default(0),
+  
+  // Subscription metrics
+  totalRevenue: decimal("total_revenue", { precision: 12, scale: 2 }).notNull().default('0'),
+  mrr: decimal("mrr", { precision: 12, scale: 2 }).notNull().default('0'), // Monthly Recurring Revenue
+  arr: decimal("arr", { precision: 12, scale: 2 }).notNull().default('0'), // Annual Recurring Revenue
+  churnRate: decimal("churn_rate", { precision: 5, scale: 2 }), // Percentage
+  subscriptionsByPlan: jsonb("subscriptions_by_plan").$type<Record<string, number>>(),
+  
+  // Engagement metrics
+  ordersCreated: integer("orders_created").notNull().default(0),
+  patientsAdded: integer("patients_added").notNull().default(0),
+  invoicesGenerated: integer("invoices_generated").notNull().default(0),
+  aiQueriesProcessed: integer("ai_queries_processed").notNull().default(0),
+  
+  // Platform health
+  apiCallsTotal: integer("api_calls_total").notNull().default(0),
+  apiErrorRate: decimal("api_error_rate", { precision: 5, scale: 2 }), // Percentage
+  averageResponseTime: integer("average_response_time"), // Milliseconds
+  uptimePercentage: decimal("uptime_percentage", { precision: 5, scale: 2 }),
+  
+  // Network effects (from Chunk 6)
+  totalConnections: integer("total_connections").notNull().default(0),
+  connectionRequestsCreated: integer("connection_requests_created").notNull().default(0),
+  connectionApprovalRate: decimal("connection_approval_rate", { precision: 5, scale: 2 }),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_platform_statistics_date").on(table.date),
+  index("idx_platform_statistics_period").on(table.periodType),
+  uniqueIndex("idx_platform_statistics_date_period").on(table.date, table.periodType),
+]);
+
+/**
+ * Aggregated Metrics - Pre-computed aggregations for fast queries
+ * Refreshed periodically (hourly/daily) to avoid expensive real-time calculations
+ */
+export const aggregatedMetrics = pgTable("aggregated_metrics", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  
+  // Metric identity
+  metricType: varchar("metric_type", { length: 100 }).notNull(), // 'avg_lens_price', 'total_orders', etc.
+  category: varchar("category", { length: 100 }).notNull(), // 'pricing', 'inventory', 'operations'
+  
+  // Dimensions (for drill-down)
+  companyType: varchar("company_type", { length: 50 }), // 'ecp', 'lab', null = all
+  region: varchar("region", { length: 100 }),
+  productType: varchar("product_type", { length: 100 }), // 'single_vision', 'progressive', etc.
+  
+  // Time period
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  granularity: varchar("granularity", { length: 50 }).notNull(), // 'hourly', 'daily', 'weekly', 'monthly'
+  
+  // Aggregated values
+  count: integer("count").notNull().default(0), // Number of records
+  sum: decimal("sum", { precision: 15, scale: 2 }),
+  average: decimal("average", { precision: 15, scale: 2 }),
+  median: decimal("median", { precision: 15, scale: 2 }),
+  min: decimal("min", { precision: 15, scale: 2 }),
+  max: decimal("max", { precision: 15, scale: 2 }),
+  stdDev: decimal("std_dev", { precision: 15, scale: 2 }), // Standard deviation
+  
+  // Distribution (for percentiles)
+  percentile25: decimal("percentile_25", { precision: 15, scale: 2 }),
+  percentile50: decimal("percentile_50", { precision: 15, scale: 2 }), // Same as median
+  percentile75: decimal("percentile_75", { precision: 15, scale: 2 }),
+  percentile90: decimal("percentile_90", { precision: 15, scale: 2 }),
+  percentile95: decimal("percentile_95", { precision: 15, scale: 2 }),
+  
+  // Data quality
+  sampleSize: integer("sample_size").notNull(), // Number of companies included
+  completeness: decimal("completeness", { precision: 5, scale: 2 }), // % of companies that reported data
+  
+  // Refresh metadata
+  lastRefreshed: timestamp("last_refreshed").notNull().defaultNow(),
+  nextRefreshAt: timestamp("next_refresh_at"),
+  refreshStatus: varchar("refresh_status", { length: 50 }).notNull().default('current'), // 'current', 'stale', 'error'
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_aggregated_metrics_type").on(table.metricType),
+  index("idx_aggregated_metrics_category").on(table.category),
+  index("idx_aggregated_metrics_period").on(table.periodStart, table.periodEnd),
+  index("idx_aggregated_metrics_dimensions").on(table.companyType, table.region, table.productType),
+  index("idx_aggregated_metrics_refresh").on(table.refreshStatus, table.nextRefreshAt),
+]);
+
+/**
+ * ============================================================================
+ * EVENT-DRIVEN ARCHITECTURE TABLES (Chunk 9)
+ * ============================================================================
+ * Event logging, webhooks, and event-driven integrations
+ */
+
+/**
+ * Event Log - Stores all events published through the event bus
+ * Used for audit trail, debugging, and event replay
+ */
+export const eventLog = pgTable("event_log", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  
+  // Event identification
+  type: varchar("type", { length: 100 }).notNull(), // 'order.created', 'user.login', etc.
+  
+  // Context
+  userId: varchar("user_id", { length: 255 }).references(() => users.id),
+  companyId: varchar("company_id", { length: 255 }).references(() => companies.id),
+  
+  // Event payload
+  data: jsonb("data").notNull(), // Event-specific data
+  metadata: jsonb("metadata"), // Additional context (IP, user agent, etc.)
+  
+  // Timing
+  timestamp: timestamp("timestamp").notNull(), // When event occurred
+  createdAt: timestamp("created_at").notNull().defaultNow(), // When logged
+}, (table) => [
+  index("idx_event_log_type").on(table.type),
+  index("idx_event_log_user").on(table.userId),
+  index("idx_event_log_company").on(table.companyId),
+  index("idx_event_log_timestamp").on(table.timestamp),
+  index("idx_event_log_created").on(table.createdAt),
+]);
+
+/**
+ * Webhook Subscriptions - External webhook configurations
+ * Companies can subscribe to events and receive HTTP callbacks
+ */
+export const webhookSubscriptions = pgTable("webhook_subscriptions", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  
+  // Subscription owner
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id),
+  
+  // Webhook configuration
+  url: varchar("url", { length: 500 }).notNull(), // Target URL
+  events: text("events").array().notNull(), // Array of event types to subscribe to
+  secret: varchar("secret", { length: 100 }).notNull(), // HMAC secret for signature
+  
+  // Status
+  active: boolean("active").notNull().default(true),
+  
+  // Metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_webhook_subscriptions_company").on(table.companyId),
+  index("idx_webhook_subscriptions_active").on(table.active),
+]);
+
+/**
+ * Webhook Deliveries - Delivery log for webhook callbacks
+ * Tracks success/failure and retry attempts
+ */
+export const webhookDeliveries = pgTable("webhook_deliveries", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  
+  // References
+  subscriptionId: varchar("subscription_id", { length: 255 }).notNull().references(() => webhookSubscriptions.id, { onDelete: "cascade" }),
+  eventId: varchar("event_id", { length: 255 }).notNull().references(() => eventLog.id),
+  
+  // Delivery details
+  status: varchar("status", { length: 20 }).notNull(), // 'success', 'failed', 'pending', 'retrying'
+  responseCode: integer("response_code"), // HTTP status code
+  errorMessage: text("error_message"), // Error details if failed
+  
+  // Timing
+  deliveredAt: timestamp("delivered_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  
+  // Retry tracking
+  attempts: integer("attempts").notNull().default(1),
+  nextRetryAt: timestamp("next_retry_at"),
+}, (table) => [
+  index("idx_webhook_deliveries_subscription").on(table.subscriptionId),
+  index("idx_webhook_deliveries_event").on(table.eventId),
+  index("idx_webhook_deliveries_status").on(table.status),
+  index("idx_webhook_deliveries_next_retry").on(table.nextRetryAt),
+]);
+
+// Export schemas and types
+export const insertMarketInsightSchema = createInsertSchema(marketInsights);
+export const insertPlatformStatisticSchema = createInsertSchema(platformStatistics);
+export const insertAggregatedMetricSchema = createInsertSchema(aggregatedMetrics);
+
+export type MarketInsight = typeof marketInsights.$inferSelect;
+export type InsertMarketInsight = typeof marketInsights.$inferInsert;
+export type PlatformStatistic = typeof platformStatistics.$inferSelect;
+export type InsertPlatformStatistic = typeof platformStatistics.$inferInsert;
+export type AggregatedMetric = typeof aggregatedMetrics.$inferSelect;
+export type InsertAggregatedMetric = typeof aggregatedMetrics.$inferInsert;
+
+// Event-driven architecture types
+export const insertEventLogSchema = createInsertSchema(eventLog);
+export const insertWebhookSubscriptionSchema = createInsertSchema(webhookSubscriptions);
+export const insertWebhookDeliverySchema = createInsertSchema(webhookDeliveries);
+
+export type EventLog = typeof eventLog.$inferSelect;
+export type InsertEventLog = typeof eventLog.$inferInsert;
+export type WebhookSubscription = typeof webhookSubscriptions.$inferSelect;
+export type InsertWebhookSubscription = typeof webhookSubscriptions.$inferInsert;
+export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
+export type InsertWebhookDelivery = typeof webhookDeliveries.$inferInsert;
 

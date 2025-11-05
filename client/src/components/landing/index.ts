@@ -1,0 +1,11 @@
+export { LandingPage } from './LandingPage';
+export { HeroSection } from './HeroSection';
+export { ProblemSolution } from './ProblemSolution';
+export { FeatureShowcase } from './FeatureShowcase';
+export { AISpotlight } from './AISpotlight';
+export { PricingSection } from './PricingSection';
+export { HowItWorks } from './HowItWorks';
+export { Testimonials } from './Testimonials';
+export { FAQ } from './FAQ';
+export { FinalCTA } from './FinalCTA';
+export { Footer } from './Footer';

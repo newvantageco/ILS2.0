@@ -42,7 +42,10 @@ import { registerMasterAIRoutes } from "./routes/master-ai";
 import { registerAINotificationRoutes } from "./routes/ai-notifications";
 import { registerAutonomousPORoutes } from "./routes/ai-purchase-orders";
 import { registerDemandForecastingRoutes } from "./routes/demand-forecasting";
+// import { registerMarketplaceRoutes } from "./routes/marketplace"; // Commented out - not yet implemented
+import { registerQueueRoutes } from "./routes/queue";
 // import { registerPlatformAIRoutes } from "./routes/platform-ai"; // Disabled - schema issues
+import platformAdminRoutes from "./routes/platform-admin";
 import { registerPermissionRoutes } from "./routes/permissions";
 import { registerAdminRoutes } from "./routes/admin";
 import userManagementRoutes from "./routes/userManagement";
@@ -56,10 +59,16 @@ import auditLogRoutes from "./routes/auditLogs";
 import inventoryRoutes from "./routes/inventory";
 import uploadRoutes from "./routes/upload";
 import examinationsRoutes from "./routes/examinations";
+import eventRoutes from "./routes/events";
 import pythonAnalyticsRoutes from "./routes/pythonAnalytics";
 import emailRoutes from "./routes/emails";
 import scheduledEmailRoutes from "./routes/scheduled-emails";
 import orderEmailRoutes from "./routes/order-emails";
+import shopifyWebhookRoutes from "./routes/webhooks/shopify";
+import clinicalWorkflowRoutes from "./routes/clinical/workflow";
+import omaValidationRoutes from "./routes/clinical/oma-validation";
+import billingRoutes from "./routes/billing";
+import v1ApiRoutes from "./routes/api/v1";
 import { websocketService } from "./websocket";
 import path from "path";
 
@@ -116,6 +125,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Demand Forecasting: Predictive AI for inventory & staffing (Chunk 5)
   registerDemandForecastingRoutes(app);
   
+  // Company Marketplace: B2B network and connections (Chunk 6)
+  // registerMarketplaceRoutes(app); // Commented out - not yet implemented
+  
+  // Platform Analytics: Cross-tenant insights & revenue (Chunk 7)
+  app.use('/api/platform-admin', platformAdminRoutes);
+  
   // Platform AI: Python ML analytics & predictions (DISABLED - schema issues)
   // registerPlatformAIRoutes(app);
   
@@ -126,6 +141,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Business Intelligence Dashboard routes
   registerBiRoutes(app);
+  
+  // Register Background Job Queue Management routes (admin-only monitoring)
+  registerQueueRoutes(app);
   
   // Register Permission Management routes
   registerPermissionRoutes(app);
@@ -171,8 +189,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/scheduled-emails', scheduledEmailRoutes);
   app.use('/api/order-emails', orderEmailRoutes);
 
+  // Register Event System routes (Chunk 9: event monitoring, webhooks, WebSocket stats)
+  app.use('/api/events', eventRoutes);
+
   // Register Python Analytics routes (ML predictions, QC analysis, advanced analytics)
   app.use(pythonAnalyticsRoutes);
+
+  // ============================================================================
+  // WORLD-CLASS TRANSFORMATION ROUTES (November 2025)
+  // ============================================================================
+  
+  // Shopify webhook routes (public, HMAC-verified)
+  app.use('/api/webhooks/shopify', shopifyWebhookRoutes);
+
+  // Clinical workflow routes (AI-powered recommendations)
+  app.use('/api/clinical/workflow', isAuthenticated, clinicalWorkflowRoutes);
+
+  // OMA validation routes (intelligent validation with confidence scoring)
+  app.use('/api/clinical/oma', isAuthenticated, omaValidationRoutes);
+
+  // Billing routes (usage tracking, metered billing)
+  app.use('/api/billing', isAuthenticated, billingRoutes);
+
+  // Public API v1 routes (RESTful API for third-party integrations)
+  app.use('/api/v1', v1ApiRoutes);
 
   const FULL_PLAN = "full" as const;
   const FREE_ECP_PLAN = "free_ecp" as const;
@@ -668,7 +708,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If LIMS is not configured, OrderService will skip LIMS validation
       try {
         const { OrderService } = await import('./services/OrderService');
-        const { LimsClient } = await import('@ils/lims-client');
+        const { LimsClient } = await import('../packages/lims-client/src/LimsClient');
         
         // Initialize LIMS client if configured
         let limsClient = null;
@@ -682,7 +722,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Use OrderService if LIMS is configured, otherwise fallback to direct storage
         if (limsClient && process.env.ENABLE_LIMS_VALIDATION !== 'false') {
-          const orderService = new OrderService(limsClient, storage, {
+          const orderService = new OrderService(limsClient as any, storage, {
             enableLimsValidation: true,
           });
           

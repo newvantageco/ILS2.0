@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useState, useEffect } from "react";
 import React from "react";
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
@@ -18,6 +18,7 @@ import { ScrollToTop, ScrollProgress } from "@/components/ui/ScrollEnhancements"
 import { PWAInstallPrompt, OfflineIndicator } from "@/components/ui/PWAFeatures";
 import { NotificationProvider } from "@/components/ui/SmartNotifications";
 import { GlobalLoadingBar } from "@/components/ui/GlobalLoadingBar";
+import { WelcomeModal } from "@/components/WelcomeModal";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { LogOut } from "lucide-react";
@@ -26,6 +27,7 @@ import { useLocation } from "wouter";
 // Code-split route components for optimal performance
 // Only load the code for pages users actually visit
 const Landing = lazy(() => import("@/pages/Landing"));
+const LandingNew = lazy(() => import("@/pages/LandingNew"));
 const Login = lazy(() => import("@/pages/Login"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const WelcomePage = lazy(() => import("@/pages/WelcomePage"));
@@ -99,6 +101,14 @@ const AIModelManagementPage = lazy(() => import("@/pages/AIModelManagementPage")
 const EmailAnalyticsPage = lazy(() => import("@/pages/EmailAnalyticsPage"));
 const EmailTemplatesPage = lazy(() => import("@/pages/EmailTemplatesPage"));
 
+// Marketplace (Chunk 6)
+const MarketplacePage = lazy(() => import("@/pages/MarketplacePage"));
+const CompanyProfilePage = lazy(() => import("@/pages/CompanyProfilePage"));
+const MyConnectionsPage = lazy(() => import("@/pages/MyConnectionsPage"));
+
+// Platform Admin (Chunk 7)
+const PlatformInsightsDashboard = lazy(() => import("@/pages/PlatformInsightsDashboard"));
+
 // Other
 const GitHubPushPage = lazy(() => import("@/pages/github-push"));
 
@@ -163,6 +173,20 @@ class RouteErrorBoundary extends React.Component<
 
 function AppLayout({ children, userRole }: { children: React.ReactNode; userRole: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin" }) {
   const { logout } = useAuth();
+  const [showWelcome, setShowWelcome] = useState(false);
+  
+  useEffect(() => {
+    // Check if user has seen the welcome modal
+    const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
+    if (!hasSeenWelcome) {
+      setShowWelcome(true);
+    }
+  }, []);
+
+  const handleWelcomeClose = () => {
+    setShowWelcome(false);
+    localStorage.setItem('hasSeenWelcome', 'true');
+  };
   
   const style = {
     "--sidebar-width": "16rem",
@@ -175,6 +199,7 @@ function AppLayout({ children, userRole }: { children: React.ReactNode; userRole
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
+      <WelcomeModal open={showWelcome} onClose={handleWelcomeClose} />
       <ScrollProgress />
       <OfflineIndicator />
       <CommandPalette userRole={userRole} />
@@ -220,6 +245,14 @@ function AuthenticatedApp() {
   const [location] = useLocation();
 
   // Public routes (accessible without auth) - wrapped in Suspense
+  if (location === '/landing-new') {
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <LandingNew />
+      </Suspense>
+    );
+  }
+
   if (location === '/login') {
     return (
       <Suspense fallback={<RouteLoadingFallback />}>
@@ -553,6 +586,14 @@ function AuthenticatedApp() {
         {/* Email System Routes - Common for all roles */}
         <Route path="/email-analytics" component={EmailAnalyticsPage} />
         <Route path="/email-templates" component={EmailTemplatesPage} />
+        
+        {/* Marketplace Routes - Common for all roles (Chunk 6) */}
+        <Route path="/marketplace" component={MarketplacePage} />
+        <Route path="/marketplace/companies/:id" component={CompanyProfilePage} />
+        <Route path="/marketplace/my-connections" component={MyConnectionsPage} />
+        
+        {/* Platform Admin Routes (Chunk 7) */}
+        <Route path="/platform-insights" component={PlatformInsightsDashboard} />
         
         <Route path="/help">
           <div className="text-center py-12">

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { EmptyState } from "@/components/ui/empty-state";
 import { 
   Upload, 
   Send, 
@@ -359,22 +360,30 @@ export default function AIAssistantPage() {
               <MessageSquare className="h-4 w-4 mr-2" />
               New Conversation
             </Button>
-            {conversations?.map((conv) => (
-              <Button
-                key={conv.id}
-                onClick={() => setCurrentConversationId(conv.id)}
-                variant={currentConversationId === conv.id ? "default" : "ghost"}
-                className="w-full justify-start text-left"
-                aria-label={`Open conversation ${conv.title}`}
-              >
-                <div className="truncate">
-                  {conv.title}
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(conv.createdAt).toLocaleDateString()}
+            {conversations && conversations.length === 0 ? (
+              <div className="py-8 px-4 text-center text-sm text-muted-foreground">
+                <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                <p>No conversations yet</p>
+                <p className="mt-1">Start chatting to begin</p>
+              </div>
+            ) : (
+              conversations?.map((conv) => (
+                <Button
+                  key={conv.id}
+                  onClick={() => setCurrentConversationId(conv.id)}
+                  variant={currentConversationId === conv.id ? "default" : "ghost"}
+                  className="w-full justify-start text-left"
+                  aria-label={`Open conversation ${conv.title}`}
+                >
+                  <div className="truncate">
+                    {conv.title}
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(conv.createdAt).toLocaleDateString()}
+                    </div>
                   </div>
-                </div>
-              </Button>
-            ))}
+                </Button>
+              ))
+            )}
           </CardContent>
         </Card>
 

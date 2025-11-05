@@ -5,6 +5,7 @@ import { ConsultLogManager } from "@/components/ConsultLogManager";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatCardSkeleton, OrderCardSkeleton } from "@/components/ui/CardSkeleton";
+import { OnboardingProgress } from "@/components/ui/onboarding-progress";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Package, Clock, CheckCircle, AlertCircle, Plus, Brain, Sparkles, MessageSquare, TrendingUp, Lightbulb, Zap } from "lucide-react";
@@ -132,6 +133,41 @@ export default function ECPDashboard() {
     setLocation(`/ecp/ai-assistant?q=${encodeURIComponent(question)}`);
   };
 
+  // Calculate onboarding progress
+  const hasOrders = (stats?.total || 0) > 0;
+  const hasProducts = false; // We'd need to check inventory
+  const hasConnections = false; // We'd need to check marketplace connections
+  
+  const onboardingSteps = [
+    { 
+      id: 'first-order', 
+      label: 'Create your first order', 
+      completed: hasOrders,
+      action: () => setLocation('/ecp/new-order')
+    },
+    { 
+      id: 'add-product', 
+      label: 'Add products to inventory', 
+      completed: hasProducts,
+      action: () => setLocation('/ecp/inventory')
+    },
+    { 
+      id: 'connect-lab', 
+      label: 'Connect with a lab or supplier', 
+      completed: hasConnections,
+      action: () => setLocation('/marketplace')
+    },
+    { 
+      id: 'explore-ai', 
+      label: 'Try AI Assistant features', 
+      completed: (aiUsage?.queriesUsed || 0) > 0,
+      action: () => setLocation('/ecp/ai-assistant')
+    },
+  ];
+
+  const completedSteps = onboardingSteps.filter(step => step.completed).length;
+  const showOnboarding = completedSteps < onboardingSteps.length;
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
@@ -148,6 +184,14 @@ export default function ECPDashboard() {
           </Button>
         </Link>
       </div>
+
+      {/* Onboarding Progress */}
+      {showOnboarding && (
+        <OnboardingProgress 
+          steps={onboardingSteps} 
+          currentStep={completedSteps}
+        />
+      )}
 
       {statsLoading ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">

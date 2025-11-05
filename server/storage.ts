@@ -1864,6 +1864,22 @@ export class DbStorage implements IStorage {
       .from(trainingDataAnalytics)
       .orderBy(desc(trainingDataAnalytics.recordedAt));
   }
+
+  // ============================================================================
+  // WORLD-CLASS TRANSFORMATION PLACEHOLDER METHODS
+  // ============================================================================
+  // These methods are placeholders for the new world-class features.
+  // They log warnings and return empty/mock data until full implementation.
+
+  async createClinicalAnomaly(data: any) {
+    console.warn('[PLACEHOLDER] createClinicalAnomaly not yet implemented. Run migration first.');
+    return { id: 'placeholder', ...data };
+  }
+
+  async createNotification(data: any) {
+    console.warn('[PLACEHOLDER] createNotification not yet implemented. Run migration first.');
+    return { id: 'placeholder', ...data };
+  }
 }
 
 export const storage = new DbStorage();

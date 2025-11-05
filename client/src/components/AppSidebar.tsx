@@ -387,6 +387,49 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
         )}
 
         <SidebarGroup>
+          <SidebarGroupLabel>Marketplace</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild data-testid="nav-marketplace">
+                  <Link href="/marketplace">
+                    <Building2 className="h-4 w-4" />
+                    <span>Marketplace</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild data-testid="nav-my-connections">
+                  <Link href="/marketplace/my-connections">
+                    <Users className="h-4 w-4" />
+                    <span>My Connections</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Platform Admin Analytics (Chunk 7 - platform_admin only) */}
+        {user?.role === 'platform_admin' && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Platform Admin</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild data-testid="nav-platform-insights">
+                    <Link href="/platform-insights">
+                      <BarChart3 className="h-4 w-4" />
+                      <span>Platform Insights</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        <SidebarGroup>
           <SidebarGroupLabel>Support</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>

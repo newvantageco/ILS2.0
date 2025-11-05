@@ -18,6 +18,22 @@ import { auditMiddleware } from "./middleware/audit";
 import { scheduledEmailService } from "./services/ScheduledEmailService";
 import { startDailyBriefingCron } from "./jobs/dailyBriefingCron";
 import { startInventoryMonitoringCron } from "./jobs/inventoryMonitoringCron";
+import { startClinicalAnomalyDetectionCron } from "./jobs/clinicalAnomalyDetectionCron";
+import { startUsageReportingCron } from "./jobs/usageReportingCron";
+import { startStorageCalculationCron } from "./jobs/storageCalculationCron";
+
+// Import workers to start background job processing
+import "./workers/emailWorker";
+import "./workers/pdfWorker";
+import "./workers/notificationWorker";
+import "./workers/aiWorker";
+import { initializeRedis, getRedisConnection } from "./queue/config";
+
+// Import event system
+import { initializeEventSystem } from "./events";
+
+// Import Redis session store (Chunk 10)
+import RedisStore from "connect-redis";
 
 const app = express();
 
@@ -67,7 +83,9 @@ if (process.env.NODE_ENV === "development") {
     log("SESSION_SECRET is not set. Generating temporary secret for development.", "express");
   }
 
-  app.use(session({
+  // Use Redis for session store (Chunk 10: Infrastructure Scale)
+  const redisClient = getRedisConnection();
+  const sessionConfig: any = {
     secret: sessionSecret || "dev-session-secret",
     resave: false,
     saveUninitialized: false,
@@ -75,8 +93,22 @@ if (process.env.NODE_ENV === "development") {
       httpOnly: true, // XSS protection
       secure: false, // HTTP OK in development
       sameSite: 'strict', // CSRF protection
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     },
-  }));
+  };
+
+  // Add Redis store if available, otherwise use default memory store
+  if (redisClient) {
+    sessionConfig.store = new RedisStore({
+      client: redisClient as any,
+      prefix: "session:",
+    });
+    log("✅ Using Redis for session storage (fast, scalable)", "express");
+  } else {
+    log("⚠️  Using memory store for sessions (Redis unavailable)", "express");
+  }
+
+  app.use(session(sessionConfig));
 
   app.use(passport.initialize());
   app.use(passport.session());
@@ -175,11 +207,31 @@ app.use((req, res, next) => {
     const port = parseInt(process.env.PORT || '3000', 10);
     const host = process.env.HOST || '127.0.0.1';
     
+    // Initialize Redis before starting server
+    const redisConnected = await initializeRedis();
+    if (redisConnected) {
+      log(`✅ Redis connected - Background job workers will start`);
+    } else {
+      log(`⚠️  Redis not available - Will use immediate execution fallback`);
+    }
+    
+    // Initialize event-driven architecture (Chunk 9)
+    initializeEventSystem();
+    
     server.listen(port, host, () => {
       log(`Server successfully started on port ${port}`);
       log(`Environment: ${app.get("env")}`);
       log(`API server running at http://${host}:${port}`);
       log(`Frontend available at http://localhost:${port}`);
+      
+      // Log background job workers status
+      if (redisConnected) {
+        log(`📋 Background job workers active:`);
+        log(`   - Email worker: Processing order confirmations, notifications`);
+        log(`   - PDF worker: Generating invoices, receipts, lab tickets`);
+        log(`   - Notification worker: In-app notifications`);
+        log(`   - AI worker: Daily briefings, demand forecasts, insights`);
+      }
       
       // Start scheduled email jobs
       scheduledEmailService.startAllJobs();
@@ -192,6 +244,22 @@ app.use((req, res, next) => {
       // Start autonomous inventory monitoring cron job
       startInventoryMonitoringCron();
       log(`Inventory monitoring cron job started (9:00 AM & 3:00 PM daily)`);
+      
+      // ============================================================================
+      // WORLD-CLASS TRANSFORMATION CRON JOBS (November 2025)
+      // ============================================================================
+      
+      // Start clinical anomaly detection cron job
+      startClinicalAnomalyDetectionCron();
+      log(`Clinical anomaly detection cron job started (2:00 AM daily)`);
+      
+      // Start usage reporting cron job (Stripe metered billing)
+      startUsageReportingCron();
+      log(`Usage reporting cron job started (1:00 AM daily)`);
+      
+      // Start storage calculation cron job
+      startStorageCalculationCron();
+      log(`Storage calculation cron job started (3:00 AM daily)`);
     });
 
     // Handle server errors

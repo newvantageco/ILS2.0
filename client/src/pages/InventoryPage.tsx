@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { getErrorMessage, getSuccessMessage } from "@/components/ui/error-message";
 import {
   Table,
   TableBody,
@@ -80,14 +81,14 @@ export default function InventoryPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       setIsAddDialogOpen(false);
       toast({
-        title: "Product created",
-        description: "The product has been added to inventory.",
+        title: "Success!",
+        description: getSuccessMessage("create"),
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to create product. Please try again.",
+        title: "Unable to create product",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     },
@@ -106,14 +107,14 @@ export default function InventoryPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       setEditingProduct(null);
       toast({
-        title: "Product updated",
-        description: "The product has been updated successfully.",
+        title: "Success!",
+        description: getSuccessMessage("update"),
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to update product. Please try again.",
+        title: "Unable to update product",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     },
@@ -127,14 +128,14 @@ export default function InventoryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       toast({
-        title: "Product deleted",
-        description: "The product has been removed from inventory.",
+        title: "Success!",
+        description: getSuccessMessage("delete"),
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: "Failed to delete product. Please try again.",
+        title: "Unable to delete product",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     },

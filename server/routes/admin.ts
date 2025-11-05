@@ -8,6 +8,7 @@
 import { Router, Request, Response } from "express";
 import { storage } from "../storage";
 import { z } from "zod";
+import type { User } from "@shared/schema";
 
 const router = Router();
 
@@ -443,7 +444,11 @@ router.post("/users/subscription/bulk", isPlatformAdmin, async (req: any, res: R
       return res.status(400).json({ error: "Invalid subscription plan. Must be 'free_ecp' or 'full'" });
     }
 
-    const results = {
+    const results: {
+      success: Array<{ email: string | null; userId: string; oldPlan: string; newPlan: string }>;
+      failed: Array<{ email: any; reason: string }>;
+      notFound: Array<{ email: any; reason: string }>;
+    } = {
       success: [],
       failed: [],
       notFound: []
@@ -533,17 +538,17 @@ router.get("/users/search", isPlatformAdmin, async (req: any, res: Response) => 
     }
 
     const searchTerm = q.toLowerCase();
-    const allUsers = await storage.getUsers();
+    const allUsers = await storage.getAllUsers();
 
     // Search by email, first name, or last name
-    const matchingUsers = allUsers.filter(user => 
-      user.email.toLowerCase().includes(searchTerm) ||
+    const matchingUsers = allUsers.filter((user: User) => 
+      user.email?.toLowerCase().includes(searchTerm) ||
       user.firstName?.toLowerCase().includes(searchTerm) ||
       user.lastName?.toLowerCase().includes(searchTerm)
     );
 
     // Limit results and don't send passwords
-    const results = matchingUsers.slice(0, 50).map(user => ({
+    const results = matchingUsers.slice(0, 50).map((user: User) => ({
       id: user.id,
       email: user.email,
       firstName: user.firstName,
