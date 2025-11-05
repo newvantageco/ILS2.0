@@ -127,6 +127,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Root endpoint - redirect to login page or serve SPA
+  app.get('/', (_req, res) => {
+    res.status(200).json({ 
+      success: true,
+      message: 'Integrated Lens System API',
+      version: '2.0.0',
+      timestamp: new Date().toISOString(),
+      endpoints: {
+        health: '/health',
+        api: '/api',
+        docs: '/api/documentation'
+      }
+    });
+  });
+
   if (process.env.NODE_ENV !== 'development') {
     await setupReplitAuth(app);
   }
