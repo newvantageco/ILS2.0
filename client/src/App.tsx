@@ -96,6 +96,12 @@ const AuditLogsPage = lazy(() => import("@/pages/AuditLogsPage"));
 const PermissionsManagementPage = lazy(() => import("@/pages/PermissionsManagementPage"));
 const ComplianceDashboardPage = lazy(() => import("@/pages/ComplianceDashboardPage"));
 const AIModelManagementPage = lazy(() => import("@/pages/AIModelManagementPage"));
+const MLModelManagementPage = lazy(() => import("@/pages/MLModelManagementPage"));
+const PythonMLDashboardPage = lazy(() => import("@/pages/PythonMLDashboardPage"));
+const ShopifyIntegrationPage = lazy(() => import("@/pages/ShopifyIntegrationPage"));
+const FeatureFlagsPage = lazy(() => import("@/pages/FeatureFlagsPage"));
+const APIDocumentationPage = lazy(() => import("@/pages/APIDocumentationPage"));
+const SupplierLibraryPage = lazy(() => import("@/pages/SupplierLibraryPage"));
 
 // Email & Communications
 const EmailAnalyticsPage = lazy(() => import("@/pages/EmailAnalyticsPage"));
@@ -463,7 +469,7 @@ function AuthenticatedApp() {
           <>
             <Route path="/supplier/dashboard" component={SupplierDashboard} />
             <Route path="/supplier/orders" component={SupplierDashboard} />
-            <Route path="/supplier/library" component={SupplierDashboard} />
+            <Route path="/supplier/library" component={SupplierLibraryPage} />
             <Route path="/supplier/ai-assistant" component={AIAssistantPage} />
             <Route path="/supplier/company" component={CompanyManagementPage} />
             <Route path="/supplier/bi-dashboard" component={BIDashboardPage} />
@@ -501,6 +507,11 @@ function AuthenticatedApp() {
             <Route path="/admin/analytics/patient" component={PatientDashboard} />
             <Route path="/admin/analytics/ai-insights" component={PlatformAIDashboard} />
             <Route path="/admin/ai-models" component={AIModelManagementPage} />
+            <Route path="/admin/ml-models" component={MLModelManagementPage} />
+            <Route path="/admin/python-ml" component={PythonMLDashboardPage} />
+            <Route path="/admin/shopify" component={ShopifyIntegrationPage} />
+            <Route path="/admin/feature-flags" component={FeatureFlagsPage} />
+            <Route path="/admin/api-docs" component={APIDocumentationPage} />
             <Route path="/admin/platform">
               <div className="text-center py-12">
                 <h2 className="text-2xl font-semibold">Platform Settings</h2>
@@ -518,6 +529,11 @@ function AuthenticatedApp() {
             <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/platform-admin/settings" component={SettingsPage} />
             <Route path="/platform-admin/ai-models" component={AIModelManagementPage} />
+            <Route path="/platform-admin/ml-models" component={MLModelManagementPage} />
+            <Route path="/platform-admin/python-ml" component={PythonMLDashboardPage} />
+            <Route path="/platform-admin/shopify" component={ShopifyIntegrationPage} />
+            <Route path="/platform-admin/feature-flags" component={FeatureFlagsPage} />
+            <Route path="/platform-admin/api-docs" component={APIDocumentationPage} />
             
             {/* ECP Routes for Testing */}
             <Route path="/ecp/dashboard" component={ECPDashboard} />

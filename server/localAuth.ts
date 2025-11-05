@@ -54,6 +54,11 @@ export function setupLocalAuth() {
           return done(null, false, { message: "Invalid email or password" });
         }
 
+        // Verify account is active
+        if (user.accountStatus !== 'active') {
+          return done(null, false, { message: "Account is not active. Please contact support." });
+        }
+
         // Create session user object similar to Replit Auth
         const sessionUser = {
           claims: {
@@ -64,6 +69,10 @@ export function setupLocalAuth() {
             profile_image_url: user.profileImageUrl,
           },
           local: true, // Flag to identify local auth users
+          id: user.id,
+          role: user.role || undefined,
+          companyId: user.companyId || undefined,
+          accountStatus: user.accountStatus,
         };
 
         return done(null, sessionUser);

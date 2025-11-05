@@ -243,6 +243,7 @@ export class AIDataAccess {
    */
   static async getPendingOrders(context: QueryContext) {
     try {
+      // Fixed N+1 query: Use JOIN to fetch patient names in a single query
       const pendingOrders = await db
         .select({
           id: orders.id,
@@ -251,8 +252,10 @@ export class AIDataAccess {
           status: orders.status,
           lensType: orders.lensType,
           patientId: orders.patientId,
+          patientName: patients.name,
         })
         .from(orders)
+        .leftJoin(patients, eq(orders.patientId, patients.id))
         .where(
           and(
             eq(orders.companyId, context.companyId),
@@ -262,29 +265,16 @@ export class AIDataAccess {
         .orderBy(desc(orders.orderDate))
         .limit(20);
 
-      // Fetch patient names
-      const ordersWithPatients = await Promise.all(
-        pendingOrders.map(async (order) => {
-          if (order.patientId) {
-            const patient = await db
-              .select({ name: patients.name })
-              .from(patients)
-              .where(eq(patients.id, order.patientId))
-              .limit(1);
-            
-            return {
-              ...order,
-              patientName: patient[0]?.name || 'Unknown',
-            };
-          }
-          return {
-            ...order,
-            patientName: 'Unknown',
-          };
-        })
-      );
-
-      return ordersWithPatients;
+      // No need for Promise.all - patient names already fetched
+      return pendingOrders.map((order) => ({
+        id: order.id,
+        orderNumber: order.orderNumber,
+        orderDate: order.orderDate,
+        status: order.status,
+        lensType: order.lensType,
+        patientId: order.patientId,
+        patientName: order.patientName || 'Unknown',
+      }));
     } catch (error) {
       logger.error("Error fetching pending orders", error as Error);
       throw error;

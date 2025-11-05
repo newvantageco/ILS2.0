@@ -166,16 +166,16 @@ export class PlatformAIService {
       .where(
         and(
           eq(dailyPracticeMetrics.companyId, companyId),
-          gte(dailyPracticeMetrics.date, startDate),
-          lte(dailyPracticeMetrics.date, endDate)
+          gte(dailyPracticeMetrics.metricDate, startDate),
+          lte(dailyPracticeMetrics.metricDate, endDate)
         )
       )
-      .orderBy(dailyPracticeMetrics.date);
+      .orderBy(dailyPracticeMetrics.metricDate);
 
     const salesData = metrics.map(m => ({
-      date: m.date.toISOString(),
+      date: m.metricDate.toISOString(),
       revenue: m.netRevenue,
-      transactions: m.patientsSeen
+      transactions: m.totalPatientsSeen
     }));
 
     const analysis = await this.executePythonAnalysis('analyze_sales', {
@@ -205,8 +205,8 @@ export class PlatformAIService {
       .where(
         and(
           eq(inventoryPerformanceMetrics.companyId, companyId),
-          gte(inventoryPerformanceMetrics.date, startDate),
-          lte(inventoryPerformanceMetrics.date, endDate)
+          gte(inventoryPerformanceMetrics.periodStart, startDate),
+          lte(inventoryPerformanceMetrics.periodEnd, endDate)
         )
       );
 
@@ -214,8 +214,8 @@ export class PlatformAIService {
       name: m.productName,
       product_name: m.productName,
       units_sold: m.unitsSold,
-      current_stock: m.stockLevel,
-      revenue: m.revenue
+      current_stock: m.currentStockLevel,
+      revenue: m.totalRevenue
     }));
 
     const analysis = await this.executePythonAnalysis('analyze_inventory', {
@@ -236,10 +236,23 @@ export class PlatformAIService {
   ): Promise<BookingAnalysis> {
     // TODO: Implement when testRoomBookings table is added to bi-schema
     return {
-      utilization_rate: 0,
+      status: 'disabled',
+      utilization_metrics: {
+        average_utilization: 0,
+        peak_utilization: 0,
+        no_show_rate: 0
+      },
       peak_hours: [],
-      no_show_rate: 0,
-      insights: ['Booking analysis requires testRoomBookings table implementation']
+      off_peak_hours: [],
+      busiest_day: 'N/A',
+      slowest_day: 'N/A',
+      hourly_utilization: {},
+      insights: [{
+        type: 'info',
+        title: 'Booking Analysis Disabled',
+        message: 'Booking analysis requires testRoomBookings table implementation',
+        recommendation: 'Add testRoomBookings table to bi-schema.ts to enable this feature'
+      }]
     };
     
     /* DISABLED UNTIL TABLE EXISTS
@@ -293,15 +306,15 @@ export class PlatformAIService {
       .where(
         and(
           eq(dailyPracticeMetrics.companyId, companyId),
-          gte(dailyPracticeMetrics.date, startDate),
-          lte(dailyPracticeMetrics.date, endDate)
+          gte(dailyPracticeMetrics.metricDate, startDate),
+          lte(dailyPracticeMetrics.metricDate, endDate)
         )
       );
 
     const companyAvg = {
-      revenue: companyMetrics.reduce((sum, m) => sum + m.netRevenue, 0) / companyMetrics.length,
-      retention_rate: companyMetrics.reduce((sum, m) => sum + (m.conversionRate || 0), 0) / companyMetrics.length,
-      no_show_rate: companyMetrics.reduce((sum, m) => sum + m.noShowRate, 0) / companyMetrics.length
+      revenue: companyMetrics.reduce((sum, m) => sum + Number(m.netRevenue), 0) / companyMetrics.length,
+      retention_rate: companyMetrics.reduce((sum, m) => sum + Number(m.conversionRate || 0), 0) / companyMetrics.length,
+      no_show_rate: companyMetrics.reduce((sum, m) => sum + Number(m.noShowRate), 0) / companyMetrics.length
     };
 
     // Get platform benchmarks
@@ -318,9 +331,9 @@ export class PlatformAIService {
       .limit(1);
 
     const platformBenchmarks = platformMetrics.length > 0 ? {
-      revenue: platformMetrics[0].averageRevenue,
+      revenue: Number(platformMetrics[0].platformAverageRevenue),
       retention_rate: 75, // Default benchmark
-      no_show_rate: platformMetrics[0].averageNoShowRate
+      no_show_rate: Number(platformMetrics[0].platformAverageNoShowRate)
     } : companyAvg;
 
     const analysis = await this.executePythonAnalysis('compare_performance', {

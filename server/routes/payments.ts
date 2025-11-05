@@ -8,6 +8,14 @@
 import { Router, Request, Response } from "express";
 import Stripe from "stripe";
 import { storage } from "../storage";
+import { asyncHandler } from "../middleware/errorHandler";
+import { 
+  BadRequestError,
+  UnauthorizedError,
+  NotFoundError,
+  StripeError 
+} from "../utils/ApiError";
+import { withTransaction } from "../utils/transaction";
 
 const router = Router();
 
@@ -25,7 +33,7 @@ function isAuthenticated(req: any, res: Response, next: Function) {
   if (req.user) {
     return next();
   }
-  res.status(401).json({ error: "Authentication required" });
+  throw new UnauthorizedError("Authentication required");
 }
 
 /**
@@ -35,75 +43,76 @@ function isPlatformAdmin(req: any, res: Response, next: Function) {
   if (req.user && req.user.role === "platform_admin") {
     return next();
   }
-  res.status(403).json({ error: "Platform admin access required" });
+  throw new UnauthorizedError("Platform admin access required");
 }
 
 /**
  * GET /api/payments/subscription-plans
  * Get all available subscription plans
  */
-router.get("/subscription-plans", async (req: Request, res: Response) => {
-  try {
-    const plans = await storage.getSubscriptionPlans();
-    res.json({ success: true, plans });
-  } catch (error: any) {
-    console.error("Error fetching subscription plans:", error);
-    res.status(500).json({ error: "Failed to fetch subscription plans" });
-  }
-});
+router.get("/subscription-plans", asyncHandler(async (req: Request, res: Response) => {
+  const plans = await storage.getSubscriptionPlans();
+  res.json({ success: true, plans });
+}));
 
 /**
  * POST /api/payments/create-checkout-session
  * Create a Stripe Checkout session for subscription
  */
-router.post("/create-checkout-session", isAuthenticated, async (req: any, res: Response) => {
-  try {
-    const userId = req.user?.claims?.sub || req.user?.id;
-    const user = await storage.getUser(userId);
-    
-    if (!user || !user.companyId) {
-      return res.status(400).json({ error: "User must belong to a company" });
-    }
+router.post("/create-checkout-session", isAuthenticated, asyncHandler(async (req: any, res: Response) => {
+  const userId = req.user?.claims?.sub || req.user?.id;
+  const user = await storage.getUser(userId);
+  
+  if (!user || !user.companyId) {
+    throw new BadRequestError("User must belong to a company");
+  }
 
-    const { planId, billingInterval } = req.body; // monthly or yearly
+  const { planId, billingInterval } = req.body;
 
-    if (!planId || !billingInterval) {
-      return res.status(400).json({ error: "Plan ID and billing interval required" });
-    }
+  if (!planId || !billingInterval) {
+    throw new BadRequestError("Plan ID and billing interval required");
+  }
 
-    // Get company and plan details
-    const company = await storage.getCompany(user.companyId);
-    const plans = await storage.getSubscriptionPlans();
-    const plan = plans.find(p => p.id === planId);
+  // Get company and plan details
+  const company = await storage.getCompany(user.companyId);
+  const plans = await storage.getSubscriptionPlans();
+  const plan = plans.find(p => p.id === planId);
 
-    if (!plan) {
-      return res.status(404).json({ error: "Subscription plan not found" });
-    }
+  if (!plan) {
+    throw new NotFoundError("Subscription plan");
+  }
 
-    const priceId = billingInterval === "yearly" 
-      ? plan.stripePriceIdYearly 
-      : plan.stripePriceIdMonthly;
+  const priceId = billingInterval === "yearly" 
+    ? plan.stripePriceIdYearly 
+    : plan.stripePriceIdMonthly;
 
-    if (!priceId) {
-      return res.status(400).json({ error: "Price not configured for this plan" });
-    }
+  if (!priceId) {
+    throw new BadRequestError("Price not configured for this plan");
+  }
 
-    // Create or retrieve Stripe customer
+  // Create or retrieve Stripe customer in transaction
+  const result = await withTransaction(async () => {
     let customerId = company?.stripeCustomerId;
     
     if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: company?.email || user.email || undefined,
-        name: company?.name,
-        metadata: {
-          companyId: user.companyId,
-          userId: user.id,
-        },
-      });
-      customerId = customer.id;
-      
-      // Update company with Stripe customer ID
-      await storage.updateCompany(user.companyId, { stripeCustomerId: customerId });
+      try {
+        const customer = await stripe.customers.create({
+          email: company?.email || user.email || undefined,
+          name: company?.name,
+          metadata: {
+            companyId: user.companyId,
+            userId: user.id,
+          },
+        });
+        customerId = customer.id;
+        
+        // Update company with Stripe customer ID
+        if (user.companyId) {
+          await storage.updateCompany(user.companyId, { stripeCustomerId: customerId });
+        }
+      } catch (stripeError: any) {
+        throw new StripeError("Failed to create customer", { error: stripeError.message });
+      }
     }
 
     // Create Checkout Session
@@ -126,12 +135,11 @@ router.post("/create-checkout-session", isAuthenticated, async (req: any, res: R
       },
     });
 
-    res.json({ success: true, sessionId: session.id, url: session.url });
-  } catch (error: any) {
-    console.error("Error creating checkout session:", error);
-    res.status(500).json({ error: "Failed to create checkout session", message: error.message });
-  }
-});
+    return { sessionId: session.id, url: session.url };
+  });
+
+  res.json({ success: true, ...result });
+}));
 
 /**
  * POST /api/payments/create-portal-session

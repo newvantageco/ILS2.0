@@ -15,6 +15,12 @@ import {
   authRateLimiter 
 } from "./middleware/security";
 import { auditMiddleware } from "./middleware/audit";
+import { 
+  errorHandler, 
+  notFoundHandler, 
+  setupGlobalErrorHandlers,
+  requestTimeout 
+} from "./middleware/errorHandler";
 import { scheduledEmailService } from "./services/ScheduledEmailService";
 import { startDailyBriefingCron } from "./jobs/dailyBriefingCron";
 import { startInventoryMonitoringCron } from "./jobs/inventoryMonitoringCron";
@@ -120,6 +126,10 @@ if (process.env.NODE_ENV === "development") {
 // This must come AFTER authentication to capture user info
 app.use('/api', auditMiddleware);
 
+// ============== REQUEST TIMEOUT (DDoS Protection) ==============
+// Set timeout for all requests (30 seconds default)
+app.use(requestTimeout(30000));
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -184,13 +194,15 @@ app.use((req, res, next) => {
     const server = await registerRoutes(app);
     log("Routes registered successfully");
 
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-
-      console.error("Error handler caught:", err);
-      res.status(status).json({ message });
-    });
+    // ============== ERROR HANDLING (Production-Grade) ==============
+    // Setup global process error handlers
+    setupGlobalErrorHandlers();
+    
+    // 404 handler - must be after all routes
+    app.use(notFoundHandler);
+    
+    // Global error handler - must be last
+    app.use(errorHandler);
 
     // importantly only setup vite in development and after
     // setting up all the other routes so the catch-all route

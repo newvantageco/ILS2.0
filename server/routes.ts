@@ -36,13 +36,38 @@ import { z } from "zod";
 import { parseOMAFile, isValidOMAFile } from "@shared/omaParser";
 import { normalizeEmail } from "./utils/normalizeEmail";
 import { addCreationTimestamp, addUpdateTimestamp } from "./utils/timestamps";
+
+// Security and validation imports
+import { asyncHandler } from "./middleware/errorHandler";
+import { 
+  validateRequest,
+  loginSchema,
+  registerSchema,
+  passwordResetSchema,
+  createOrderSchema,
+  updateOrderStatusSchema as updateOrderStatusValidationSchema,
+  createPaymentIntentSchema,
+  confirmPaymentSchema,
+  createSubscriptionSchema,
+  updateSubscriptionSchema,
+  aiQuerySchema
+} from "./middleware/validation";
+import { 
+  BadRequestError,
+  UnauthorizedError,
+  NotFoundError,
+  ValidationError,
+  InsufficientCreditsError
+} from "./utils/ApiError";
+import { withTransaction, transactionalInsert, transactionalUpdate } from "./utils/transaction";
+
 import { registerMetricsRoutes } from "./routes/metrics";
 import { registerBiRoutes } from "./routes/bi";
 import { registerMasterAIRoutes } from "./routes/master-ai";
 import { registerAINotificationRoutes } from "./routes/ai-notifications";
 import { registerAutonomousPORoutes } from "./routes/ai-purchase-orders";
 import { registerDemandForecastingRoutes } from "./routes/demand-forecasting";
-// import { registerMarketplaceRoutes } from "./routes/marketplace"; // Commented out - not yet implemented
+import { registerMarketplaceRoutes } from "./routes/marketplace";
 import { registerQueueRoutes } from "./routes/queue";
 // import { registerPlatformAIRoutes } from "./routes/platform-ai"; // Disabled - schema issues
 import platformAdminRoutes from "./routes/platform-admin";
@@ -69,10 +94,27 @@ import clinicalWorkflowRoutes from "./routes/clinical/workflow";
 import omaValidationRoutes from "./routes/clinical/oma-validation";
 import billingRoutes from "./routes/billing";
 import v1ApiRoutes from "./routes/api/v1";
+import queryOptimizerRoutes from "./routes/query-optimizer";
+import mlModelsRoutes from "./routes/ml-models";
+import pythonMLRoutes from "./routes/python-ml";
+import shopifyRoutes from "./routes/shopify";
+import featureFlagsRoutes from "./routes/feature-flags";
 import { websocketService } from "./websocket";
 import path from "path";
+import { 
+  publicApiLimiter, 
+  authLimiter, 
+  signupLimiter, 
+  webhookLimiter, 
+  aiQueryLimiter,
+  passwordResetLimiter,
+  generalLimiter
+} from "./middleware/rateLimiter";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Apply general rate limiting to all routes
+  app.use(generalLimiter);
+  
   // Serve uploaded files statically
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
@@ -126,7 +168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerDemandForecastingRoutes(app);
   
   // Company Marketplace: B2B network and connections (Chunk 6)
-  // registerMarketplaceRoutes(app); // Commented out - not yet implemented
+  registerMarketplaceRoutes(app);
   
   // Platform Analytics: Cross-tenant insights & revenue (Chunk 7)
   app.use('/api/platform-admin', platformAdminRoutes);
@@ -155,7 +197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/ecp', ecpRoutes);
 
   // Register Onboarding routes (automated multi-tenant signup with company creation)
-  app.use('/api/onboarding', onboardingRoutes);
+  app.use('/api/onboarding', signupLimiter, onboardingRoutes);
 
   // Register POS (Point of Sale) routes for over-the-counter sales
   app.use('/api/pos', isAuthenticated, posRoutes);
@@ -200,7 +242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   
   // Shopify webhook routes (public, HMAC-verified)
-  app.use('/api/webhooks/shopify', shopifyWebhookRoutes);
+  app.use('/api/webhooks/shopify', webhookLimiter, shopifyWebhookRoutes);
 
   // Clinical workflow routes (AI-powered recommendations)
   app.use('/api/clinical/workflow', isAuthenticated, clinicalWorkflowRoutes);
@@ -212,7 +254,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/billing', isAuthenticated, billingRoutes);
 
   // Public API v1 routes (RESTful API for third-party integrations)
-  app.use('/api/v1', v1ApiRoutes);
+  app.use('/api/v1', publicApiLimiter, v1ApiRoutes);
+
+  // Query Optimizer routes (database performance monitoring and optimization)
+  app.use('/api/query-optimizer', isAuthenticated, queryOptimizerRoutes);
+
+  // ML Models routes (machine learning model management)
+  app.use('/api/ml/models', mlModelsRoutes);
+
+  // Python ML routes (Python ML service integration and monitoring)
+  app.use('/api/python-ml', pythonMLRoutes);
+
+  // Shopify Integration routes (e-commerce platform sync)
+  app.use('/api/shopify', shopifyRoutes);
+
+  // Feature Flags routes (feature toggle and A/B testing)
+  app.use('/api/feature-flags', featureFlagsRoutes);
 
   const FULL_PLAN = "full" as const;
   const FREE_ECP_PLAN = "free_ecp" as const;
@@ -499,46 +556,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Email/Password Signup
-  app.post('/api/auth/signup-email', async (req, res) => {
-    try {
+  app.post('/api/auth/signup-email', 
+    asyncHandler(async (req, res) => {
       const { email, password, firstName, lastName, role, organizationName, adminSetupKey, subscriptionPlan } = req.body;
 
       // Validation
       if (!email || !password || !firstName || !lastName || !role) {
-        return res.status(400).json({ message: "Email, password, first name, last name, and role are required" });
+        throw new BadRequestError("Email, password, first name, last name, and role are required");
       }
 
       const normalizedEmail = normalizeEmail(email);
 
       if (!['ecp', 'lab_tech', 'engineer', 'supplier', 'admin'].includes(role)) {
-        return res.status(400).json({ message: "Invalid role" });
+        throw new BadRequestError("Invalid role");
       }
 
       const normalizedPlan = typeof subscriptionPlan === 'string' ? subscriptionPlan : undefined;
       if (normalizedPlan && normalizedPlan !== FULL_PLAN && normalizedPlan !== FREE_ECP_PLAN) {
-        return res.status(400).json({ message: "Invalid subscription plan" });
+        throw new BadRequestError("Invalid subscription plan");
       }
 
       const allowedPlan = role === 'ecp' ? FREE_ECP_PLAN : FULL_PLAN;
       const chosenPlan = normalizedPlan || allowedPlan;
 
       if (chosenPlan !== allowedPlan) {
-        return res.status(400).json({
-          message: role === 'ecp'
+        throw new BadRequestError(
+          role === 'ecp'
             ? "ECP accounts start on the free plan. Upgrade after activation to unlock advanced modules."
             : "This role requires the Full Experience plan.",
-          allowedPlan,
-        });
+          { allowedPlan }
+        );
       }
 
       if (password.length < 8) {
-        return res.status(400).json({ message: "Password must be at least 8 characters long" });
+        throw new BadRequestError("Password must be at least 8 characters long");
       }
 
       // Check if email already exists
       const existingUser = await storage.getUserByEmail(normalizedEmail);
       if (existingUser) {
-        return res.status(400).json({ message: "Email already registered" });
+        throw new BadRequestError("Email already registered");
       }
 
       // Handle admin signup with key verification
@@ -547,11 +604,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const expectedKey = process.env.ADMIN_SETUP_KEY;
         
         if (!expectedKey) {
-          return res.status(500).json({ message: "Admin setup is not configured on this system" });
+          throw new Error("Admin setup is not configured on this system");
         }
         
         if (!adminSetupKey || adminSetupKey !== expectedKey) {
-          return res.status(403).json({ message: "Invalid admin setup key" });
+          throw new UnauthorizedError("Invalid admin setup key");
         }
 
         // Admin accounts are auto-approved
@@ -561,29 +618,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password
       const hashedPassword = await hashPassword(password);
 
-      // Create user
-      const newUser = await storage.upsertUser({
-        email: normalizedEmail,
-        password: hashedPassword,
-        firstName,
-        lastName,
-        role,
-        organizationName: organizationName || null,
-        accountStatus,
-        subscriptionPlan: chosenPlan,
-      } as any);
+      // Create user in transaction
+      const newUser = await withTransaction(async (client) => {
+        return await storage.upsertUser({
+          email: normalizedEmail,
+          password: hashedPassword,
+          firstName,
+          lastName,
+          role,
+          organizationName: organizationName || null,
+          accountStatus,
+          subscriptionPlan: chosenPlan,
+        } as any);
+      });
 
       // Create session
       req.login({
         claims: {
           sub: newUser.id,
-          id: newUser.id // Using id instead of email
+          id: newUser.id
         },
         local: true,
       }, (err) => {
         if (err) {
           console.error("Session creation error:", err);
-          return res.status(500).json({ message: "Failed to create session" });
+          throw new Error("Failed to create session");
         }
         
         res.status(201).json({
@@ -599,58 +658,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
       });
-    } catch (error) {
-      console.error("Email signup error:", error);
-      res.status(500).json({ message: "Failed to create account" });
-    }
-  });
+    })
+  );
 
   // Email/Password Login
-  app.post('/api/auth/login-email', (req, res, next) => {
-    const { email, password } = req.body ?? {};
+  app.post('/api/auth/login-email', 
+    validateRequest(loginSchema),
+    (req, res, next) => {
+      req.body.email = normalizeEmail(req.body.email);
 
-    if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
-    }
-
-    req.body.email = normalizeEmail(email);
-
-    passport.authenticate('local', (err: any, user: any, info: any) => {
-      if (err) {
-        console.error("Login error:", err);
-        return res.status(500).json({ message: "Internal server error" });
-      }
-      
-      if (!user) {
-        return res.status(401).json({ message: info?.message || "Invalid credentials" });
-      }
-
-      req.login(user, (loginErr) => {
-        if (loginErr) {
-          console.error("Session error:", loginErr);
-          return res.status(500).json({ message: "Failed to create session" });
+      passport.authenticate('local', (err: any, user: any, info: any) => {
+        if (err) {
+          console.error("Login error:", err);
+          return res.status(500).json({ message: "Internal server error" });
+        }
+        
+        if (!user) {
+          return res.status(401).json({ message: info?.message || "Invalid credentials" });
         }
 
-        // Fetch full user from database
-        storage.getUser(user.claims.sub).then((dbUser) => {
-          if (!dbUser) {
-            return res.status(404).json({ message: "User not found" });
+        req.login(user, (loginErr) => {
+          if (loginErr) {
+            console.error("Session error:", loginErr);
+            return res.status(500).json({ message: "Failed to create session" });
           }
 
-          res.json({
-            message: "Login successful",
-            user: {
-              id: dbUser.id,
-              email: dbUser.email,
-              firstName: dbUser.firstName,
-              lastName: dbUser.lastName,
-              role: dbUser.role,
-              accountStatus: dbUser.accountStatus,
-              subscriptionPlan: dbUser.subscriptionPlan,
+          // Fetch full user from database
+          storage.getUser(user.claims.sub).then((dbUser) => {
+            if (!dbUser) {
+              return res.status(404).json({ message: "User not found" });
             }
-          });
-        }).catch((dbErr) => {
-          console.error("Database error:", dbErr);
+
+            res.json({
+              message: "Login successful",
+              user: {
+                id: dbUser.id,
+                email: dbUser.email,
+                firstName: dbUser.firstName,
+                lastName: dbUser.lastName,
+                role: dbUser.role,
+                accountStatus: dbUser.accountStatus,
+                subscriptionPlan: dbUser.subscriptionPlan,
+              }
+            });
+          }).catch((dbErr) => {
+            console.error("Database error:", dbErr);
           res.status(500).json({ message: "Failed to fetch user data" });
         });
       });
