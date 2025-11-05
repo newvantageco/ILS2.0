@@ -127,8 +127,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Root endpoint - redirect to login page or serve SPA
-  app.get('/', (_req, res) => {
+  // API info endpoint
+  app.get('/api', (_req, res) => {
     res.status(200).json({ 
       success: true,
       message: 'Integrated Lens System API',

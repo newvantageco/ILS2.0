@@ -194,19 +194,9 @@ app.use((req, res, next) => {
     const server = await registerRoutes(app);
     log("Routes registered successfully");
 
-    // ============== ERROR HANDLING (Production-Grade) ==============
-    // Setup global process error handlers
-    setupGlobalErrorHandlers();
-    
-    // 404 handler - must be after all routes
-    app.use(notFoundHandler);
-    
-    // Global error handler - must be last
-    app.use(errorHandler);
-
-    // importantly only setup vite in development and after
-    // setting up all the other routes so the catch-all route
-    // doesn't interfere with the other routes
+    // ============== VITE / STATIC FILE SERVING ==============
+    // Setup Vite in development or static serving in production
+    // This must come BEFORE error handlers so the SPA catch-all works
     if (app.get("env") === "development") {
       await setupVite(app, server);
       log("Vite setup completed for development");
@@ -214,6 +204,16 @@ app.use((req, res, next) => {
       serveStatic(app);
       log("Static file serving configured for production");
     }
+
+    // ============== ERROR HANDLING (Production-Grade) ==============
+    // Setup global process error handlers
+    setupGlobalErrorHandlers();
+    
+    // 404 handler - must be after all routes and Vite setup
+    app.use(notFoundHandler);
+    
+    // Global error handler - must be last
+    app.use(errorHandler);
 
     // Initialize server configuration
     const port = parseInt(process.env.PORT || '3000', 10);
