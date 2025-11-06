@@ -21,6 +21,25 @@ declare global {
         defaultEcpId?: string;
       };
     }
+
+    interface User {
+      id?: string;
+      email?: string;
+      companyId?: string;
+      isOwner?: boolean;
+      permissions?: string[];
+      rolePermissions?: string[];
+      roles?: Array<{ id: string; name: string; isPrimary: boolean }>;
+      subscriptionPlan?: string;
+      // Legacy fields (still needed for old code)
+      local?: boolean;
+      role?: string;
+      expires_at?: number;
+      claims?: {
+        id?: string;
+        sub?: string;
+      };
+    }
   }
 }
 

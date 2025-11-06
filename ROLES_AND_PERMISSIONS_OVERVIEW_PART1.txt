@@ -1,0 +1,760 @@
+================================================================================
+    ROLES & MULTI-TENANT WORKFLOW ACCESS OVERVIEW - PART 1
+    IntegratedLensSystem (ILS 2.0)
+    Generated: November 5, 2025
+================================================================================
+
+TABLE OF CONTENTS - PART 1
+================================================================================
+1. System Architecture
+2. User Roles Hierarchy
+3. Multi-Tenant Architecture
+4. Access Control Workflow
+5. Permission Matrix
+
+================================================================================
+1. SYSTEM ARCHITECTURE
+================================================================================
+
+The IntegratedLensSystem uses a comprehensive Role-Based Access Control (RBAC)
+system with multi-tenant company isolation. This ensures complete data
+separation between companies while allowing flexible role-based permissions
+within each organization.
+
+KEY FEATURES:
+✓ 7 distinct user roles with hierarchical permissions
+✓ Complete database-level company isolation
+✓ Platform-level administration for system operators
+✓ Company-level administration for business owners
+✓ Specialized operational roles for different functions
+✓ Automatic data filtering by company
+✓ Cascade deletion for clean data management
+✓ Session-based authentication with secure tokens
+
+SECURITY MODEL:
+- Multi-layer authorization (Middleware → Database → Application)
+- Company data isolated by foreign key relationships
+- Cross-company access blocked (except platform admins)
+- Permission validation on every sensitive operation
+- Audit trails for all administrative actions
+
+================================================================================
+2. USER ROLES HIERARCHY
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          PLATFORM LEVEL                                  │
+└─────────────────────────────────────────────────────────────────────────┘
+
+ROLE: platform_admin
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Display Name: Platform Administrator
+Access Level: UNRESTRICTED - All companies, all data
+Company Isolation: NONE (sees everything)
+
+PERMISSIONS:
+✓ View/Create/Edit/Delete ALL companies
+✓ View/Create/Edit/Delete ALL users across all companies
+✓ Manage system-wide settings and configurations
+✓ Access admin dashboard and system logs
+✓ View analytics across all companies
+✓ Unlimited AI access without subscription limits
+✓ Manage AI settings globally
+✓ View all orders, patients, inventory, reports (all companies)
+✓ Override any company-level restrictions
+
+USE CASES:
+- System owner/operator
+- Platform maintenance and support
+- Cross-company data analysis
+- System-wide configuration management
+
+TECHNICAL DETAILS:
+- companyId: NULL (not associated with any company)
+- Can impersonate any company for support purposes
+- Bypasses all company-level access controls
+- Special flag: isPlatformAdmin = true
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          COMPANY LEVEL ROLES                             │
+└─────────────────────────────────────────────────────────────────────────┘
+
+ROLE 1: company_admin
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Display Name: Company Administrator / Owner
+Access Level: FULL within their company only
+Company Isolation: YES (only sees their company data)
+
+PERMISSIONS:
+✓ View own company details and settings
+✓ Edit own company information
+✓ Manage company settings and billing
+✓ View company billing and payment history
+
+USER MANAGEMENT:
+✓ View all users in their company
+✓ Create new users (company-level roles only)
+✓ Edit existing users in their company
+✓ Delete/deactivate users in their company
+✓ Reset user passwords within company
+✗ Cannot create platform_admin users
+✗ Cannot access users from other companies
+
+DATA ACCESS:
+✓ View/Create/Edit all company orders
+✓ View/Create/Edit all company patients
+✓ View/Manage company inventory
+✓ View all company reports and analytics
+✓ View/Create prescriptions and examinations
+✓ Access company dashboard
+
+AI & FEATURES:
+✓ Full AI access (subject to subscription plan)
+✓ Manage company-specific AI settings
+
+USE CASES:
+- Practice owner
+- Business manager
+- Office administrator
+- Company decision-maker
+
+RESTRICTIONS:
+✗ Cannot see data from other companies
+✗ Cannot create/edit platform-level settings
+✗ Cannot promote users to platform_admin
+✗ Cannot delete their own account
+
+
+ROLE 2: ecp (Eye Care Professional)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Display Name: Eye Care Professional
+Access Level: STANDARD operational access within company
+Company Isolation: YES
+
+PERMISSIONS:
+✓ View own company information
+✓ View company users (read-only)
+✓ Access company dashboard
+✓ View company analytics
+
+DATA OPERATIONS:
+✓ View all company orders
+✓ Create new orders
+✓ Edit own orders only
+✓ View all company patients
+✓ Create new patients
+✓ Edit patient information
+✓ View company inventory (read-only)
+✓ View company reports
+
+CLINICAL:
+✓ View company prescriptions
+✓ Create new prescriptions
+✓ View company examinations
+✓ Create new examinations
+
+AI ACCESS:
+✓ Basic AI access (subscription-dependent)
+   - Free ECP Plan: Limited AI queries
+   - Full Plan: Enhanced AI features
+
+USE CASES:
+- Optometrist
+- Optician
+- Primary clinical user
+- Front desk staff with clinical duties
+
+RESTRICTIONS:
+✗ Cannot manage users
+✗ Cannot edit other users' orders
+✗ Cannot manage inventory
+✗ Cannot edit company settings
+✗ Limited AI access on free plan
+
+
+ROLE 3: optometrist (Enhanced Role)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Display Name: Optometrist
+Access Level: CLINICAL operations within company
+Company Isolation: YES
+
+PERMISSIONS:
+✓ All ECP permissions PLUS:
+✓ Create comprehensive eye examinations
+✓ Finalize eye examinations
+✓ Prescribe and validate prescriptions
+✓ Full patient clinical management
+✓ Access clinical reports
+✓ GOC registration validation
+
+CLINICAL PRIVILEGES:
+✓ Perform complete eye examinations
+✓ Record detailed examination data:
+   - Visual acuity
+   - Refraction
+   - Ophthalmoscopy
+   - Slit lamp examination
+   - Tonometry
+   - Additional tests
+✓ Finalize examination records
+✓ Sign off on prescriptions
+
+REQUIREMENTS:
+- Must have GOC (General Optical Council) registration number
+- Professional qualifications verified
+- Registration must be valid and not expired
+
+USE CASES:
+- Licensed optometrist
+- Clinical practitioner
+- Eye health professional
+
+TECHNICAL DETAILS:
+- Stored in users.enhancedRole field
+- Linked to users.gocRegistrationNumber
+- Additional validation on clinical operations
+
+
+ROLE 4: lab_tech (Laboratory Technician)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Display Name: Laboratory Technician
+Access Level: PRODUCTION operations within company
+Company Isolation: YES
+
+PERMISSIONS:
+✓ View own company information
+✓ View company users (read-only)
+✓ Access company dashboard
+
+PRODUCTION:
+✓ View company orders (read-only)
+✓ Update order status
+✓ View company inventory
+✓ Update inventory levels
+✓ View production queue
+✓ Update production status
+✓ Report quality issues
+✓ View quality reports
+
+USE CASES:
+- Lab worker
+- Production staff
+- Lens technician
+- Manufacturing operator
+
+RESTRICTIONS:
+✗ Cannot create orders
+✗ Cannot edit order details (only status)
+✗ Cannot manage users
+✗ Cannot access patient information
+✗ No AI access
+
+
+ROLE 5: engineer
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Display Name: Engineer
+Access Level: TECHNICAL operations within company
+Company Isolation: YES
+
+PERMISSIONS:
+✓ View own company information
+✓ View company users (read-only)
+✓ Access company dashboard
+
+EQUIPMENT MANAGEMENT:
+✓ View all equipment
+✓ Manage equipment (add/edit/configure)
+✓ View maintenance logs
+✓ Create maintenance records
+✓ Update equipment status
+
+DATA ACCESS:
+✓ View company orders (read-only)
+✓ View company inventory (read-only)
+✓ Update inventory (for parts/consumables)
+✓ View technical reports
+
+USE CASES:
+- Equipment technician
+- Maintenance engineer
+- Technical support staff
+- Equipment calibration specialist
+
+RESTRICTIONS:
+✗ Cannot create/edit orders
+✗ Cannot access patient information
+✗ Cannot manage users
+✗ No clinical access
+✗ No AI access
+
+
+ROLE 6: supplier
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Display Name: Supplier / Vendor
+Access Level: LIMITED portal access
+Company Isolation: YES
+
+PERMISSIONS:
+✓ View own company information
+
+SUPPLIER OPERATIONS:
+✓ View supplier-specific orders only
+✓ View company inventory (relevant items)
+✓ Manage supplier catalog
+✓ Update product information
+✓ View supplier reports
+✓ Manage shipment status
+
+USE CASES:
+- External vendor
+- Material supplier
+- Lens manufacturer
+- Equipment supplier
+
+RESTRICTIONS:
+✗ Cannot see all orders (only supplier-specific)
+✗ Cannot view patients
+✗ Cannot view users
+✗ Cannot create orders
+✗ Limited inventory visibility
+✗ No AI access
+✗ No clinical access
+
+
+ROLE 7: admin (Legacy/Deprecated)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Display Name: Administrator (Legacy)
+Status: BEING PHASED OUT - Mapped to company_admin
+
+NOTES:
+- Existing "admin" users function as company_admin
+- New users should be created as company_admin
+- Maintained for backward compatibility only
+- Same permissions as company_admin
+
+MIGRATION:
+All existing "admin" users will be gradually migrated to "company_admin"
+role as part of system updates.
+
+
+================================================================================
+3. MULTI-TENANT ARCHITECTURE
+================================================================================
+
+DATABASE-LEVEL ISOLATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SCHEMA DESIGN:
+Every major table includes a companyId foreign key:
+
+  companyId: varchar("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: 'cascade' })
+
+BENEFITS:
+✓ Enforced at database level (referential integrity)
+✓ Automatic data isolation
+✓ CASCADE DELETE: When company deleted, all data removed
+✓ Indexed for fast queries (idx_tablename_company)
+✓ Cannot insert data without valid companyId
+
+
+TABLES WITH COMPANY ISOLATION (40+ tables):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CORE ENTITIES:
+- users                   All users belong to a company
+- orders                  All orders scoped to company
+- patients                Patient records per company
+- prescriptions           Prescriptions per company
+
+CLINICAL:
+- eyeExaminations         Eye exams per company
+- dispenseRecords         Dispensing records per company
+- recalls                 Patient recalls per company
+
+OPERATIONS:
+- equipment               Equipment inventory per company
+- inventory               Stock and materials per company
+- suppliers               Supplier relationships per company
+- companySuppliers        Company-supplier links
+
+AI & INTELLIGENCE:
+- aiConversations         AI chat history per company
+- aiKnowledgeBase         Knowledge bases per company
+- aiLearningData          Learning data per company
+- aiFeedback              User feedback per company
+- aiDeployments           AI model deployments per company
+- companyAiSettings       AI configuration per company
+
+FINANCIAL:
+- paymentIntents          Payment records per company
+- subscriptionHistory     Subscription changes per company
+
+ANALYTICS:
+- demandForecasts         Demand predictions per company
+- productionPlans         Production schedules per company
+- inventoryOptimization   Inventory optimization per company
+
+PERMISSIONS:
+- rolePermissions         Custom permissions per company
+- auditLogs               Activity logs per company
+
+NOTIFICATIONS:
+- notifications           User notifications per company
+
+And many more...
+
+
+QUERY-LEVEL ISOLATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+AUTOMATIC FILTERING:
+Every data query includes company filtering (except platform admin):
+
+  // Platform admin - NO FILTER
+  if (isPlatformAdmin) {
+    const data = await db.select().from(orders);
+  }
+
+  // Company users - FILTERED
+  if (!isPlatformAdmin) {
+    const data = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.companyId, userCompanyId));
+  }
+
+IMPLEMENTATION:
+Helper functions in server/middleware/companyIsolation.ts:
+
+  getCompanyFilter(req)
+    Returns: { companyId: userCompanyId } or {}
+    
+  getValidCompanyId(req, targetCompanyId?)
+    Returns: Validated companyId or null
+    
+  canAccessCompany(userRole, userCompanyId, targetCompanyId)
+    Returns: true/false based on access rights
+
+
+APPLICATION-LEVEL ISOLATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MIDDLEWARE STACK:
+1. authenticateUser          Validates session token
+2. enforceCompanyIsolation   Loads company context
+3. validateCompanyAccess     Checks company permission
+4. Route handler             Executes business logic
+
+ENFORCEMENT:
+✓ Company context added to every request
+✓ isPlatformAdmin flag set automatically
+✓ Validation before data access
+✓ 403 Forbidden for unauthorized access
+✓ Clear error messages for users
+
+
+================================================================================
+4. ACCESS CONTROL WORKFLOW
+================================================================================
+
+AUTHENTICATION FLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1: User Login
+  ↓
+  User provides: email + password
+  ↓
+  System validates credentials against users table
+  ↓
+  If valid, create session in sessions table
+
+STEP 2: Session Created
+  ↓
+  Session contains:
+  - sid (session ID / token)
+  - userId
+  - sess (session data):
+    • user.id
+    • user.email
+    • user.role
+    • user.companyId (NULL for platform_admin)
+    • user.subscriptionPlan
+    • user.isActive
+  ↓
+  Session token returned to client
+
+STEP 3: Subsequent Requests
+  ↓
+  Client sends: Authorization: Bearer {session_token}
+  ↓
+  Middleware: authenticateUser
+  - Validates session token
+  - Checks session not expired
+  - Loads user data from database
+  - Verifies user.isActive = true
+  - Verifies user.isVerified = true
+  ↓
+  Adds to request: req.user = { id, email, role, companyId }
+
+STEP 4: Company Context
+  ↓
+  Middleware: enforceCompanyIsolation
+  - Extracts user.companyId
+  - Sets req.userCompanyId = companyId
+  - Sets req.isPlatformAdmin flag
+  - Validates user belongs to company
+  ↓
+  Request now has full context
+
+STEP 5: Authorization
+  ↓
+  Middleware: validateCompanyAccess (if needed)
+  - Checks if user can access target company
+  - Platform admin: ALLOW all
+  - Others: ALLOW only their company
+  ↓
+  Middleware: requireRole (if needed)
+  - Checks user has required role
+  - Returns 403 if insufficient permissions
+
+STEP 6: Route Handler
+  ↓
+  Business logic executes:
+  - Queries filtered by companyId
+  - Permission checks applied
+  - Data returned (company-scoped)
+
+
+AUTHORIZATION LAYERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+LAYER 1: MIDDLEWARE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Available Middleware Functions:
+
+1. enforceCompanyIsolation
+   - Loads company context from user
+   - Sets userCompanyId and isPlatformAdmin
+   - Required on all protected company routes
+
+2. validateCompanyAccess(companyIdParam)
+   - Validates access to specific company
+   - Checks params, query, or body for companyId
+   - Platform admin: bypass check
+   - Others: must match userCompanyId
+
+3. requireCompany
+   - Ensures user has a company
+   - Blocks platform admin (if desired)
+   - Returns 403 if no company
+
+4. requirePlatformAdmin
+   - Only platform_admin can proceed
+   - Returns 403 for all other roles
+
+5. requireCompanyOrPlatformAdmin
+   - Allows: platform_admin, company_admin, admin
+   - Blocks: ecp, lab_tech, engineer, supplier
+
+6. requireRole(['role1', 'role2'])
+   - Checks user has one of specified roles
+   - Returns 403 if role not in list
+
+EXAMPLE USAGE:
+  router.get('/users',
+    authenticateUser,
+    enforceCompanyIsolation,
+    requireCompanyOrPlatformAdmin,
+    async (req, res) => {
+      // Only admins reach here
+    }
+  );
+
+
+LAYER 2: DATABASE QUERIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Pattern for all data queries:
+
+  const isPlatformAdmin = req.isPlatformAdmin;
+  const userCompanyId = req.userCompanyId;
+
+  let query = db.select().from(tableName);
+
+  // Platform admin sees ALL
+  if (!isPlatformAdmin) {
+    // Others see only their company
+    query = query.where(eq(tableName.companyId, userCompanyId));
+  }
+
+  const results = await query;
+
+Helper Function:
+  const companyFilter = getCompanyFilter(req);
+  // Returns { companyId: '...' } or {} for platform admin
+
+
+LAYER 3: PERMISSION CHECKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Functions from server/utils/rbac.ts:
+
+1. hasPermission(userRole, permission)
+   Returns: boolean
+   Example: hasPermission('ecp', 'create_order')
+   
+2. canAccessCompany(userRole, userCompanyId, targetCompanyId)
+   Returns: boolean
+   Checks if user can access specific company
+   
+3. canViewUsers(userRole, userCompanyId, targetUserCompanyId?)
+   Returns: boolean
+   Checks if user can view other users
+   
+4. canManageUsers(userRole, userCompanyId, targetUserCompanyId?)
+   Returns: boolean
+   Checks if user can create/edit/delete users
+   
+5. getAllowedRolesForCreation(userRole)
+   Returns: UserRole[]
+   Lists roles this user can create
+   
+6. isPlatformAdmin(userRole)
+   Returns: boolean
+   Quick check for platform admin
+   
+7. isCompanyAdmin(userRole)
+   Returns: boolean
+   Check for company_admin or admin
+   
+8. canChangeRole(currentUserRole, targetUserRole, newRole)
+   Returns: boolean
+   Validates if role transition is allowed
+
+USAGE EXAMPLE:
+  if (!canManageUsers(user.role, user.companyId, targetCompanyId)) {
+    return res.status(403).json({ error: 'Permission denied' });
+  }
+
+
+================================================================================
+5. PERMISSION MATRIX
+================================================================================
+
+Legend:
+  ✅ = Allowed
+  ❌ = Denied
+  🔄 = Limited/Conditional
+  📊 = View Only
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ACTION                    Platform  Company   ECP    Optom  Lab    Eng   Supp
+                          Admin     Admin                   Tech          
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+COMPANY MANAGEMENT
+View All Companies        ✅        ❌        ❌     ❌     ❌     ❌    ❌
+View Own Company          ✅        ✅        ✅     ✅     ✅     ✅    ✅
+Create Company            ✅        ❌        ❌     ❌     ❌     ❌    ❌
+Edit Any Company          ✅        ❌        ❌     ❌     ❌     ❌    ❌
+Edit Own Company          ✅        ✅        ❌     ❌     ❌     ❌    ❌
+Delete Company            ✅        ❌        ❌     ❌     ❌     ❌    ❌
+Manage Settings           ✅        ✅        ❌     ❌     ❌     ❌    ❌
+View Billing              ✅        ✅        ❌     ❌     ❌     ❌    ❌
+
+USER MANAGEMENT
+View All Users            ✅        ❌        ❌     ❌     ❌     ❌    ❌
+View Company Users        ✅        ✅        ✅     ✅     ✅     ✅    ❌
+Create User (Any Co)      ✅        ❌        ❌     ❌     ❌     ❌    ❌
+Create User (Own Co)      ✅        ✅        ❌     ❌     ❌     ❌    ❌
+Edit User (Any Co)        ✅        ❌        ❌     ❌     ❌     ❌    ❌
+Edit User (Own Co)        ✅        ✅        ❌     ❌     ❌     ❌    ❌
+Delete User               ✅        ✅        ❌     ❌     ❌     ❌    ❌
+Reset Password            ✅        ✅        ❌     ❌     ❌     ❌    ❌
+
+ORDER MANAGEMENT
+View All Orders           ✅        ❌        ❌     ❌     ❌     ❌    ❌
+View Company Orders       ✅        ✅        ✅     ✅     📊     📊    🔄
+Create Order              ✅        ✅        ✅     ✅     ❌     ❌    ❌
+Edit Any Order            ✅        ❌        ❌     ❌     ❌     ❌    ❌
+Edit Company Order        ✅        ✅        🔄     🔄     ❌     ❌    ❌
+Edit Own Order            ✅        ✅        ✅     ✅     ❌     ❌    ❌
+Update Order Status       ✅        ✅        ❌     ❌     ✅     ❌    🔄
+Delete Order              ✅        ✅        ❌     ❌     ❌     ❌    ❌
+Cancel Order              ✅        ✅        🔄     🔄     ❌     ❌    ❌
+
+PATIENT MANAGEMENT
+View All Patients         ✅        ❌        ❌     ❌     ❌     ❌    ❌
+View Company Patients     ✅        ✅        ✅     ✅     ❌     ❌    ❌
+Create Patient            ✅        ✅        ✅     ✅     ❌     ❌    ❌
+Edit Patient              ✅        ✅        ✅     ✅     ❌     ❌    ❌
+Delete Patient            ✅        ✅        🔄     🔄     ❌     ❌    ❌
+View Patient History      ✅        ✅        ✅     ✅     ❌     ❌    ❌
+
+CLINICAL
+View Prescriptions        ✅        ✅        ✅     ✅     ❌     ❌    ❌
+Create Prescription       ✅        ✅        ✅     ✅     ❌     ❌    ❌
+Edit Prescription         ✅        ✅        🔄     ✅     ❌     ❌    ❌
+View Examinations         ✅        ✅        ✅     ✅     ❌     ❌    ❌
+Create Examination        ✅        ✅        ✅     ✅     ❌     ❌    ❌
+Edit Examination          ✅        ✅        🔄     ✅     ❌     ❌    ❌
+Finalize Examination      ✅        ✅        ❌     ✅     ❌     ❌    ❌
+View Recalls              ✅        ✅        ✅     ✅     ❌     ❌    ❌
+Create Recall             ✅        ✅        ✅     ✅     ❌     ❌    ❌
+
+INVENTORY
+View All Inventory        ✅        ❌        ❌     ❌     ❌     ❌    ❌
+View Company Inventory    ✅        ✅        📊     📊     ✅     ✅    📊
+Manage Inventory          ✅        ✅        ❌     ❌     ✅     ✅    ❌
+Update Stock Levels       ✅        ✅        ❌     ❌     ✅     ✅    ❌
+View Inventory Reports    ✅        ✅        📊     📊     ✅     ✅    📊
+
+EQUIPMENT
+View Equipment            ✅        ✅        📊     📊     📊     ✅    ❌
+Manage Equipment          ✅        ✅        ❌     ❌     ❌     ✅    ❌
+View Maintenance Logs     ✅        ✅        📊     📊     📊     ✅    ❌
+Create Maintenance        ✅        ✅        ❌     ❌     ❌     ✅    ❌
+Update Equipment Status   ✅        ✅        ❌     ❌     ❌     ✅    ❌
+
+PRODUCTION
+View Production Queue     ✅        ✅        📊     📊     ✅     📊    ❌
+Update Production Status  ✅        ✅        ❌     ❌     ✅     ❌    ❌
+Report Quality Issues     ✅        ✅        ❌     ❌     ✅     ✅    ❌
+View Quality Reports      ✅        ✅        📊     📊     ✅     ✅    ❌
+
+ANALYTICS
+View System Analytics     ✅        ❌        ❌     ❌     ❌     ❌    ❌
+View Company Analytics    ✅        ✅        ✅     ✅     🔄     🔄    🔄
+View Reports              ✅        ✅        ✅     ✅     🔄     🔄    🔄
+Export Data               ✅        ✅        🔄     🔄     ❌     ❌    ❌
+
+AI FEATURES
+Unlimited AI Access       ✅        ❌        ❌     ❌     ❌     ❌    ❌
+Full AI Access            ✅        🔄        🔄     🔄     ❌     ❌    ❌
+Basic AI Access           ✅        ✅        ✅     ✅     ❌     ❌    ❌
+Manage AI Settings        ✅        🔄        ❌     ❌     ❌     ❌    ❌
+
+SYSTEM
+Access Admin Dashboard    ✅        🔄        ❌     ❌     ❌     ❌    ❌
+View System Logs          ✅        ❌        ❌     ❌     ❌     ❌    ❌
+Manage System Settings    ✅        ❌        ❌     ❌     ❌     ❌    ❌
+View Audit Logs           ✅        ✅        ❌     ❌     ❌     ❌    ❌
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NOTES:
+🔄 Limited/Conditional = Access depends on additional factors:
+   - Subscription plan (for AI features)
+   - Own vs other users' data
+   - Record status (e.g., finalized exams)
+   - Supplier relationship (for supplier role)
+
+📊 View Only = Can see data but cannot modify
+
+================================================================================
+END OF PART 1
+================================================================================
