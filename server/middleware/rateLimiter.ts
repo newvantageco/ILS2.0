@@ -109,8 +109,9 @@ export const aiQueryLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 50, // Limit to 50 AI queries per hour
   keyGenerator: (req: Request) => {
-    // Use user ID if authenticated, otherwise IP
-    return (req as any).user?.id || req.ip || 'anonymous';
+    // Use user ID if authenticated, otherwise use default IP handling
+    const userId = (req as any).user?.id;
+    return userId || `ip-${req.ip || 'anonymous'}`;
   },
   message: {
     error: 'AI query limit exceeded.',
