@@ -9,9 +9,11 @@ import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { requirePermission, requireOwner, AuthRequest } from '../middleware/dynamicPermissions';
 import { DynamicPermissionService } from '../services/DynamicPermissionService';
-import { cloneRole } from '../services/DefaultRolesService';
+import { cloneRole, updateRolePermissions } from '../services/DefaultRolesService';
 
+console.log('🔧 Dynamic Roles router loading...');
 const router = Router();
+console.log('✅ Dynamic Roles router created successfully');
 
 // =====================================================
 // ROLES MANAGEMENT
@@ -300,13 +302,13 @@ router.put('/:roleId', requirePermission('users:manage_roles'), async (req, res)
 
 /**
  * POST /api/roles/:roleId/clone
- * Clone an existing role
+ * Clone an existing role (e.g., "Dispenser" -> "Trainee Dispenser")
  */
 router.post('/:roleId/clone', requirePermission('users:manage_roles'), async (req, res) => {
   const authReq = req as AuthRequest;
   try {
     const { roleId } = req.params;
-    const { newName } = req.body;
+    const { newName, newDescription } = req.body;
     const companyId = authReq.user?.companyId;
     const userId = authReq.user?.id;
 
@@ -318,7 +320,7 @@ router.post('/:roleId/clone', requirePermission('users:manage_roles'), async (re
       return res.status(400).json({ error: 'Company ID not found' });
     }
 
-    const newRoleId = await cloneRole(roleId, newName, companyId, userId);
+    const newRoleId = await cloneRole(roleId, newName, newDescription, companyId, userId);
 
     return res.status(201).json({
       success: true,
@@ -328,6 +330,52 @@ router.post('/:roleId/clone', requirePermission('users:manage_roles'), async (re
   } catch (error) {
     console.error('Error cloning role:', error);
     return res.status(500).json({ error: 'Failed to clone role' });
+  }
+});
+
+/**
+ * POST /api/roles/:roleId/permissions
+ * Update permissions for a role (add or remove)
+ * Used for customizing cloned roles like "Trainee Dispenser" or "Dispensing Manager"
+ */
+router.post('/:roleId/permissions', requirePermission('users:manage_roles'), async (req, res) => {
+  const authReq = req as AuthRequest;
+  try {
+    const { roleId } = req.params;
+    const { addPermissions = [], removePermissions = [] } = req.body;
+    const companyId = authReq.user?.companyId;
+    const userId = authReq.user?.id;
+
+    if (!companyId) {
+      return res.status(400).json({ error: 'Company ID not found' });
+    }
+
+    await updateRolePermissions(
+      roleId,
+      addPermissions,
+      removePermissions,
+      companyId,
+      userId
+    );
+
+    // Invalidate cache for all users with this role
+    const usersWithRole = await db.execute(sql`
+      SELECT user_id FROM user_dynamic_roles WHERE role_id = ${roleId}
+    `);
+
+    for (const row of usersWithRole.rows) {
+      await DynamicPermissionService.invalidatePermissionCache(row.user_id as string);
+    }
+
+    return res.json({
+      success: true,
+      message: 'Role permissions updated successfully',
+      added: addPermissions.length,
+      removed: removePermissions.length
+    });
+  } catch (error) {
+    console.error('Error updating role permissions:', error);
+    return res.status(500).json({ error: 'Failed to update role permissions' });
   }
 });
 
@@ -412,6 +460,75 @@ router.delete('/:roleId', requirePermission('users:manage_roles'), async (req, r
 // =====================================================
 // PERMISSIONS CATALOG
 // =====================================================
+
+/**
+ * GET /api/roles/my/permissions
+ * Get current user's effective permissions and roles
+ * Used by the usePermissions hook in the frontend
+ */
+router.get('/my/permissions', async (req, res) => {
+  const authReq = req as AuthRequest;
+  try {
+    const userId = authReq.user?.id;
+    const companyId = authReq.user?.companyId;
+
+    if (!userId || !companyId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    // Check if user is owner
+    const userCheck = await db.execute(sql`
+      SELECT is_owner FROM users WHERE id = ${userId}
+    `);
+
+    const isOwner = userCheck.rows[0]?.is_owner || false;
+
+    // Get user's roles
+    const rolesResult = await db.execute(sql`
+      SELECT 
+        dr.id,
+        dr.name,
+        dr.description,
+        udr.is_primary
+      FROM user_dynamic_roles udr
+      JOIN dynamic_roles dr ON dr.id = udr.role_id
+      WHERE udr.user_id = ${userId}
+      ORDER BY udr.is_primary DESC
+    `);
+
+    // Get all permissions for this user (from all their roles)
+    let permissions: string[] = [];
+
+    if (isOwner) {
+      // Owners get ALL permissions
+      const allPerms = await db.execute(sql`
+        SELECT permission_key FROM permissions
+        WHERE plan_level IN ('free', 'full', 'add_on_analytics')
+      `);
+      permissions = allPerms.rows.map((row: any) => row.permission_key);
+    } else {
+      // Get permissions from user's roles
+      const permsResult = await db.execute(sql`
+        SELECT DISTINCT p.permission_key
+        FROM user_dynamic_roles udr
+        JOIN dynamic_role_permissions drp ON drp.role_id = udr.role_id
+        JOIN permissions p ON p.id = drp.permission_id
+        WHERE udr.user_id = ${userId}
+        ORDER BY p.permission_key
+      `);
+      permissions = permsResult.rows.map((row: any) => row.permission_key);
+    }
+
+    return res.json({
+      permissions,
+      roles: rolesResult.rows,
+      isOwner,
+    });
+  } catch (error) {
+    console.error('Error fetching user permissions:', error);
+    return res.status(500).json({ error: 'Failed to fetch permissions' });
+  }
+});
 
 /**
  * GET /api/roles/permissions/all

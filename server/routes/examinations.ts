@@ -15,6 +15,60 @@ const isOptometrist = (user: any): boolean => {
   return user.enhancedRole === 'optometrist' || user.role === 'ecp' || user.role === 'platform_admin' || user.role === 'admin' || user.role === 'company_admin';
 };
 
+/**
+ * GET /api/examinations/recent
+ * Get recently completed examinations for patient handoff to Dispensers
+ * 
+ * This is the "magic" endpoint that powers the Dispenser workflow.
+ * Returns exams from the last N hours that are ready for dispensing.
+ */
+router.get('/recent', async (req, res) => {
+  try {
+    const companyId = req.user!.companyId;
+    const hours = parseInt(req.query.hours as string) || 2;
+    const status = req.query.status as string || 'completed';
+
+    // Calculate cutoff time
+    const cutoffTime = new Date();
+    cutoffTime.setHours(cutoffTime.getHours() - hours);
+
+    const results = await db
+      .select({
+        id: eyeExaminations.id,
+        patientId: eyeExaminations.patientId,
+        patientName: patients.name,
+        examinationDate: eyeExaminations.examinationDate,
+        status: eyeExaminations.status,
+        ecpId: eyeExaminations.ecpId,
+        performedBy: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
+        // Extract diagnosis and management plan from JSONB summary
+        diagnosis: sql<string>`COALESCE(${eyeExaminations.summary}->>'diagnosis', 'No diagnosis recorded')`,
+        managementPlan: sql<string>`COALESCE(${eyeExaminations.summary}->>'managementPlan', '')`,
+      })
+      .from(eyeExaminations)
+      .leftJoin(patients, eq(eyeExaminations.patientId, patients.id))
+      .leftJoin(users, eq(eyeExaminations.ecpId, users.id))
+      .where(
+        and(
+          eq(eyeExaminations.companyId, companyId),
+          eq(eyeExaminations.status, status),
+          sql`${eyeExaminations.examinationDate} >= ${cutoffTime.toISOString()}`
+        )
+      )
+      .orderBy(desc(eyeExaminations.examinationDate))
+      .limit(10);
+
+    return res.json({ 
+      examinations: results,
+      count: results.length,
+      hours,
+    });
+  } catch (error) {
+    console.error('Error fetching recent examinations:', error);
+    return res.status(500).json({ error: 'Failed to fetch recent examinations' });
+  }
+});
+
 // Validation schema for comprehensive examination data
 const comprehensiveExaminationSchema = z.object({
   patientId: z.string(),

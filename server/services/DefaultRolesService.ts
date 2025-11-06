@@ -266,33 +266,42 @@ const DEFAULT_ROLE_TEMPLATES: RoleTemplate[] = [
   },
   {
     name: 'Dispenser',
-    description: 'Optical dispenser with frame selection and order creation',
-    isDeletable: true,
+    description: 'Point-of-Sale specialist who turns clinical exams into revenue. Handles product selection, invoicing, and customer checkout.',
+    isDeletable: false, // This is a critical default role
     permissionSlugs: [
-      'company:view',
-      'users:view',
+      // === PATIENT PERMISSIONS ===
+      'patients:read',        // Can search for and view all patient records
+      'patients:create',      // Can create new patient records (walk-ins)
+      'patients:update',      // Can update patient contact info, address, phone
+      // patients:delete - NO: Cannot delete patient records
       
-      // Patients - view and edit
-      'patients:view',
-      'patients:edit',
+      // === POINT-OF-SALE (POS) PERMISSIONS ===
+      'pos:access',                  // Core access to POS system
+      'pos:invoices:create',         // Can create new invoices and process sales
+      'pos:invoices:read',           // Can view their own and past invoices
+      'pos:invoices:update',         // Can edit an invoice before it's finalized
+      // pos:invoices:void - NO: Cannot void completed sales (admin/manager only)
+      // pos:invoices:apply_discount - LIMITED: See cloning scenarios below
       
-      // Orders
-      'orders:view',
-      'orders:create',
-      'orders:edit',
+      // === INVENTORY (PRODUCTS) PERMISSIONS ===
+      'pos:products:read',           // Can view product catalog, check stock, see prices
+      // pos:products:create - NO: Cannot add new products
+      // pos:products:update - NO: Cannot change prices or product details
+      // pos:products:manage_stock - NO: Cannot perform inventory adjustments
       
-      // Prescriptions - view only
-      'prescriptions:view',
+      // === CLINICAL & ORDER PERMISSIONS ===
+      'examinations:read',           // Can view finalized eye_examination reports
+      // examinations:create - NO: Cannot perform or edit exams
+      'prescriptions:read',          // Can view patient's full prescription history
+      'orders:read',                 // Can view status of lab orders they placed
+      'orders:create',               // Can create new lab orders (Rx + Product -> Patient)
       
-      // Inventory
-      'inventory:view',
+      // === REPORTS (LIMITED) ===
+      'pos:reports:read',            // Can view their own sales reports
       
-      // POS
-      'pos:access',
-      'pos:reports',
-      
-      // AI
-      'ai:basic'
+      // === BASIC ACCESS ===
+      'company:view',                // Can view company info
+      'users:view'                   // Can view user list (for handoff context)
     ]
   },
   {
@@ -390,10 +399,12 @@ export async function createDefaultRoles(companyId: string): Promise<void> {
 
 /**
  * Clone a role (for when users want to customize)
+ * Used for creating variants like "Trainee Dispenser" or "Dispensing Manager"
  */
 export async function cloneRole(
   sourceRoleId: string,
   newName: string,
+  newDescription: string,
   companyId: string,
   createdByUserId?: string
 ): Promise<string> {
@@ -409,6 +420,11 @@ export async function cloneRole(
 
     const source = sourceRole.rows[0];
 
+    // Verify role belongs to this company or is a system default
+    if (source.company_id !== companyId) {
+      throw new Error('Cannot clone role from different company');
+    }
+
     // Create new role
     const newRoleResult = await db.execute(sql`
       INSERT INTO dynamic_roles (
@@ -421,7 +437,7 @@ export async function cloneRole(
       VALUES (
         ${companyId},
         ${newName},
-        ${source.description},
+        ${newDescription || source.description},
         false,
         true
       )
@@ -461,6 +477,112 @@ export async function cloneRole(
 
   } catch (error) {
     console.error('❌ Failed to clone role:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update role permissions (add or remove)
+ * Used when customizing cloned roles (e.g., removing permissions from Trainee Dispenser)
+ */
+export async function updateRolePermissions(
+  roleId: string,
+  permissionSlugsToAdd: string[],
+  permissionSlugsToRemove: string[],
+  companyId: string,
+  changedByUserId?: string
+): Promise<void> {
+  try {
+    // Verify role exists and belongs to company
+    const roleCheck = await db.execute(sql`
+      SELECT id, name, is_deletable FROM dynamic_roles
+      WHERE id = ${roleId} AND company_id = ${companyId}
+    `);
+
+    if (roleCheck.rows.length === 0) {
+      throw new Error('Role not found or does not belong to company');
+    }
+
+    const role = roleCheck.rows[0];
+
+    // Add new permissions
+    for (const slug of permissionSlugsToAdd) {
+      const permResult = await db.execute(sql`
+        SELECT id FROM permissions WHERE permission_key = ${slug}
+      `);
+
+      if (permResult.rows.length > 0) {
+        const permissionId = permResult.rows[0].id as string;
+
+        await db.execute(sql`
+          INSERT INTO dynamic_role_permissions (role_id, permission_id)
+          VALUES (${roleId}, ${permissionId})
+          ON CONFLICT (role_id, permission_id) DO NOTHING
+        `);
+
+        // Audit log
+        await db.execute(sql`
+          INSERT INTO role_change_audit (
+            company_id,
+            changed_by,
+            action_type,
+            role_id,
+            permission_id,
+            details
+          )
+          VALUES (
+            ${companyId},
+            ${changedByUserId},
+            'permission_assigned',
+            ${roleId},
+            ${permissionId},
+            ${JSON.stringify({ permission_slug: slug, role_name: role.name })}
+          )
+        `);
+      }
+    }
+
+    // Remove permissions
+    for (const slug of permissionSlugsToRemove) {
+      const permResult = await db.execute(sql`
+        SELECT id FROM permissions WHERE permission_key = ${slug}
+      `);
+
+      if (permResult.rows.length > 0) {
+        const permissionId = permResult.rows[0].id as string;
+
+        await db.execute(sql`
+          DELETE FROM dynamic_role_permissions
+          WHERE role_id = ${roleId} AND permission_id = ${permissionId}
+        `);
+
+        // Audit log
+        await db.execute(sql`
+          INSERT INTO role_change_audit (
+            company_id,
+            changed_by,
+            action_type,
+            role_id,
+            permission_id,
+            details
+          )
+          VALUES (
+            ${companyId},
+            ${changedByUserId},
+            'permission_revoked',
+            ${roleId},
+            ${permissionId},
+            ${JSON.stringify({ permission_slug: slug, role_name: role.name })}
+          )
+        `);
+      }
+    }
+
+    console.log(`✅ Updated permissions for role: ${role.name}`);
+    console.log(`   Added: ${permissionSlugsToAdd.length}, Removed: ${permissionSlugsToRemove.length}`);
+
+  } catch (error) {
+    console.error('❌ Failed to update role permissions:', error);
     throw error;
   }
 }

@@ -288,7 +288,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/feature-flags', featureFlagsRoutes);
 
   // Dynamic RBAC routes (role and permission management)
+  console.log('🔧 Registering Dynamic RBAC routes at /api/roles');
+  console.log('🔧 dynamicRolesRouter type:', typeof dynamicRolesRouter);
   app.use('/api/roles', isAuthenticated, dynamicRolesRouter);
+  console.log('✅ Dynamic RBAC routes registered');
 
   const FULL_PLAN = "full" as const;
   const FREE_ECP_PLAN = "free_ecp" as const;
