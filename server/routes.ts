@@ -99,6 +99,7 @@ import mlModelsRoutes from "./routes/ml-models";
 import pythonMLRoutes from "./routes/python-ml";
 import shopifyRoutes from "./routes/shopify";
 import featureFlagsRoutes from "./routes/feature-flags";
+import dynamicRolesRouter from "./routes/dynamicRoles";
 import { websocketService } from "./websocket";
 import path from "path";
 import { 
@@ -285,6 +286,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Feature Flags routes (feature toggle and A/B testing)
   app.use('/api/feature-flags', featureFlagsRoutes);
+
+  // Dynamic RBAC routes (role and permission management)
+  app.use('/api/roles', isAuthenticated, dynamicRolesRouter);
 
   const FULL_PLAN = "full" as const;
   const FREE_ECP_PLAN = "free_ecp" as const;
