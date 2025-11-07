@@ -1,0 +1,23 @@
+name: Lint Prometheus rules
+
+on:
+  pull_request:
+    paths:
+      - 'monitoring/prometheus/**'
+  push:
+    paths:
+      - 'monitoring/prometheus/**'
+
+jobs:
+  promtool-lint:
+    name: promtool lint rules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Run promtool check rules
+        run: |
+          # Use the official Prometheus image which includes promtool
+          docker run --rm -v ${{ github.workspace }}:/work -w /work prom/prometheus promtool check rules monitoring/prometheus/rules/*.yml
+        shell: bash

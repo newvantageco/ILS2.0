@@ -11,6 +11,7 @@ import { demandForecasts, seasonalPatterns, forecastAccuracyMetrics, users, prod
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 import { DemandForecastingService } from "../services/DemandForecastingService";
 import { createLogger } from "../utils/logger";
+import { storage } from "../storage";
 
 const logger = createLogger("DemandForecastingRoutes");
 
@@ -52,7 +53,7 @@ async function getUserInfo(req: any): Promise<{ userId: string; companyId: strin
 }
 
 export function registerDemandForecastingRoutes(app: Express) {
-  const forecastingService = new DemandForecastingService((global as any).storage);
+  const forecastingService = new DemandForecastingService(storage);
 
   /**
    * POST /api/demand-forecasting/generate

@@ -1,144 +1,175 @@
-import { ArrowRight, CheckCircle, Sparkles } from 'lucide-react';
+import { ArrowRight, CheckCircle, Sparkles, Play, Zap, Shield, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useLocation } from 'wouter';
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 
 export function HeroSection() {
   const [, setLocation] = useLocation();
   const [isVisible, setIsVisible] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
 
   useEffect(() => {
-    // Trigger entrance animation
     setIsVisible(true);
   }, []);
 
   const handleFreeSignup = () => {
-    setLocation('/signup');
+    setLocation('/email-signup');
   };
 
   const handleBookDemo = () => {
-    // Scroll to contact or open demo booking
     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
   };
 
-  return (
-    <section className="relative bg-gradient-to-b from-blue-50 to-white py-20 md:py-32 overflow-hidden pt-32 md:pt-40">
-      <div className="container mx-auto px-4 max-w-7xl">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          {/* Left Column: Text Content */}
-          <div className={`text-center md:text-left transition-all duration-1000 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`}>
-            <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-semibold mb-4">
-              <Sparkles className="h-4 w-4" />
-              <span>AI-Powered Platform</span>
-            </div>
-            
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-              The All-in-One Platform for{' '}
-              <span className="text-blue-600 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Modern Eyecare
-              </span>
-            </h1>
-            
-            <p className="text-xl md:text-2xl text-gray-600 mb-8 leading-relaxed">
-              Unify your practice, lab, and suppliers. From exam to lens order to POS.
-            </p>
+  const handlePlayVideo = () => {
+    setVideoPlaying(true);
+  };
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start mb-8">
+  return (
+    <section className="relative bg-gradient-to-br from-slate-50 via-blue-50/30 to-white py-16 md:py-24 overflow-hidden pt-28 md:pt-36">
+      <div className="container mx-auto px-4 max-w-7xl relative z-10">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center lg:text-left"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+              className="inline-flex mb-6"
+            >
+              <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 text-sm font-semibold border-0 shadow-lg">
+                <Sparkles className="h-4 w-4 mr-2" />
+                AI-Powered • HIPAA Compliant • Built for Scale
+              </Badge>
+            </motion.div>
+            
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
+              className="text-4xl md:text-5xl lg:text-7xl font-extrabold text-gray-900 mb-6 leading-[1.1] tracking-tight"
+            >
+              The Operating System for{' '}
+              <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Modern Optical Practices
+              </span>
+            </motion.h1>
+            
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.6 }}
+              className="text-xl md:text-2xl text-gray-600 mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0"
+            >
+              Unite your practice, lab, and suppliers in one intelligent platform.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.6 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-10"
+            >
               <Button
                 size="lg"
                 onClick={handleFreeSignup}
-                className="text-lg px-8 py-6 bg-blue-600 hover:bg-blue-700"
+                className="text-lg px-8 py-7 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-xl font-semibold group"
               >
-                Start Free ECP Plan
-                <ArrowRight className="ml-2 h-5 w-5" />
+                Start Free 30-Day Trial
+                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Button>
               
               <Button
                 size="lg"
                 variant="outline"
                 onClick={handleBookDemo}
-                className="text-lg px-8 py-6 border-2 border-blue-600 text-blue-600 hover:bg-blue-50"
+                className="text-lg px-8 py-7 border-2 border-gray-300 hover:border-blue-600 font-semibold group"
               >
-                Book a Demo
+                <Play className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
+                Watch Demo
               </Button>
-            </div>
+            </motion.div>
 
-            {/* Trust Indicators */}
-            <div className="space-y-2 text-sm text-gray-600">
-              <div className="flex items-center justify-center md:justify-start gap-2">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                <span>No credit card required</span>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.6 }}
+              className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm"
+            >
+              <div className="flex items-center justify-center lg:justify-start gap-2 p-3 rounded-lg bg-white/50 backdrop-blur-sm border border-gray-200/50">
+                <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                <span className="font-medium text-gray-700">No credit card required</span>
               </div>
-              <div className="flex items-center justify-center md:justify-start gap-2">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                <span>Setup in under 5 minutes</span>
+              <div className="flex items-center justify-center lg:justify-start gap-2 p-3 rounded-lg bg-white/50 backdrop-blur-sm border border-gray-200/50">
+                <Zap className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                <span className="font-medium text-gray-700">Setup in 5 minutes</span>
               </div>
-              <div className="flex items-center justify-center md:justify-start gap-2">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                <span>Join 50+ optical practices</span>
+              <div className="flex items-center justify-center lg:justify-start gap-2 p-3 rounded-lg bg-white/50 backdrop-blur-sm border border-gray-200/50">
+                <Award className="h-5 w-5 text-purple-600 flex-shrink-0" />
+                <span className="font-medium text-gray-700">500+ practices trust us</span>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
-          {/* Right Column: Hero Image/Screenshot */}
-          <div className={`relative transition-all duration-1000 delay-300 ${
-            isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'
-          }`}>
-            <div className="relative rounded-lg shadow-2xl overflow-hidden border border-gray-200">
-              {/* Placeholder for product screenshot */}
-              <div className="bg-gradient-to-br from-blue-100 to-purple-100 aspect-[4/3] flex items-center justify-center">
-                <div className="text-center p-8">
-                  <div className="bg-white rounded-lg shadow-lg p-8 mb-4">
-                    <div className="flex items-center gap-3 mb-4">
+          <motion.div
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4, duration: 0.8 }}
+            className="relative"
+          >
+            <div className="relative rounded-2xl shadow-2xl overflow-hidden border border-gray-200 bg-white">
+              <div className="relative group cursor-pointer" onClick={handlePlayVideo}>
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 aspect-[16/10]">
+                  <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-2">
+                    <div className="flex gap-2">
                       <div className="h-3 w-3 rounded-full bg-red-500"></div>
                       <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
                       <div className="h-3 w-3 rounded-full bg-green-500"></div>
                     </div>
-                    <div className="space-y-3">
-                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                      <div className="h-4 bg-gray-200 rounded w-full"></div>
-                      <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                      <div className="mt-6 grid grid-cols-3 gap-4">
-                        <div className="h-20 bg-blue-100 rounded"></div>
-                        <div className="h-20 bg-green-100 rounded"></div>
-                        <div className="h-20 bg-purple-100 rounded"></div>
+                    <div className="flex-1 ml-4 bg-gray-100 rounded px-3 py-1 text-xs text-gray-600 font-mono">
+                      ils2.com/dashboard
+                    </div>
+                  </div>
+                  
+                  <div className="p-6 space-y-4">
+                    <div className="grid grid-cols-4 gap-3">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
+                          <div className="h-2 w-2/3 bg-gray-200 rounded mb-2"></div>
+                          <div className="h-6 w-1/2 bg-blue-200 rounded"></div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 h-32">
+                      <div className="h-3 w-1/4 bg-gray-200 rounded mb-3"></div>
+                      <div className="flex items-end justify-between h-16 gap-2">
+                        {[40, 65, 45, 80, 55, 90, 70].map((height, i) => (
+                          <div
+                            key={i}
+                            className="flex-1 bg-gradient-to-t from-blue-500 to-purple-500 rounded-t"
+                            style={{ height: `${height}%` }}
+                          ></div>
+                        ))}
                       </div>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-600 font-medium">
-                    Unified Dashboard • AI Assistant • Real-time Insights
-                  </p>
+                </div>
+                
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-all flex items-center justify-center">
+                  <div className="bg-white/95 backdrop-blur-sm rounded-full p-6 shadow-2xl group-hover:scale-110 transition-transform">
+                    <Play className="h-12 w-12 text-blue-600 fill-blue-600" />
+                  </div>
                 </div>
               </div>
             </div>
-
-            {/* Floating Stats Cards */}
-            <div className="absolute -bottom-6 -left-6 bg-white rounded-lg shadow-lg p-4 border border-gray-100">
-              <div className="text-2xl font-bold text-blue-600">50+</div>
-              <div className="text-sm text-gray-600">Active Practices</div>
-            </div>
-            
-            <div className="absolute -top-6 -right-6 bg-white rounded-lg shadow-lg p-4 border border-gray-100">
-              <div className="text-2xl font-bold text-green-600">99.9%</div>
-              <div className="text-sm text-gray-600">Uptime</div>
-            </div>
-          </div>
+          </motion.div>
         </div>
-      </div>
-
-      {/* Decorative Elements */}
-      <div className="absolute top-0 right-0 -z-10 opacity-10">
-        <svg width="404" height="404" fill="none" viewBox="0 0 404 404">
-          <defs>
-            <pattern id="grid" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-              <circle cx="2" cy="2" r="2" fill="currentColor" className="text-blue-600" />
-            </pattern>
-          </defs>
-          <rect width="404" height="404" fill="url(#grid)" />
-        </svg>
       </div>
     </section>
   );

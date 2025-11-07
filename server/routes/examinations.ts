@@ -26,11 +26,21 @@ router.get('/recent', async (req, res) => {
   try {
     const companyId = req.user!.companyId;
     const hours = parseInt(req.query.hours as string) || 2;
-    const status = req.query.status as string || 'completed';
+    if (!companyId) {
+      return res.status(403).json({ error: 'Company context missing' });
+    }
+    const status = (req.query.status as string) || 'completed';
 
     // Calculate cutoff time
     const cutoffTime = new Date();
     cutoffTime.setHours(cutoffTime.getHours() - hours);
+
+    // Build query conditions explicitly to satisfy Drizzle's typing
+    const conditions: any[] = [eq(eyeExaminations.companyId, companyId as string)];
+    if (status && status !== 'all') {
+      conditions.push(eq(eyeExaminations.status, status as any));
+    }
+    conditions.push(sql`${eyeExaminations.examinationDate} >= ${cutoffTime}`);
 
     const results = await db
       .select({
@@ -48,13 +58,7 @@ router.get('/recent', async (req, res) => {
       .from(eyeExaminations)
       .leftJoin(patients, eq(eyeExaminations.patientId, patients.id))
       .leftJoin(users, eq(eyeExaminations.ecpId, users.id))
-      .where(
-        and(
-          eq(eyeExaminations.companyId, companyId),
-          eq(eyeExaminations.status, status),
-          sql`${eyeExaminations.examinationDate} >= ${cutoffTime.toISOString()}`
-        )
-      )
+      .where(and(...conditions))
       .orderBy(desc(eyeExaminations.examinationDate))
       .limit(10);
 
@@ -98,12 +102,15 @@ router.get('/', async (req, res) => {
   try {
     const companyId = req.user!.companyId;
     const user = req.user;
+    if (!companyId && !(user?.role === 'platform_admin' || user?.role === 'admin')) {
+      return res.status(403).json({ error: 'Company context missing' });
+    }
     const { status, date, patientId } = req.query;
 
     // Admin can see all companies' data, others see only their company
-    const whereClause = (user?.role === 'platform_admin' || user?.role === 'admin') 
-      ? undefined 
-      : eq(eyeExaminations.companyId, companyId);
+    const whereClause = (user?.role === 'platform_admin' || user?.role === 'admin')
+      ? undefined
+      : eq(eyeExaminations.companyId, companyId as string);
 
     let query = db
       .select({
@@ -177,11 +184,14 @@ router.get('/:id', async (req, res) => {
     const companyId = req.user!.companyId;
     const user = req.user;
     const { id } = req.params;
+    if (!companyId && !(user?.role === 'platform_admin' || user?.role === 'admin')) {
+      return res.status(403).json({ error: 'Company context missing' });
+    }
 
     // Admin can access any examination, others need company match
     const whereConditions = (user?.role === 'platform_admin' || user?.role === 'admin')
       ? [eq(eyeExaminations.id, id)]
-      : [eq(eyeExaminations.id, id), eq(eyeExaminations.companyId, companyId)];
+  : [eq(eyeExaminations.id, id), eq(eyeExaminations.companyId, companyId as string)];
 
     const [examination] = await db
       .select()
@@ -223,6 +233,9 @@ router.post('/', async (req, res) => {
   try {
     const companyId = req.user!.companyId;
     const ecpId = req.user!.id;
+    if (!companyId) {
+      return res.status(403).json({ error: 'Company context missing' });
+    }
 
     const {
       patientId,
@@ -265,7 +278,7 @@ router.post('/', async (req, res) => {
       .where(
         and(
           eq(patients.id, patientId),
-          eq(patients.companyId, companyId)
+          eq(patients.companyId, companyId as string)
         )
       );
 
@@ -338,11 +351,14 @@ router.put('/:id', async (req, res) => {
     const companyId = req.user!.companyId;
     const user = req.user;
     const { id } = req.params;
+    if (!companyId && !(user?.role === 'platform_admin' || user?.role === 'admin')) {
+      return res.status(403).json({ error: 'Company context missing' });
+    }
 
     // Verify examination exists and belongs to company (admin bypasses company check)
     const whereClause = (user?.role === 'platform_admin' || user?.role === 'admin')
       ? [eq(eyeExaminations.id, id)]
-      : [eq(eyeExaminations.id, id), eq(eyeExaminations.companyId, companyId)];
+  : [eq(eyeExaminations.id, id), eq(eyeExaminations.companyId, companyId as string)];
 
     const [existing] = await db
       .select()
@@ -448,6 +464,9 @@ router.delete('/:id', async (req, res) => {
   try {
     const companyId = req.user!.companyId;
     const { id } = req.params;
+    if (!companyId) {
+      return res.status(403).json({ error: 'Company context missing' });
+    }
 
     const [examination] = await db
       .select()
@@ -455,7 +474,7 @@ router.delete('/:id', async (req, res) => {
       .where(
         and(
           eq(eyeExaminations.id, id),
-          eq(eyeExaminations.companyId, companyId)
+          eq(eyeExaminations.companyId, companyId as string)
         )
       );
 
@@ -490,31 +509,33 @@ router.get('/stats/summary', async (req, res) => {
     // Admin can see stats across all companies
     const whereClause = (user?.role === 'platform_admin' || user?.role === 'admin')
       ? undefined
-      : eq(eyeExaminations.companyId, companyId);
+  : eq(eyeExaminations.companyId, companyId as string);
 
-    const allExams = await db
-      .select()
-      .from(eyeExaminations)
-      .where(whereClause);
+    // Build allExams query conditionally to avoid passing undefined to .where()
+    let allExamsQuery: any = db.select().from(eyeExaminations);
+    if (whereClause) {
+      allExamsQuery = allExamsQuery.where(whereClause) as any;
+    }
+    const allExams = await allExamsQuery;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const stats = {
       total: allExams.length,
-      today: allExams.filter(e => {
+      today: allExams.filter((e: any) => {
         const examDate = new Date(e.examinationDate);
         examDate.setHours(0, 0, 0, 0);
         return examDate.getTime() === today.getTime();
       }).length,
-      inProgress: allExams.filter(e => e.status === 'in_progress').length,
-      finalized: allExams.filter(e => e.status === 'finalized').length,
-      thisWeek: allExams.filter(e => {
+      inProgress: allExams.filter((e: any) => e.status === 'in_progress').length,
+      finalized: allExams.filter((e: any) => e.status === 'finalized').length,
+      thisWeek: allExams.filter((e: any) => {
         const examDate = new Date(e.examinationDate);
         const weekAgo = new Date(today.getTime() - (7 * 86400000));
         return examDate >= weekAgo;
       }).length,
-      thisMonth: allExams.filter(e => {
+      thisMonth: allExams.filter((e: any) => {
         const examDate = new Date(e.examinationDate);
         const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
         return examDate >= monthStart;
@@ -564,7 +585,7 @@ router.post('/outside-rx', async (req, res) => {
       .where(
         and(
           eq(patients.id, patientId),
-          eq(patients.companyId, companyId)
+          eq(patients.companyId, companyId as string)
         )
       );
 

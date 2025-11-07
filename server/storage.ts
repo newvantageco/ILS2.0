@@ -127,6 +127,8 @@ export interface IStorage {
     sentToLabAt: Date;
     jobErrorMessage?: string | null;
   }): Promise<Order | undefined>;
+  // Generic order update helper (used by workers to set PDF URL, error messages, etc.)
+  updateOrder(id: string, updates: Partial<Order>): Promise<Order | undefined>;
   markOrderAsShipped(id: string, trackingNumber: string): Promise<OrderWithDetails | undefined>;
   getOrderStats(ecpId?: string): Promise<{
     total: number;
@@ -953,6 +955,56 @@ export class DbStorage implements IStorage {
       .returning();
     
     return patient;
+  }
+
+  // Patient Activity Log methods
+  async createPatientActivity(activity: any): Promise<any> {
+    const { patientActivityLog } = await import("@shared/schema");
+    const [log] = await db.insert(patientActivityLog).values(activity).returning();
+    return log;
+  }
+
+  async getPatientActivityLog(
+    patientId: string,
+    companyId: string,
+    options?: {
+      limit?: number;
+      activityTypes?: string[];
+      startDate?: Date;
+      endDate?: Date;
+    }
+  ): Promise<any[]> {
+    const { patientActivityLog } = await import("@shared/schema");
+    const { and, eq, inArray, gte, lte, desc } = await import("drizzle-orm");
+    
+    const conditions = [
+      eq(patientActivityLog.patientId, patientId),
+      eq(patientActivityLog.companyId, companyId),
+    ];
+    
+    if (options?.activityTypes && options.activityTypes.length > 0) {
+      conditions.push(inArray(patientActivityLog.activityType, options.activityTypes as any));
+    }
+    
+    if (options?.startDate) {
+      conditions.push(gte(patientActivityLog.createdAt, options.startDate));
+    }
+    
+    if (options?.endDate) {
+      conditions.push(lte(patientActivityLog.createdAt, options.endDate));
+    }
+    
+    let query = db
+      .select()
+      .from(patientActivityLog)
+      .where(and(...conditions))
+      .orderBy(desc(patientActivityLog.createdAt));
+    
+    if (options?.limit) {
+      query = query.limit(options.limit) as any;
+    }
+    
+    return await query;
   }
 
   async createEyeExamination(insertExamination: InsertEyeExamination, ecpId: string): Promise<EyeExamination> {

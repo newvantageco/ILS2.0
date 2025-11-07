@@ -2,11 +2,17 @@ export default {
   preset: 'ts-jest',
   testEnvironment: 'node',
   setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],
-  testMatch: ['**/*.test.ts', '**/*.test.tsx'],
+  // Only run server/unit/integration tests with Jest. Component tests use Vitest.
+  // Only run integration and server tests with Jest. Unit/component tests use Vitest.
+    // Only run integration tests with Jest. Unit and server tests are executed with Vitest in this repo.
+    testMatch: ['<rootDir>/test/integration/**/*.test.ts'],
+    // Ignore specific integration/unit tests that are authored for Vitest.
+    testPathIgnorePatterns: ['<rootDir>/test/integration/orderSubmission.integration.test.ts', '<rootDir>/test/integration/redisStreams.integration.test.ts'],
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/client/src/$1',
+    // In Jest we want @/ to resolve to server code (server tests use '@/services/...').
+    '^@/(.*)$': '<rootDir>/server/$1',
     '^@shared/(.*)$': '<rootDir>/shared/$1',
-    '^(\\.{1,2}/.*)\\.js$': '$1'
+    '^(\.{1,2}/.*)\.js$': '$1'
   },
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {

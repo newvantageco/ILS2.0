@@ -1056,10 +1056,31 @@ export const patients = pgTable("patients", {
   name: text("name").notNull(),
   dateOfBirth: text("date_of_birth"),
   email: varchar("email"),
+  
+  // Contact Information
+  phone: varchar("phone", { length: 50 }),
+  mobilePhone: varchar("mobile_phone", { length: 50 }),
+  workPhone: varchar("work_phone", { length: 50 }),
+  
+  // NHS & Reference Numbers
   nhsNumber: varchar("nhs_number"),
-  fullAddress: jsonb("full_address"),
   customerReferenceLabel: text("customer_reference_label"),
   customerReferenceNumber: text("customer_reference_number"),
+  
+  // Address Information
+  fullAddress: jsonb("full_address"),
+  addressLine1: varchar("address_line_1", { length: 255 }),
+  addressLine2: varchar("address_line_2", { length: 255 }),
+  city: varchar("city", { length: 100 }),
+  county: varchar("county", { length: 100 }),
+  postcode: varchar("postcode", { length: 20 }),
+  country: varchar("country", { length: 100 }).default("United Kingdom"),
+  
+  // Timezone & Location
+  timezone: varchar("timezone", { length: 100 }), // Auto-detected timezone (e.g., "Europe/London")
+  timezoneOffset: integer("timezone_offset"), // Offset in minutes from UTC
+  locale: varchar("locale", { length: 20 }).default("en-GB"), // Language/region preference
+  
   ecpId: varchar("ecp_id").notNull().references(() => users.id),
   
   // Enhanced Clinical Records
@@ -1067,25 +1088,68 @@ export const patients = pgTable("patients", {
   gpName: varchar("gp_name", { length: 255 }),
   gpPractice: varchar("gp_practice", { length: 255 }),
   gpAddress: text("gp_address"),
+  gpPhone: varchar("gp_phone", { length: 50 }),
+  
+  // Emergency Contact
   emergencyContactName: varchar("emergency_contact_name", { length: 255 }),
   emergencyContactPhone: varchar("emergency_contact_phone", { length: 50 }),
   emergencyContactRelationship: varchar("emergency_contact_relationship", { length: 100 }),
-  medicalHistory: jsonb("medical_history"),
+  emergencyContactEmail: varchar("emergency_contact_email", { length: 255 }),
+  
+  // Medical History & Current Health
+  medicalHistory: jsonb("medical_history"), // Array of {condition, date, notes}
   currentMedications: text("current_medications"),
+  allergies: text("allergies"), // Medications/substances patient is allergic to
   familyOcularHistory: text("family_ocular_history"),
+  systemicConditions: jsonb("systemic_conditions"), // Diabetes, hypertension, etc.
+  
+  // Lifestyle & Visual Requirements
   occupation: varchar("occupation", { length: 255 }),
+  hobbies: text("hobbies"),
   vduUser: boolean("vdu_user").default(false),
+  vduHoursPerDay: decimal("vdu_hours_per_day", { precision: 4, scale: 1 }),
   drivingRequirement: boolean("driving_requirement").default(false),
+  sportActivities: text("sport_activities"),
+  readingHabits: text("reading_habits"),
+  
+  // Contact Lens Information
   contactLensWearer: boolean("contact_lens_wearer").default(false),
+  contactLensType: varchar("contact_lens_type", { length: 100 }), // Daily, monthly, toric, etc.
+  contactLensBrand: varchar("contact_lens_brand", { length: 100 }),
+  contactLensCompliance: varchar("contact_lens_compliance", { length: 50 }), // Good, fair, poor
+  
+  // Communication Preferences
   preferredContactMethod: varchar("preferred_contact_method", { length: 50 }),
+  preferredAppointmentTime: varchar("preferred_appointment_time", { length: 50 }), // Morning, afternoon, evening
+  reminderPreference: varchar("reminder_preference", { length: 50 }), // Email, SMS, phone, none
+  
+  // Consent & Privacy
   marketingConsent: boolean("marketing_consent").default(false),
   dataSharingConsent: boolean("data_sharing_consent").default(true),
+  thirdPartyConsent: boolean("third_party_consent").default(false),
+  researchConsent: boolean("research_consent").default(false),
+  
+  // Examination Schedule
   lastExaminationDate: timestamp("last_examination_date"),
   nextExaminationDue: timestamp("next_examination_due"),
+  recallSchedule: varchar("recall_schedule", { length: 50 }), // Annual, 6-months, 2-years, etc.
+  
+  // Financial & Insurance
+  insuranceProvider: varchar("insurance_provider", { length: 255 }),
+  insurancePolicyNumber: varchar("insurance_policy_number", { length: 100 }),
+  nhsExemption: boolean("nhs_exemption").default(false),
+  nhsExemptionType: varchar("nhs_exemption_type", { length: 100 }),
+  
+  // Patient Status & Notes
+  status: varchar("status", { length: 50 }).default("active"), // active, inactive, deceased
+  vipPatient: boolean("vip_patient").default(false),
+  patientNotes: text("patient_notes"), // General notes about the patient
+  internalNotes: text("internal_notes"), // Staff-only notes
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
   
-  // Timestamp tracking
+  // Audit Trail
   createdBy: varchar("created_by", { length: 255 }),
   updatedBy: varchar("updated_by", { length: 255 }),
   changeHistory: jsonb("change_history").default(sql`'[]'::jsonb`),
@@ -1131,6 +1195,11 @@ export const orders = pgTable("orders", {
   jobStatus: varchar("job_status"),
   sentToLabAt: timestamp("sent_to_lab_at"),
   jobErrorMessage: text("job_error_message"),
+  // PDF generation fields (worker-updated)
+  pdfUrl: text("pdf_url"),
+  pdfErrorMessage: text("pdf_error_message"),
+  // Analytics worker error metadata (worker-updated)
+  analyticsErrorMessage: text("analytics_error_message"),
   
   orderDate: timestamp("order_date").defaultNow().notNull(),
   dueDate: timestamp("due_date"),
@@ -1155,6 +1224,70 @@ export const consultLogs = pgTable("consult_logs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   respondedAt: timestamp("responded_at"),
 });
+
+// Patient Activity Log - Comprehensive history tracking
+export const patientActivityTypeEnum = pgEnum("patient_activity_type", [
+  "profile_created",
+  "profile_updated",
+  "examination_scheduled",
+  "examination_completed",
+  "prescription_issued",
+  "order_placed",
+  "order_updated",
+  "order_completed",
+  "contact_lens_fitted",
+  "recall_sent",
+  "appointment_booked",
+  "appointment_cancelled",
+  "payment_received",
+  "refund_issued",
+  "complaint_logged",
+  "complaint_resolved",
+  "consent_updated",
+  "document_uploaded",
+  "note_added",
+  "referral_made",
+  "communication_sent"
+]);
+
+export const patientActivityLog = pgTable("patient_activity_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  patientId: varchar("patient_id").notNull().references(() => patients.id, { onDelete: 'cascade' }),
+  activityType: patientActivityTypeEnum("activity_type").notNull(),
+  
+  // Related records
+  orderId: varchar("order_id").references(() => orders.id),
+  examinationId: varchar("examination_id").references(() => eyeExaminations.id),
+  prescriptionId: varchar("prescription_id").references(() => prescriptions.id),
+  
+  // Activity details
+  activityTitle: varchar("activity_title", { length: 255 }).notNull(),
+  activityDescription: text("activity_description"),
+  activityData: jsonb("activity_data"), // Flexible JSON storage for activity-specific data
+  
+  // Change tracking
+  changesBefore: jsonb("changes_before"), // Previous state (for updates)
+  changesAfter: jsonb("changes_after"),   // New state (for updates)
+  changedFields: jsonb("changed_fields"), // Array of field names that changed
+  
+  // Actor information
+  performedBy: varchar("performed_by", { length: 255 }).notNull(), // User ID or system
+  performedByName: varchar("performed_by_name", { length: 255 }), // User's name for display
+  performedByRole: varchar("performed_by_role", { length: 100 }), // User's role
+  
+  // Metadata
+  ipAddress: varchar("ip_address", { length: 50 }),
+  userAgent: text("user_agent"),
+  source: varchar("source", { length: 100 }).default("web"), // web, mobile, api, system
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_patient_activity_patient").on(table.patientId),
+  index("idx_patient_activity_type").on(table.activityType),
+  index("idx_patient_activity_date").on(table.createdAt),
+  index("idx_patient_activity_company").on(table.companyId),
+]);
 
 export const purchaseOrders = pgTable("purchase_orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1729,6 +1862,35 @@ export const insertConsultLogSchema = createInsertSchema(consultLogs).omit({
   labResponse: true,
   status: true,
   ecpId: true,
+});
+
+export const insertPatientActivityLogSchema = createInsertSchema(patientActivityLog).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  activityType: z.enum([
+    "profile_created",
+    "profile_updated",
+    "examination_scheduled",
+    "examination_completed",
+    "prescription_issued",
+    "order_placed",
+    "order_updated",
+    "order_completed",
+    "contact_lens_fitted",
+    "recall_sent",
+    "appointment_booked",
+    "appointment_cancelled",
+    "payment_received",
+    "refund_issued",
+    "complaint_logged",
+    "complaint_resolved",
+    "consent_updated",
+    "document_uploaded",
+    "note_added",
+    "referral_made",
+    "communication_sent"
+  ]),
 });
 
 export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({

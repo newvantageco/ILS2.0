@@ -76,7 +76,7 @@ pythonService.on('exit', (code) => {
 
 // Wait a bit for Python to start, then start Node
 setTimeout(() => {
-  log(colors.green, 'NODE', 'Starting Node.js Development Server on port 5000...');
+  log(colors.green, 'NODE', 'Starting Node.js Development Server on port 3000...');
   
   const nodeServer = spawn('npm', ['run', 'dev:node'], {
     cwd: __dirname,
@@ -100,8 +100,8 @@ console.log(`
 
   Services starting...
   
-  Frontend:        http://localhost:5000
-  Backend API:     http://localhost:5000/api
+  Frontend:        http://localhost:3000
+  Backend API:     http://localhost:3000/api
   Python Service:  http://localhost:8000
   
   Press Ctrl+C to stop all services

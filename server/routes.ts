@@ -69,6 +69,7 @@ import { registerBiRoutes } from "./routes/bi";
 import { registerMasterAIRoutes } from "./routes/master-ai";
 import { registerAINotificationRoutes } from "./routes/ai-notifications";
 import { registerAutonomousPORoutes } from "./routes/ai-purchase-orders";
+import { registerAiAssistantRoutes } from "./routes/aiAssistant";
 import { registerDemandForecastingRoutes } from "./routes/demand-forecasting";
 import { registerMarketplaceRoutes } from "./routes/marketplace";
 import { registerQueueRoutes } from "./routes/queue";
@@ -179,6 +180,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // AI Notifications: Proactive insights & daily briefings
   registerAINotificationRoutes(app);
+
+  // Company-specific AI Assistant (chat, knowledge, learning)
+  registerAiAssistantRoutes(app);
   
   // Autonomous Purchasing: AI-generated purchase orders
   registerAutonomousPORoutes(app);
@@ -832,6 +836,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         omaParsedData: omaParsedData as any,
       } as any);
 
+      // Log order placement activity
+      try {
+        const { PatientActivityLogger } = await import("./lib/patientActivityLogger.js");
+        await PatientActivityLogger.logOrderPlaced(
+          user.companyId,
+          patient.id,
+          order.id,
+          order.orderNumber,
+          order,
+          userId,
+          `${user.firstName} ${user.lastName}`
+        );
+      } catch (logError) {
+        console.error("Error logging order activity:", logError);
+      }
+
       res.status(201).json(order);
     } catch (error: any) {
       console.error("Error creating order:", error);
@@ -1091,10 +1111,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: validationError.message });
       }
 
+      // Get current order to track status change
+      const currentOrder = await storage.getOrder(req.params.id);
+      if (!currentOrder) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      const oldStatus = currentOrder.status;
       const order = await storage.updateOrderStatus(req.params.id, validation.data.status);
       
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
+      }
+
+      // Log order status update activity
+      if (oldStatus !== validation.data.status && currentOrder.patientId) {
+        try {
+          const { PatientActivityLogger } = await import("./lib/patientActivityLogger.js");
+          await PatientActivityLogger.logOrderUpdated(
+            currentOrder.companyId,
+            currentOrder.patientId,
+            order.id,
+            order.orderNumber,
+            oldStatus,
+            validation.data.status,
+            userId,
+            `${user.firstName} ${user.lastName}`
+          );
+        } catch (logError) {
+          console.error("Error logging order status update:", logError);
+        }
       }
 
       res.json(order);
@@ -2795,13 +2841,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User must be associated with a company" });
       }
 
+      // Auto-detect timezone from postcode or IP
+      const { autoDetectTimezone } = await import("./lib/timezoneDetector.js");
+      const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+      const timezoneInfo = await autoDetectTimezone(req.body.postcode, ipAddress);
+
       const patientData = addCreationTimestamp({
         ...req.body,
         companyId: user.companyId,
         ecpId: userId,
+        timezone: timezoneInfo.timezone,
+        timezoneOffset: timezoneInfo.offset,
+        updatedAt: new Date(),
       }, req);
 
       const patient = await storage.createPatient(patientData);
+      
+      // Log patient creation activity
+      const { PatientActivityLogger } = await import("./lib/patientActivityLogger.js");
+      await PatientActivityLogger.logProfileCreated(
+        user.companyId,
+        patient.id,
+        patientData,
+        userId,
+        `${user.firstName} ${user.lastName}`,
+        { ipAddress, userAgent: req.headers['user-agent'] }
+      );
+      
       res.status(201).json(patient);
     } catch (error) {
       console.error("Error creating patient:", error);
@@ -2832,12 +2898,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const patientData = addUpdateTimestamp(req.body, req, patient);
+      // Update timezone if postcode changed
+      let timezoneUpdate = {};
+      if (req.body.postcode && req.body.postcode !== patient.postcode) {
+        const { autoDetectTimezone } = await import("./lib/timezoneDetector.js");
+        const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        const timezoneInfo = await autoDetectTimezone(req.body.postcode, ipAddress);
+        timezoneUpdate = {
+          timezone: timezoneInfo.timezone,
+          timezoneOffset: timezoneInfo.offset,
+        };
+      }
+
+      const patientData = addUpdateTimestamp({
+        ...req.body,
+        ...timezoneUpdate,
+        updatedAt: new Date(),
+      }, req, patient);
+      
       const updatedPatient = await storage.updatePatient(req.params.id, patientData);
+      
+      // Log patient update activity
+      const { PatientActivityLogger } = await import("./lib/patientActivityLogger.js");
+      await PatientActivityLogger.logProfileUpdated(
+        patient.companyId,
+        patient.id,
+        patient,
+        { ...patient, ...patientData },
+        userId,
+        `${user.firstName} ${user.lastName}`,
+        { 
+          ipAddress: req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+          userAgent: req.headers['user-agent']
+        }
+      );
+      
       res.json(updatedPatient);
     } catch (error) {
       console.error("Error updating patient:", error);
       res.status(500).json({ message: "Failed to update patient" });
+    }
+  });
+
+  // Get patient activity history
+  app.get('/api/patients/:id/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const patient = await storage.getPatient(req.params.id);
+      
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+      
+      // Check access (ECP who created patient or company admin)
+      if (patient.ecpId !== userId && patient.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { PatientActivityLogger } = await import("./lib/patientActivityLogger.js");
+      
+      const options: any = {
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 100,
+      };
+      
+      if (req.query.activityTypes) {
+        options.activityTypes = (req.query.activityTypes as string).split(',');
+      }
+      
+      if (req.query.startDate) {
+        options.startDate = new Date(req.query.startDate as string);
+      }
+      
+      if (req.query.endDate) {
+        options.endDate = new Date(req.query.endDate as string);
+      }
+      
+      const history = await PatientActivityLogger.getPatientHistory(
+        patient.id,
+        patient.companyId,
+        options
+      );
+      
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching patient history:", error);
+      res.status(500).json({ message: "Failed to fetch patient history" });
     }
   });
 

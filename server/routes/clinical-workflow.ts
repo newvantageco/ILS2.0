@@ -57,6 +57,9 @@ router.get(
     try {
       const { patientId } = req.params;
       const { companyId } = req.user!;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
 
       logger.info('Fetching latest recommendations for patient', {
         patientId,
@@ -64,7 +67,7 @@ router.get(
       });
 
       // Get patient's examinations
-      const examinations = await storage.getEyeExaminations(companyId);
+  const examinations = await storage.getEyeExaminations(companyId as string);
       const patientExams = examinations
         .filter((e: any) => e.patientId === patientId)
         .sort((a: any, b: any) => 

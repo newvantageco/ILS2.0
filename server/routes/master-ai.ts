@@ -40,6 +40,10 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
       const companyId = req.user.claims.companyId || req.user.claims.sub;
       const userId = req.user.id || req.user.claims.sub;
 
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
+
       if (!query || typeof query !== 'string') {
         return res.status(400).json({
           error: "Invalid request",
@@ -75,6 +79,9 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
   app.get("/api/master-ai/conversations", isAuthenticated, async (req: any, res: Response) => {
     try {
       const companyId = req.user.claims.companyId || req.user.claims.sub;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
       const userId = req.query.userId || req.user.id || req.user.claims.sub;
       const limit = parseInt(req.query.limit as string) || 50;
 
@@ -102,6 +109,9 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
     try {
       const { id } = req.params;
       const companyId = req.user.claims.companyId || req.user.claims.sub;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
 
       const conversation = await masterAIService.getConversation(id, companyId);
 
@@ -131,6 +141,9 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
     try {
       const { fileName, content, metadata } = req.body;
       const companyId = req.user.claims.companyId || req.user.claims.sub;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
       const uploadedBy = req.user.id || req.user.claims.sub;
 
       if (!fileName || !content) {
@@ -217,6 +230,10 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
       const { messageId, rating, feedback } = req.body;
       const companyId = req.user.claims.companyId || req.user.claims.sub;
       const userId = req.user.id || req.user.claims.sub;
+
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
 
       if (!messageId || typeof rating !== 'number') {
         return res.status(400).json({

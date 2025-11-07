@@ -43,6 +43,15 @@ router.post('/products',
   async (req: Request, res: Response) => {
     try {
       const companyId = req.user!.companyId;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
       const ecpId = req.user!.id;
       const productData = req.body;
 
@@ -109,6 +118,9 @@ router.put('/products/:id',
     try {
       const { id } = req.params;
       const companyId = req.user!.companyId;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
       const updates = req.body;
 
       // Check if product exists and belongs to company
@@ -172,6 +184,9 @@ router.delete('/products/:id',
     try {
       const { id } = req.params;
       const companyId = req.user!.companyId;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
 
       // Check if product exists and belongs to company
       const existingProduct = await db.query.products.findFirst({
@@ -229,6 +244,9 @@ router.post('/products/:id/adjust',
       const { id } = req.params;
       const { quantity, reason } = req.body;
       const companyId = req.user!.companyId;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
       const userId = req.user!.id;
 
       // Get current product
@@ -304,6 +322,9 @@ router.get('/low-stock',
   async (req: Request, res: Response) => {
     try {
       const companyId = req.user!.companyId;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
 
       const lowStockProducts = await db.select()
         .from(products)
@@ -334,6 +355,9 @@ router.get('/out-of-stock',
   async (req: Request, res: Response) => {
     try {
       const companyId = req.user!.companyId;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
 
       const outOfStockProducts = await db.select()
         .from(products)
@@ -374,6 +398,9 @@ router.post('/bulk-stock-update',
     try {
       const { updates } = req.body;
       const companyId = req.user!.companyId;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
 
       const results = [];
       const errors = [];
@@ -458,7 +485,7 @@ router.get('/products/:id/movements',
       const product = await db.query.products.findFirst({
         where: and(
           eq(products.id, id),
-          eq(products.companyId, companyId)
+          eq(products.companyId, companyId as string)
         ),
       });
 
@@ -526,6 +553,9 @@ router.get('/movements',
     try {
       const { productId, movementType, startDate, endDate, limit, offset } = req.query;
       const companyId = req.user!.companyId;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
 
       const conditions = [];
 
@@ -565,7 +595,7 @@ router.get('/movements',
         .from(inventoryMovements)
         .leftJoin(products, eq(inventoryMovements.productId, products.id))
         .where(and(
-          eq(products.companyId, companyId),
+          eq(products.companyId, companyId as string),
           ...conditions
         ))
         .orderBy(sql`${inventoryMovements.createdAt} DESC`)
@@ -577,7 +607,7 @@ router.get('/movements',
         .from(inventoryMovements)
         .leftJoin(products, eq(inventoryMovements.productId, products.id))
         .where(and(
-          eq(products.companyId, companyId),
+          eq(products.companyId, companyId as string),
           ...conditions
         ));
 

@@ -210,13 +210,10 @@ export class PlatformAIService {
         )
       );
 
-    const inventoryData = metrics.map(m => ({
-      name: m.productName,
-      product_name: m.productName,
-      units_sold: m.unitsSold,
-      current_stock: m.currentStockLevel,
-      revenue: m.totalRevenue
-    }));
+    // inventoryPerformanceMetrics stores aggregated JSON fields (topItems, etc.).
+    // For now pass the raw metric rows to the Python analyzer and let it decide
+    // how to extract top items. This avoids relying on non-existent column names.
+    const inventoryData: any[] = metrics.map(m => ({ ...m }));
 
     const analysis = await this.executePythonAnalysis('analyze_inventory', {
       inventory_data: inventoryData
@@ -323,17 +320,18 @@ export class PlatformAIService {
       .from(platformPracticeComparison)
       .where(
         and(
-          gte(platformPracticeComparison.comparisonDate, startDate),
-          lte(platformPracticeComparison.comparisonDate, endDate)
+          gte(platformPracticeComparison.periodStart, startDate),
+          lte(platformPracticeComparison.periodEnd, endDate)
         )
       )
-      .orderBy(desc(platformPracticeComparison.comparisonDate))
+      .orderBy(desc(platformPracticeComparison.periodStart))
       .limit(1);
 
     const platformBenchmarks = platformMetrics.length > 0 ? {
-      revenue: Number(platformMetrics[0].platformAverageRevenue),
-      retention_rate: 75, // Default benchmark
-      no_show_rate: Number(platformMetrics[0].platformAverageNoShowRate)
+      // platformPracticeComparison has 'totalRevenue' and 'patientRetentionRate' fields
+      revenue: Number(platformMetrics[0].totalRevenue),
+      retention_rate: Number(platformMetrics[0].patientRetentionRate) || 75,
+      no_show_rate: 0 // no direct metric available; default to 0
     } : companyAvg;
 
     const analysis = await this.executePythonAnalysis('compare_performance', {
