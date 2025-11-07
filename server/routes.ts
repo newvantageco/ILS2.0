@@ -96,6 +96,7 @@ import billingRoutes from "./routes/billing";
 import faceAnalysisRoutes from "./routes/faceAnalysis";
 import nhsRoutes from "./routes/nhs";
 import contactLensRoutes from "./routes/contactLens";
+import ophthalamicAIRoutes from "./routes/ophthalamicAI";
 import v1ApiRoutes from "./routes/api/v1";
 import queryOptimizerRoutes from "./routes/query-optimizer";
 import mlModelsRoutes from "./routes/ml-models";
@@ -277,6 +278,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Contact Lens routes (assessments, fittings, prescriptions, aftercare)
   app.use('/api/contact-lens', isAuthenticated, contactLensRoutes);
+
+  // Ophthalmic AI Assistant routes (AI-powered ophthalmic guidance)
+  app.use('/api/ophthalmic-ai', isAuthenticated, ophthalamicAIRoutes);
 
   // Billing routes (usage tracking, metered billing)
   app.use('/api/billing', isAuthenticated, billingRoutes);
