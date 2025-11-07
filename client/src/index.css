@@ -1,3 +1,9 @@
+/* Import NHS-Compliant Design System */
+@import url('./styles/design-system.css');
+
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,6 +16,20 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
+    font-family: var(--font-sans);
+  }
+
+  /* Apply design system fonts globally */
+  body {
+    font-family: var(--font-sans);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+
+  code, pre {
+    font-family: var(--font-mono);
   }
 }
 
