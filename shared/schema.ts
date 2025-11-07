@@ -905,6 +905,85 @@ export const userCustomPermissions = pgTable("user_custom_permissions", {
   index("idx_user_custom_permissions_user").on(table.userId),
 ]);
 
+// ============== DYNAMIC RBAC SYSTEM ==============
+
+// Dynamic Roles - Company-specific roles (both defaults and custom)
+export const dynamicRoles = pgTable("dynamic_roles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  
+  // System Management
+  isSystemDefault: boolean("is_system_default").notNull().default(false),
+  isDeletable: boolean("is_deletable").notNull().default(true),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+}, (table) => [
+  index("idx_dynamic_roles_company").on(table.companyId),
+  index("idx_dynamic_roles_name").on(table.name),
+  index("idx_dynamic_roles_system_default").on(table.isSystemDefault),
+  uniqueIndex("unique_role_per_company").on(table.companyId, table.name),
+]);
+
+// Dynamic Role Permissions - Many-to-many: which permissions does each role have?
+export const dynamicRolePermissions = pgTable("dynamic_role_permissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  roleId: varchar("role_id").notNull().references(() => dynamicRoles.id, { onDelete: 'cascade' }),
+  permissionId: varchar("permission_id").notNull().references(() => permissions.id, { onDelete: 'cascade' }),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  grantedBy: varchar("granted_by").references(() => users.id),
+}, (table) => [
+  index("idx_dynamic_role_permissions_role").on(table.roleId),
+  index("idx_dynamic_role_permissions_permission").on(table.permissionId),
+  uniqueIndex("unique_role_permission").on(table.roleId, table.permissionId),
+]);
+
+// User Dynamic Roles - Many-to-many: which roles are assigned to each user?
+export const userDynamicRoles = pgTable("user_dynamic_roles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  roleId: varchar("role_id").notNull().references(() => dynamicRoles.id, { onDelete: 'cascade' }),
+  
+  isPrimary: boolean("is_primary").notNull().default(false),
+  
+  assignedAt: timestamp("assigned_at").defaultNow().notNull(),
+  assignedBy: varchar("assigned_by").references(() => users.id),
+}, (table) => [
+  index("idx_user_dynamic_roles_user").on(table.userId),
+  index("idx_user_dynamic_roles_role").on(table.roleId),
+  index("idx_user_dynamic_roles_primary").on(table.isPrimary),
+  uniqueIndex("unique_user_role").on(table.userId, table.roleId),
+]);
+
+// Role Change Audit - Track all permission/role changes for compliance
+export const roleChangeAudit = pgTable("role_change_audit", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  
+  changedBy: varchar("changed_by").references(() => users.id),
+  changedAt: timestamp("changed_at").defaultNow().notNull(),
+  
+  actionType: varchar("action_type", { length: 50 }).notNull(), // 'role_created', 'role_deleted', 'permission_assigned', etc.
+  
+  roleId: varchar("role_id").references(() => dynamicRoles.id, { onDelete: 'set null' }),
+  permissionId: varchar("permission_id").references(() => permissions.id, { onDelete: 'set null' }),
+  
+  details: jsonb("details"), // { old_value, new_value, reason }
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+}, (table) => [
+  index("idx_role_change_audit_company").on(table.companyId),
+  index("idx_role_change_audit_changed_by").on(table.changedBy),
+  index("idx_role_change_audit_role").on(table.roleId),
+  index("idx_role_change_audit_timestamp").on(table.changedAt),
+  index("idx_role_change_audit_action").on(table.actionType),
+]);
+
 // ============== AUDIT LOGS (HIPAA Compliance) ==============
 
 export const auditEventTypeEnum = pgEnum("audit_event_type", [
@@ -2278,6 +2357,44 @@ export const insertUserCustomPermissionSchema = createInsertSchema(userCustomPer
 
 export type UserCustomPermission = typeof userCustomPermissions.$inferSelect;
 export type InsertUserCustomPermission = typeof userCustomPermissions.$inferInsert;
+
+// Dynamic Roles schemas
+export const insertDynamicRoleSchema = createInsertSchema(dynamicRoles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const updateDynamicRoleSchema = insertDynamicRoleSchema.partial();
+
+export type DynamicRole = typeof dynamicRoles.$inferSelect;
+export type InsertDynamicRole = z.infer<typeof insertDynamicRoleSchema>;
+
+// Dynamic Role Permissions schemas
+export const insertDynamicRolePermissionSchema = createInsertSchema(dynamicRolePermissions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type DynamicRolePermission = typeof dynamicRolePermissions.$inferSelect;
+export type InsertDynamicRolePermission = z.infer<typeof insertDynamicRolePermissionSchema>;
+
+// User Dynamic Roles schemas
+export const insertUserDynamicRoleSchema = createInsertSchema(userDynamicRoles).omit({
+  id: true,
+  assignedAt: true,
+});
+
+export type UserDynamicRole = typeof userDynamicRoles.$inferSelect;
+export type InsertUserDynamicRole = z.infer<typeof insertUserDynamicRoleSchema>;
+
+// Role Change Audit schemas
+export const insertRoleChangeAuditSchema = createInsertSchema(roleChangeAudit).omit({
+  id: true,
+  changedAt: true,
+});
+
+export type RoleChangeAudit = typeof roleChangeAudit.$inferSelect;
+export type InsertRoleChangeAudit = z.infer<typeof insertRoleChangeAuditSchema>;
 
 // Audit Log schemas
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({

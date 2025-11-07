@@ -156,18 +156,6 @@ const menuItems = {
     { title: "All Companies", url: "/platform-admin/companies", icon: Building2 },
     { title: "Diary / Bookings", url: "/ecp/test-rooms/bookings", icon: CalendarDays },
     { title: "Platform Settings", url: "/platform-admin/settings", icon: Shield },
-    // ECP Testing
-    { title: "ECP: Patients", url: "/ecp/patients", icon: UserCircle },
-    { title: "ECP: Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
-    { title: "ECP: Prescriptions", url: "/ecp/prescriptions", icon: FileText },
-    { title: "ECP: Orders", url: "/ecp/orders", icon: ClipboardList },
-    { title: "ECP: Inventory", url: "/ecp/inventory", icon: Archive },
-    // Lab Testing
-    { title: "Lab: Queue", url: "/lab/queue", icon: ClipboardList },
-    { title: "Lab: Production", url: "/lab/production", icon: Factory },
-    { title: "Lab: Quality Control", url: "/lab/quality", icon: CheckCircle },
-    { title: "Lab: Equipment", url: "/lab/equipment", icon: Settings },
-    // Analytics & AI
     { title: "AI Assistant", url: "/admin/ai-assistant", icon: Brain },
     { title: "BI Dashboard", url: "/admin/bi-dashboard", icon: BarChart3 },
   ],

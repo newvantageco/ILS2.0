@@ -36,6 +36,9 @@ import { z } from "zod";
 import { parseOMAFile, isValidOMAFile } from "@shared/omaParser";
 import { normalizeEmail } from "./utils/normalizeEmail";
 import { addCreationTimestamp, addUpdateTimestamp } from "./utils/timestamps";
+import { db } from "./db";
+import * as schema from "@shared/schema";
+import { eq, desc } from "drizzle-orm";
 
 // Security and validation imports
 import { asyncHandler } from "./middleware/errorHandler";
@@ -2570,6 +2573,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching patient:", error);
       res.status(500).json({ message: "Failed to fetch patient" });
+    }
+  });
+
+  // Patient 360 View - Comprehensive Summary
+  app.get('/api/patients/:id/summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'ecp') {
+        return res.status(403).json({ message: "Only ECPs can view patient summaries" });
+      }
+
+      if (denyFreePlanAccess(user, res, "patient records")) {
+        return;
+      }
+
+      const patientId = req.params.id;
+
+      // Parallel fetch all patient-related data
+      const [
+        patient,
+        appointments,
+        examinations,
+        prescriptions,
+        orders,
+        invoices
+      ] = await Promise.all([
+        db.select().from(schema.patients).where(eq(schema.patients.id, patientId)).limit(1).then(r => r[0]),
+        db.select().from(schema.testRoomBookings).where(eq(schema.testRoomBookings.patientId, patientId)).orderBy(desc(schema.testRoomBookings.bookingDate)),
+        db.select().from(schema.eyeExaminations).where(eq(schema.eyeExaminations.patientId, patientId)).orderBy(desc(schema.eyeExaminations.examinationDate)),
+        db.select().from(schema.prescriptions).where(eq(schema.prescriptions.patientId, patientId)).orderBy(desc(schema.prescriptions.issueDate)),
+        db.select().from(schema.orders).where(eq(schema.orders.patientId, patientId)).orderBy(desc(schema.orders.orderDate)),
+        db.select().from(schema.invoices).where(eq(schema.invoices.patientId, patientId)).orderBy(desc(schema.invoices.invoiceDate))
+      ]);
+
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+
+      // Verify access
+      if (patient.ecpId !== userId && patient.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Calculate summary stats
+      const totalSpent = invoices
+        .filter(inv => inv.status === 'paid')
+        .reduce((sum, inv) => sum + Number(inv.totalAmount || 0), 0);
+
+      const pendingBalance = invoices
+        .filter(inv => inv.status === 'draft')
+        .reduce((sum, inv) => sum + Number(inv.totalAmount || 0), 0);
+
+      const summary = {
+        patient,
+        stats: {
+          totalVisits: examinations.length,
+          totalOrders: orders.length,
+          totalSpent,
+          pendingBalance,
+          lastVisit: examinations[0]?.examinationDate || null,
+          nextAppointment: appointments.find(apt => 
+            apt.status === 'scheduled' && new Date(apt.bookingDate) > new Date()
+          )?.bookingDate || null
+        },
+        appointments: appointments.slice(0, 10), // Last 10 appointments
+        examinations: examinations.slice(0, 5),  // Last 5 exams
+        prescriptions: prescriptions.slice(0, 5), // Last 5 prescriptions
+        orders: orders.slice(0, 10),             // Last 10 orders
+        invoices: invoices.slice(0, 10)          // Last 10 invoices
+      };
+
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching patient summary:", error);
+      res.status(500).json({ message: "Failed to fetch patient summary" });
     }
   });
 

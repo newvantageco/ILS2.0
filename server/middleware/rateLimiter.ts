@@ -5,7 +5,7 @@
  * Uses express-rate-limit with Redis store for distributed rate limiting
  */
 
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import type { Request, Response } from 'express';
 
 // Extend Express Request type to include rateLimit info
@@ -109,9 +109,13 @@ export const aiQueryLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 50, // Limit to 50 AI queries per hour
   keyGenerator: (req: Request) => {
-    // Use user ID if authenticated, otherwise use default IP handling
+    // Use user ID if authenticated, otherwise use IPv6-safe IP key generator
     const userId = (req as any).user?.id;
-    return userId || `ip-${req.ip || 'anonymous'}`;
+    if (userId) {
+      return `user-${userId}`;
+    }
+    // Use the IPv6-safe key generator for IP-based limiting
+    return ipKeyGenerator(req.ip || '');
   },
   message: {
     error: 'AI query limit exceeded.',

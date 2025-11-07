@@ -27,6 +27,7 @@ import { startInventoryMonitoringCron } from "./jobs/inventoryMonitoringCron";
 import { startClinicalAnomalyDetectionCron } from "./jobs/clinicalAnomalyDetectionCron";
 import { startUsageReportingCron } from "./jobs/usageReportingCron";
 import { startStorageCalculationCron } from "./jobs/storageCalculationCron";
+import { setupWebSocket } from "./websocket/index";
 
 // Import workers to start background job processing
 import "./workers/emailWorker";
@@ -114,7 +115,11 @@ if (process.env.NODE_ENV === "development") {
     log("⚠️  Using memory store for sessions (Redis unavailable)", "express");
   }
 
-  app.use(session(sessionConfig));
+  const sessionMiddleware = session(sessionConfig);
+  app.use(sessionMiddleware);
+  
+  // Store session middleware for WebSocket auth
+  app.set('sessionMiddleware', sessionMiddleware);
 
   app.use(passport.initialize());
   app.use(passport.session());
@@ -229,6 +234,16 @@ app.use((req, res, next) => {
     
     // Initialize event-driven architecture (Chunk 9)
     initializeEventSystem();
+    
+    // Initialize WebSocket server for real-time lab dashboard
+    if (process.env.NODE_ENV === "development") {
+      // Get session middleware to use for WebSocket authentication
+      const sessionMiddleware = app.get('sessionMiddleware');
+      if (sessionMiddleware) {
+        setupWebSocket(server, sessionMiddleware);
+        log(`✅ WebSocket server initialized on /ws endpoint`);
+      }
+    }
     
     server.listen(port, host, () => {
       log(`Server successfully started on port ${port}`);

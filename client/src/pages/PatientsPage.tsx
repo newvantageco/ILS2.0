@@ -214,15 +214,16 @@ export default function PatientsPage() {
                               </Button>
                             </Link>
                           )}
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            disabled
-                            data-testid={`button-view-history-${patient.id}`}
-                          >
-                            <FileText className="h-4 w-4 mr-2" />
-                            History
-                          </Button>
+                          <Link href={`/ecp/patients/${patient.id}`}>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              data-testid={`button-view-history-${patient.id}`}
+                            >
+                              <FileText className="h-4 w-4 mr-2" />
+                              View Profile
+                            </Button>
+                          </Link>
                         </div>
                       </TableCell>
                     </TableRow>
