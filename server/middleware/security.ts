@@ -7,11 +7,35 @@ import { AuthenticatedRequest } from './auth';
 import { eq } from 'drizzle-orm';
 import * as schema from '@shared/schema';
 import { db } from '../db';
+import PasswordValidator from 'password-validator';
 
 // Constants for security requirements
 const REQUIRED_TLS_VERSION = 'TLSv1.3';
 const MIN_PASSWORD_LENGTH = 12;
-const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{12,}$/;
+
+// Common passwords list (top 100 most common passwords)
+const COMMON_PASSWORDS = [
+  'password', '123456', '123456789', 'qwerty', '12345678', '111111', '123123',
+  '1234567890', '1234567', 'password1', '12345', '1234', 'abc123', 'Password1',
+  'password123', '123', 'admin', 'letmein', 'welcome', 'monkey', '1qaz2wsx',
+  'dragon', 'master', 'login', 'princess', 'qwertyuiop', 'solo', 'passw0rd',
+  'starwars', 'sunshine', 'iloveyou', 'football', 'shadow', 'superman', 'batman',
+  'trustno1', 'whatever', 'charlie', 'michael', 'jennifer', '000000', 'jordan',
+  'harley', 'hunter', 'zxcvbnm', 'corvette', 'freedom', 'mustang', 'rangers'
+];
+
+// Password validation schema
+const passwordSchema = new PasswordValidator();
+
+passwordSchema
+  .is().min(12)
+  .is().max(128)
+  .has().uppercase()
+  .has().lowercase()
+  .has().digits()
+  .has().symbols()
+  .has().not().spaces()
+  .is().not().oneOf(COMMON_PASSWORDS);
 
 // Security headers middleware - Enhanced with helmet.js
 export const securityHeaders = helmet({
@@ -54,17 +78,34 @@ export const enforceTLS = (req: Request, res: Response, next: NextFunction) => {
 };
 
 // Data anonymization for sensitive fields
-export const anonymizeData = (data: any) => {
-  const sensitiveFields = ['nhsNumber', 'dateOfBirth', 'email'];
-  const anonymized = { ...data };
-  
+interface SensitiveData {
+  nhsNumber?: string;
+  dateOfBirth?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  postcode?: string;
+  ssn?: string;
+  [key: string]: any; // For additional dynamic fields
+}
+
+export const anonymizeData = <T extends SensitiveData>(data: T): T => {
+  const sensitiveFields: (keyof SensitiveData)[] = [
+    'nhsNumber', 'dateOfBirth', 'email', 'phone',
+    'address', 'postcode', 'ssn'
+  ];
+
+  // Deep clone to prevent mutations
+  const anonymized: any = JSON.parse(JSON.stringify(data));
+
   sensitiveFields.forEach(field => {
-    if (anonymized[field]) {
-      anonymized[field] = anonymized[field].replace(/./g, '*');
+    const value = anonymized[field];
+    if (typeof value === 'string' && value.length > 0) {
+      anonymized[field] = '*'.repeat(value.length);
     }
   });
-  
-  return anonymized;
+
+  return anonymized as T;
 };
 
 // Audit logging middleware
@@ -152,12 +193,39 @@ export const encryptSensitiveData = (data: string, key: string): string => {
 };
 
 // Password policy enforcement
-export const validatePassword = (password: string): boolean => {
-  if (!password || password.length < MIN_PASSWORD_LENGTH) {
-    return false;
+export const validatePassword = (
+  password: string,
+  userData?: { email?: string; name?: string }
+): { valid: boolean; errors: string[] } => {
+  const errors: string[] = [];
+
+  if (!password || password.length < 12) {
+    errors.push('Password must be at least 12 characters');
   }
-  
-  return PASSWORD_PATTERN.test(password);
+
+  const validationResult = passwordSchema.validate(password, { details: true });
+  if (Array.isArray(validationResult)) {
+    errors.push(...validationResult.map((err: any) => err.message));
+  }
+
+  // Check for user info in password
+  if (userData) {
+    const email = userData.email?.split('@')[0].toLowerCase();
+    const name = userData.name?.toLowerCase();
+    const lowerPassword = password.toLowerCase();
+
+    if (email && lowerPassword.includes(email)) {
+      errors.push('Password cannot contain your email');
+    }
+    if (name && lowerPassword.includes(name)) {
+      errors.push('Password cannot contain your name');
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
 };
 
 // ============== RATE LIMITING (DDoS Protection) ==============

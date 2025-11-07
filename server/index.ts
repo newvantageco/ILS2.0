@@ -96,27 +96,32 @@ app.use('/api/onboarding', authRateLimiter);
 if (process.env.NODE_ENV === "development") {
   const sessionSecret = process.env.SESSION_SECRET;
   if (!sessionSecret) {
-    log("SESSION_SECRET is not set. Generating temporary secret for development.", "express");
+    throw new Error(
+      "❌ SESSION_SECRET must be set in .env file for security.\n" +
+      "Generate one with: openssl rand -hex 32\n" +
+      "Then add to .env: SESSION_SECRET=<generated-value>"
+    );
   }
 
   // Use Redis for session store (Chunk 10: Infrastructure Scale)
   const redisClient = getRedisConnection();
-  const sessionConfig: any = {
-    secret: sessionSecret || "dev-session-secret",
+  const sessionConfig = {
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true, // XSS protection
-      secure: false, // HTTP OK in development
-      sameSite: 'strict', // CSRF protection
+      secure: process.env.NODE_ENV === 'production', // HTTPS in production
+      sameSite: 'strict' as const, // CSRF protection
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     },
+    store: undefined as any, // Will be set below if Redis available
   };
 
   // Add Redis store if available, otherwise use default memory store
   if (redisClient) {
     sessionConfig.store = new RedisStore({
-      client: redisClient as any,
+      client: redisClient,
       prefix: "session:",
     });
     log("✅ Using Redis for session storage (fast, scalable)", "express");

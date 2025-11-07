@@ -13,7 +13,7 @@ export function registerOrderCreatedLimsWorker(limsClient: LimsClientInterface, 
       logger.info("Received order.submitted", { orderId, ecpId });
 
       // Idempotency: check if order already has a jobId
-      const order = await storage.getOrder(orderId);
+      const order = await storage.getOrderById_Internal(orderId);
       if (!order) {
         logger.warn("Order not found for LIMS worker", { orderId });
         return;

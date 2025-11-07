@@ -85,7 +85,7 @@ export function registerPermissionRoutes(app: Express) {
     try {
       const { companyId, role } = req.params;
       const currentUserId = req.user?.id || req.user?.claims?.sub;
-      const currentUser = await storage.getUser(currentUserId);
+      const currentUser = await storage.getUserById_Internal(currentUserId);
 
       // Verify user belongs to the company
       if (currentUser?.companyId !== companyId) {
@@ -123,7 +123,7 @@ export function registerPermissionRoutes(app: Express) {
     try {
       const { companyId } = req.params;
       const currentUserId = req.user?.id || req.user?.claims?.sub;
-      const currentUser = await storage.getUser(currentUserId);
+      const currentUser = await storage.getUserById_Internal(currentUserId);
 
       // Verify user belongs to the company
       if (currentUser?.companyId !== companyId) {

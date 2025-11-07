@@ -16,7 +16,7 @@ router.get(
     try {
       const { orderId } = req.params;
 
-      const order = await storage.getOrder(orderId);
+      const order = await storage.getOrderById_Internal(orderId);
 
       if (!order) {
         return res.status(404).json({ error: 'Order not found' });

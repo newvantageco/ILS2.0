@@ -215,7 +215,7 @@ export class OrderService {
 
   async getOrderStatus(orderId: string): Promise<JobStatusResponse | null> {
     try {
-      const order = await this.storage.getOrder(orderId);
+      const order = await this.storage.getOrderById_Internal(orderId);
 
       if (!order || !order.jobId) {
         return null;

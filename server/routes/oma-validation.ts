@@ -21,7 +21,7 @@ router.post("/validate/:orderId", async (req, res) => {
     const { orderId } = req.params;
 
     // Validate order exists
-    const order = await storage.getOrder(orderId);
+    const order = await storage.getOrderById_Internal(orderId);
     if (!order) {
       return res.status(404).json({
         error: "Order not found",

@@ -34,7 +34,7 @@ const trainModelSchema = z.object({
 // Helper to check admin access
 const requireAdmin = async (req: any, res: any, next: any) => {
   const userId = req.user.claims.sub;
-  const user = await storage.getUser(userId);
+  const user = await storage.getUserById_Internal(userId);
   
   if (!user || (user.role !== 'admin' && user.role !== 'platform_admin')) {
     return res.status(403).json({ message: "Admin access required" });

@@ -31,7 +31,7 @@ let aiAssistantService: AIAssistantService;
 // Helper function to get authenticated user with companyId
 async function getAuthenticatedUser(req: any): Promise<any> {
   const userId = req.user?.claims?.sub || req.user?.id;
-  const user = await storage.getUser(userId);
+  const user = await storage.getUserById_Internal(userId);
   return user;
 }
 

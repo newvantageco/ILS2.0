@@ -94,8 +94,8 @@ export class ClinicalWorkflowService {
       }
 
       // 2. Fetch patient data
-      const patient = await storage.getPatient(exam.patientId);
-      const examiner = await storage.getUser(exam.ecpId);
+      const patient = exam.companyId ? await storage.getPatient(exam.patientId, exam.companyId) : undefined;
+      const examiner = exam.companyId ? await storage.getUser(exam.ecpId, exam.companyId) : undefined;
 
       // 3. Parse examination summary (JSONB)
       const summary = (exam.summary as any) || {};

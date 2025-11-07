@@ -373,7 +373,7 @@ router.post('/complete', async (req: Request, res: Response) => {
     const { userId, companyId, companyName, companyType } = validation.data;
 
     // Get user
-    const user = await storage.getUser(userId);
+    const user = await storage.getUserById_Internal(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -436,7 +436,7 @@ router.post('/complete', async (req: Request, res: Response) => {
       })
       .where(eq(users.id, userId));
 
-    const updatedUser = await storage.getUser(userId);
+    const updatedUser = await storage.getUser(userId, user.companyId!);
     const [company] = await db
       .select()
       .from(companies)

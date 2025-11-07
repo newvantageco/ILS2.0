@@ -107,7 +107,7 @@ export class AnomalyDetectionService {
   async detectQualityAnomalies(orderId: string): Promise<QualityAnomaly[]> {
     this.logger.info("Detecting quality anomalies", { orderId });
     
-    const order = await this.storage.getOrder(orderId);
+    const order = await this.storage.getOrderById_Internal(orderId);
     if (!order) {
       throw new Error(`Order ${orderId} not found`);
     }

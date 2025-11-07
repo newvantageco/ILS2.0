@@ -23,7 +23,7 @@ export function registerOrderCreatedPdfWorker(storage: IStorage, opts?: PdfWorke
       const { orderId } = payload as any;
       logger.info("Generating PDF for order", { orderId });
 
-      const order = await storage.getOrder(orderId);
+      const order = await storage.getOrderById_Internal(orderId);
       if (!order) {
         logger.warn("Order not found for PDF generation", { orderId });
         return;

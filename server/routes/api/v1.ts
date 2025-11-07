@@ -155,7 +155,7 @@ router.get(
       const { id } = req.params;
       const companyId = req.apiKey!.company_id;
 
-      const order = await storage.getOrder(id);
+      const order = await storage.getOrder(id, companyId);
 
       if (!order) {
         return res.status(404).json({
@@ -243,7 +243,7 @@ router.patch(
       const companyId = req.apiKey!.company_id;
 
       // Verify order exists and belongs to company
-      const order = await storage.getOrder(id);
+      const order = await storage.getOrder(id, companyId);
       if (!order || order.companyId !== companyId) {
         return res.status(404).json({
           error: "Order not found",

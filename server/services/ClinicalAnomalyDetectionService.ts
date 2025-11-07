@@ -122,7 +122,7 @@ export class ClinicalAnomalyDetectionService {
     const anomalies: AnomalyAlert[] = [];
 
     try {
-      const patient = await storage.getPatient(exam.patientId);
+      const patient = exam.companyId ? await storage.getPatient(exam.patientId, exam.companyId) : undefined;
 
       // 1. Analyze IOP (Intraocular Pressure)
       const iopAnomalies = await this.analyzeIOP(exam, patient);
