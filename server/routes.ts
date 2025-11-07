@@ -94,6 +94,7 @@ import clinicalWorkflowRoutes from "./routes/clinical/workflow";
 import omaValidationRoutes from "./routes/clinical/oma-validation";
 import billingRoutes from "./routes/billing";
 import faceAnalysisRoutes from "./routes/faceAnalysis";
+import nhsRoutes from "./routes/nhs";
 import v1ApiRoutes from "./routes/api/v1";
 import queryOptimizerRoutes from "./routes/query-optimizer";
 import mlModelsRoutes from "./routes/ml-models";
@@ -269,6 +270,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Face Analysis & Frame Recommendation routes (AI-powered face shape analysis)
   app.use('/api/face-analysis', isAuthenticated, faceAnalysisRoutes);
+
+  // NHS/PCSE routes (UK - claims, vouchers, exemptions)
+  app.use('/api/nhs', isAuthenticated, nhsRoutes);
 
   // Billing routes (usage tracking, metered billing)
   app.use('/api/billing', isAuthenticated, billingRoutes);
