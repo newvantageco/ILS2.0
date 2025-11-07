@@ -93,6 +93,7 @@ import shopifyWebhookRoutes from "./routes/webhooks/shopify";
 import clinicalWorkflowRoutes from "./routes/clinical/workflow";
 import omaValidationRoutes from "./routes/clinical/oma-validation";
 import billingRoutes from "./routes/billing";
+import faceAnalysisRoutes from "./routes/faceAnalysis";
 import v1ApiRoutes from "./routes/api/v1";
 import queryOptimizerRoutes from "./routes/query-optimizer";
 import mlModelsRoutes from "./routes/ml-models";
@@ -265,6 +266,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // OMA validation routes (intelligent validation with confidence scoring)
   app.use('/api/clinical/oma', isAuthenticated, omaValidationRoutes);
+
+  // Face Analysis & Frame Recommendation routes (AI-powered face shape analysis)
+  app.use('/api/face-analysis', isAuthenticated, faceAnalysisRoutes);
 
   // Billing routes (usage tracking, metered billing)
   app.use('/api/billing', isAuthenticated, billingRoutes);

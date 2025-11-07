@@ -55,6 +55,7 @@ const EyeTestPage = lazy(() => import("@/pages/EyeTestPage"));
 const TestRoomsPage = lazy(() => import("@/pages/TestRoomsPage"));
 const TestRoomBookingsPage = lazy(() => import("@/pages/TestRoomBookingsPage"));
 const OpticalPOSPage = lazy(() => import("@/pages/OpticalPOSPage"));
+const SmartFrameFinder = lazy(() => import("@/pages/SmartFrameFinder"));
 const ExaminationList = lazy(() => import("@/pages/ExaminationList"));
 const EyeExaminationComprehensive = lazy(() => import("@/pages/EyeExaminationComprehensive"));
 const AddOutsideRx = lazy(() => import("@/pages/AddOutsideRx"));
@@ -395,6 +396,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/examination/:id" component={EyeExaminationComprehensive} />
             <Route path="/ecp/outside-rx" component={AddOutsideRx} />
             <Route path="/ecp/pos" component={OpticalPOSPage} />
+            <Route path="/ecp/smart-frame-finder" component={SmartFrameFinder} />
             <Route path="/ecp/invoices" component={InvoicesPage} />
             <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/ecp/test-rooms" component={TestRoomsPage} />

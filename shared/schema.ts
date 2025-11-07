@@ -3441,6 +3441,292 @@ export const webhookDeliveries = pgTable("webhook_deliveries", {
   index("idx_webhook_deliveries_next_retry").on(table.nextRetryAt),
 ]);
 
+// ============== AI FACE ANALYSIS & FRAME RECOMMENDATION ==============
+
+/**
+ * Face Shape Types Enum
+ * Standard face shape classifications for frame recommendations
+ */
+export const faceShapeEnum = pgEnum("face_shape", [
+  "oval",
+  "round",
+  "square",
+  "heart",
+  "diamond",
+  "oblong",
+  "triangle"
+]);
+
+/**
+ * Frame Style Types Enum
+ * Frame style classifications for matching with face shapes
+ */
+export const frameStyleEnum = pgEnum("frame_style", [
+  "rectangle",
+  "square",
+  "round",
+  "oval",
+  "cat_eye",
+  "aviator",
+  "wayfarer",
+  "browline",
+  "rimless",
+  "semi_rimless",
+  "geometric",
+  "wrap"
+]);
+
+/**
+ * Frame Material Types Enum
+ */
+export const frameMaterialEnum = pgEnum("frame_material", [
+  "metal",
+  "plastic",
+  "acetate",
+  "titanium",
+  "wood",
+  "carbon_fiber",
+  "mixed"
+]);
+
+/**
+ * Patient Face Analysis Table
+ * Stores AI-analyzed face shape data for patients
+ */
+export const patientFaceAnalysis = pgTable("patient_face_analysis", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  patientId: varchar("patient_id", { length: 255 }).notNull().references(() => patients.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+
+  // Face analysis results
+  faceShape: faceShapeEnum("face_shape").notNull(),
+  faceShapeConfidence: decimal("face_shape_confidence", { precision: 5, scale: 2 }).notNull(), // 0-100%
+
+  // Face measurements (in relative units)
+  faceLength: decimal("face_length", { precision: 10, scale: 2 }),
+  faceWidth: decimal("face_width", { precision: 10, scale: 2 }),
+  jawlineWidth: decimal("jawline_width", { precision: 10, scale: 2 }),
+  foreheadWidth: decimal("forehead_width", { precision: 10, scale: 2 }),
+  cheekboneWidth: decimal("cheekbone_width", { precision: 10, scale: 2 }),
+
+  // Additional characteristics
+  skinTone: varchar("skin_tone", { length: 50 }), // warm, cool, neutral
+  hairColor: varchar("hair_color", { length: 50 }),
+  eyeColor: varchar("eye_color", { length: 50 }),
+
+  // Photo metadata
+  photoUrl: text("photo_url").notNull(), // Uploaded photo
+  thumbnailUrl: text("thumbnail_url"),
+
+  // AI processing metadata
+  aiModel: varchar("ai_model", { length: 100 }).notNull().default("tensorflow-facemesh-v1"),
+  processingTime: integer("processing_time"), // milliseconds
+  landmarkPoints: jsonb("landmark_points"), // Facial landmark coordinates
+  rawAnalysisData: jsonb("raw_analysis_data"), // Full AI response
+
+  // Timestamps
+  analyzedAt: timestamp("analyzed_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_face_analysis_patient").on(table.patientId),
+  index("idx_face_analysis_company").on(table.companyId),
+  index("idx_face_analysis_face_shape").on(table.faceShape),
+]);
+
+/**
+ * Frame Characteristics Table
+ * Extended frame metadata for AI recommendations
+ */
+export const frameCharacteristics = pgTable("frame_characteristics", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  productId: varchar("product_id", { length: 255 }).notNull().unique().references(() => products.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+
+  // Frame style and characteristics
+  frameStyle: frameStyleEnum("frame_style").notNull(),
+  frameMaterial: frameMaterialEnum("frame_material").notNull(),
+  frameSize: varchar("frame_size", { length: 50 }).notNull(), // small, medium, large
+
+  // Recommended face shapes (best matches)
+  recommendedFaceShapes: jsonb("recommended_face_shapes").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+
+  // Physical measurements (mm)
+  lensWidth: decimal("lens_width", { precision: 5, scale: 1 }), // e.g., 52.0 mm
+  bridgeWidth: decimal("bridge_width", { precision: 5, scale: 1 }), // e.g., 18.0 mm
+  templeLength: decimal("temple_length", { precision: 5, scale: 1 }), // e.g., 145.0 mm
+  frameHeight: decimal("frame_height", { precision: 5, scale: 1 }), // e.g., 38.0 mm
+
+  // Style attributes
+  gender: varchar("gender", { length: 20 }), // men, women, unisex
+  ageRange: varchar("age_range", { length: 50 }), // teen, young_adult, adult, senior
+  style: varchar("style", { length: 100 }), // professional, casual, sporty, fashion, classic
+  colorFamily: varchar("color_family", { length: 50 }), // black, brown, silver, gold, colorful
+
+  // Features
+  hasNosePads: boolean("has_nose_pads").default(false),
+  isAdjustable: boolean("is_adjustable").default(false),
+  isSunglasses: boolean("is_sunglasses").default(false),
+  isPolarized: boolean("is_polarized").default(false),
+
+  // AI recommendation score (calculated)
+  popularityScore: decimal("popularity_score", { precision: 5, scale: 2 }).default("0"), // 0-100
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_frame_chars_product").on(table.productId),
+  index("idx_frame_chars_company").on(table.companyId),
+  index("idx_frame_chars_style").on(table.frameStyle),
+  index("idx_frame_chars_material").on(table.frameMaterial),
+]);
+
+/**
+ * Frame Recommendations Table
+ * Stores AI-generated frame recommendations for patients
+ */
+export const frameRecommendations = pgTable("frame_recommendations", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  faceAnalysisId: varchar("face_analysis_id", { length: 255 }).notNull().references(() => patientFaceAnalysis.id, { onDelete: "cascade" }),
+  patientId: varchar("patient_id", { length: 255 }).notNull().references(() => patients.id, { onDelete: "cascade" }),
+  productId: varchar("product_id", { length: 255 }).notNull().references(() => products.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+
+  // Recommendation scoring
+  matchScore: decimal("match_score", { precision: 5, scale: 2 }).notNull(), // 0-100, AI confidence
+  matchReason: text("match_reason").notNull(), // Human-readable explanation
+
+  // Ranking
+  rank: integer("rank").notNull(), // 1 = best match
+
+  // User interaction
+  viewed: boolean("viewed").default(false),
+  viewedAt: timestamp("viewed_at"),
+  liked: boolean("liked").default(false),
+  likedAt: timestamp("liked_at"),
+  purchased: boolean("purchased").default(false),
+  purchasedAt: timestamp("purchased_at"),
+  dismissed: boolean("dismissed").default(false),
+  dismissedAt: timestamp("dismissed_at"),
+
+  // Analytics
+  clickCount: integer("click_count").default(0),
+  shareCount: integer("share_count").default(0),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_frame_recs_analysis").on(table.faceAnalysisId),
+  index("idx_frame_recs_patient").on(table.patientId),
+  index("idx_frame_recs_product").on(table.productId),
+  index("idx_frame_recs_company").on(table.companyId),
+  index("idx_frame_recs_match_score").on(table.matchScore),
+  index("idx_frame_recs_rank").on(table.rank),
+]);
+
+/**
+ * Frame Recommendation Analytics Table
+ * Tracks performance of frame recommendations
+ */
+export const frameRecommendationAnalytics = pgTable("frame_recommendation_analytics", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  productId: varchar("product_id", { length: 255 }).notNull().references(() => products.id, { onDelete: "cascade" }),
+
+  // Aggregated metrics
+  totalRecommendations: integer("total_recommendations").default(0),
+  totalViews: integer("total_views").default(0),
+  totalLikes: integer("total_likes").default(0),
+  totalPurchases: integer("total_purchases").default(0),
+  totalDismissals: integer("total_dismissals").default(0),
+
+  // Calculated rates
+  viewRate: decimal("view_rate", { precision: 5, scale: 2 }).default("0"), // views / recommendations
+  likeRate: decimal("like_rate", { precision: 5, scale: 2 }).default("0"), // likes / views
+  purchaseRate: decimal("purchase_rate", { precision: 5, scale: 2 }).default("0"), // purchases / views
+  dismissalRate: decimal("dismissal_rate", { precision: 5, scale: 2 }).default("0"), // dismissals / views
+
+  // Average metrics
+  avgMatchScore: decimal("avg_match_score", { precision: 5, scale: 2 }).default("0"),
+  avgRank: decimal("avg_rank", { precision: 5, scale: 2 }).default("0"),
+
+  // Time-based metrics
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_frame_rec_analytics_company").on(table.companyId),
+  index("idx_frame_rec_analytics_product").on(table.productId),
+  index("idx_frame_rec_analytics_period").on(table.periodStart, table.periodEnd),
+]);
+
+// Zod schemas for face analysis
+export const createFaceAnalysisSchema = z.object({
+  patientId: z.string().min(1, "Patient ID is required"),
+  companyId: z.string().min(1, "Company ID is required"),
+  faceShape: z.enum(["oval", "round", "square", "heart", "diamond", "oblong", "triangle"]),
+  faceShapeConfidence: z.number().min(0).max(100),
+  faceLength: z.number().optional(),
+  faceWidth: z.number().optional(),
+  jawlineWidth: z.number().optional(),
+  foreheadWidth: z.number().optional(),
+  cheekboneWidth: z.number().optional(),
+  skinTone: z.string().optional(),
+  hairColor: z.string().optional(),
+  eyeColor: z.string().optional(),
+  photoUrl: z.string().url(),
+  thumbnailUrl: z.string().url().optional(),
+  aiModel: z.string().default("tensorflow-facemesh-v1"),
+  processingTime: z.number().optional(),
+  landmarkPoints: z.any().optional(),
+  rawAnalysisData: z.any().optional(),
+});
+
+export const createFrameCharacteristicsSchema = z.object({
+  productId: z.string().min(1, "Product ID is required"),
+  companyId: z.string().min(1, "Company ID is required"),
+  frameStyle: z.enum(["rectangle", "square", "round", "oval", "cat_eye", "aviator", "wayfarer", "browline", "rimless", "semi_rimless", "geometric", "wrap"]),
+  frameMaterial: z.enum(["metal", "plastic", "acetate", "titanium", "wood", "carbon_fiber", "mixed"]),
+  frameSize: z.enum(["small", "medium", "large"]),
+  recommendedFaceShapes: z.array(z.string()),
+  lensWidth: z.number().optional(),
+  bridgeWidth: z.number().optional(),
+  templeLength: z.number().optional(),
+  frameHeight: z.number().optional(),
+  gender: z.string().optional(),
+  ageRange: z.string().optional(),
+  style: z.string().optional(),
+  colorFamily: z.string().optional(),
+  hasNosePads: z.boolean().default(false),
+  isAdjustable: z.boolean().default(false),
+  isSunglasses: z.boolean().default(false),
+  isPolarized: z.boolean().default(false),
+  popularityScore: z.number().min(0).max(100).default(0),
+});
+
+// Export types
+export type PatientFaceAnalysis = typeof patientFaceAnalysis.$inferSelect;
+export type InsertPatientFaceAnalysis = typeof patientFaceAnalysis.$inferInsert;
+export type FrameCharacteristics = typeof frameCharacteristics.$inferSelect;
+export type InsertFrameCharacteristics = typeof frameCharacteristics.$inferInsert;
+export type FrameRecommendation = typeof frameRecommendations.$inferSelect;
+export type InsertFrameRecommendation = typeof frameRecommendations.$inferInsert;
+export type FrameRecommendationAnalytics = typeof frameRecommendationAnalytics.$inferSelect;
+export type InsertFrameRecommendationAnalytics = typeof frameRecommendationAnalytics.$inferInsert;
+
 // Export schemas and types
 export const insertMarketInsightSchema = createInsertSchema(marketInsights);
 export const insertPlatformStatisticSchema = createInsertSchema(platformStatistics);
