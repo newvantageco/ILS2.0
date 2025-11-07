@@ -1,792 +1,1125 @@
-# Integrated Lens System - Implementation Guide
-## Following the Architecture Strategy Document
+# 🛠️ ILS 2.0 Implementation Guide
 
-**Date**: October 28, 2025  
-**Status**: Phase 0 - Foundation Planning  
-**Current Deployment**: Replit (Development)  
-**Target Deployment**: AWS EKS (Production)
+**Developer Guide for Extending and Customizing ILS 2.0**
 
 ---
 
-## Executive Summary
+## 📋 Table of Contents
 
-This guide translates the strategic architecture document into a concrete implementation roadmap. The ILS is evolving from a monolithic Replit deployment into a microservice architecture with AWS EKS as the target platform. The system maintains LIMS (Lab Information Management System) as the single source of truth for all manufacturing intelligence.
-
-### Current State
-- ✅ Phase 1-6 completed: Core order management, supplier management, user roles, OMA support
-- ✅ Monolithic Express/React application running on Replit
-- ✅ PostgreSQL database (Neon serverless)
-- ✅ Basic admin dashboard and role-based access control
-- ❌ No LIMS integration
-- ❌ No microservices architecture
-- ❌ No AWS infrastructure
-- ❌ No webhook handlers for status updates
+1. [Development Setup](#development-setup)
+2. [Project Structure](#project-structure)
+3. [Code Patterns](#code-patterns)
+4. [Adding New Features](#adding-new-features)
+5. [Database Development](#database-development)
+6. [API Development](#api-development)
+7. [Frontend Development](#frontend-development)
+8. [Testing](#testing)
+9. [Best Practices](#best-practices)
+10. [Common Tasks](#common-tasks)
 
 ---
 
-## Phase 0: Foundation & Architecture Setup (Months 0-3)
+## Development Setup
 
-### 0.1 Hire and Onboard Principal Engineer
-- **Responsibility**: Oversee LIMS governance, encode manufacturing rules, audit production signals
-- **Key Activities**:
-  - Review existing ILS codebase and architecture
-  - Establish LIMS platform selection criteria
-  - Define manufacturing rules vocabulary and rule deployment process
-  - Create LIMS API contract specifications
+### Prerequisites
 
-### 0.2 Select and Stand Up LIMS
+```bash
+# Required
+- Node.js 18+ (LTS recommended)
+- PostgreSQL 14+
+- Git
+- Text editor (VS Code recommended)
 
-**Action Items**:
-1. **Evaluate LIMS Platforms**
-   - Research options: Thermo Fisher SampleManager, LabVantage, Freezpoint, custom build
-   - Criteria: API maturity, rule engine capabilities, audit trail, pricing model
-   - Recommendation: Custom build vs. third-party depends on budget and timeline
+# Optional
+- Docker (for containerized development)
+- PostgreSQL GUI (pgAdmin, DBeaver, Postico)
+```
 
-2. **LIMS API Design Specification**
-   ```
-   LIMS must expose endpoints:
-   - POST /api/jobs/create - Accept CreateJob payload, return job_id
-   - GET /api/jobs/:jobId/status - Return current job state
-   - GET /api/rules - Fetch current manufacturing rules and catalog
-   - POST /api/webhooks/status - Register webhook endpoint
-   - GET /api/catalog - Complete lens/frame/material availability
-   - GET /api/validation - Validate configuration against rules
-   ```
+### Initial Setup
 
-3. **LIMS Deployment Infrastructure**
-   - Database: PostgreSQL (managed RDS on AWS recommended)
-   - API: RESTful with OpenAPI/Swagger documentation
-   - Authentication: API key + mutual TLS for service-to-service
-   - Rate limiting: 1000 req/min per service
-   - SLA: 99.9% uptime, <100ms response time for catalog queries
+```bash
+# 1. Clone repository
+git clone <repository-url>
+cd ILS2.0
 
-### 0.3 Build Shared LIMS Client Package
+# 2. Install dependencies
+npm install
+# or
+pnpm install
 
-**Location**: `packages/lims-client/` (new monorepo structure)
+# 3. Set up environment variables
+cp .env.example .env
+# Edit .env with your local configuration
 
-```typescript
-// packages/lims-client/src/index.ts
-export interface LimsCreateJobRequest {
-  ecpId: string;
-  patientId: string;
-  prescription: PrescriptionData;
-  frameSpecs: FrameSpecification;
-  lensType: string;
-  coating: string;
-  urgency: 'standard' | 'expedited' | 'rush';
-  metadata?: Record<string, any>;
-}
+# 4. Set up database
+createdb ils2_development
 
-export interface LimsCreateJobResponse {
-  jobId: string;
-  status: JobStatus;
-  estimatedCompletionDate: Date;
-  queuePosition: number;
-}
+# 5. Run migrations
+npm run db:push
 
-export class LimsClient {
-  // Retry logic with exponential backoff
-  // Circuit breaker for API failures
-  // Request/response logging
-  // Type-safe methods for all endpoints
-  // Contract test infrastructure
+# 6. Start development server
+npm run dev
+```
+
+### Development Environment Variables
+
+```bash
+# .env.development
+DATABASE_URL="postgresql://postgres:password@localhost:5432/ils2_development"
+OPENAI_API_KEY="sk-..."  # Required for AI features
+SESSION_SECRET="dev-secret-min-32-characters-long"
+NODE_ENV="development"
+PORT="5000"
+VITE_API_URL="http://localhost:5000"
+```
+
+### VS Code Setup
+
+Recommended extensions:
+
+```json
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "ms-vscode.vscode-typescript-next",
+    "Prisma.prisma"
+  ]
 }
 ```
 
-**Includes**:
-- Type-safe API client with retry semantics
-- Circuit breaker pattern for resilience
-- Request validation before sending
-- Response schema validation with Zod
-- Comprehensive error handling
-- Health check utilities
-- Contract test factory
-- Event serialization for audit trails
+Recommended settings:
 
-**Implementation Steps**:
-1. Create `packages/` directory structure
-2. Set up TypeScript monorepo with workspace configuration
-3. Implement LimsClient class with retry/circuit breaker
-4. Add Zod schemas for all LIMS payloads
-5. Write contract tests for LIMS API
-6. Document API contract with examples
-7. Set up npm workspace for shared publishing
-
-### 0.4 Create Auth Service Integration
-
-**Current State**: Using Replit Auth + local email auth  
-**Target State**: AWS Cognito or Auth0 with thin adapter
-
-**Migration Plan**:
-1. **Set Up Auth Provider**
-   ```bash
-   # AWS Cognito setup
-   - Create User Pool in AWS
-   - Configure OpenID Connect scopes
-   - Set up federation for social login (optional)
-   - Configure MFA policies
-   ```
-
-2. **Build Auth Adapter Service**
-   ```typescript
-   // server/services/AuthService.ts
-   export class AuthService {
-     // Extract role claims from token
-     // Map external roles to ILS roles
-     // Handle tenant scoping
-     // Validate token signatures
-     // Refresh token management
-   }
-   ```
-
-3. **Update Session Management**
-   - Keep Express sessions for backward compatibility
-   - Add support for JWT tokens
-   - Implement token refresh logic
-   - Store claims in session context
-
-4. **Migrate Existing Users**
-   - Create migration script to seed external auth provider
-   - Map existing local auth to new system
-   - Test rollback procedure
+```json
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "typescript.tsdk": "node_modules/typescript/lib"
+}
+```
 
 ---
 
-## Phase 1: MVP Internal (Months 4-6)
+## Project Structure
 
-### 1.1 Implement Order Service with LIMS Validation
+```
+ILS2.0/
+├── client/                    # Frontend React application
+│   ├── src/
+│   │   ├── components/       # React components
+│   │   │   ├── ui/          # Reusable UI components
+│   │   │   └── ...          # Feature-specific components
+│   │   ├── pages/           # Page components (routes)
+│   │   ├── hooks/           # Custom React hooks
+│   │   ├── lib/             # Utility functions
+│   │   ├── styles/          # CSS files
+│   │   │   ├── design-system.css
+│   │   │   └── index.css
+│   │   ├── App.tsx          # Root component
+│   │   └── main.tsx         # Entry point
+│   └── index.html
+│
+├── server/                   # Backend Express application
+│   ├── routes/              # API route handlers
+│   │   ├── auth.ts
+│   │   ├── nhs.ts
+│   │   ├── contactLens.ts
+│   │   ├── ophthalamicAI.ts
+│   │   └── ...
+│   ├── services/            # Business logic
+│   │   ├── NhsClaimsService.ts
+│   │   ├── ContactLensService.ts
+│   │   ├── OphthalamicAIService.ts
+│   │   └── ...
+│   ├── middleware/          # Express middleware
+│   │   ├── auth.ts
+│   │   └── validation.ts
+│   ├── routes.ts            # Route mounting
+│   └── index.ts             # Server entry point
+│
+├── shared/                  # Shared code (client + server)
+│   └── schema.ts            # Database schema (Drizzle)
+│
+├── db/                      # Database files
+│   └── migrations/          # Migration files
+│
+├── docs/                    # Documentation
+│   ├── DEPLOYMENT_GUIDE.md
+│   ├── API_DOCUMENTATION.md
+│   ├── FEATURES_SUMMARY.md
+│   └── ...
+│
+├── .env                     # Environment variables (gitignored)
+├── .env.example             # Example environment variables
+├── package.json             # Dependencies and scripts
+├── tsconfig.json            # TypeScript configuration
+├── vite.config.ts           # Vite configuration
+└── drizzle.config.ts        # Drizzle ORM configuration
+```
 
-**Flow 1 - Order Submission** (Real-time LIMS validation):
+---
+
+## Code Patterns
+
+### 1. Multi-Tenant Architecture
+
+**All data must be isolated by `companyId`**
 
 ```typescript
-// server/services/OrderService.ts
-export class OrderService {
-  async submitOrder(orderData: OrderSubmissionRequest): Promise<Order> {
-    // 1. Validate against LIMS rules in real-time
-    const validationResult = await this.limsClient.validateConfiguration({
-      prescription: orderData.prescription,
-      lensType: orderData.lensType,
-      coating: orderData.coating,
-      frameType: orderData.frameType,
-    });
+// ❌ WRONG - No company isolation
+const patients = await db.select().from(patients).execute();
 
-    if (!validationResult.isValid) {
-      throw new ValidationError(validationResult.errors);
-    }
+// ✅ CORRECT - Company isolated
+const patients = await db
+  .select()
+  .from(patients)
+  .where(eq(patients.companyId, companyId))
+  .execute();
 
-    // 2. Create order in local database
-    const order = await storage.createOrder(orderData);
+// ✅ BEST - Use helper with AND
+import { and, eq } from "drizzle-orm";
 
-    // 3. Emit CreateJob payload to LIMS
-    const limsJob = await this.limsClient.createJob({
-      ecpId: orderData.ecpId,
-      patientId: orderData.patientId,
-      prescription: orderData.prescription,
-      frameSpecs: orderData.frameSpecs,
-      lensType: orderData.lensType,
-      coating: orderData.coating,
-      urgency: orderData.urgency || 'standard',
-    });
+const patients = await db
+  .select()
+  .from(patients)
+  .where(
+    and(
+      eq(patients.companyId, companyId),
+      eq(patients.active, true)
+    )
+  )
+  .execute();
+```
 
-    // 4. Store job_id and update order state to "Order Sent to Lab"
-    order.jobId = limsJob.jobId;
-    order.status = 'in_production';
-    order.sentToLabAt = new Date();
-    await storage.updateOrder(order);
+### 2. Service Layer Pattern
 
-    // 5. Emit OrderCreated event for analytics
-    await events.publish({
-      type: 'order.created',
-      orderId: order.id,
-      jobId: limsJob.jobId,
-      timestamp: new Date(),
-      metadata: { ecpId: orderData.ecpId },
-    });
+Business logic belongs in services, not routes:
 
-    return order;
+```typescript
+// ❌ WRONG - Business logic in route
+router.post("/claims/create", async (req, res) => {
+  const claim = await db.insert(nhsClaims).values({
+    ...req.body,
+    claimNumber: `GOS1-${Date.now()}`, // Business logic here
+  }).returning();
+  res.json(claim);
+});
+
+// ✅ CORRECT - Business logic in service
+// In routes/nhs.ts
+router.post("/claims/create", async (req, res) => {
+  const { companyId } = req.user!;
+  const claim = await NhsClaimsService.createClaim({
+    ...req.body,
+    companyId,
+  });
+  res.json(claim);
+});
+
+// In services/NhsClaimsService.ts
+export class NhsClaimsService {
+  static async createClaim(data: CreateClaimData) {
+    // Generate claim number
+    const claimNumber = await this.generateClaimNumber(data.companyId, data.claimType);
+
+    // Validate claim
+    await this.validateClaim(data);
+
+    // Create claim
+    const [claim] = await db.insert(nhsClaims).values({
+      ...data,
+      claimNumber,
+      status: "draft",
+    }).returning();
+
+    return claim;
+  }
+
+  private static async generateClaimNumber(companyId: string, type: string) {
+    // Complex business logic
+    const count = await db.select({ count: count() })
+      .from(nhsClaims)
+      .where(and(
+        eq(nhsClaims.companyId, companyId),
+        eq(nhsClaims.claimType, type)
+      ));
+    return `${type}-${new Date().getFullYear()}-${String(count[0].count + 1).padStart(4, "0")}`;
   }
 }
 ```
 
-**Implementation Steps**:
-1. Add `jobId` and `jobStatus` fields to orders table
-2. Implement Order Service class
-3. Update API endpoint `/api/orders` POST to use OrderService
-4. Add LIMS client error handling
-5. Implement order validation against LIMS rules
-6. Add logging for LIMS integration points
-7. Write integration tests
+### 3. Zod Validation
 
-### 1.2 Build SPA with Basic Order Submission
+Always validate API inputs:
 
-**Update existing UI**:
-- Modify `/new-order` to call Order Service
-- Add validation feedback from LIMS
-- Show job queue position to user
-- Add order status tracking
-
-### 1.3 Set Up Event System
-
-**Event Architecture**:
 ```typescript
-// shared/events.ts
-export interface Event {
-  id: string;
-  type: string;
-  version: number;
-  aggregateId: string;
-  aggregateType: string;
-  timestamp: Date;
-  data: Record<string, any>;
-  metadata: Record<string, any>;
-}
+import { z } from "zod";
 
-// Event types
-export const EventTypes = {
-  ORDER_CREATED: 'order.created',
-  ORDER_STATUS_CHANGED: 'order.status_changed',
-  JOB_CREATED: 'job.created',
-  QUALITY_ISSUE_DETECTED: 'quality_issue.detected',
-} as const;
+// Define schema
+const createPatientSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format"),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  nhsNumber: z.string().regex(/^\d{3}\s?\d{3}\s?\d{4}$/).optional(),
+  companyId: z.string().min(1),
+});
+
+// Use in route
+router.post("/patients", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+    const validatedData = createPatientSchema.parse({ ...req.body, companyId });
+
+    const patient = await PatientService.createPatient(validatedData);
+    res.json(patient);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Validation failed", details: error.errors });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
 ```
 
-**Event Publisher** (simple in-process for MVP):
+### 4. Error Handling
+
+Consistent error handling pattern:
+
 ```typescript
-// server/services/EventPublisher.ts
-export class EventPublisher {
-  async publish(event: Event): Promise<void> {
-    // Store event in database
-    // Notify subscribers (webhook handlers)
-    // Log to analytics pipeline
+// Service layer - throw meaningful errors
+export class PatientService {
+  static async getPatient(patientId: string, companyId: string) {
+    const [patient] = await db
+      .select()
+      .from(patients)
+      .where(and(
+        eq(patients.id, patientId),
+        eq(patients.companyId, companyId)
+      ))
+      .limit(1);
+
+    if (!patient) {
+      throw new Error(`Patient not found: ${patientId}`);
+    }
+
+    return patient;
+  }
+}
+
+// Route layer - catch and format errors
+router.get("/patients/:patientId", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+    const { patientId } = req.params;
+
+    const patient = await PatientService.getPatient(patientId, companyId);
+    res.json(patient);
+  } catch (error: any) {
+    console.error("Error fetching patient:", error);
+    res.status(error.message.includes("not found") ? 404 : 500).json({
+      error: error.message
+    });
+  }
+});
+```
+
+### 5. TypeScript Types
+
+Use shared types from schema:
+
+```typescript
+import type { Patient, Prescription, Order } from "@shared/schema";
+
+// Infer insert types
+import { patients } from "@shared/schema";
+
+type CreatePatientData = typeof patients.$inferInsert;
+type PatientData = typeof patients.$inferSelect;
+
+// Use in service
+export class PatientService {
+  static async createPatient(data: CreatePatientData): Promise<PatientData> {
+    const [patient] = await db.insert(patients).values(data).returning();
+    return patient;
   }
 }
 ```
 
 ---
 
-## Phase 2: MVP ECP (Months 7-12)
+## Adding New Features
 
-### 2.1 Implement LIMS Webhook Handler (Flow 2)
+### Step-by-Step: Adding a New Feature
 
-**Webhook Handler Service**:
+Let's walk through adding a "Patient Recalls" feature.
+
+#### Step 1: Database Schema
+
+Edit `shared/schema.ts`:
+
 ```typescript
-// server/services/WebhookService.ts
-export class WebhookService {
-  async handleLimsStatusUpdate(payload: LimsStatusUpdatePayload): Promise<void> {
-    // 1. Validate webhook signature (HMAC-SHA256)
-    const isValid = this.validateSignature(payload, signature);
-    if (!isValid) throw new UnauthorizedError('Invalid webhook signature');
+import { pgTable, varchar, date, boolean, timestamp, pgEnum } from "drizzle-orm/pg-core";
 
-    // 2. Fetch local order by jobId
-    const order = await storage.getOrderByJobId(payload.jobId);
-    if (!order) {
-      log.warn(`Received webhook for unknown job: ${payload.jobId}`);
-      return;
-    }
+// 1. Create enum if needed
+export const recallReasonEnum = pgEnum("recall_reason", [
+  "routine_exam",
+  "glaucoma_check",
+  "diabetic_check",
+  "cl_aftercare",
+  "other"
+]);
 
-    // 3. Map LIMS status to ILS order status
-    const newStatus = this.mapLimsStatusToOrderStatus(payload.status);
+// 2. Create table
+export const patientRecalls = pgTable("patient_recalls", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: varchar("company_id", { length: 255 }).notNull(),
+  patientId: varchar("patient_id", { length: 255 })
+    .notNull()
+    .references(() => patients.id),
+  recallDate: date("recall_date").notNull(),
+  recallReason: recallReasonEnum("recall_reason").notNull(),
+  isCompleted: boolean("is_completed").default(false),
+  completedDate: date("completed_date"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
-    // 4. Update order if status changed
-    if (newStatus !== order.status) {
-      order.status = newStatus;
-      order.statusUpdatedAt = new Date();
-      await storage.updateOrder(order);
+// 3. Create indexes
+export const patientRecallsCompanyIdIndex = index("patient_recalls_company_id_idx").on(
+  patientRecalls.companyId
+);
+export const patientRecallsPatientIdIndex = index("patient_recalls_patient_id_idx").on(
+  patientRecalls.patientId
+);
+export const patientRecallsDateIndex = index("patient_recalls_date_idx").on(
+  patientRecalls.recallDate
+);
+```
 
-      // 5. Push live update to SPA via WebSocket
-      await this.notificationService.broadcastOrderStatusUpdate({
-        orderId: order.id,
-        newStatus: newStatus,
+#### Step 2: Run Migration
+
+```bash
+# Generate migration
+npm run db:generate
+
+# Review migration file in db/migrations/
+
+# Apply migration
+npm run db:push
+
+# Or run migration
+npm run db:migrate
+```
+
+#### Step 3: Create Service
+
+Create `server/services/PatientRecallService.ts`:
+
+```typescript
+import { db } from "../db";
+import { patientRecalls } from "@shared/schema";
+import { eq, and, gte, lte } from "drizzle-orm";
+
+export class PatientRecallService {
+  /**
+   * Create a patient recall
+   */
+  static async createRecall(data: {
+    companyId: string;
+    patientId: string;
+    recallDate: string;
+    recallReason: string;
+    notes?: string;
+  }) {
+    const [recall] = await db
+      .insert(patientRecalls)
+      .values({
+        ...data,
+        isCompleted: false,
+      })
+      .returning();
+
+    return recall;
+  }
+
+  /**
+   * Get all recalls for a patient
+   */
+  static async getPatientRecalls(patientId: string, companyId: string) {
+    return await db
+      .select()
+      .from(patientRecalls)
+      .where(
+        and(
+          eq(patientRecalls.companyId, companyId),
+          eq(patientRecalls.patientId, patientId)
+        )
+      )
+      .orderBy(desc(patientRecalls.recallDate));
+  }
+
+  /**
+   * Get upcoming recalls
+   */
+  static async getUpcomingRecalls(
+    companyId: string,
+    daysAhead: number = 30
+  ) {
+    const today = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + daysAhead);
+
+    return await db
+      .select({
+        recall: patientRecalls,
+        patient: patients,
+      })
+      .from(patientRecalls)
+      .innerJoin(patients, eq(patientRecalls.patientId, patients.id))
+      .where(
+        and(
+          eq(patientRecalls.companyId, companyId),
+          eq(patientRecalls.isCompleted, false),
+          gte(patientRecalls.recallDate, today.toISOString().split("T")[0]),
+          lte(patientRecalls.recallDate, futureDate.toISOString().split("T")[0])
+        )
+      )
+      .orderBy(patientRecalls.recallDate);
+  }
+
+  /**
+   * Complete a recall
+   */
+  static async completeRecall(recallId: string, companyId: string) {
+    const [recall] = await db
+      .update(patientRecalls)
+      .set({
+        isCompleted: true,
+        completedDate: new Date().toISOString().split("T")[0],
         updatedAt: new Date(),
-      });
+      })
+      .where(
+        and(
+          eq(patientRecalls.id, recallId),
+          eq(patientRecalls.companyId, companyId)
+        )
+      )
+      .returning();
 
-      // 6. Emit OrderStatusChanged event
-      await events.publish({
-        type: 'order.status_changed',
-        orderId: order.id,
-        previousStatus: order.status,
-        newStatus: newStatus,
-        jobId: payload.jobId,
-        timestamp: new Date(),
-      });
-
-      // 7. Trigger downstream notifications
-      if (newStatus === 'shipped') {
-        await this.emailService.sendOrderShippedNotification(order);
-      }
+    if (!recall) {
+      throw new Error("Recall not found");
     }
+
+    return recall;
   }
 }
 ```
 
-**Implementation Steps**:
-1. Create webhook endpoint: `POST /api/webhooks/lims-status`
-2. Add webhook signature validation
-3. Implement WebhookService class
-4. Set up WebSocket server for real-time updates
-5. Update SPA to subscribe to order status WebSocket
-6. Add webhook retry logic (exponential backoff)
-7. Add webhook logging and monitoring
+#### Step 4: Create API Routes
 
-### 2.2 Launch POS Service (Order Till)
+Create `server/routes/patientRecalls.ts`:
 
-**POS Service Architecture**:
 ```typescript
-// server/services/PosService.ts
-export class PosService {
-  async createTransaction(request: TransactionRequest): Promise<Transaction> {
-    // 1. Validate order totals against LIMS pricing rules
-    // 2. Initialize Stripe session
-    // 3. Record transaction in DynamoDB ledger
-    // 4. Return payment intent
-  }
+import { Router } from "express";
+import { PatientRecallService } from "../services/PatientRecallService.js";
+import { requireAuth } from "../middleware/auth.js";
+import { z } from "zod";
 
-  async recordPaymentCallback(event: StripeWebhookEvent): Promise<void> {
-    // 1. Validate webhook signature
-    // 2. Update transaction status in DynamoDB
-    // 3. Trigger payout processing
-    // 4. Emit PaymentProcessed event
-  }
-}
-```
+const router = Router();
 
-**Database Setup**:
-- DynamoDB table: `transactions`
-  - Primary key: `transactionId`
-  - Sort key: `timestamp`
-  - Indexes: `ecpId-status`, `status-timestamp`
+// Validation schemas
+const createRecallSchema = z.object({
+  patientId: z.string().min(1),
+  recallDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  recallReason: z.enum(["routine_exam", "glaucoma_check", "diabetic_check", "cl_aftercare", "other"]),
+  notes: z.string().optional(),
+});
 
-**Integration Steps**:
-1. Create AWS DynamoDB table
-2. Set up Stripe Connect account
-3. Implement POS Service with Stripe integration
-4. Create payment endpoints
-5. Handle Stripe webhooks
-6. Add transaction reconciliation
-7. Implement payout scheduling
+// Create recall
+router.post("/", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+    const validatedData = createRecallSchema.parse(req.body);
 
-### 2.3 Launch Billing Service
-
-**Billing Service**:
-```typescript
-// server/services/BillingService.ts
-export class BillingService {
-  async handleStripeWebhook(event: StripeEvent): Promise<void> {
-    // 1. Validate webhook signature
-    // 2. Based on event type:
-    //    - charge.succeeded: Generate invoice PDF
-    //    - charge.failed: Send retry notification
-    //    - payout.paid: Send payment confirmation
-    // 3. Store event in database for audit
-    // 4. Trigger email notifications
-  }
-
-  async generateInvoicePdf(transaction: Transaction): Promise<Buffer> {
-    // Use existing pdfService
-    // Enhanced with line items, tax, discount information
-  }
-}
-```
-
-**Webhook Setup**:
-1. Configure Stripe webhook endpoint
-2. Implement webhook event handler
-3. Add webhook validation
-4. Set up event processing queue (optional: Bull for async processing)
-
----
-
-## Phase 3: All-in-One Platform (Months 12-18)
-
-### 3.1 Ship Practice Service
-
-**Practice Service**:
-```typescript
-// server/services/PracticeService.ts
-export interface Practice {
-  id: string;
-  name: string;
-  licenseNumber: string;
-  primaryPhysician: string;
-  address: Address;
-  contactEmail: string;
-  contactPhone: string;
-  staffRoster: Staff[];
-  supplierRegistry: Supplier[];
-  settings: PracticeSettings;
-  createdAt: Date;
-}
-
-export class PracticeService {
-  async getPracticeProfile(ecpId: string): Promise<Practice> {
-    // Return practice metadata
-  }
-
-  async updatePracticeProfile(
-    ecpId: string,
-    updates: Partial<Practice>
-  ): Promise<Practice> {
-    // Update practice information
-  }
-
-  async manageStaffRoster(practiceId: string): Promise<Staff[]> {
-    // CRUD operations for staff members
-  }
-
-  async manageSupplierRegistry(practiceId: string): Promise<Supplier[]> {
-    // Manage preferred suppliers
-  }
-}
-```
-
-**Database Tables**:
-- `practices`: Core practice information
-- `practice_staff`: Staff roster with roles
-- `practice_suppliers`: Preferred supplier relationships
-
-### 3.2 Ship Supplier Service
-
-**Supplier Service**:
-```typescript
-// server/services/SupplierService.ts
-export class SupplierService {
-  async generatePurchaseOrder(
-    supplierId: string,
-    items: OrderItem[],
-    practiceData: Practice
-  ): Promise<PurchaseOrder> {
-    // 1. Validate items availability
-    // 2. Calculate totals
-    // 3. Generate PO document
-    // 4. Create database record
-    // 5. Send to supplier
-  }
-
-  async trackDelivery(poId: string): Promise<DeliveryStatus> {
-    // Query supplier tracking system
-    // Update local delivery status
-  }
-}
-```
-
-### 3.3 Implement OTC Till
-
-- Point-of-sale interface for over-the-counter sales
-- Integrate with POS Service and Stripe Connect
-- Add inventory tracking for retail items
-
----
-
-## Phase 4: Innovation Loop (Ongoing)
-
-### 4.1 Flow 3 - Catalog Innovation
-
-**Catalog Update Flow**:
-```typescript
-// When Principal Engineer publishes new rules in LIMS:
-// 1. LIMS triggers webhook: POST /api/webhooks/lims-catalog-update
-// 2. Order Service receives notification
-// 3. Activates new catalog entries in order form
-// 4. SPA receives updated catalog via WebSocket
-// 5. ECPs see new options instantly (zero-lag distribution)
-
-export class CatalogService {
-  async handleCatalogUpdate(payload: CatalogUpdatePayload): Promise<void> {
-    // 1. Fetch latest rules from LIMS
-    const rules = await this.limsClient.fetchRules(payload.rulesVersion);
-
-    // 2. Transform rules into catalog entries
-    const catalog = this.transformRulesToCatalog(rules);
-
-    // 3. Store in cache (Redis recommended)
-    await this.cache.set(`catalog:v${payload.rulesVersion}`, catalog);
-
-    // 4. Broadcast to all connected clients
-    await this.notificationService.broadcastCatalogUpdate(catalog);
-
-    // 5. Emit CatalogUpdated event
-    await events.publish({
-      type: 'catalog.updated',
-      rulesVersion: payload.rulesVersion,
-      timestamp: new Date(),
+    const recall = await PatientRecallService.createRecall({
+      ...validatedData,
+      companyId,
     });
+
+    res.json(recall);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Validation failed", details: error.errors });
+    }
+    res.status(500).json({ error: error.message });
   }
-}
+});
+
+// Get patient recalls
+router.get("/patient/:patientId", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+    const { patientId } = req.params;
+
+    const recalls = await PatientRecallService.getPatientRecalls(patientId, companyId);
+    res.json(recalls);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get upcoming recalls
+router.get("/upcoming", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+    const daysAhead = req.query.days ? parseInt(req.query.days as string) : 30;
+
+    const recalls = await PatientRecallService.getUpcomingRecalls(companyId, daysAhead);
+    res.json(recalls);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Complete recall
+router.post("/:recallId/complete", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+    const { recallId } = req.params;
+
+    const recall = await PatientRecallService.completeRecall(recallId, companyId);
+    res.json(recall);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+export default router;
 ```
 
-### 4.2 Principal Engineer Dashboard
+#### Step 5: Mount Routes
 
-**Dashboard Features**:
+Edit `server/routes.ts`:
+
 ```typescript
-// server/services/EngineeringDashboardService.ts
-export interface DashboardMetrics {
-  failureRates: Map<string, number>;        // By lens type, material, etc.
-  orderingTrends: OrderTrend[];              // Volume over time
-  qualityIssues: QualityIssue[];             // Recent issues
-  productionBottlenecks: Bottleneck[];       // Where orders are stuck
-  rdOpportunities: RdOpportunity[];          // Innovation signals
+import patientRecallRoutes from "./routes/patientRecalls";
+
+// Mount routes
+app.use("/api/patient-recalls", patientRecallRoutes);
+```
+
+#### Step 6: Create Frontend Component
+
+Create `client/src/pages/PatientRecalls.tsx`:
+
+```typescript
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Calendar, CheckCircle } from "lucide-react";
+
+interface Recall {
+  id: string;
+  patient: { name: string };
+  recallDate: string;
+  recallReason: string;
+  isCompleted: boolean;
 }
 
-export class EngineeringDashboardService {
-  async getMetrics(timeRange: TimeRange): Promise<DashboardMetrics> {
-    // 1. Query analytics events database
-    // 2. Query quality issues
-    // 3. Query LIMS telemetry
-    // 4. Compute failure rates and trends
-    // 5. Identify bottlenecks and opportunities
-    return metrics;
+export default function PatientRecalls() {
+  const { data: recalls, isLoading } = useQuery<Recall[]>({
+    queryKey: ["/api/patient-recalls/upcoming"],
+  });
+
+  const completeRecall = async (recallId: string) => {
+    await fetch(`/api/patient-recalls/${recallId}/complete`, {
+      method: "POST",
+    });
+    // Invalidate query to refresh
+  };
+
+  if (isLoading) return <div>Loading...</div>;
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold">Patient Recalls</h1>
+
+      <div className="grid gap-4">
+        {recalls?.map((recall) => (
+          <Card key={recall.id}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>{recall.patient.name}</span>
+                <Button
+                  onClick={() => completeRecall(recall.id)}
+                  disabled={recall.isCompleted}
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  {recall.isCompleted ? "Completed" : "Complete"}
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2 text-gray-600">
+                <Calendar className="h-4 w-4" />
+                <span>{new Date(recall.recallDate).toLocaleDateString()}</span>
+                <span className="ml-4">Reason: {recall.recallReason}</span>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+#### Step 7: Add Route
+
+Edit `client/src/App.tsx`:
+
+```typescript
+import PatientRecalls from "./pages/PatientRecalls";
+
+// Add route
+<Route path="/ecp/recalls" component={PatientRecalls} />
+```
+
+#### Step 8: Test
+
+```bash
+# Test API endpoints
+curl -X POST http://localhost:5000/api/patient-recalls \
+  -H "Content-Type: application/json" \
+  -d '{"patientId":"patient-123","recallDate":"2024-02-01","recallReason":"routine_exam"}'
+
+curl http://localhost:5000/api/patient-recalls/upcoming
+
+# Test frontend
+# Navigate to http://localhost:5000/ecp/recalls
+```
+
+---
+
+## Database Development
+
+### Creating Tables
+
+```typescript
+// In shared/schema.ts
+export const myTable = pgTable("my_table", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: varchar("company_id", { length: 255 }).notNull(), // Required for multi-tenant
+  name: varchar("name", { length: 255 }).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }),
+  status: varchar("status", { length: 50 }).default("active"),
+  metadata: json("metadata"), // For flexible JSON data
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Create index on companyId (required for performance)
+export const myTableCompanyIdIndex = index("my_table_company_id_idx").on(myTable.companyId);
+```
+
+### Relationships
+
+```typescript
+export const orders = pgTable("orders", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  patientId: varchar("patient_id", { length: 255 })
+    .notNull()
+    .references(() => patients.id, { onDelete: "cascade" }),
+  // ...
+});
+
+// In queries
+const ordersWithPatients = await db
+  .select({
+    order: orders,
+    patient: patients,
+  })
+  .from(orders)
+  .innerJoin(patients, eq(orders.patientId, patients.id))
+  .where(eq(orders.companyId, companyId));
+```
+
+### Migrations
+
+```bash
+# Generate migration from schema changes
+npm run db:generate
+
+# Review migration file
+cat db/migrations/0001_migration_name.sql
+
+# Apply migration to dev database
+npm run db:push
+
+# Apply migration to production
+npm run db:migrate
+```
+
+### Best Practices
+
+1. **Always include `companyId`** for multi-tenant isolation
+2. **Create indexes** on foreign keys and frequently queried columns
+3. **Use enums** for fixed value sets (status, types, etc.)
+4. **Add `createdAt`/`updatedAt`** for audit trails
+5. **Use `onDelete: "cascade"`** for dependent records
+6. **Use `decimal`** for money/precise numbers, not `float`
+
+---
+
+## API Development
+
+### RESTful Conventions
+
+```typescript
+// Resource: /api/patients
+
+GET    /api/patients              // List all patients
+GET    /api/patients/:id          // Get patient by ID
+POST   /api/patients              // Create patient
+PUT    /api/patients/:id          // Update patient
+DELETE /api/patients/:id          // Delete patient
+
+// Sub-resources
+GET    /api/patients/:id/prescriptions    // Get patient's prescriptions
+POST   /api/patients/:id/prescriptions    // Create prescription for patient
+
+// Actions
+POST   /api/claims/:id/submit             // Submit claim
+POST   /api/recalls/:id/complete          // Complete recall
+```
+
+### Request/Response Format
+
+```typescript
+// Request
+POST /api/patients
+Content-Type: application/json
+
+{
+  "name": "John Smith",
+  "dateOfBirth": "1980-05-15",
+  "email": "john@example.com"
+}
+
+// Success Response (200 OK, 201 Created)
+{
+  "id": "patient-123",
+  "name": "John Smith",
+  "dateOfBirth": "1980-05-15",
+  "email": "john@example.com",
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+
+// Error Response (400 Bad Request, 404 Not Found, 500 Internal Error)
+{
+  "error": "Validation failed",
+  "details": [
+    {
+      "field": "dateOfBirth",
+      "message": "Invalid date format"
+    }
+  ]
+}
+```
+
+---
+
+## Frontend Development
+
+### Component Structure
+
+```typescript
+// Good component structure
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+
+interface Props {
+  patientId: string;
+}
+
+export default function PatientDetails({ patientId }: Props) {
+  // 1. Hooks
+  const [editing, setEditing] = useState(false);
+  const queryClient = useQueryClient();
+
+  // 2. Data fetching
+  const { data: patient, isLoading } = useQuery({
+    queryKey: [`/api/patients/${patientId}`],
+  });
+
+  // 3. Mutations
+  const updateMutation = useMutation({
+    mutationFn: async (data) => {
+      const res = await fetch(`/api/patients/${patientId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/patients/${patientId}`] });
+    },
+  });
+
+  // 4. Event handlers
+  const handleSave = async (data) => {
+    await updateMutation.mutateAsync(data);
+    setEditing(false);
+  };
+
+  // 5. Loading/error states
+  if (isLoading) return <div>Loading...</div>;
+  if (!patient) return <div>Patient not found</div>;
+
+  // 6. Render
+  return (
+    <Card>
+      <h2>{patient.name}</h2>
+      <p>DOB: {patient.dateOfBirth}</p>
+      {editing ? (
+        <EditForm patient={patient} onSave={handleSave} />
+      ) : (
+        <Button onClick={() => setEditing(true)}>Edit</Button>
+      )}
+    </Card>
+  );
+}
+```
+
+### Using Design System
+
+```typescript
+import { StatsCard, GradientCard } from "@/components/ui";
+
+// Stats Card
+<StatsCard
+  title="Total Patients"
+  value="1,234"
+  subtitle="Active patients"
+  icon={Users}
+  variant="primary"
+  trend={{ value: 12.5, isPositive: true, label: "vs last month" }}
+/>
+
+// Gradient Card
+<GradientCard variant="primary">
+  <GradientCardHeader
+    title="AI Assistant"
+    subtitle="Get instant insights"
+    icon={<Brain />}
+  />
+  <GradientCardContent>
+    Content here
+  </GradientCardContent>
+  <GradientCardActions>
+    <Button>Action</Button>
+  </GradientCardActions>
+</GradientCard>
+```
+
+---
+
+## Testing
+
+### Unit Tests
+
+```typescript
+// services/PatientRecallService.test.ts
+import { describe, it, expect } from "vitest";
+import { PatientRecallService } from "./PatientRecallService";
+
+describe("PatientRecallService", () => {
+  it("should create a recall", async () => {
+    const recall = await PatientRecallService.createRecall({
+      companyId: "test-company",
+      patientId: "patient-123",
+      recallDate: "2024-02-01",
+      recallReason: "routine_exam",
+    });
+
+    expect(recall.id).toBeDefined();
+    expect(recall.isCompleted).toBe(false);
+  });
+
+  it("should get upcoming recalls", async () => {
+    const recalls = await PatientRecallService.getUpcomingRecalls("test-company", 30);
+    expect(Array.isArray(recalls)).toBe(true);
+  });
+});
+```
+
+### API Tests
+
+```bash
+# Using curl
+curl -X POST http://localhost:5000/api/patient-recalls \
+  -H "Content-Type: application/json" \
+  -d '{"patientId":"patient-123","recallDate":"2024-02-01","recallReason":"routine_exam"}'
+
+# Expected: 200 OK with recall object
+```
+
+---
+
+## Best Practices
+
+### 1. Security
+
+```typescript
+// ✅ Always validate company isolation
+const patient = await db
+  .select()
+  .from(patients)
+  .where(
+    and(
+      eq(patients.id, patientId),
+      eq(patients.companyId, req.user!.companyId) // CRITICAL
+    )
+  );
+
+// ❌ Never trust client input without validation
+const data = req.body; // WRONG
+const data = createPatientSchema.parse(req.body); // CORRECT
+
+// ✅ Sanitize user input
+import { escape } from "html-escaper";
+const safeNote = escape(userInput);
+```
+
+### 2. Performance
+
+```typescript
+// ✅ Use indexes for frequently queried columns
+export const patientNameIndex = index("patient_name_idx").on(patients.name);
+
+// ✅ Limit query results
+const patients = await db.select().from(patients).limit(100);
+
+// ✅ Use pagination
+const patients = await db.select().from(patients).limit(50).offset(page * 50);
+
+// ❌ Avoid N+1 queries
+for (const patient of patients) {
+  const orders = await db.select().from(orders).where(eq(orders.patientId, patient.id)); // SLOW
+}
+
+// ✅ Use joins instead
+const patientsWithOrders = await db
+  .select()
+  .from(patients)
+  .leftJoin(orders, eq(orders.patientId, patients.id));
+```
+
+### 3. Error Handling
+
+```typescript
+// ✅ Use try-catch in routes
+router.get("/patients/:id", async (req, res) => {
+  try {
+    const patient = await PatientService.getPatient(req.params.id, req.user!.companyId);
+    res.json(patient);
+  } catch (error: any) {
+    console.error("Error:", error);
+    res.status(500).json({ error: error.message });
   }
+});
+
+// ✅ Throw meaningful errors in services
+if (!patient) {
+  throw new Error(`Patient not found: ${patientId}`);
+}
+
+// ✅ Handle specific error types
+if (error instanceof z.ZodError) {
+  return res.status(400).json({ error: "Validation failed", details: error.errors });
 }
 ```
 
-**Frontend Dashboard** (React):
-- Real-time production metrics
-- Quality issue tracking and trending
-- Order volume and velocity charts
-- Failure analysis by manufacturing stage
-- R&D opportunity recommendations
-- Rule deployment history and audit trail
+### 4. Code Organization
 
-### 4.3 Analytics & Reporting
+```typescript
+// ✅ Group related functionality
+services/
+  ├── PatientService.ts
+  ├── PrescriptionService.ts
+  └── OrderService.ts
 
-**Analytics Pipeline**:
-1. Events published by services → Event store (PostgreSQL)
-2. Analytics workers process events → Aggregations table
-3. Dashboard queries aggregations for display
-4. Export capabilities (CSV, PDF reports)
+// ✅ Use meaningful names
+const activePatients = await PatientService.getActivePatients(); // GOOD
+const data = await service.get(); // BAD
 
----
+// ✅ Keep functions small and focused
+// Function should do one thing well
 
-## Infrastructure Setup
-
-### AWS Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Route 53 (DNS)                          │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│              API Gateway (REST)                             │
-│              - Rate limiting                                │
-│              - CORS configuration                           │
-│              - Authorization                                │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-         ┌───────────────┼───────────────┐
-         │               │               │
-    ┌────▼──────────┐ ┌──▼────────────┐ ┌──▼────────────┐
-    │  Auth Service │ │ Order Service │ │ POS Service  │
-    │  (Container)  │ │  (Container)  │ │ (Container)  │
-    └────┬──────────┘ └──┬────────────┘ └──┬────────────┘
-         │                │                  │
-    ┌────┴────────────────┼──────────────────┴─────┐
-    │                     │                        │
-┌───▼────────────────┐ ┌──▼────────────────────┐  │
-│   RDS Postgres     │ │   ElastiCache Redis   │  │
-│  - Core database   │ │  - Session storage    │  │
-│  - User data       │ │  - Catalog cache      │  │
-│  - Orders          │ │  - Rate limiting      │  │
-└────────────────────┘ └───────────────────────┘  │
-                                                    │
-                                          ┌─────────▼──────┐
-                                          │   DynamoDB     │
-                                          │ - Transactions │
-                                          │ - Ledger       │
-                                          └────────────────┘
-         │
-    ┌────▼──────────────┐
-    │  S3 Buckets       │
-    │  - OMA files      │
-    │  - PDFs           │
-    │  - Documents      │
-    └───────────────────┘
-```
-
-### Kubernetes Configuration
-
-```yaml
-# EKS Cluster Setup
-- Cluster version: 1.29+
-- Node groups: Autoscaling (2-10 nodes)
-- Add-ons:
-  - EBS CSI Driver (for persistent volumes)
-  - VPC CNI Plugin
-  - CoreDNS
-  - kube-proxy
-
-# Namespaces
-- production: Live services
-- staging: Pre-production testing
-- monitoring: Observability stack (Prometheus, Grafana)
-- ingress: NGINX Ingress Controller
-```
-
-### Deployment Strategy
-
-1. **Containerization**: Each service in its own Docker image
-2. **Registry**: AWS ECR (Elastic Container Registry)
-3. **CI/CD**: GitHub Actions
-   - Build on push to main
-   - Run tests
-   - Build and push Docker image
-   - Deploy to staging
-   - Smoke tests
-   - Promote to production (manual approval)
-4. **Rollout**: Blue-green deployments for zero-downtime updates
-
----
-
-## Development & Testing
-
-### Unit Testing
-
-- Jest for all services
-- >80% code coverage target
-- Mock LIMS client for service tests
-
-### Integration Testing
-
-- Docker Compose environment for local testing
-- Test harness with real PostgreSQL + Redis
-- Contract tests for LIMS API integration
-
-### End-to-End Testing
-
-- Selenium or Playwright for UI automation
-- Test flows: Order submission → Status updates → Payment
-- Run against staging environment
-
-### Load Testing
-
-- k6 or Apache JMeter
-- Target: 1000 concurrent orders
-- Monitor response times, error rates
-- Stress test LIMS webhook handler
-
----
-
-## Deployment Checklist
-
-### Pre-Deployment
-- [ ] All tests passing (unit, integration, E2E)
-- [ ] Code review completed
-- [ ] Security scan passed (OWASP, dependency scan)
-- [ ] Database migrations tested
-- [ ] Rollback procedure documented and tested
-- [ ] Monitoring alerts configured
-
-### Deployment
-- [ ] Deploy to staging environment
-- [ ] Run smoke tests
-- [ ] Get approval from Principal Engineer
-- [ ] Deploy to production (off-peak hours recommended)
-- [ ] Monitor error rates and latency
-- [ ] Verify LIMS integration
-- [ ] Verify webhook handlers working
-- [ ] Spot-check a few live orders
-
-### Post-Deployment
-- [ ] Monitor for 24-48 hours
-- [ ] Verify analytics events flowing correctly
-- [ ] Check performance metrics
-- [ ] Gather stakeholder feedback
-- [ ] Document any issues or learnings
-
----
-
-## Environment Variables
-
-### Production Secrets
-```
-DATABASE_URL=postgresql://...
-REDIS_URL=redis://...
-DYNAMODB_TABLE_TRANSACTIONS=...
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
-
-LIMS_API_BASE_URL=https://lims.company.com/api
-LIMS_API_KEY=...
-LIMS_WEBHOOK_SECRET=...
-
-AUTH_PROVIDER=cognito | auth0
-COGNITO_USER_POOL_ID=...
-COGNITO_CLIENT_ID=...
-
-STRIPE_API_KEY=...
-STRIPE_WEBHOOK_SECRET=...
-
-SENDGRID_API_KEY=... # or RESEND_API_KEY
-SESSION_SECRET=...
-ADMIN_SETUP_KEY=...
+// ✅ Use constants
+const NHS_GOS1_FEE = 23.35;
+const MAX_CLAIM_AGE_DAYS = 90;
 ```
 
 ---
 
-## Success Metrics
+## Common Tasks
 
-### Technical
-- P99 latency: <500ms for all API endpoints
-- Error rate: <0.1%
-- LIMS integration uptime: 99.95%
-- Webhook delivery: 99.99% (with retries)
-- Deployment frequency: Multiple per day
-- Lead time for changes: <1 hour
-- Change failure rate: <10%
-- Mean time to recovery: <15 minutes
+### Add a New API Endpoint
 
-### Business
-- Order submission to LIMS: <2 minutes
-- Status update propagation: <1 second
-- User adoption: >80% of ECPs active within 30 days
-- Reduction in manual order entry: 90%
-- Improvement in order accuracy: 99%+
-- Cost savings vs. legacy system: >40%
+1. Create service method in `services/`
+2. Add route in `routes/`
+3. Mount route in `routes.ts`
+4. Test with curl or Postman
+5. Document in `API_DOCUMENTATION.md`
 
----
+### Add a New Table
 
-## Next Steps
+1. Add table definition in `shared/schema.ts`
+2. Run `npm run db:generate`
+3. Review migration
+4. Run `npm run db:push` (dev) or `npm run db:migrate` (prod)
+5. Create service for business logic
+6. Create API routes
+7. Create frontend components
 
-1. **Immediately**:
-   - [ ] Hire Principal Engineer
-   - [ ] Review this implementation guide
-   - [ ] Create AWS account and set up initial resources
+### Add a New UI Component
 
-2. **Week 1-2**:
-   - [ ] Select LIMS platform
-   - [ ] Begin LIMS API integration planning
-   - [ ] Set up AWS infrastructure foundation
+1. Create component in `client/src/components/`
+2. Use design system variables
+3. Add to `client/src/components/ui/index.ts` if reusable
+4. Document props with TypeScript
+5. Test responsiveness
 
-3. **Week 3-4**:
-   - [ ] Stand up LIMS instance
-   - [ ] Begin shared LIMS client package development
-   - [ ] Create service scaffolding
+### Integrate with External API
 
-4. **Month 2-3**:
-   - [ ] Complete LIMS Client Package
-   - [ ] Implement Order Service with LIMS validation
-   - [ ] Set up basic webhook handler
-   - [ ] Containerize services
-
-5. **Month 4+**:
-   - [ ] Deploy to AWS EKS
-   - [ ] Complete Phase 1 (MVP Internal)
-   - [ ] Begin Phase 2 (MVP ECP)
+1. Add API key to `.env`
+2. Create service in `services/ExternalAPIService.ts`
+3. Handle errors and rate limiting
+4. Add caching if appropriate
+5. Document in API docs
 
 ---
 
-## References
+## Resources
 
-- **Architecture Strategy**: `docs/architecture.md`
-- **Current Implementation**: `PROJECT_OVERVIEW.txt`
-- **AWS EKS Best Practices**: https://docs.aws.amazon.com/eks/latest/userguide/best-practices.html
-- **Drizzle ORM**: https://orm.drizzle.team/
-- **Fastify**: https://www.fastify.io/
-- **TanStack Query**: https://tanstack.com/query/
+- **TypeScript**: https://www.typescriptlang.org/docs/
+- **React**: https://react.dev/
+- **Drizzle ORM**: https://orm.drizzle.team/docs/overview
+- **TanStack Query**: https://tanstack.com/query/latest
+- **Tailwind CSS**: https://tailwindcss.com/docs
+- **Shadcn/ui**: https://ui.shadcn.com/
+- **OpenAI API**: https://platform.openai.com/docs/
 
 ---
 
-**Document maintained by**: Architecture Team  
-**Last updated**: October 28, 2025  
-**Next review**: November 28, 2025
+**Happy coding! 🚀**
