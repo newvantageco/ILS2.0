@@ -4605,6 +4605,304 @@ export const contactLensOrders = pgTable("contact_lens_orders", {
   index("cl_orders_status_idx").on(table.status),
 ]);
 
+// ============================================================================
+// SHOPIFY INTEGRATION
+// ============================================================================
+
+/**
+ * Shopify Store Connections
+ * Stores connected to ILS via Shopify app
+ */
+export const shopifyStoreStatusEnum = pgEnum("shopify_store_status", [
+  "active",
+  "inactive",
+  "suspended",
+  "expired"
+]);
+
+export const shopifyStores = pgTable("shopify_stores", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // Company Reference
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+
+  // Shopify Store Details
+  shopifyDomain: varchar("shopify_domain", { length: 255 }).notNull().unique(),
+  shopifyStoreId: varchar("shopify_store_id", { length: 255 }).notNull().unique(),
+  storeName: varchar("store_name", { length: 255 }).notNull(),
+  storeEmail: varchar("store_email", { length: 255 }),
+  storeUrl: varchar("store_url", { length: 500 }).notNull(),
+
+  // API Credentials (encrypted)
+  accessToken: text("access_token").notNull(), // Encrypted Shopify API token
+  apiKey: varchar("api_key", { length: 255 }).notNull(),
+  apiSecretKey: text("api_secret_key").notNull(), // Encrypted
+
+  // Webhook Configuration
+  webhookSecret: text("webhook_secret"), // For verifying Shopify webhooks
+
+  // Integration Settings
+  enablePrescriptionVerification: boolean("enable_prescription_verification").default(true),
+  enableAIRecommendations: boolean("enable_ai_recommendations").default(true),
+  enableAutoOrderSync: boolean("enable_auto_order_sync").default(true),
+  requirePrescriptionUpload: boolean("require_prescription_upload").default(false),
+
+  // Pricing Settings
+  markupPercentage: decimal("markup_percentage", { precision: 5, scale: 2 }).default("0"),
+
+  // Status
+  status: shopifyStoreStatusEnum("status").notNull().default("active"),
+  installedAt: timestamp("installed_at").notNull().defaultNow(),
+  lastSyncAt: timestamp("last_sync_at"),
+  expiresAt: timestamp("expires_at"),
+
+  // Metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("shopify_stores_company_idx").on(table.companyId),
+  index("shopify_stores_status_idx").on(table.status),
+]);
+
+/**
+ * Shopify Orders
+ * Orders synced from Shopify stores
+ */
+export const shopifyOrderSyncStatusEnum = pgEnum("shopify_order_sync_status", [
+  "pending",
+  "synced",
+  "processing",
+  "completed",
+  "failed",
+  "cancelled"
+]);
+
+export const shopifyOrders = pgTable("shopify_orders", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  shopifyStoreId: varchar("shopify_store_id", { length: 255 }).notNull().references(() => shopifyStores.id, { onDelete: "cascade" }),
+  ilsOrderId: varchar("ils_order_id", { length: 255 }).references(() => orders.id),
+  patientId: varchar("patient_id", { length: 255 }).references(() => patients.id),
+
+  // Shopify Order Details
+  shopifyOrderNumber: varchar("shopify_order_number", { length: 100 }).notNull(),
+  shopifyOrderId: varchar("shopify_order_id", { length: 255 }).notNull().unique(),
+  shopifyOrderName: varchar("shopify_order_name", { length: 100 }),
+
+  // Customer Details
+  customerEmail: varchar("customer_email", { length: 255 }),
+  customerPhone: varchar("customer_phone", { length: 50 }),
+  customerName: varchar("customer_name", { length: 255 }),
+  shippingAddress: jsonb("shipping_address"),
+  billingAddress: jsonb("billing_address"),
+
+  // Order Items
+  orderItems: jsonb("order_items").notNull(), // Array of line items
+
+  // Prescription Data
+  prescriptionData: jsonb("prescription_data"), // Uploaded prescription details
+  prescriptionVerified: boolean("prescription_verified").default(false),
+  prescriptionVerifiedAt: timestamp("prescription_verified_at"),
+  prescriptionVerifiedBy: varchar("prescription_verified_by", { length: 255 }),
+
+  // AI Recommendations
+  aiRecommendations: jsonb("ai_recommendations"), // AI suggested products
+  aiRecommendationUsed: boolean("ai_recommendation_used").default(false),
+
+  // Pricing
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+  tax: decimal("tax", { precision: 10, scale: 2 }).default("0"),
+  shipping: decimal("shipping", { precision: 10, scale: 2 }).default("0"),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 10 }).notNull().default("GBP"),
+
+  // Status
+  syncStatus: shopifyOrderSyncStatusEnum("sync_status").notNull().default("pending"),
+  shopifyFulfillmentStatus: varchar("shopify_fulfillment_status", { length: 50 }),
+  shopifyFinancialStatus: varchar("shopify_financial_status", { length: 50 }),
+
+  // Sync Details
+  syncedAt: timestamp("synced_at"),
+  lastSyncAttempt: timestamp("last_sync_attempt"),
+  syncError: text("sync_error"),
+  syncRetryCount: integer("sync_retry_count").default(0),
+
+  // Fulfillment
+  fulfilledAt: timestamp("fulfilled_at"),
+  trackingNumber: varchar("tracking_number", { length: 255 }),
+  trackingUrl: varchar("tracking_url", { length: 500 }),
+
+  notes: text("notes"),
+
+  // Metadata
+  shopifyCreatedAt: timestamp("shopify_created_at"),
+  shopifyUpdatedAt: timestamp("shopify_updated_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("shopify_orders_company_idx").on(table.companyId),
+  index("shopify_orders_store_idx").on(table.shopifyStoreId),
+  index("shopify_orders_sync_status_idx").on(table.syncStatus),
+  index("shopify_orders_shopify_id_idx").on(table.shopifyOrderId),
+  index("shopify_orders_ils_order_idx").on(table.ilsOrderId),
+]);
+
+/**
+ * Prescription Uploads
+ * Customer-uploaded prescriptions from Shopify
+ */
+export const prescriptionVerificationStatusEnum = pgEnum("prescription_verification_status", [
+  "pending",
+  "verified",
+  "rejected",
+  "expired",
+  "requires_review"
+]);
+
+export const prescriptionUploads = pgTable("prescription_uploads", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  shopifyOrderId: varchar("shopify_order_id", { length: 255 }).references(() => shopifyOrders.id),
+  patientId: varchar("patient_id", { length: 255 }).references(() => patients.id),
+
+  // Upload Details
+  fileUrl: text("file_url").notNull(),
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  fileType: varchar("file_type", { length: 50 }).notNull(), // pdf, jpg, png
+  fileSize: integer("file_size"), // in bytes
+
+  // AI Extraction
+  aiExtractedData: jsonb("ai_extracted_data"), // Prescription data extracted by AI
+  aiExtractionConfidence: decimal("ai_extraction_confidence", { precision: 5, scale: 2 }),
+
+  // Parsed Prescription Data
+  prescriptionData: jsonb("prescription_data"),
+  prescriptionDate: date("prescription_date"),
+  expiryDate: date("expiry_date"),
+  practitionerName: varchar("practitioner_name", { length: 255 }),
+  practitionerGocNumber: varchar("practitioner_goc_number", { length: 50 }),
+
+  // Verification
+  verificationStatus: prescriptionVerificationStatusEnum("verification_status").notNull().default("pending"),
+  verifiedBy: varchar("verified_by", { length: 255 }), // User ID who verified
+  verifiedAt: timestamp("verified_at"),
+  rejectionReason: text("rejection_reason"),
+
+  // Alerts
+  requiresReview: boolean("requires_review").default(false),
+  reviewNotes: text("review_notes"),
+
+  // Metadata
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("prescription_uploads_company_idx").on(table.companyId),
+  index("prescription_uploads_order_idx").on(table.shopifyOrderId),
+  index("prescription_uploads_status_idx").on(table.verificationStatus),
+  index("prescription_uploads_requires_review_idx").on(table.requiresReview),
+]);
+
+/**
+ * Shopify Product Sync
+ * Sync between ILS products and Shopify products
+ */
+export const shopifyProducts = pgTable("shopify_products", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  shopifyStoreId: varchar("shopify_store_id", { length: 255 }).notNull().references(() => shopifyStores.id, { onDelete: "cascade" }),
+
+  // Shopify Product Details
+  shopifyProductId: varchar("shopify_product_id", { length: 255 }).notNull(),
+  shopifyVariantId: varchar("shopify_variant_id", { length: 255 }),
+
+  // Product Information
+  productTitle: varchar("product_title", { length: 255 }).notNull(),
+  productType: varchar("product_type", { length: 100 }), // frames, lenses, contact_lenses, accessories
+  sku: varchar("sku", { length: 100 }),
+
+  // ILS Product Mapping
+  ilsProductId: varchar("ils_product_id", { length: 255 }),
+  ilsProductType: varchar("ils_product_type", { length: 50 }), // frame, lens, coating, contact_lens
+
+  // Pricing
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  compareAtPrice: decimal("compare_at_price", { precision: 10, scale: 2 }),
+
+  // Inventory
+  inventoryQuantity: integer("inventory_quantity").default(0),
+  trackInventory: boolean("track_inventory").default(false),
+
+  // Sync
+  lastSyncedAt: timestamp("last_synced_at"),
+  syncEnabled: boolean("sync_enabled").default(true),
+
+  // Metadata
+  productMetadata: jsonb("product_metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("shopify_products_company_idx").on(table.companyId),
+  index("shopify_products_store_idx").on(table.shopifyStoreId),
+  index("shopify_products_shopify_id_idx").on(table.shopifyProductId),
+  uniqueIndex("shopify_products_unique").on(table.shopifyStoreId, table.shopifyProductId, table.shopifyVariantId),
+]);
+
+/**
+ * Shopify Webhooks Log
+ * Track all webhooks received from Shopify
+ */
+export const shopifyWebhooks = pgTable("shopify_webhooks", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  shopifyStoreId: varchar("shopify_store_id", { length: 255 }).references(() => shopifyStores.id, { onDelete: "cascade" }),
+
+  // Webhook Details
+  webhookTopic: varchar("webhook_topic", { length: 100 }).notNull(), // orders/create, orders/updated, etc.
+  shopifyWebhookId: varchar("shopify_webhook_id", { length: 255 }),
+
+  // Payload
+  payload: jsonb("payload").notNull(),
+  headers: jsonb("headers"),
+
+  // Processing
+  processed: boolean("processed").default(false),
+  processedAt: timestamp("processed_at"),
+  processingError: text("processing_error"),
+  processingRetryCount: integer("processing_retry_count").default(0),
+
+  // Verification
+  signatureValid: boolean("signature_valid"),
+
+  // Metadata
+  receivedAt: timestamp("received_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("shopify_webhooks_store_idx").on(table.shopifyStoreId),
+  index("shopify_webhooks_topic_idx").on(table.webhookTopic),
+  index("shopify_webhooks_processed_idx").on(table.processed),
+  index("shopify_webhooks_received_idx").on(table.receivedAt),
+]);
+
+// Export Shopify Types
+export type ShopifyStore = typeof shopifyStores.$inferSelect;
+export type InsertShopifyStore = typeof shopifyStores.$inferInsert;
+export type ShopifyOrder = typeof shopifyOrders.$inferSelect;
+export type InsertShopifyOrder = typeof shopifyOrders.$inferInsert;
+export type PrescriptionUpload = typeof prescriptionUploads.$inferSelect;
+export type InsertPrescriptionUpload = typeof prescriptionUploads.$inferInsert;
+export type ShopifyProduct = typeof shopifyProducts.$inferSelect;
+export type InsertShopifyProduct = typeof shopifyProducts.$inferInsert;
+export type ShopifyWebhook = typeof shopifyWebhooks.$inferSelect;
+export type InsertShopifyWebhook = typeof shopifyWebhooks.$inferInsert;
+
 // Export Contact Lens Types
 export type ContactLensAssessment = typeof contactLensAssessments.$inferSelect;
 export type InsertContactLensAssessment = typeof contactLensAssessments.$inferInsert;
