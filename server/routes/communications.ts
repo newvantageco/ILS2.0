@@ -1,0 +1,298 @@
+/**
+ * Communications API Routes
+ *
+ * Routes for messaging, campaigns, and engagement workflows
+ */
+
+import express from 'express';
+import { loggers } from '../utils/logger';
+import { CommunicationsService } from '../services/communications/CommunicationsService';
+import { CampaignService } from '../services/communications/CampaignService';
+import { EngagementWorkflowService } from '../services/communications/EngagementWorkflowService';
+
+const router = express.Router();
+const logger = loggers.api;
+
+// ========== Templates ==========
+
+router.post('/templates', async (req, res) => {
+  try {
+    const template = CommunicationsService.createTemplate(req.body);
+    res.status(201).json({ success: true, template });
+  } catch (error) {
+    logger.error({ error }, 'Create template error');
+    res.status(500).json({ success: false, error: 'Failed to create template' });
+  }
+});
+
+router.get('/templates', async (req, res) => {
+  try {
+    const { channel, category } = req.query;
+    const templates = CommunicationsService.listTemplates(channel as any, category as any);
+    res.json({ success: true, templates });
+  } catch (error) {
+    logger.error({ error }, 'List templates error');
+    res.status(500).json({ success: false, error: 'Failed to list templates' });
+  }
+});
+
+router.get('/templates/:templateId', async (req, res) => {
+  try {
+    const template = CommunicationsService.getTemplate(req.params.templateId);
+    if (!template) {
+      return res.status(404).json({ success: false, error: 'Template not found' });
+    }
+    res.json({ success: true, template });
+  } catch (error) {
+    logger.error({ error }, 'Get template error');
+    res.status(500).json({ success: false, error: 'Failed to get template' });
+  }
+});
+
+// ========== Messages ==========
+
+router.post('/messages/send', async (req, res) => {
+  try {
+    const { channel, recipientId, recipientType, to, content, options } = req.body;
+    const result = await CommunicationsService.sendMessage(
+      channel,
+      recipientId,
+      recipientType,
+      to,
+      content,
+      options
+    );
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    res.status(201).json(result);
+  } catch (error) {
+    logger.error({ error }, 'Send message error');
+    res.status(500).json({ success: false, error: 'Failed to send message' });
+  }
+});
+
+router.post('/messages/send-template', async (req, res) => {
+  try {
+    const { templateId, recipientId, recipientType, to, variables, options } = req.body;
+    const result = await CommunicationsService.sendFromTemplate(
+      templateId,
+      recipientId,
+      recipientType,
+      to,
+      variables,
+      options
+    );
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    res.status(201).json(result);
+  } catch (error) {
+    logger.error({ error }, 'Send template error');
+    res.status(500).json({ success: false, error: 'Failed to send template' });
+  }
+});
+
+router.get('/messages/:messageId', async (req, res) => {
+  try {
+    const message = CommunicationsService.getMessage(req.params.messageId);
+    if (!message) {
+      return res.status(404).json({ success: false, error: 'Message not found' });
+    }
+    res.json({ success: true, message });
+  } catch (error) {
+    logger.error({ error }, 'Get message error');
+    res.status(500).json({ success: false, error: 'Failed to get message' });
+  }
+});
+
+router.get('/messages/recipient/:recipientId', async (req, res) => {
+  try {
+    const { channel } = req.query;
+    const messages = CommunicationsService.getRecipientMessages(req.params.recipientId, channel as any);
+    res.json({ success: true, messages });
+  } catch (error) {
+    logger.error({ error }, 'Get recipient messages error');
+    res.status(500).json({ success: false, error: 'Failed to get messages' });
+  }
+});
+
+router.get('/messages/stats', async (req, res) => {
+  try {
+    const { campaignId, channel, startDate, endDate } = req.query;
+    const stats = CommunicationsService.getMessageStats({
+      campaignId: campaignId as string,
+      channel: channel as any,
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+    });
+    res.json({ success: true, stats });
+  } catch (error) {
+    logger.error({ error }, 'Get message stats error');
+    res.status(500).json({ success: false, error: 'Failed to get stats' });
+  }
+});
+
+// ========== Campaigns ==========
+
+router.post('/campaigns', async (req, res) => {
+  try {
+    const campaign = await CampaignService.createCampaign(req.body);
+    res.status(201).json({ success: true, campaign });
+  } catch (error) {
+    logger.error({ error }, 'Create campaign error');
+    res.status(500).json({ success: false, error: 'Failed to create campaign' });
+  }
+});
+
+router.get('/campaigns', async (req, res) => {
+  try {
+    const { status } = req.query;
+    const campaigns = CampaignService.listCampaigns(status as any);
+    res.json({ success: true, campaigns });
+  } catch (error) {
+    logger.error({ error }, 'List campaigns error');
+    res.status(500).json({ success: false, error: 'Failed to list campaigns' });
+  }
+});
+
+router.get('/campaigns/:campaignId', async (req, res) => {
+  try {
+    const campaign = CampaignService.getCampaign(req.params.campaignId);
+    if (!campaign) {
+      return res.status(404).json({ success: false, error: 'Campaign not found' });
+    }
+    res.json({ success: true, campaign });
+  } catch (error) {
+    logger.error({ error }, 'Get campaign error');
+    res.status(500).json({ success: false, error: 'Failed to get campaign' });
+  }
+});
+
+router.post('/campaigns/:campaignId/launch', async (req, res) => {
+  try {
+    const result = await CampaignService.launchCampaign(req.params.campaignId);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    res.json(result);
+  } catch (error) {
+    logger.error({ error }, 'Launch campaign error');
+    res.status(500).json({ success: false, error: 'Failed to launch campaign' });
+  }
+});
+
+router.post('/campaigns/:campaignId/pause', async (req, res) => {
+  try {
+    const campaign = CampaignService.pauseCampaign(req.params.campaignId);
+    if (!campaign) {
+      return res.status(404).json({ success: false, error: 'Campaign not found' });
+    }
+    res.json({ success: true, campaign });
+  } catch (error) {
+    logger.error({ error }, 'Pause campaign error');
+    res.status(500).json({ success: false, error: 'Failed to pause campaign' });
+  }
+});
+
+router.get('/campaigns/:campaignId/analytics', async (req, res) => {
+  try {
+    const analytics = await CampaignService.getCampaignAnalytics(req.params.campaignId);
+    if (!analytics) {
+      return res.status(404).json({ success: false, error: 'Campaign not found' });
+    }
+    res.json({ success: true, analytics });
+  } catch (error) {
+    logger.error({ error }, 'Get campaign analytics error');
+    res.status(500).json({ success: false, error: 'Failed to get analytics' });
+  }
+});
+
+// ========== Segments ==========
+
+router.post('/segments', async (req, res) => {
+  try {
+    const { name, description, criteria } = req.body;
+    const segment = await CampaignService.createSegment(name, description, criteria);
+    res.status(201).json({ success: true, segment });
+  } catch (error) {
+    logger.error({ error }, 'Create segment error');
+    res.status(500).json({ success: false, error: 'Failed to create segment' });
+  }
+});
+
+router.get('/segments', async (req, res) => {
+  try {
+    const segments = CampaignService.listSegments();
+    res.json({ success: true, segments });
+  } catch (error) {
+    logger.error({ error }, 'List segments error');
+    res.status(500).json({ success: false, error: 'Failed to list segments' });
+  }
+});
+
+// ========== Workflows ==========
+
+router.post('/workflows', async (req, res) => {
+  try {
+    const workflow = EngagementWorkflowService.createWorkflow(req.body);
+    res.status(201).json({ success: true, workflow });
+  } catch (error) {
+    logger.error({ error }, 'Create workflow error');
+    res.status(500).json({ success: false, error: 'Failed to create workflow' });
+  }
+});
+
+router.get('/workflows', async (req, res) => {
+  try {
+    const { trigger, status } = req.query;
+    const workflows = EngagementWorkflowService.listWorkflows(trigger as any, status as any);
+    res.json({ success: true, workflows });
+  } catch (error) {
+    logger.error({ error }, 'List workflows error');
+    res.status(500).json({ success: false, error: 'Failed to list workflows' });
+  }
+});
+
+router.get('/workflows/:workflowId', async (req, res) => {
+  try {
+    const workflow = EngagementWorkflowService.getWorkflow(req.params.workflowId);
+    if (!workflow) {
+      return res.status(404).json({ success: false, error: 'Workflow not found' });
+    }
+    res.json({ success: true, workflow });
+  } catch (error) {
+    logger.error({ error }, 'Get workflow error');
+    res.status(500).json({ success: false, error: 'Failed to get workflow' });
+  }
+});
+
+router.post('/workflows/trigger', async (req, res) => {
+  try {
+    const { trigger, patientId, triggerData } = req.body;
+    const instances = await EngagementWorkflowService.triggerWorkflow(trigger, patientId, triggerData);
+    res.json({ success: true, instances });
+  } catch (error) {
+    logger.error({ error }, 'Trigger workflow error');
+    res.status(500).json({ success: false, error: 'Failed to trigger workflow' });
+  }
+});
+
+router.get('/workflows/instances/:instanceId', async (req, res) => {
+  try {
+    const instance = EngagementWorkflowService.getWorkflowInstance(req.params.instanceId);
+    if (!instance) {
+      return res.status(404).json({ success: false, error: 'Instance not found' });
+    }
+    res.json({ success: true, instance });
+  } catch (error) {
+    logger.error({ error }, 'Get workflow instance error');
+    res.status(500).json({ success: false, error: 'Failed to get instance' });
+  }
+});
+
+export default router;
