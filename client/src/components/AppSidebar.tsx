@@ -10,10 +10,10 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import { 
-  Home, 
-  Package, 
-  ClipboardList, 
+import {
+  Home,
+  Package,
+  ClipboardList,
   TrendingUp,
   Settings,
   HelpCircle,
@@ -43,6 +43,13 @@ import {
   FileType,
   BookOpen,
   Mail,
+  DollarSign,
+  Heart,
+  Award,
+  Smartphone,
+  FlaskConical,
+  Activity,
+  Target,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -88,6 +95,13 @@ const menuItems = {
       { title: "Prescription Templates", url: "/ecp/prescription-templates", icon: FileType },
       { title: "Clinical Protocols", url: "/ecp/clinical-protocols", icon: BookOpen },
       { title: "Company", url: "/ecp/company", icon: Building2 },
+    ],
+    healthcare: [
+      { title: "Revenue Cycle", url: "/rcm/dashboard", icon: DollarSign },
+      { title: "Population Health", url: "/population-health/dashboard", icon: Heart },
+      { title: "Quality & Compliance", url: "/quality/dashboard", icon: Award },
+      { title: "mHealth & RPM", url: "/mhealth/dashboard", icon: Smartphone },
+      { title: "Clinical Research", url: "/research/dashboard", icon: FlaskConical },
     ],
   },
   lab_tech: [
@@ -343,7 +357,34 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
                         isActive={location === item.url}
                         data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                       >
-                        <Link 
+                        <Link
+                          href={item.url}
+                          aria-label={item.title}
+                          aria-current={location === item.url ? "page" : undefined}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {/* Healthcare Section */}
+            <SidebarGroup>
+              <SidebarGroupLabel>Healthcare Platform</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {items.healthcare.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        <Link
                           href={item.url}
                           aria-label={item.title}
                           aria-current={location === item.url ? "page" : undefined}
