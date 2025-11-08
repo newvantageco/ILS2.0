@@ -107,6 +107,7 @@ import dynamicRolesRouter from "./routes/dynamicRoles";
 import monitoringRoutes from "./routes/monitoring";
 import importRoutes from "./routes/import";
 import apiManagementRoutes from "./routes/api-management";
+import clinicalReportingRoutes from "./routes/clinical-reporting";
 import { websocketService } from "./websocket";
 import path from "path";
 import {
@@ -319,6 +320,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // API Management routes (API keys, webhooks, analytics)
   app.use('/api/api-management', apiManagementRoutes);
+
+  // Clinical Reporting routes (CDS, reports, trends, quality metrics)
+  app.use('/api/clinical-reporting', isAuthenticated, clinicalReportingRoutes);
 
   // Dynamic RBAC routes (role and permission management)
   console.log('🔧 Registering Dynamic RBAC routes at /api/roles');
