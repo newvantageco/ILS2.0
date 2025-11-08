@@ -114,6 +114,7 @@ import telehealthRoutes from "./routes/telehealth";
 import biAnalyticsRoutes from "./routes/bi-analytics";
 import communicationsRoutes from "./routes/communications";
 import systemAdminRoutes from "./routes/system-admin";
+import aiMlRoutes from "./routes/ai-ml";
 import { websocketService } from "./websocket";
 import path from "path";
 import {
@@ -347,6 +348,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // System Administration routes (monitoring, config, operations)
   app.use('/api/system-admin', isAuthenticated, systemAdminRoutes);
+
+  // AI & Machine Learning routes (clinical decision support, predictive analytics, NLP)
+  app.use('/api/ai-ml', isAuthenticated, aiMlRoutes);
 
   // Dynamic RBAC routes (role and permission management)
   console.log('🔧 Registering Dynamic RBAC routes at /api/roles');
