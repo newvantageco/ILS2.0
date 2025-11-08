@@ -1,8 +1,8 @@
 import { db } from "../db";
-import { 
-  users, 
+import {
+  users,
   userRoles,
-  patients, 
+  patients,
   orders,
   consultLogs,
   purchaseOrders,
@@ -37,13 +37,13 @@ import {
   gocComplianceChecks,
   prescriptionTemplates,
   clinicalProtocols,
-  type UpsertUser, 
-  type User, 
+  type UpsertUser,
+  type User,
   type UserWithRoles,
-  type InsertPatient, 
-  type Patient, 
-  type InsertOrder, 
-  type Order, 
+  type InsertPatient,
+  type Patient,
+  type InsertOrder,
+  type Order,
   type OrderWithDetails,
   type InsertConsultLog,
   type ConsultLog,
@@ -89,6 +89,7 @@ import {
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
+import { instrumentQuery, cachedQuery } from "./utils/queryInstrumentation";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -419,12 +420,18 @@ export class DbStorage implements IStorage {
   }
 
   async getPatient(id: string, companyId?: string): Promise<Patient | undefined> {
-    const conditions = [eq(patients.id, id)];
-    if (companyId) {
-      conditions.push(eq(patients.companyId, companyId));
-    }
-    const [patient] = await db.select().from(patients).where(and(...conditions));
-    return patient;
+    return instrumentQuery(
+      'getPatient',
+      async () => {
+        const conditions = [eq(patients.id, id)];
+        if (companyId) {
+          conditions.push(eq(patients.companyId, companyId));
+        }
+        const [patient] = await db.select().from(patients).where(and(...conditions));
+        return patient;
+      },
+      '/api/patients/:id'
+    );
   }
 
   async createOrder(insertOrder: InsertOrder): Promise<Order> {
@@ -439,36 +446,42 @@ export class DbStorage implements IStorage {
   }
 
   async getOrder(id: string, companyId?: string): Promise<OrderWithDetails | undefined> {
-    let conditions = [eq(orders.id, id)];
-    
-    if (companyId) {
-      conditions.push(eq(orders.companyId, companyId));
-    }
-    
-    const result = await db
-      .select({
-        order: orders,
-        patient: patients,
-        ecp: {
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          organizationName: users.organizationName,
-        },
-      })
-      .from(orders)
-      .innerJoin(patients, eq(orders.patientId, patients.id))
-      .innerJoin(users, eq(orders.ecpId, users.id))
-      .where(and(...conditions))
-      .limit(1);
+    return instrumentQuery(
+      'getOrder',
+      async () => {
+        let conditions = [eq(orders.id, id)];
 
-    if (!result.length) return undefined;
+        if (companyId) {
+          conditions.push(eq(orders.companyId, companyId));
+        }
 
-    return {
-      ...result[0].order,
-      patient: result[0].patient,
-      ecp: result[0].ecp,
-    };
+        const result = await db
+          .select({
+            order: orders,
+            patient: patients,
+            ecp: {
+              id: users.id,
+              firstName: users.firstName,
+              lastName: users.lastName,
+              organizationName: users.organizationName,
+            },
+          })
+          .from(orders)
+          .innerJoin(patients, eq(orders.patientId, patients.id))
+          .innerJoin(users, eq(orders.ecpId, users.id))
+          .where(and(...conditions))
+          .limit(1);
+
+        if (!result.length) return undefined;
+
+        return {
+          ...result[0].order,
+          patient: result[0].patient,
+          ecp: result[0].ecp,
+        };
+      },
+      '/api/orders/:id'
+    );
   }
 
   async getOrders(filters: {
@@ -479,57 +492,63 @@ export class DbStorage implements IStorage {
     limit?: number;
     offset?: number;
   } = {}): Promise<OrderWithDetails[]> {
-    const { ecpId, companyId, status, search, limit = 50, offset = 0 } = filters;
+    return instrumentQuery(
+      'getOrders',
+      async () => {
+        const { ecpId, companyId, status, search, limit = 50, offset = 0 } = filters;
 
-    let conditions = [];
-    
-    if (companyId) {
-      conditions.push(eq(orders.companyId, companyId));
-    }
-    
-    if (ecpId) {
-      conditions.push(eq(orders.ecpId, ecpId));
-    }
-    
-    if (status && status !== "all") {
-      conditions.push(eq(orders.status, status as Order["status"]));
-    }
-    
-    if (search) {
-      conditions.push(
-        or(
-          like(orders.orderNumber, `%${search}%`),
-          like(patients.name, `%${search}%`)
-        )
-      );
-    }
+        let conditions = [];
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+        if (companyId) {
+          conditions.push(eq(orders.companyId, companyId));
+        }
 
-    const results = await db
-      .select({
-        order: orders,
-        patient: patients,
-        ecp: {
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          organizationName: users.organizationName,
-        },
-      })
-      .from(orders)
-      .innerJoin(patients, eq(orders.patientId, patients.id))
-      .innerJoin(users, eq(orders.ecpId, users.id))
-      .where(whereClause)
-      .orderBy(desc(orders.orderDate))
-      .limit(limit)
-      .offset(offset);
+        if (ecpId) {
+          conditions.push(eq(orders.ecpId, ecpId));
+        }
 
-    return results.map(r => ({
-      ...r.order,
-      patient: r.patient,
-      ecp: r.ecp,
-    }));
+        if (status && status !== "all") {
+          conditions.push(eq(orders.status, status as Order["status"]));
+        }
+
+        if (search) {
+          conditions.push(
+            or(
+              like(orders.orderNumber, `%${search}%`),
+              like(patients.name, `%${search}%`)
+            )
+          );
+        }
+
+        const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+        const results = await db
+          .select({
+            order: orders,
+            patient: patients,
+            ecp: {
+              id: users.id,
+              firstName: users.firstName,
+              lastName: users.lastName,
+              organizationName: users.organizationName,
+            },
+          })
+          .from(orders)
+          .innerJoin(patients, eq(orders.patientId, patients.id))
+          .innerJoin(users, eq(orders.ecpId, users.id))
+          .where(whereClause)
+          .orderBy(desc(orders.orderDate))
+          .limit(limit)
+          .offset(offset);
+
+        return results.map(r => ({
+          ...r.order,
+          patient: r.patient,
+          ecp: r.ecp,
+        }));
+      },
+      '/api/orders'
+    );
   }
 
   async updateOrderStatus(id: string, status: Order["status"]): Promise<Order | undefined> {
@@ -598,19 +617,25 @@ export class DbStorage implements IStorage {
     inProduction: number;
     completed: number;
   }> {
-    const whereClause = ecpId ? eq(orders.ecpId, ecpId) : undefined;
+    return instrumentQuery(
+      'getOrderStats',
+      async () => {
+        const whereClause = ecpId ? eq(orders.ecpId, ecpId) : undefined;
 
-    const [stats] = await db
-      .select({
-        total: sql<number>`count(*)::int`,
-        pending: sql<number>`count(*) filter (where status = 'pending')::int`,
-        inProduction: sql<number>`count(*) filter (where status = 'in_production')::int`,
-        completed: sql<number>`count(*) filter (where status = 'completed')::int`,
-      })
-      .from(orders)
-      .where(whereClause);
+        const [stats] = await db
+          .select({
+            total: sql<number>`count(*)::int`,
+            pending: sql<number>`count(*) filter (where status = 'pending')::int`,
+            inProduction: sql<number>`count(*) filter (where status = 'in_production')::int`,
+            completed: sql<number>`count(*) filter (where status = 'completed')::int`,
+          })
+          .from(orders)
+          .where(whereClause);
 
-    return stats || { total: 0, pending: 0, inProduction: 0, completed: 0 };
+        return stats || { total: 0, pending: 0, inProduction: 0, completed: 0 };
+      },
+      '/api/analytics'
+    );
   }
 
   async createConsultLog(insertLog: Omit<InsertConsultLog, 'ecpId'> & { ecpId: string }): Promise<ConsultLog> {
@@ -932,17 +957,23 @@ export class DbStorage implements IStorage {
   }
 
   async getPatients(ecpId: string, companyId?: string): Promise<Patient[]> {
-    const conditions = [eq(patients.ecpId, ecpId)];
-    
-    if (companyId) {
-      conditions.push(eq(patients.companyId, companyId));
-    }
-    
-    return await db
-      .select()
-      .from(patients)
-      .where(and(...conditions))
-      .orderBy(desc(patients.createdAt));
+    return instrumentQuery(
+      'getPatients',
+      async () => {
+        const conditions = [eq(patients.ecpId, ecpId)];
+
+        if (companyId) {
+          conditions.push(eq(patients.companyId, companyId));
+        }
+
+        return await db
+          .select()
+          .from(patients)
+          .where(and(...conditions))
+          .orderBy(desc(patients.createdAt));
+      },
+      '/api/patients'
+    );
   }
 
   async updatePatient(id: string, updates: Partial<Patient>): Promise<Patient | undefined> {
@@ -1193,17 +1224,31 @@ export class DbStorage implements IStorage {
   }
 
   async getProducts(ecpId: string, companyId?: string): Promise<Product[]> {
-    const conditions = [eq(products.ecpId, ecpId)];
-    
-    if (companyId) {
-      conditions.push(eq(products.companyId, companyId));
-    }
-    
-    return await db
-      .select()
-      .from(products)
-      .where(and(...conditions))
-      .orderBy(products.productType, products.brand, products.model);
+    const cacheKey = `products:${companyId || 'all'}:${ecpId}`;
+
+    return cachedQuery(
+      {
+        key: cacheKey,
+        ttl: 300, // 5 minutes - products don't change frequently
+      },
+      () => instrumentQuery(
+        'getProducts',
+        async () => {
+          const conditions = [eq(products.ecpId, ecpId)];
+
+          if (companyId) {
+            conditions.push(eq(products.companyId, companyId));
+          }
+
+          return await db
+            .select()
+            .from(products)
+            .where(and(...conditions))
+            .orderBy(products.productType, products.brand, products.model);
+        },
+        '/api/products'
+      )
+    );
   }
 
   async updateProduct(id: string, updates: Partial<Product>): Promise<Product | undefined> {
