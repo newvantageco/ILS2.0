@@ -11,7 +11,7 @@
  * Powered by GPT-4 with context-aware responses and system integration.
  */
 
-import OpenAI from "openai";
+import { ExternalAIService, type AIMessage } from "./ExternalAIService.js";
 import { db } from "../db/index.js";
 import {
   patients,
@@ -26,9 +26,8 @@ import { ContactLensService } from "./ContactLensService.js";
 import { NhsExemptionService } from "./NhsExemptionService.js";
 import { NhsVoucherService } from "./NhsVoucherService.js";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Use ExternalAIService for multi-provider support and automatic fallback
+const externalAI = new ExternalAIService();
 
 export interface AIQuery {
   question: string;
@@ -71,7 +70,7 @@ export class OphthalamicAIService {
     const userMessage = this.buildUserMessage(question, contextData);
 
     // Build conversation history
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    const messages: AIMessage[] = [
       { role: "system", content: systemPrompt },
     ];
 
@@ -88,16 +87,16 @@ export class OphthalamicAIService {
     // Add current question
     messages.push({ role: "user", content: userMessage });
 
-    // Call GPT-4
-    const response = await openai.chat.completions.create({
+    // Call AI via ExternalAIService (supports OpenAI, Anthropic, Ollama with automatic fallback)
+    const response = await externalAI.generateResponse(messages, {
+      provider: "openai",
       model: "gpt-4-turbo-preview",
-      messages,
+      maxTokens: 1500,
       temperature: 0.7,
-      max_tokens: 1500,
-      response_format: { type: "json_object" },
     });
 
-    const aiResponse = JSON.parse(response.choices[0].message.content || "{}");
+    // Parse JSON response (GPT-4 supports JSON mode via system prompt instruction)
+    const aiResponse = JSON.parse(response.content || "{}");
 
     return {
       answer: aiResponse.answer || "I apologize, but I couldn't generate a response.",
@@ -168,18 +167,20 @@ ${lifestyle ? `Lifestyle:
 
 What lens types, materials, and coatings would you recommend?`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4-turbo-preview",
-      messages: [
+    const response = await externalAI.generateResponse(
+      [
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },
       ],
-      temperature: 0.7,
-      max_tokens: 1000,
-      response_format: { type: "json_object" },
-    });
+      {
+        provider: "openai",
+        model: "gpt-4-turbo-preview",
+        maxTokens: 1000,
+        temperature: 0.7,
+      }
+    );
 
-    return JSON.parse(response.choices[0].message.content || "{}");
+    return JSON.parse(response.content || "{}");
   }
 
   /**
@@ -264,18 +265,20 @@ Spectacle Prescription:
 
 What contact lenses would you recommend for this patient?`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4-turbo-preview",
-      messages: [
+    const response = await externalAI.generateResponse(
+      [
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },
       ],
-      temperature: 0.7,
-      max_tokens: 1000,
-      response_format: { type: "json_object" },
-    });
+      {
+        provider: "openai",
+        model: "gpt-4-turbo-preview",
+        maxTokens: 1000,
+        temperature: 0.7,
+      }
+    );
 
-    return JSON.parse(response.choices[0].message.content || "{}");
+    return JSON.parse(response.content || "{}");
   }
 
   /**
@@ -317,18 +320,20 @@ Response format (JSON):
 
 Please explain this prescription to the patient in simple terms.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4-turbo-preview",
-      messages: [
+    const response = await externalAI.generateResponse(
+      [
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },
       ],
-      temperature: 0.7,
-      max_tokens: 800,
-      response_format: { type: "json_object" },
-    });
+      {
+        provider: "openai",
+        model: "gpt-4-turbo-preview",
+        maxTokens: 800,
+        temperature: 0.7,
+      }
+    );
 
-    return JSON.parse(response.choices[0].message.content || "{}");
+    return JSON.parse(response.content || "{}");
   }
 
   /**
@@ -386,18 +391,20 @@ ${autoDetect.detectedExemptions.length > 0 ? `- Potentially eligible for: ${auto
 
 What NHS funding is available for this patient?`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4-turbo-preview",
-      messages: [
+    const response = await externalAI.generateResponse(
+      [
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },
       ],
-      temperature: 0.6,
-      max_tokens: 800,
-      response_format: { type: "json_object" },
-    });
+      {
+        provider: "openai",
+        model: "gpt-4-turbo-preview",
+        maxTokens: 800,
+        temperature: 0.6,
+      }
+    );
 
-    return JSON.parse(response.choices[0].message.content || "{}");
+    return JSON.parse(response.content || "{}");
   }
 
   /**
@@ -457,18 +464,20 @@ Recent Performance (Last 30 days):
 
 Question: ${query}`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4-turbo-preview",
-      messages: [
+    const response = await externalAI.generateResponse(
+      [
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },
       ],
-      temperature: 0.7,
-      max_tokens: 1000,
-      response_format: { type: "json_object" },
-    });
+      {
+        provider: "openai",
+        model: "gpt-4-turbo-preview",
+        maxTokens: 1000,
+        temperature: 0.7,
+      }
+    );
 
-    return JSON.parse(response.choices[0].message.content || "{}");
+    return JSON.parse(response.content || "{}");
   }
 
   /**

@@ -20,6 +20,14 @@ import { patientFaceAnalysis } from "../../shared/schema.js";
 import { eq, and, desc } from "drizzle-orm";
 import OpenAI from "openai";
 
+/**
+ * Note: This service uses OpenAI directly (not ExternalAIService) because:
+ * 1. It requires GPT-4 Vision API for image analysis
+ * 2. Vision API needs special content format (image_url) not yet supported by ExternalAIService
+ * 3. This is a specialized use case distinct from general chat/text AI
+ *
+ * Future: Consider extending ExternalAIService to support vision/multimodal inputs
+ */
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || "",
 });

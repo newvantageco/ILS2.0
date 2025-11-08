@@ -3,6 +3,14 @@ import { prescriptionUploads, prescriptions, patients } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import OpenAI from "openai";
 
+/**
+ * Note: This service uses OpenAI directly (not ExternalAIService) because:
+ * 1. It requires GPT-4 Vision API for prescription image OCR/extraction
+ * 2. Vision API needs special content format (image_url) not yet supported by ExternalAIService
+ * 3. This is a specialized use case for extracting structured data from prescription images
+ *
+ * Future: Consider extending ExternalAIService to support vision/multimodal inputs
+ */
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
