@@ -106,15 +106,16 @@ import featureFlagsRoutes from "./routes/feature-flags";
 import dynamicRolesRouter from "./routes/dynamicRoles";
 import { websocketService } from "./websocket";
 import path from "path";
-import { 
-  publicApiLimiter, 
-  authLimiter, 
-  signupLimiter, 
-  webhookLimiter, 
+import {
+  publicApiLimiter,
+  authLimiter,
+  signupLimiter,
+  webhookLimiter,
   aiQueryLimiter,
   passwordResetLimiter,
   generalLimiter
 } from "./middleware/rateLimiter";
+import { setupSwagger } from "./swagger";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Apply general rate limiting to all routes
@@ -134,7 +135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // API info endpoint
   app.get('/api', (_req, res) => {
-    res.status(200).json({ 
+    res.status(200).json({
       success: true,
       message: 'Integrated Lens System API',
       version: '2.0.0',
@@ -142,10 +143,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       endpoints: {
         health: '/health',
         api: '/api',
-        docs: '/api/documentation'
+        docs: '/api-docs',
+        docsJson: '/api-docs.json'
       }
     });
   });
+
+  // Setup API documentation (Swagger/OpenAPI)
+  setupSwagger(app);
 
   if (process.env.NODE_ENV !== 'development') {
     await setupReplitAuth(app);

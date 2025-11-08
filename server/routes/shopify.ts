@@ -67,8 +67,43 @@ const rejectPrescriptionSchema = z.object({
 // ============================================================================
 
 /**
- * GET /api/shopify/stores
- * Get all connected Shopify stores
+ * @swagger
+ * /api/shopify/stores:
+ *   get:
+ *     summary: Get all connected Shopify stores
+ *     description: Retrieve all Shopify stores connected to your optical practice
+ *     tags:
+ *       - Shopify Integration
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of connected stores
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   shopifyDomain:
+ *                     type: string
+ *                   storeName:
+ *                     type: string
+ *                   status:
+ *                     type: string
+ *                     enum: [active, inactive, error]
+ *                   storeUrl:
+ *                     type: string
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
  */
 router.get("/stores", requireAuth, async (req, res) => {
   try {
@@ -104,8 +139,79 @@ router.get("/stores/:storeId", requireAuth, async (req, res) => {
 });
 
 /**
- * POST /api/shopify/stores/connect
- * Connect a new Shopify store
+ * @swagger
+ * /api/shopify/stores/connect:
+ *   post:
+ *     summary: Connect a new Shopify store
+ *     description: |
+ *       Connect your Shopify store to ILS for automated order sync,
+ *       prescription verification, and lens recommendations.
+ *     tags:
+ *       - Shopify Integration
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - shopifyDomain
+ *               - shopifyStoreId
+ *               - storeName
+ *               - storeUrl
+ *               - accessToken
+ *               - apiKey
+ *               - apiSecretKey
+ *             properties:
+ *               shopifyDomain:
+ *                 type: string
+ *                 example: "mystore.myshopify.com"
+ *               shopifyStoreId:
+ *                 type: string
+ *                 example: "12345678"
+ *               storeName:
+ *                 type: string
+ *                 example: "My Optical Store"
+ *               storeEmail:
+ *                 type: string
+ *                 format: email
+ *               storeUrl:
+ *                 type: string
+ *                 format: uri
+ *                 example: "https://mystore.com"
+ *               accessToken:
+ *                 type: string
+ *                 description: Shopify access token
+ *               apiKey:
+ *                 type: string
+ *                 description: Shopify API key
+ *               apiSecretKey:
+ *                 type: string
+ *                 description: Shopify API secret
+ *     responses:
+ *       200:
+ *         description: Store connected successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 shopifyDomain:
+ *                   type: string
+ *                 storeName:
+ *                   type: string
+ *                 status:
+ *                   type: string
+ *       400:
+ *         description: Validation failed
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
  */
 router.post("/stores/connect", requireAuth, async (req, res) => {
   try {
@@ -208,8 +314,80 @@ router.get("/stores/:storeId/products", requireAuth, async (req, res) => {
 // ============================================================================
 
 /**
- * POST /api/shopify/prescriptions/upload
- * Upload prescription for verification
+ * @swagger
+ * /api/shopify/prescriptions/upload:
+ *   post:
+ *     summary: Upload prescription for AI verification
+ *     description: |
+ *       Upload a patient's prescription image for AI-powered OCR and verification.
+ *       Uses GPT-4 Vision to extract prescription data automatically.
+ *     tags:
+ *       - Shopify Integration
+ *       - Prescription Verification
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fileUrl
+ *               - fileName
+ *               - fileType
+ *               - fileSize
+ *             properties:
+ *               shopifyOrderId:
+ *                 type: string
+ *                 description: Associated Shopify order ID
+ *                 example: "999888777"
+ *               patientId:
+ *                 type: string
+ *                 description: Patient ID in ILS
+ *               fileUrl:
+ *                 type: string
+ *                 format: uri
+ *                 description: URL of the uploaded prescription image
+ *                 example: "https://cdn.example.com/rx-12345.jpg"
+ *               fileName:
+ *                 type: string
+ *                 example: "prescription-2024.jpg"
+ *               fileType:
+ *                 type: string
+ *                 enum: [pdf, jpg, jpeg, png]
+ *                 example: "jpeg"
+ *               fileSize:
+ *                 type: number
+ *                 description: File size in bytes
+ *                 example: 1024000
+ *     responses:
+ *       200:
+ *         description: Prescription uploaded and processed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 verificationStatus:
+ *                   type: string
+ *                   enum: [verified, needs_review, rejected]
+ *                 extractedData:
+ *                   type: object
+ *                   description: AI-extracted prescription data
+ *                 confidence:
+ *                   type: number
+ *                   description: AI confidence score (0-1)
+ *                 requiresReview:
+ *                   type: boolean
+ *       400:
+ *         description: Validation failed
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
  */
 router.post("/prescriptions/upload", requireAuth, async (req, res) => {
   try {
@@ -345,8 +523,62 @@ router.get("/prescriptions/status/:status", requireAuth, async (req, res) => {
 // ============================================================================
 
 /**
- * GET /api/shopify/orders
- * Get all Shopify orders
+ * @swagger
+ * /api/shopify/orders:
+ *   get:
+ *     summary: Get Shopify orders
+ *     description: |
+ *       Retrieve synchronized Shopify orders. Can filter by store or status.
+ *     tags:
+ *       - Shopify Integration
+ *       - Order Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: storeId
+ *         schema:
+ *           type: string
+ *         description: Filter by specific store
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [synced, pending, failed, processing]
+ *         description: Filter by sync status
+ *     responses:
+ *       200:
+ *         description: List of orders
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   shopifyOrderId:
+ *                     type: string
+ *                   ilsOrderId:
+ *                     type: string
+ *                   status:
+ *                     type: string
+ *                   awaitingPrescription:
+ *                     type: boolean
+ *                   prescriptionId:
+ *                     type: string
+ *                   customerEmail:
+ *                     type: string
+ *                   totalPrice:
+ *                     type: string
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
  */
 router.get("/orders", requireAuth, async (req, res) => {
   try {

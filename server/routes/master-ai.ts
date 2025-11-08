@@ -23,10 +23,84 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
   masterAIService = new MasterAIService(storage);
 
   /**
-   * POST /api/master-ai/chat
-   * 
-   * Main chat interface for Master AI
-   * Handles: questions, data queries, knowledge lookup, hybrid intelligence
+   * @swagger
+   * /api/master-ai/chat:
+   *   post:
+   *     summary: Chat with Master AI
+   *     description: |
+   *       Main chat interface for Master AI tenant intelligence. Provides intelligent
+   *       assistance with optometry-specific queries, data access, and knowledge lookup.
+   *
+   *       **Features:**
+   *       - Topic validation (optometry/eyecare only)
+   *       - Hybrid intelligence (Python RAG + GPT-4 + database tools)
+   *       - Progressive learning capabilities
+   *       - Multi-tenant isolation
+   *     tags:
+   *       - Master AI
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - query
+   *             properties:
+   *               query:
+   *                 type: string
+   *                 description: The user's question or query
+   *                 example: "What are progressive lenses?"
+   *               conversationId:
+   *                 type: string
+   *                 description: Optional conversation ID to continue existing chat
+   *                 example: "conv-123abc"
+   *               context:
+   *                 type: object
+   *                 description: Additional context for the query
+   *                 example: { patientId: "pat-456" }
+   *               preferredProvider:
+   *                 type: string
+   *                 enum: [openai, anthropic, ollama]
+   *                 description: Preferred AI provider
+   *                 example: "openai"
+   *     responses:
+   *       200:
+   *         description: Successful response from AI
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 response:
+   *                   type: string
+   *                   description: AI-generated response
+   *                 conversationId:
+   *                   type: string
+   *                   description: Conversation ID for follow-up
+   *                 isRelevant:
+   *                   type: boolean
+   *                   description: Whether query is optometry-related
+   *                 rejectionReason:
+   *                   type: string
+   *                   description: Reason if query was rejected
+   *                 sources:
+   *                   type: array
+   *                   description: Knowledge base sources used
+   *                   items:
+   *                     type: object
+   *       400:
+   *         description: Invalid request
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Server error
    */
   app.post("/api/master-ai/chat", isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -68,9 +142,55 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
   });
 
   /**
-   * GET /api/master-ai/conversations
-   * 
-   * List all conversations for the current user/company
+   * @swagger
+   * /api/master-ai/conversations:
+   *   get:
+   *     summary: List AI conversations
+   *     description: Retrieve all Master AI conversations for the current user/company
+   *     tags:
+   *       - Master AI
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: userId
+   *         schema:
+   *           type: string
+   *         description: Filter by specific user ID
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           default: 50
+   *         description: Maximum number of conversations to return
+   *     responses:
+   *       200:
+   *         description: List of conversations
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   *                 properties:
+   *                   id:
+   *                     type: string
+   *                   userId:
+   *                     type: string
+   *                   companyId:
+   *                     type: string
+   *                   createdAt:
+   *                     type: string
+   *                     format: date-time
+   *                   lastMessageAt:
+   *                     type: string
+   *                     format: date-time
+   *                   messageCount:
+   *                     type: integer
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Server error
    */
   app.get("/api/master-ai/conversations", isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -94,9 +214,55 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
   });
 
   /**
-   * GET /api/master-ai/conversations/:id
-   * 
-   * Get specific conversation with all messages
+   * @swagger
+   * /api/master-ai/conversations/{id}:
+   *   get:
+   *     summary: Get conversation details
+   *     description: Retrieve a specific conversation with all messages
+   *     tags:
+   *       - Master AI
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Conversation ID
+   *     responses:
+   *       200:
+   *         description: Conversation details with messages
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: string
+   *                 userId:
+   *                   type: string
+   *                 companyId:
+   *                   type: string
+   *                 messages:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       role:
+   *                         type: string
+   *                         enum: [user, assistant]
+   *                       content:
+   *                         type: string
+   *                       timestamp:
+   *                         type: string
+   *                         format: date-time
+   *       404:
+   *         description: Conversation not found
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Server error
    */
   app.get("/api/master-ai/conversations/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -123,9 +289,63 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
   });
 
   /**
-   * POST /api/master-ai/documents
-   * 
-   * Upload documents to company knowledge base
+   * @swagger
+   * /api/master-ai/documents:
+   *   post:
+   *     summary: Upload document to knowledge base
+   *     description: Upload a document to the company's knowledge base for AI reference
+   *     tags:
+   *       - Master AI
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - fileName
+   *               - content
+   *             properties:
+   *               fileName:
+   *                 type: string
+   *                 description: Name of the document
+   *                 example: "lens-catalog-2024.pdf"
+   *               content:
+   *                 type: string
+   *                 description: Document content (text or base64 encoded)
+   *               metadata:
+   *                 type: object
+   *                 properties:
+   *                   contentType:
+   *                     type: string
+   *                     example: "application/pdf"
+   *                   tags:
+   *                     type: array
+   *                     items:
+   *                       type: string
+   *     responses:
+   *       201:
+   *         description: Document uploaded successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: string
+   *                 fileName:
+   *                   type: string
+   *                 uploadedAt:
+   *                   type: string
+   *                   format: date-time
+   *       400:
+   *         description: Invalid request
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Server error
    */
   app.post("/api/master-ai/documents", isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -161,9 +381,47 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
   });
 
   /**
-   * GET /api/master-ai/knowledge-base
-   * 
-   * List all documents in company knowledge base
+   * @swagger
+   * /api/master-ai/knowledge-base:
+   *   get:
+   *     summary: List knowledge base documents
+   *     description: Retrieve all documents in the company's knowledge base
+   *     tags:
+   *       - Master AI
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           default: 100
+   *         description: Maximum number of documents to return
+   *     responses:
+   *       200:
+   *         description: List of knowledge base documents
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   *                 properties:
+   *                   id:
+   *                     type: string
+   *                   fileName:
+   *                     type: string
+   *                   fileType:
+   *                     type: string
+   *                   uploadedBy:
+   *                     type: string
+   *                   uploadedAt:
+   *                     type: string
+   *                     format: date-time
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Server error
    */
   app.get("/api/master-ai/knowledge-base", isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -183,9 +441,52 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
   });
 
   /**
-   * GET /api/master-ai/stats
-   * 
-   * Get AI usage statistics for company
+   * @swagger
+   * /api/master-ai/stats:
+   *   get:
+   *     summary: Get AI usage statistics
+   *     description: Retrieve AI usage statistics and analytics for the company
+   *     tags:
+   *       - Master AI
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: startDate
+   *         schema:
+   *           type: string
+   *           format: date
+   *         description: Start date for statistics (defaults to 30 days ago)
+   *       - in: query
+   *         name: endDate
+   *         schema:
+   *           type: string
+   *           format: date
+   *         description: End date for statistics (defaults to today)
+   *     responses:
+   *       200:
+   *         description: Usage statistics
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 totalQueries:
+   *                   type: integer
+   *                 totalConversations:
+   *                   type: integer
+   *                 averageResponseTime:
+   *                   type: number
+   *                 topTopics:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                 providerUsage:
+   *                   type: object
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Server error
    */
   app.get("/api/master-ai/stats", isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -208,9 +509,57 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
   });
 
   /**
-   * POST /api/master-ai/feedback
-   * 
-   * Submit feedback on AI response quality
+   * @swagger
+   * /api/master-ai/feedback:
+   *   post:
+   *     summary: Submit AI response feedback
+   *     description: Provide feedback on AI response quality to improve future responses
+   *     tags:
+   *       - Master AI
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - messageId
+   *               - rating
+   *             properties:
+   *               messageId:
+   *                 type: string
+   *                 description: ID of the AI message being rated
+   *                 example: "msg-123abc"
+   *               rating:
+   *                 type: integer
+   *                 minimum: 1
+   *                 maximum: 5
+   *                 description: Rating from 1 (poor) to 5 (excellent)
+   *                 example: 4
+   *               feedback:
+   *                 type: string
+   *                 description: Optional detailed feedback text
+   *                 example: "Response was helpful but could be more concise"
+   *     responses:
+   *       200:
+   *         description: Feedback recorded successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 message:
+   *                   type: string
+   *       400:
+   *         description: Invalid request (missing fields or invalid rating)
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Server error
    */
   app.post("/api/master-ai/feedback", isAuthenticated, async (req: any, res: Response) => {
     try {
