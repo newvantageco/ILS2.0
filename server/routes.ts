@@ -104,6 +104,7 @@ import pythonMLRoutes from "./routes/python-ml";
 import shopifyRoutes from "./routes/shopify";
 import featureFlagsRoutes from "./routes/feature-flags";
 import dynamicRolesRouter from "./routes/dynamicRoles";
+import monitoringRoutes from "./routes/monitoring";
 import { websocketService } from "./websocket";
 import path from "path";
 import {
@@ -307,6 +308,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Feature Flags routes (feature toggle and A/B testing)
   app.use('/api/feature-flags', featureFlagsRoutes);
+
+  // Monitoring routes (performance metrics, health checks, system monitoring)
+  app.use('/api/monitoring', monitoringRoutes);
 
   // Dynamic RBAC routes (role and permission management)
   console.log('🔧 Registering Dynamic RBAC routes at /api/roles');

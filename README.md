@@ -29,6 +29,7 @@
 - 💳 **Payment Processing** - Integrated billing and subscriptions
 - 📧 **Email Automation** - Templates, tracking, and campaigns
 - ⚡ **Real-time Updates** - Live order status and notifications
+- 📊 **Performance Monitoring** - Real-time API and database performance tracking
 
 ---
 
@@ -220,6 +221,7 @@ REDIS_URL="redis://localhost:6379"
 
 | Document | Description |
 |----------|-------------|
+| [Development Guide](./docs/DEVELOPMENT.md) | Local development and debugging |
 | [Testing Guide](./docs/TESTING.md) | Comprehensive testing documentation |
 | [Architecture](./docs/ARCHITECTURE.md) | System architecture and design |
 | [API Documentation](http://localhost:5000/api-docs) | Interactive Swagger/OpenAPI docs |
@@ -352,19 +354,31 @@ npm start
 6. Set up AI API keys
 7. Configure Redis for sessions (recommended)
 
-### Health Check
+### Health Check & Monitoring
 
 ```bash
 # Check application health
-curl http://localhost:5000/health
+curl http://localhost:5000/api/monitoring/health
 
 Response:
 {
   "status": "healthy",
-  "timestamp": "2024-01-15T10:30:00.000Z",
-  "environment": "production"
+  "timestamp": "2024-11-08T10:30:00.000Z",
+  "uptime": 3600,
+  "memory": {
+    "heapUsed": "45.2 MB",
+    "heapTotal": "67.8 MB"
+  }
 }
+
+# Get performance metrics (admin only)
+curl http://localhost:5000/api/monitoring/metrics
+
+# Prometheus metrics for monitoring systems
+curl http://localhost:5000/api/monitoring/prometheus
 ```
+
+See [Development Guide - Performance Monitoring](./docs/DEVELOPMENT.md#performance-monitoring) for detailed monitoring documentation.
 
 ---
 
@@ -422,6 +436,12 @@ Analytics
 GET    /api/analytics/overview  # Dashboard metrics
 GET    /api/analytics/orders    # Order analytics
 GET    /api/analytics/revenue   # Revenue tracking
+
+Monitoring
+GET    /api/monitoring/health   # System health check
+GET    /api/monitoring/metrics  # Performance metrics (admin)
+GET    /api/monitoring/metrics/recent  # Recent metrics
+GET    /api/monitoring/prometheus      # Prometheus format
 ```
 
 ### Full API Documentation

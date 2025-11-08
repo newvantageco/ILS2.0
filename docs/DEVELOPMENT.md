@@ -1038,6 +1038,400 @@ export async function getPatient(id: string) {
 
 ---
 
+## Performance Monitoring
+
+ILS 2.0 includes comprehensive performance monitoring to track API response times, database queries, and system health.
+
+### Monitoring Architecture
+
+**Components:**
+- **Performance Middleware** - Tracks all API requests and responses
+- **Query Instrumentation** - Monitors database query execution times
+- **Metrics Storage** - In-memory buffer with automatic cleanup
+- **Monitoring Endpoints** - RESTful APIs for metrics access
+- **Frontend Dashboard** - Real-time performance visualization
+
+### Monitoring Endpoints
+
+**Health Check:**
+```bash
+# System health status
+curl http://localhost:5000/api/monitoring/health
+
+# Response
+{
+  "status": "healthy",
+  "timestamp": "2024-11-08T10:30:00.000Z",
+  "uptime": 3600,
+  "memory": {
+    "heapUsed": "45.2 MB",
+    "heapTotal": "67.8 MB"
+  }
+}
+```
+
+**Performance Metrics (Admin Only):**
+```bash
+# Get overall performance statistics
+curl http://localhost:5000/api/monitoring/metrics \
+  -H "Cookie: session=..." \
+  -H "Content-Type: application/json"
+
+# Response
+{
+  "timestamp": "2024-11-08T10:30:00.000Z",
+  "metrics": {
+    "totalRequests": 1543,
+    "averageResponseTime": 245,
+    "slowRequests": 12,
+    "errorRate": "0.65",
+    "slowestEndpoints": [
+      {
+        "endpoint": "/api/ai/treatment-plan",
+        "avgDuration": 1234,
+        "maxDuration": 2500,
+        "count": 45,
+        "errorRate": "0.00"
+      }
+    ]
+  }
+}
+```
+
+**Recent Metrics (Time Window):**
+```bash
+# Get metrics for last 5 minutes
+curl http://localhost:5000/api/monitoring/metrics/recent?minutes=5
+
+# Response
+{
+  "timestamp": "2024-11-08T10:30:00.000Z",
+  "timeWindow": "5 minutes",
+  "metrics": {
+    "requests": 234,
+    "avgResponseTime": 189,
+    "p95ResponseTime": 456,
+    "p99ResponseTime": 789,
+    "errorRate": "0.43"
+  }
+}
+```
+
+**Prometheus Metrics:**
+```bash
+# Metrics in Prometheus format
+curl http://localhost:5000/api/monitoring/prometheus
+
+# Response (Prometheus exposition format)
+# HELP ils_http_requests_total Total HTTP requests
+# TYPE ils_http_requests_total counter
+ils_http_requests_total 1543
+
+# HELP ils_http_request_duration_ms Average HTTP request duration
+# TYPE ils_http_request_duration_ms gauge
+ils_http_request_duration_ms 245
+```
+
+**Other Endpoints:**
+- `GET /api/monitoring/memory` - Node.js memory usage
+- `POST /api/monitoring/cleanup` - Clear old metrics
+- `GET /api/monitoring/ready` - Kubernetes readiness probe
+- `GET /api/monitoring/alive` - Kubernetes liveness probe
+
+### Instrumenting Database Queries
+
+**Basic Query Instrumentation:**
+
+```typescript
+import { instrumentQuery } from '@/utils/queryInstrumentation';
+import { db } from '@/db';
+
+// Wrap database queries with instrumentation
+export async function getPatients(companyId: string) {
+  return instrumentQuery(
+    'getPatients', // Query name for tracking
+    () => db.select()
+      .from(schema.patients)
+      .where(eq(schema.patients.companyId, companyId)),
+    '/api/patients' // Optional endpoint context
+  );
+}
+```
+
+**Query Batching:**
+
+```typescript
+import { QueryBatch } from '@/utils/queryInstrumentation';
+
+export async function loadDashboardData(companyId: string) {
+  const batch = new QueryBatch('dashboardData');
+
+  // Execute multiple queries with tracking
+  const patients = await batch.execute('getPatients', () =>
+    db.select().from(schema.patients).where(eq(schema.patients.companyId, companyId))
+  );
+
+  const orders = await batch.execute('getOrders', () =>
+    db.select().from(schema.orders).where(eq(schema.orders.companyId, companyId))
+  );
+
+  // Log batch summary
+  batch.complete();
+
+  return { patients, orders };
+}
+```
+
+**Query Monitor:**
+
+```typescript
+import { createQueryMonitor } from '@/utils/queryInstrumentation';
+
+export async function complexOperation() {
+  const monitor = createQueryMonitor('complexOperation');
+
+  const users = await monitor.track('fetchUsers', () => fetchUsers());
+  const settings = await monitor.track('fetchSettings', () => fetchSettings());
+
+  // Log summary at the end
+  monitor.log();
+  // Output: Query Monitor [complexOperation]: total: 234ms, queries: 2, avg: 117ms
+
+  return { users, settings };
+}
+```
+
+### Query Caching
+
+**Cached Queries with TTL:**
+
+```typescript
+import { cachedQuery } from '@/utils/queryInstrumentation';
+
+export async function getProducts(companyId: string) {
+  return cachedQuery(
+    {
+      key: `products:${companyId}`,
+      ttl: 300, // 5 minutes
+    },
+    () => db.select()
+      .from(schema.products)
+      .where(eq(schema.products.companyId, companyId))
+  );
+}
+```
+
+**Cache Management:**
+
+```typescript
+import { clearQueryCache, cleanupExpiredCache } from '@/utils/queryInstrumentation';
+
+// Clear specific cache entry
+clearQueryCache('products:comp_123');
+
+// Clear all cache
+clearQueryCache();
+
+// Manual cleanup of expired entries
+cleanupExpiredCache();
+```
+
+**Note:** The query cache is separate from the Redis cache service and is intended for temporary query result caching. For persistent caching, use the `CacheService`.
+
+### Frontend Performance Dashboard
+
+**Using the PerformanceMonitor Component:**
+
+```typescript
+// client/src/pages/AdminDashboard.tsx
+import { PerformanceMonitor } from '@/components/PerformanceMonitor';
+
+export default function AdminDashboard() {
+  const { user } = useAuth();
+
+  // Only show to admins
+  if (user?.role !== 'admin' && user?.role !== 'platform_admin') {
+    return <div>Access denied</div>;
+  }
+
+  return (
+    <div>
+      <h1>System Monitoring</h1>
+      <PerformanceMonitor />
+    </div>
+  );
+}
+```
+
+**Features:**
+- ✅ Real-time metrics with auto-refresh (10-30s intervals)
+- ✅ System health status badge (healthy/degraded)
+- ✅ Key performance indicators: requests, response times, error rates
+- ✅ Percentile tracking (P95, P99)
+- ✅ Slowest endpoints table with color-coded performance
+- ✅ Visual status indicators (success/warning/error)
+
+**Auto-refresh Configuration:**
+
+The component uses TanStack Query with different refresh intervals:
+- Overall metrics: Refreshes every 30 seconds
+- Recent metrics (5 min window): Refreshes every 10 seconds
+
+### Performance Thresholds
+
+**Configured Thresholds:**
+
+```typescript
+// server/middleware/performance.ts
+const SLOW_QUERY_THRESHOLD = 100; // milliseconds
+const SLOW_REQUEST_THRESHOLD = 1000; // milliseconds
+const MAX_BUFFER_SIZE = 1000; // max metrics in buffer
+```
+
+**Health Status Criteria:**
+
+System is considered "healthy" when:
+- Error rate < 5%
+- Average response time < 1000ms
+
+System is "degraded" when:
+- Error rate ≥ 5%, OR
+- Average response time ≥ 1000ms
+
+### Metrics Retention
+
+**Automatic Cleanup:**
+
+Metrics are automatically cleaned up to prevent memory issues:
+
+```typescript
+// server/index.ts
+// Cleanup runs every 6 hours
+setInterval(() => {
+  clearOldMetrics(24); // Clean metrics older than 24 hours
+}, 6 * 60 * 60 * 1000);
+```
+
+**Manual Cleanup:**
+
+```bash
+# Trigger manual cleanup via API
+curl -X POST http://localhost:5000/api/monitoring/cleanup
+```
+
+### Monitoring in Development
+
+**Development Mode Features:**
+
+```typescript
+// Queries > 50ms are logged in development
+if (process.env.NODE_ENV === 'development' && duration > 50) {
+  console.debug(`🔍 Query "${queryName}": ${duration.toFixed(2)}ms`);
+}
+```
+
+**Console Output Examples:**
+
+```
+🔍 Query "getPatients": 67.42ms
+📦 Batch "dashboardData": 234.56ms total
+  - fetchPatients: 67.42ms
+  - fetchOrders: 89.31ms
+  - fetchMetrics: 77.83ms
+```
+
+### Production Monitoring Integration
+
+**Prometheus Integration:**
+
+The `/api/monitoring/prometheus` endpoint exports metrics in Prometheus format for integration with monitoring systems:
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: 'ils2'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['localhost:5000']
+    metrics_path: '/api/monitoring/prometheus'
+```
+
+**Kubernetes Health Probes:**
+
+```yaml
+# kubernetes deployment
+livenessProbe:
+  httpGet:
+    path: /api/monitoring/alive
+    port: 5000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /api/monitoring/ready
+    port: 5000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+```
+
+### Best Practices
+
+**1. Instrument Critical Paths:**
+```typescript
+// Always instrument queries in critical paths
+export async function createOrder(data: OrderData) {
+  // Wrap database operations
+  const order = await instrumentQuery('createOrder', () =>
+    db.insert(schema.orders).values(data).returning()
+  );
+
+  // Track AI service calls separately
+  const recommendations = await instrumentQuery('getAIRecommendations', () =>
+    aiService.getRecommendations(order.id)
+  );
+
+  return { order, recommendations };
+}
+```
+
+**2. Use Meaningful Query Names:**
+```typescript
+// Bad - Generic names
+instrumentQuery('query1', ...);
+
+// Good - Descriptive names
+instrumentQuery('getPatientsByCompany', ...);
+instrumentQuery('updateOrderStatus', ...);
+instrumentQuery('deleteExpiredSessions', ...);
+```
+
+**3. Monitor High-Traffic Endpoints:**
+```typescript
+// Add endpoint context to queries
+instrumentQuery('searchPatients', queryFn, '/api/patients/search');
+```
+
+**4. Cache Appropriately:**
+```typescript
+// Don't cache volatile data
+const realtimeOrders = await db.select()...  // No caching
+
+// Cache stable reference data
+const products = await cachedQuery(
+  { key: 'products', ttl: 3600 },
+  () => db.select().from(schema.products)
+);
+```
+
+**5. Regular Monitoring Review:**
+- Check `/api/monitoring/metrics` daily in production
+- Investigate endpoints with >1000ms average response time
+- Monitor error rates and set up alerts for >5%
+- Review slowest endpoints list for optimization opportunities
+
+---
+
 ## Troubleshooting
 
 ### Common Issues
