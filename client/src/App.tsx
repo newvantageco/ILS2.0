@@ -117,10 +117,12 @@ const PlatformInsightsDashboard = lazy(() => import("@/pages/PlatformInsightsDas
 
 // Healthcare Pages (Phases 17-21)
 const RCMDashboard = lazy(() => import("@/pages/rcm/RCMDashboard"));
+const ClaimsManagementPage = lazy(() => import("@/pages/rcm/ClaimsManagementPage"));
 const PopulationHealthDashboard = lazy(() => import("@/pages/population-health/PopulationHealthDashboard"));
 const QualityDashboard = lazy(() => import("@/pages/quality/QualityDashboard"));
 const MHealthDashboard = lazy(() => import("@/pages/mhealth/MHealthDashboard"));
 const ResearchDashboard = lazy(() => import("@/pages/research/ResearchDashboard"));
+const ResearchTrialsPage = lazy(() => import("@/pages/research/ResearchTrialsPage"));
 
 // Other
 const GitHubPushPage = lazy(() => import("@/pages/github-push"));
@@ -617,10 +619,12 @@ function AuthenticatedApp() {
 
         {/* Healthcare Routes - Phases 17-21 */}
         <Route path="/rcm/dashboard" component={RCMDashboard} />
+        <Route path="/rcm/claims" component={ClaimsManagementPage} />
         <Route path="/population-health/dashboard" component={PopulationHealthDashboard} />
         <Route path="/quality/dashboard" component={QualityDashboard} />
         <Route path="/mhealth/dashboard" component={MHealthDashboard} />
         <Route path="/research/dashboard" component={ResearchDashboard} />
+        <Route path="/research/trials" component={ResearchTrialsPage} />
 
         {/* Platform Admin Routes (Chunk 7) */}
         <Route path="/platform-insights" component={PlatformInsightsDashboard} />
