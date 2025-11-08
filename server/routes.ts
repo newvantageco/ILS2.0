@@ -113,6 +113,7 @@ import patientPortalRoutes from "./routes/patient-portal";
 import telehealthRoutes from "./routes/telehealth";
 import biAnalyticsRoutes from "./routes/bi-analytics";
 import communicationsRoutes from "./routes/communications";
+import systemAdminRoutes from "./routes/system-admin";
 import { websocketService } from "./websocket";
 import path from "path";
 import {
@@ -343,6 +344,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Communications routes (messaging, campaigns, workflows)
   app.use('/api/communications', isAuthenticated, communicationsRoutes);
+
+  // System Administration routes (monitoring, config, operations)
+  app.use('/api/system-admin', isAuthenticated, systemAdminRoutes);
 
   // Dynamic RBAC routes (role and permission management)
   console.log('🔧 Registering Dynamic RBAC routes at /api/roles');
