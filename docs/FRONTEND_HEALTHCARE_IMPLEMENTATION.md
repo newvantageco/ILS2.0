@@ -48,17 +48,19 @@ This document outlines the comprehensive frontend UI/UX implementation for Phase
   - Uses shared healthcare components (PageHeader, DataTable, StatusBadge)
 - **API Integration**: `/api/rcm/claims`
 
-#### 3. PaymentProcessingPage.tsx (To Implement)
+#### 3. PaymentProcessingPage.tsx ✅
 - **Path**: `/rcm/payments`
 - **Features**:
-  - Payment list and search
-  - Record payment form (insurance, patient, copay)
-  - Payment method selection (cash, check, credit card, ACH)
-  - Refund processing
-  - Patient statement generation
-  - Payment plans
-  - Outstanding balance tracking
-- **API Integration**: `/api/rcm/payments/*`
+  - Payment list with filtering by type (insurance, patient, copay)
+  - Record payment dialog with payment details
+  - Payment method tracking (cash, check, credit card, ACH)
+  - Patient account balance management
+  - Overdue accounts tracking
+  - Payment statistics by method
+  - Export functionality
+  - Quick actions (generate statement, process refund, setup payment plan)
+  - Uses shared healthcare components (PageHeader, DataTable, StatusBadge)
+- **API Integration**: `/api/rcm/payments`, `/api/rcm/accounts`
 
 #### 4. BillingAutomationPage.tsx (To Implement)
 - **Path**: `/rcm/billing`
@@ -194,17 +196,20 @@ This document outlines the comprehensive frontend UI/UX implementation for Phase
   - Quick actions for programs, reminders, devices
 - **API Integration**: `/api/mhealth/statistics`
 
-#### 2. RemoteMonitoringPage.tsx (To Implement)
+#### 2. RemoteMonitoringPage.tsx ✅
 - **Path**: `/mhealth/monitoring`
 - **Features**:
-  - Patient monitoring list
-  - Vital signs dashboard per patient
-  - Threshold configuration
-  - Alert management
-  - Reading trends and charts
-  - Program enrollment
-  - Compliance tracking
-- **API Integration**: `/api/mhealth/monitoring/*`
+  - Patient monitoring list with program filtering
+  - Vital signs readings table with trend indicators
+  - Alert management with severity levels
+  - Compliance tracking with visual progress bars
+  - Enroll patient dialog
+  - Critical alerts section for immediate action
+  - Export functionality
+  - Quick actions (configure thresholds, view care team, generate report)
+  - Tab-based navigation (Monitored Patients, Recent Readings, Active Alerts)
+  - Uses shared healthcare components (PageHeader, DataTable, StatusBadge)
+- **API Integration**: `/api/mhealth/monitoring/patients`, `/api/mhealth/monitoring/readings`, `/api/mhealth/monitoring/alerts`
 
 #### 3. PatientEngagementPage.tsx (To Implement)
 - **Path**: `/mhealth/engagement`
@@ -386,9 +391,11 @@ Lazy-loaded imports added:
 // Healthcare Pages (Phases 17-21)
 const RCMDashboard = lazy(() => import("@/pages/rcm/RCMDashboard"));
 const ClaimsManagementPage = lazy(() => import("@/pages/rcm/ClaimsManagementPage"));
+const PaymentProcessingPage = lazy(() => import("@/pages/rcm/PaymentProcessingPage"));
 const PopulationHealthDashboard = lazy(() => import("@/pages/population-health/PopulationHealthDashboard"));
 const QualityDashboard = lazy(() => import("@/pages/quality/QualityDashboard"));
 const MHealthDashboard = lazy(() => import("@/pages/mhealth/MHealthDashboard"));
+const RemoteMonitoringPage = lazy(() => import("@/pages/mhealth/RemoteMonitoringPage"));
 const ResearchDashboard = lazy(() => import("@/pages/research/ResearchDashboard"));
 const ResearchTrialsPage = lazy(() => import("@/pages/research/ResearchTrialsPage"));
 ```
@@ -398,9 +405,11 @@ Routes added in App.tsx:
 {/* Healthcare Routes - Phases 17-21 */}
 <Route path="/rcm/dashboard" component={RCMDashboard} />
 <Route path="/rcm/claims" component={ClaimsManagementPage} />
+<Route path="/rcm/payments" component={PaymentProcessingPage} />
 <Route path="/population-health/dashboard" component={PopulationHealthDashboard} />
 <Route path="/quality/dashboard" component={QualityDashboard} />
 <Route path="/mhealth/dashboard" component={MHealthDashboard} />
+<Route path="/mhealth/monitoring" component={RemoteMonitoringPage} />
 <Route path="/research/dashboard" component={ResearchDashboard} />
 <Route path="/research/trials" component={ResearchTrialsPage} />
 ```
@@ -623,6 +632,8 @@ export function useClaims(filters) {
 
 **Detail Pages:**
 - ✅ ClaimsManagementPage.tsx - Claims management interface
+- ✅ PaymentProcessingPage.tsx - Payment processing and account management
+- ✅ RemoteMonitoringPage.tsx - Remote patient monitoring interface
 - ✅ ResearchTrialsPage.tsx - Clinical trials management interface
 
 **Shared Components:**
@@ -645,16 +656,15 @@ export function useClaims(filters) {
 
 ### To Do 📋
 - Remaining detail pages:
-  - Payment Processing (RCM)
   - Billing Automation (RCM)
   - Risk Stratification (Population Health)
   - Care Coordination (Population Health)
   - Quality Measures management
   - Compliance management
-  - Remote Monitoring management
-  - Device Management
-  - Participant Enrollment
-  - Data Collection interface
+  - Patient Engagement (mHealth)
+  - Device Management (mHealth)
+  - Participant Enrollment (Research)
+  - Data Collection interface (Research)
 - Form wizards
 - Advanced chart components
 - Code selectors (ICD-10, CPT, HCPCS)
@@ -678,11 +688,12 @@ export function useClaims(filters) {
 ### Immediate Priorities
 
 1. **Additional Detail Pages**:
-   - Payment Processing page (RCM)
    - Billing Automation page (RCM)
-   - Risk Stratification management page
-   - Care Coordination page
-   - Quality Measures management page
+   - Risk Stratification management page (Population Health)
+   - Care Coordination page (Population Health)
+   - Quality Measures management page (Quality)
+   - Patient Engagement page (mHealth)
+   - Device Management page (mHealth)
 
 2. **Form Components**:
    - Patient selector with autocomplete
