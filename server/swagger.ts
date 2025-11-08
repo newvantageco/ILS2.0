@@ -71,65 +71,357 @@ const options: swaggerJsdoc.Options = {
           properties: {
             error: {
               type: 'string',
-              description: 'Error message'
+              description: 'Error message',
+              example: 'Validation failed'
             },
             message: {
               type: 'string',
-              description: 'Detailed error description'
+              description: 'Detailed error description',
+              example: 'Invalid prescription values provided'
             },
             details: {
               type: 'object',
-              description: 'Additional error details'
+              description: 'Additional error details',
+              example: {
+                field: 'odAxis',
+                message: 'Must be between 0 and 180'
+              }
             }
           }
         },
         Patient: {
           type: 'object',
+          required: ['firstName', 'lastName'],
           properties: {
-            id: { type: 'string' },
-            companyId: { type: 'string' },
-            firstName: { type: 'string' },
-            lastName: { type: 'string' },
-            email: { type: 'string', format: 'email' },
-            phone: { type: 'string' },
-            dateOfBirth: { type: 'string', format: 'date' },
-            nhsNumber: { type: 'string' },
-            address: { type: 'object' },
-            createdAt: { type: 'string', format: 'date-time' }
+            id: {
+              type: 'string',
+              description: 'Unique patient identifier',
+              example: 'pat_1234567890'
+            },
+            companyId: {
+              type: 'string',
+              description: 'Company identifier (multi-tenant)',
+              example: 'comp_abc123'
+            },
+            customerNumber: {
+              type: 'string',
+              description: 'Customer reference number',
+              example: 'CUST-00001234'
+            },
+            firstName: {
+              type: 'string',
+              description: 'Patient first name',
+              example: 'John'
+            },
+            lastName: {
+              type: 'string',
+              description: 'Patient last name',
+              example: 'Smith'
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+              description: 'Patient email address',
+              example: 'john.smith@example.com'
+            },
+            phone: {
+              type: 'string',
+              description: 'Patient phone number',
+              example: '07700900000'
+            },
+            dateOfBirth: {
+              type: 'string',
+              format: 'date',
+              description: 'Date of birth',
+              example: '1990-01-15'
+            },
+            nhsNumber: {
+              type: 'string',
+              description: 'NHS number (UK)',
+              example: '4505551234'
+            },
+            address: {
+              type: 'object',
+              properties: {
+                line1: { type: 'string', example: '123 High Street' },
+                line2: { type: 'string', example: 'Flat 4' },
+                city: { type: 'string', example: 'London' },
+                postcode: { type: 'string', example: 'SW1A 1AA' },
+                country: { type: 'string', example: 'United Kingdom' }
+              }
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Patient creation timestamp',
+              example: '2024-01-15T10:30:00Z'
+            }
           }
         },
         Prescription: {
           type: 'object',
+          required: ['patientId'],
           properties: {
-            id: { type: 'string' },
-            patientId: { type: 'string' },
-            companyId: { type: 'string' },
-            odSphere: { type: 'string' },
-            odCylinder: { type: 'string' },
-            odAxis: { type: 'string' },
-            osSphere: { type: 'string' },
-            osCylinder: { type: 'string' },
-            osAxis: { type: 'string' },
-            pd: { type: 'string' },
-            prescriptionType: { type: 'string', enum: ['spectacles', 'contact_lenses'] },
-            issuedDate: { type: 'string', format: 'date' },
-            expiryDate: { type: 'string', format: 'date' },
-            createdAt: { type: 'string', format: 'date-time' }
+            id: {
+              type: 'string',
+              description: 'Unique prescription identifier',
+              example: 'rx_9876543210'
+            },
+            patientId: {
+              type: 'string',
+              description: 'Associated patient ID',
+              example: 'pat_1234567890'
+            },
+            companyId: {
+              type: 'string',
+              description: 'Company identifier',
+              example: 'comp_abc123'
+            },
+            odSphere: {
+              type: 'string',
+              description: 'Right eye sphere power',
+              example: '+2.00',
+              pattern: '^[+-]\\d+\\.\\d{2}$'
+            },
+            odCylinder: {
+              type: 'string',
+              description: 'Right eye cylinder power',
+              example: '-0.50',
+              pattern: '^[+-]\\d+\\.\\d{2}$'
+            },
+            odAxis: {
+              type: 'string',
+              description: 'Right eye axis (0-180)',
+              example: '90',
+              pattern: '^\\d{1,3}$'
+            },
+            osSphere: {
+              type: 'string',
+              description: 'Left eye sphere power',
+              example: '+2.25'
+            },
+            osCylinder: {
+              type: 'string',
+              description: 'Left eye cylinder power',
+              example: '-0.75'
+            },
+            osAxis: {
+              type: 'string',
+              description: 'Left eye axis (0-180)',
+              example: '85'
+            },
+            pd: {
+              type: 'string',
+              description: 'Pupillary distance (mm)',
+              example: '64'
+            },
+            prescriptionType: {
+              type: 'string',
+              enum: ['spectacles', 'contact_lenses'],
+              description: 'Type of prescription',
+              example: 'spectacles'
+            },
+            issuedDate: {
+              type: 'string',
+              format: 'date',
+              description: 'Date prescription was issued',
+              example: '2024-01-15'
+            },
+            expiryDate: {
+              type: 'string',
+              format: 'date',
+              description: 'Prescription expiry date',
+              example: '2026-01-15'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-15T10:30:00Z'
+            }
           }
         },
         Order: {
           type: 'object',
+          required: ['patientId', 'lensType'],
           properties: {
-            id: { type: 'string' },
-            companyId: { type: 'string' },
-            patientId: { type: 'string' },
-            orderNumber: { type: 'string' },
-            status: { type: 'string', enum: ['pending', 'in_production', 'quality_check', 'shipped', 'completed', 'cancelled'] },
-            lensType: { type: 'string' },
-            lensMaterial: { type: 'string' },
-            coating: { type: 'string' },
-            totalPrice: { type: 'string' },
-            createdAt: { type: 'string', format: 'date-time' }
+            id: {
+              type: 'string',
+              description: 'Unique order identifier',
+              example: 'ord_xyz789'
+            },
+            companyId: {
+              type: 'string',
+              description: 'Company identifier',
+              example: 'comp_abc123'
+            },
+            patientId: {
+              type: 'string',
+              description: 'Associated patient ID',
+              example: 'pat_1234567890'
+            },
+            orderNumber: {
+              type: 'string',
+              description: 'Human-readable order number',
+              example: 'ORD-20240115',
+              pattern: '^ORD-\\d{8}$'
+            },
+            status: {
+              type: 'string',
+              enum: ['pending', 'in_production', 'quality_check', 'shipped', 'completed', 'on_hold', 'cancelled'],
+              description: 'Current order status',
+              example: 'in_production'
+            },
+            lensType: {
+              type: 'string',
+              enum: ['single_vision', 'bifocal', 'progressive', 'reading'],
+              description: 'Type of lenses',
+              example: 'progressive'
+            },
+            lensMaterial: {
+              type: 'string',
+              enum: ['cr39', 'polycarbonate', 'trivex', 'high_index_1.67', 'high_index_1.74'],
+              description: 'Lens material',
+              example: 'polycarbonate'
+            },
+            coating: {
+              type: 'string',
+              enum: ['none', 'hard_coat', 'anti-reflective', 'blue_light_filter', 'photochromic', 'premium'],
+              description: 'Lens coating',
+              example: 'anti-reflective'
+            },
+            totalPrice: {
+              type: 'number',
+              description: 'Total order price (GBP)',
+              example: 250.00
+            },
+            prescription: {
+              $ref: '#/components/schemas/Prescription'
+            },
+            notes: {
+              type: 'string',
+              description: 'Order notes',
+              example: 'Patient requires rush processing'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Order creation timestamp',
+              example: '2024-01-15T10:30:00Z'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp',
+              example: '2024-01-16T14:20:00Z'
+            }
+          }
+        },
+        AIResponse: {
+          type: 'object',
+          properties: {
+            response: {
+              type: 'string',
+              description: 'AI-generated response',
+              example: 'Progressive lenses are multifocal lenses that provide a smooth transition between different lens powers...'
+            },
+            sources: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Knowledge base sources used',
+              example: ['lens_types.md', 'patient_recommendations.md']
+            },
+            confidence: {
+              type: 'number',
+              description: 'Response confidence (0-1)',
+              example: 0.95
+            },
+            provider: {
+              type: 'string',
+              enum: ['openai', 'anthropic'],
+              description: 'AI provider used',
+              example: 'openai'
+            }
+          }
+        },
+        AnalyticsOverview: {
+          type: 'object',
+          properties: {
+            totalOrders: {
+              type: 'integer',
+              description: 'Total number of orders',
+              example: 1234
+            },
+            totalRevenue: {
+              type: 'number',
+              description: 'Total revenue (GBP)',
+              example: 125000.00
+            },
+            activePatients: {
+              type: 'integer',
+              description: 'Number of active patients',
+              example: 456
+            },
+            pendingOrders: {
+              type: 'integer',
+              description: 'Orders in pending status',
+              example: 23
+            },
+            ordersChange: {
+              type: 'number',
+              description: 'Percentage change from previous period',
+              example: 12.5
+            },
+            revenueChange: {
+              type: 'number',
+              description: 'Revenue percentage change',
+              example: 8.3
+            }
+          }
+        }
+      },
+      examples: {
+        PatientExample: {
+          value: {
+            id: 'pat_1234567890',
+            companyId: 'comp_abc123',
+            customerNumber: 'CUST-00001234',
+            firstName: 'John',
+            lastName: 'Smith',
+            email: 'john.smith@example.com',
+            phone: '07700900000',
+            dateOfBirth: '1990-01-15',
+            nhsNumber: '4505551234',
+            address: {
+              line1: '123 High Street',
+              city: 'London',
+              postcode: 'SW1A 1AA',
+              country: 'United Kingdom'
+            },
+            createdAt: '2024-01-15T10:30:00Z'
+          }
+        },
+        OrderExample: {
+          value: {
+            id: 'ord_xyz789',
+            orderNumber: 'ORD-20240115',
+            status: 'in_production',
+            patientId: 'pat_1234567890',
+            lensType: 'progressive',
+            lensMaterial: 'polycarbonate',
+            coating: 'anti-reflective',
+            prescription: {
+              odSphere: '+2.00',
+              odCylinder: '-0.50',
+              odAxis: '90',
+              osSphere: '+2.25',
+              osCylinder: '-0.75',
+              osAxis: '85',
+              pd: '64'
+            },
+            totalPrice: 250.00,
+            notes: 'Patient requires rush processing',
+            createdAt: '2024-01-15T10:30:00Z',
+            updatedAt: '2024-01-16T14:20:00Z'
           }
         }
       }
