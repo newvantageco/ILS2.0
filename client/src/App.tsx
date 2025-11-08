@@ -121,8 +121,10 @@ const ClaimsManagementPage = lazy(() => import("@/pages/rcm/ClaimsManagementPage
 const PaymentProcessingPage = lazy(() => import("@/pages/rcm/PaymentProcessingPage"));
 const PopulationHealthDashboard = lazy(() => import("@/pages/population-health/PopulationHealthDashboard"));
 const QualityDashboard = lazy(() => import("@/pages/quality/QualityDashboard"));
+const QualityMeasuresPage = lazy(() => import("@/pages/quality/QualityMeasuresPage"));
 const MHealthDashboard = lazy(() => import("@/pages/mhealth/MHealthDashboard"));
 const RemoteMonitoringPage = lazy(() => import("@/pages/mhealth/RemoteMonitoringPage"));
+const DeviceManagementPage = lazy(() => import("@/pages/mhealth/DeviceManagementPage"));
 const ResearchDashboard = lazy(() => import("@/pages/research/ResearchDashboard"));
 const ResearchTrialsPage = lazy(() => import("@/pages/research/ResearchTrialsPage"));
 
@@ -625,8 +627,10 @@ function AuthenticatedApp() {
         <Route path="/rcm/payments" component={PaymentProcessingPage} />
         <Route path="/population-health/dashboard" component={PopulationHealthDashboard} />
         <Route path="/quality/dashboard" component={QualityDashboard} />
+        <Route path="/quality/measures" component={QualityMeasuresPage} />
         <Route path="/mhealth/dashboard" component={MHealthDashboard} />
         <Route path="/mhealth/monitoring" component={RemoteMonitoringPage} />
+        <Route path="/mhealth/devices" component={DeviceManagementPage} />
         <Route path="/research/dashboard" component={ResearchDashboard} />
         <Route path="/research/trials" component={ResearchTrialsPage} />
 
