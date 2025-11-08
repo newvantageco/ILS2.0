@@ -1,497 +1,587 @@
 import { Router } from "express";
 import { z } from "zod";
-import { storage } from "../storage";
-import { isAuthenticated } from "../replitAuth";
+import { requireAuth } from "../middleware/auth";
+import { ShopifyService } from "../services/ShopifyService";
+import { PrescriptionVerificationService } from "../services/PrescriptionVerificationService";
+import { ShopifyOrderSyncService } from "../services/ShopifyOrderSyncService";
+import { ShopifyWebhookHandler } from "../services/ShopifyWebhookHandler";
 
 const router = Router();
 
-// Validation schemas
-const configureShopifySchema = z.object({
-  shopUrl: z.string().url(),
-  apiKey: z.string().min(1),
-  apiSecret: z.string().min(1),
+// ============================================================================
+// VALIDATION SCHEMAS
+// ============================================================================
+
+const connectStoreSchema = z.object({
+  shopifyDomain: z.string().min(1),
+  shopifyStoreId: z.string().min(1),
+  storeName: z.string().min(1),
+  storeEmail: z.string().email().optional(),
+  storeUrl: z.string().url(),
   accessToken: z.string().min(1),
-  webhookSecret: z.string().optional(),
+  apiKey: z.string().min(1),
+  apiSecretKey: z.string().min(1),
 });
 
-const syncOptionsSchema = z.object({
-  syncProducts: z.boolean().optional().default(true),
-  syncOrders: z.boolean().optional().default(true),
-  syncInventory: z.boolean().optional().default(true),
-  syncCustomers: z.boolean().optional().default(false),
+const updateStoreSettingsSchema = z.object({
+  enablePrescriptionVerification: z.boolean().optional(),
+  enableAIRecommendations: z.boolean().optional(),
+  enableAutoOrderSync: z.boolean().optional(),
+  requirePrescriptionUpload: z.boolean().optional(),
+  markupPercentage: z.number().min(0).max(100).optional(),
 });
 
-// Helper to check admin access
-const requireAdmin = async (req: any, res: any, next: any) => {
-  const userId = req.user.claims.sub;
-  const user = await storage.getUser(userId);
-  
-  if (!user || (user.role !== 'admin' && user.role !== 'platform_admin')) {
-    return res.status(403).json({ message: "Admin access required" });
-  }
-  
-  (req as any).currentUser = user;
-  next();
-};
+const uploadPrescriptionSchema = z.object({
+  shopifyOrderId: z.string().optional(),
+  patientId: z.string().optional(),
+  fileUrl: z.string().url(),
+  fileName: z.string().min(1),
+  fileType: z.enum(["pdf", "jpg", "jpeg", "png"]),
+  fileSize: z.number(),
+});
 
-// Apply auth middleware to all routes
-router.use(isAuthenticated, requireAdmin);
+const verifyPrescriptionSchema = z.object({
+  prescriptionData: z.object({
+    sphereOD: z.number().nullable(),
+    cylinderOD: z.number().nullable(),
+    axisOD: z.number().nullable(),
+    addOD: z.number().nullable(),
+    sphereOS: z.number().nullable(),
+    cylinderOS: z.number().nullable(),
+    axisOS: z.number().nullable(),
+    addOS: z.number().nullable(),
+    pd: z.number().nullable(),
+    prescriptionDate: z.string().nullable(),
+    expiryDate: z.string().nullable(),
+    practitionerName: z.string().nullable(),
+    practitionerGocNumber: z.string().nullable(),
+  }).optional(),
+});
+
+const rejectPrescriptionSchema = z.object({
+  rejectionReason: z.string().min(1),
+});
+
+// ============================================================================
+// STORE MANAGEMENT ROUTES
+// ============================================================================
 
 /**
- * GET /api/shopify/config
- * Get Shopify integration configuration
+ * GET /api/shopify/stores
+ * Get all connected Shopify stores
  */
-router.get("/config", async (req, res) => {
+router.get("/stores", requireAuth, async (req, res) => {
   try {
-    const userId = (req as any).currentUser.id;
+    const { companyId } = req.user!;
 
-    // Mock config - in production would fetch from database
-    const config = {
-      isConfigured: true,
-      shopUrl: "your-store.myshopify.com",
-      isConnected: true,
-      lastSync: new Date(Date.now() - 3600000),
-      syncStatus: "active",
-      webhooks: {
-        products: true,
-        orders: true,
-        inventory: true,
-        customers: false,
-      },
-      configuredAt: new Date("2025-09-15"),
-      configuredBy: userId,
-    };
+    const stores = await ShopifyService.getStores(companyId);
 
-    res.json(config);
-  } catch (error) {
-    console.error("Error fetching Shopify config:", error);
-    res.status(500).json({ message: "Failed to fetch Shopify configuration" });
-  }
-});
-
-/**
- * POST /api/shopify/configure
- * Configure Shopify integration
- */
-router.post("/configure", async (req, res) => {
-  try {
-    const validation = configureShopifySchema.safeParse(req.body);
-    
-    if (!validation.success) {
-      return res.status(400).json({ 
-        message: "Validation failed", 
-        errors: validation.error.errors 
-      });
-    }
-
-    const configData = validation.data;
-
-    // In production, would:
-    // 1. Validate Shopify credentials
-    // 2. Test API connection
-    // 3. Store encrypted credentials
-    // 4. Set up webhooks
-
-    const config = {
-      isConfigured: true,
-      shopUrl: configData.shopUrl,
-      isConnected: true,
-      syncStatus: "active",
-      webhooks: {
-        products: true,
-        orders: true,
-        inventory: true,
-        customers: false,
-      },
-      configuredAt: new Date(),
-      configuredBy: (req as any).currentUser.id,
-    };
-
-    res.json(config);
-  } catch (error) {
-    console.error("Error configuring Shopify:", error);
-    res.status(500).json({ message: "Failed to configure Shopify integration" });
+    res.json(stores);
+  } catch (error: any) {
+    console.error("Error fetching stores:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 
 /**
- * POST /api/shopify/disconnect
- * Disconnect Shopify integration
+ * GET /api/shopify/stores/:storeId
+ * Get store by ID
  */
-router.post("/disconnect", async (req, res) => {
+router.get("/stores/:storeId", requireAuth, async (req, res) => {
   try {
-    // In production, would:
-    // 1. Remove webhooks
-    // 2. Clear stored credentials
-    // 3. Update status
+    const { companyId } = req.user!;
+    const { storeId } = req.params;
 
-    res.json({ 
-      message: "Shopify integration disconnected successfully",
-      disconnectedAt: new Date()
+    const store = await ShopifyService.getStore(storeId, companyId);
+
+    res.json(store);
+  } catch (error: any) {
+    console.error("Error fetching store:", error);
+    res.status(error.message.includes("not found") ? 404 : 500).json({
+      error: error.message,
     });
-  } catch (error) {
-    console.error("Error disconnecting Shopify:", error);
-    res.status(500).json({ message: "Failed to disconnect Shopify" });
   }
 });
 
 /**
- * POST /api/shopify/sync
- * Trigger manual sync
+ * POST /api/shopify/stores/connect
+ * Connect a new Shopify store
  */
-router.post("/sync", async (req, res) => {
+router.post("/stores/connect", requireAuth, async (req, res) => {
   try {
-    const validation = syncOptionsSchema.safeParse(req.body);
-    
-    if (!validation.success) {
-      return res.status(400).json({ 
-        message: "Validation failed", 
-        errors: validation.error.errors 
-      });
-    }
+    const { companyId } = req.user!;
+    const validatedData = connectStoreSchema.parse(req.body);
 
-    const options = validation.data;
-
-    // In production, would queue sync job
-    const syncJob = {
-      id: `sync-${Date.now()}`,
-      status: "queued",
-      options,
-      startedAt: new Date(),
-      estimatedCompletion: new Date(Date.now() + 300000), // 5 minutes
-    };
-
-    res.json(syncJob);
-  } catch (error) {
-    console.error("Error starting sync:", error);
-    res.status(500).json({ message: "Failed to start sync" });
-  }
-});
-
-/**
- * GET /api/shopify/sync/status
- * Get current sync status
- */
-router.get("/sync/status", async (req, res) => {
-  try {
-    // Mock sync status
-    const status = {
-      isRunning: false,
-      lastSync: new Date(Date.now() - 3600000),
-      lastSyncDuration: 245, // seconds
-      nextScheduledSync: new Date(Date.now() + 18000000), // 5 hours
-      stats: {
-        productsProcessed: 1234,
-        ordersProcessed: 567,
-        inventoryUpdates: 890,
-        errors: 3,
-      },
-    };
-
-    res.json(status);
-  } catch (error) {
-    console.error("Error fetching sync status:", error);
-    res.status(500).json({ message: "Failed to fetch sync status" });
-  }
-});
-
-/**
- * GET /api/shopify/products
- * Get synced products
- */
-router.get("/products", async (req, res) => {
-  try {
-    const { limit = "50", offset = "0", search, status } = req.query;
-
-    // Mock product data
-    const products = [
-      {
-        id: "prod-001",
-        shopifyId: "12345678901",
-        title: "Progressive Lens - Premium",
-        sku: "PROG-PREM-001",
-        price: 299.99,
-        inventoryQuantity: 45,
-        status: "active",
-        syncStatus: "synced",
-        lastSyncedAt: new Date(Date.now() - 3600000),
-        shopifyUrl: "https://your-store.myshopify.com/admin/products/12345678901",
-      },
-      {
-        id: "prod-002",
-        shopifyId: "12345678902",
-        title: "Single Vision Lens - Standard",
-        sku: "SV-STD-001",
-        price: 149.99,
-        inventoryQuantity: 128,
-        status: "active",
-        syncStatus: "synced",
-        lastSyncedAt: new Date(Date.now() - 3600000),
-        shopifyUrl: "https://your-store.myshopify.com/admin/products/12345678902",
-      },
-      {
-        id: "prod-003",
-        shopifyId: "12345678903",
-        title: "Anti-Reflective Coating",
-        sku: "COAT-AR-001",
-        price: 49.99,
-        inventoryQuantity: 0,
-        status: "active",
-        syncStatus: "error",
-        lastSyncedAt: new Date(Date.now() - 7200000),
-        syncError: "Inventory mismatch",
-        shopifyUrl: "https://your-store.myshopify.com/admin/products/12345678903",
-      },
-    ];
-
-    // Apply filters
-    let filtered = products;
-    
-    if (search) {
-      const searchLower = (search as string).toLowerCase();
-      filtered = filtered.filter(p => 
-        p.title.toLowerCase().includes(searchLower) ||
-        p.sku.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    if (status) {
-      filtered = filtered.filter(p => p.syncStatus === status);
-    }
-
-    // Apply pagination
-    const limitNum = parseInt(limit as string);
-    const offsetNum = parseInt(offset as string);
-    const paginated = filtered.slice(offsetNum, offsetNum + limitNum);
-
-    res.json({
-      products: paginated,
-      total: filtered.length,
-      limit: limitNum,
-      offset: offsetNum,
+    const store = await ShopifyService.connectStore({
+      ...validatedData,
+      companyId,
     });
-  } catch (error) {
+
+    res.json(store);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Validation failed", details: error.errors });
+    }
+    console.error("Error connecting store:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * PUT /api/shopify/stores/:storeId/settings
+ * Update store settings
+ */
+router.put("/stores/:storeId/settings", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+    const { storeId } = req.params;
+    const validatedData = updateStoreSettingsSchema.parse(req.body);
+
+    const store = await ShopifyService.updateStore(storeId, companyId, validatedData);
+
+    res.json(store);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Validation failed", details: error.errors });
+    }
+    console.error("Error updating store settings:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/shopify/stores/:storeId/disconnect
+ * Disconnect a Shopify store
+ */
+router.post("/stores/:storeId/disconnect", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+    const { storeId } = req.params;
+
+    const store = await ShopifyService.disconnectStore(storeId, companyId);
+
+    res.json(store);
+  } catch (error: any) {
+    console.error("Error disconnecting store:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/shopify/stores/:storeId/sync-products
+ * Sync products from Shopify
+ */
+router.post("/stores/:storeId/sync-products", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+    const { storeId } = req.params;
+
+    const result = await ShopifyService.syncProducts(storeId, companyId);
+
+    res.json(result);
+  } catch (error: any) {
+    console.error("Error syncing products:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/shopify/stores/:storeId/products
+ * Get products for a store
+ */
+router.get("/stores/:storeId/products", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+    const { storeId } = req.params;
+
+    const products = await ShopifyService.getProducts(storeId, companyId);
+
+    res.json(products);
+  } catch (error: any) {
     console.error("Error fetching products:", error);
-    res.status(500).json({ message: "Failed to fetch products" });
+    res.status(500).json({ error: error.message });
   }
 });
+
+// ============================================================================
+// PRESCRIPTION VERIFICATION ROUTES
+// ============================================================================
+
+/**
+ * POST /api/shopify/prescriptions/upload
+ * Upload prescription for verification
+ */
+router.post("/prescriptions/upload", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+    const validatedData = uploadPrescriptionSchema.parse(req.body);
+
+    const upload = await PrescriptionVerificationService.uploadPrescription({
+      ...validatedData,
+      companyId,
+    });
+
+    res.json(upload);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Validation failed", details: error.errors });
+    }
+    console.error("Error uploading prescription:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/shopify/prescriptions/:uploadId
+ * Get prescription upload by ID
+ */
+router.get("/prescriptions/:uploadId", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+    const { uploadId } = req.params;
+
+    const upload = await PrescriptionVerificationService.getUpload(uploadId, companyId);
+
+    res.json(upload);
+  } catch (error: any) {
+    console.error("Error fetching prescription:", error);
+    res.status(error.message.includes("not found") ? 404 : 500).json({
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/shopify/prescriptions/review/pending
+ * Get prescriptions requiring review
+ */
+router.get("/prescriptions/review/pending", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+
+    const uploads = await PrescriptionVerificationService.getUploadsRequiringReview(companyId);
+
+    res.json(uploads);
+  } catch (error: any) {
+    console.error("Error fetching prescriptions for review:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/shopify/prescriptions/:uploadId/verify
+ * Verify/approve prescription
+ */
+router.post("/prescriptions/:uploadId/verify", requireAuth, async (req, res) => {
+  try {
+    const { companyId, id: userId } = req.user!;
+    const { uploadId } = req.params;
+    const validatedData = verifyPrescriptionSchema.parse(req.body);
+
+    const verified = await PrescriptionVerificationService.verifyPrescription(
+      uploadId,
+      companyId,
+      userId,
+      validatedData.prescriptionData as any
+    );
+
+    res.json(verified);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Validation failed", details: error.errors });
+    }
+    console.error("Error verifying prescription:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/shopify/prescriptions/:uploadId/reject
+ * Reject prescription
+ */
+router.post("/prescriptions/:uploadId/reject", requireAuth, async (req, res) => {
+  try {
+    const { companyId, id: userId } = req.user!;
+    const { uploadId } = req.params;
+    const { rejectionReason } = rejectPrescriptionSchema.parse(req.body);
+
+    const rejected = await PrescriptionVerificationService.rejectPrescription(
+      uploadId,
+      companyId,
+      userId,
+      rejectionReason
+    );
+
+    res.json(rejected);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Validation failed", details: error.errors });
+    }
+    console.error("Error rejecting prescription:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/shopify/prescriptions/status/:status
+ * Get prescriptions by status
+ */
+router.get("/prescriptions/status/:status", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+    const { status } = req.params;
+
+    const uploads = await PrescriptionVerificationService.getUploadsByStatus(companyId, status);
+
+    res.json(uploads);
+  } catch (error: any) {
+    console.error("Error fetching prescriptions by status:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// ORDER SYNCHRONIZATION ROUTES
+// ============================================================================
 
 /**
  * GET /api/shopify/orders
- * Get synced orders
+ * Get all Shopify orders
  */
-router.get("/orders", async (req, res) => {
+router.get("/orders", requireAuth, async (req, res) => {
   try {
-    const { limit = "50", offset = "0", status } = req.query;
+    const { companyId } = req.user!;
+    const { storeId, status } = req.query;
 
-    // Mock order data
-    const orders = [
-      {
-        id: "order-001",
-        shopifyId: "98765432101",
-        orderNumber: "#1001",
-        customerName: "John Smith",
-        customerEmail: "john@example.com",
-        totalPrice: 449.98,
-        status: "fulfilled",
-        syncStatus: "synced",
-        orderDate: new Date(Date.now() - 86400000),
-        lastSyncedAt: new Date(Date.now() - 3600000),
-        shopifyUrl: "https://your-store.myshopify.com/admin/orders/98765432101",
-      },
-      {
-        id: "order-002",
-        shopifyId: "98765432102",
-        orderNumber: "#1002",
-        customerName: "Jane Doe",
-        customerEmail: "jane@example.com",
-        totalPrice: 299.99,
-        status: "pending",
-        syncStatus: "synced",
-        orderDate: new Date(Date.now() - 43200000),
-        lastSyncedAt: new Date(Date.now() - 3600000),
-        shopifyUrl: "https://your-store.myshopify.com/admin/orders/98765432102",
-      },
-    ];
-
-    // Apply filters
-    let filtered = orders;
-    
-    if (status) {
-      filtered = filtered.filter(o => o.status === status);
+    let orders;
+    if (storeId) {
+      orders = await ShopifyOrderSyncService.getStoreOrders(storeId as string, companyId);
+    } else if (status) {
+      orders = await ShopifyOrderSyncService.getOrdersByStatus(companyId, status as string);
+    } else {
+      // Get all orders for company
+      orders = await ShopifyOrderSyncService.getOrdersByStatus(companyId, "synced");
     }
 
-    // Apply pagination
-    const limitNum = parseInt(limit as string);
-    const offsetNum = parseInt(offset as string);
-    const paginated = filtered.slice(offsetNum, offsetNum + limitNum);
-
-    res.json({
-      orders: paginated,
-      total: filtered.length,
-      limit: limitNum,
-      offset: offsetNum,
-    });
-  } catch (error) {
+    res.json(orders);
+  } catch (error: any) {
     console.error("Error fetching orders:", error);
-    res.status(500).json({ message: "Failed to fetch orders" });
+    res.status(500).json({ error: error.message });
   }
 });
 
 /**
- * GET /api/shopify/sync/history
- * Get sync history
+ * GET /api/shopify/orders/requiring-prescription
+ * Get orders that require prescription verification
  */
-router.get("/sync/history", async (req, res) => {
+router.get("/orders/requiring-prescription", requireAuth, async (req, res) => {
   try {
-    const { limit = "20", offset = "0" } = req.query;
+    const { companyId } = req.user!;
 
-    // Mock sync history
-    const history = [
-      {
-        id: "sync-001",
-        type: "full",
-        status: "completed",
-        startedAt: new Date(Date.now() - 3600000),
-        completedAt: new Date(Date.now() - 3355000),
-        duration: 245,
-        stats: {
-          productsProcessed: 1234,
-          ordersProcessed: 567,
-          inventoryUpdates: 890,
-          errors: 0,
-        },
-      },
-      {
-        id: "sync-002",
-        type: "incremental",
-        status: "completed",
-        startedAt: new Date(Date.now() - 86400000),
-        completedAt: new Date(Date.now() - 86340000),
-        duration: 60,
-        stats: {
-          productsProcessed: 45,
-          ordersProcessed: 23,
-          inventoryUpdates: 67,
-          errors: 0,
-        },
-      },
-      {
-        id: "sync-003",
-        type: "full",
-        status: "failed",
-        startedAt: new Date(Date.now() - 172800000),
-        completedAt: new Date(Date.now() - 172500000),
-        duration: 300,
-        stats: {
-          productsProcessed: 234,
-          ordersProcessed: 0,
-          inventoryUpdates: 0,
-          errors: 15,
-        },
-        error: "API rate limit exceeded",
-      },
-    ];
+    const orders = await ShopifyOrderSyncService.getOrdersRequiringPrescription(companyId);
 
-    // Apply pagination
-    const limitNum = parseInt(limit as string);
-    const offsetNum = parseInt(offset as string);
-    const paginated = history.slice(offsetNum, offsetNum + limitNum);
-
-    res.json({
-      history: paginated,
-      total: history.length,
-      limit: limitNum,
-      offset: offsetNum,
-    });
-  } catch (error) {
-    console.error("Error fetching sync history:", error);
-    res.status(500).json({ message: "Failed to fetch sync history" });
+    res.json(orders);
+  } catch (error: any) {
+    console.error("Error fetching orders requiring prescription:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 
 /**
- * GET /api/shopify/webhooks
- * Get configured webhooks
+ * POST /api/shopify/orders/:orderId/create-ils-order
+ * Create ILS order from Shopify order
  */
-router.get("/webhooks", async (req, res) => {
+router.post("/orders/:orderId/create-ils-order", requireAuth, async (req, res) => {
   try {
-    // Mock webhook configuration
-    const webhooks = [
-      {
-        id: "webhook-001",
-        topic: "products/create",
-        address: "https://your-domain.com/api/webhooks/shopify/products/create",
-        isActive: true,
-        createdAt: new Date("2025-09-15"),
-      },
-      {
-        id: "webhook-002",
-        topic: "products/update",
-        address: "https://your-domain.com/api/webhooks/shopify/products/update",
-        isActive: true,
-        createdAt: new Date("2025-09-15"),
-      },
-      {
-        id: "webhook-003",
-        topic: "orders/create",
-        address: "https://your-domain.com/api/webhooks/shopify/orders/create",
-        isActive: true,
-        createdAt: new Date("2025-09-15"),
-      },
-      {
-        id: "webhook-004",
-        topic: "inventory_levels/update",
-        address: "https://your-domain.com/api/webhooks/shopify/inventory/update",
-        isActive: true,
-        createdAt: new Date("2025-09-15"),
-      },
-    ];
+    const { companyId } = req.user!;
+    const { orderId } = req.params;
 
-    res.json({ webhooks });
-  } catch (error) {
-    console.error("Error fetching webhooks:", error);
-    res.status(500).json({ message: "Failed to fetch webhooks" });
+    const ilsOrder = await ShopifyOrderSyncService.createILSOrder(orderId, companyId);
+
+    res.json(ilsOrder);
+  } catch (error: any) {
+    console.error("Error creating ILS order:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 
 /**
- * GET /api/shopify/stats
- * Get Shopify integration statistics
+ * POST /api/shopify/orders/:orderId/fulfill
+ * Fulfill Shopify order
  */
-router.get("/stats", async (req, res) => {
+router.post("/orders/:orderId/fulfill", requireAuth, async (req, res) => {
   try {
-    // Mock statistics
-    const stats = {
-      products: {
-        total: 1234,
-        synced: 1228,
-        errors: 6,
-        lastSync: new Date(Date.now() - 3600000),
-      },
-      orders: {
-        total: 567,
-        synced: 564,
-        errors: 3,
-        lastSync: new Date(Date.now() - 3600000),
-      },
-      inventory: {
-        totalUpdates: 890,
-        lastUpdate: new Date(Date.now() - 1800000),
-      },
-      sync: {
-        totalSyncs: 145,
-        successfulSyncs: 142,
-        failedSyncs: 3,
-        averageDuration: 187, // seconds
-      },
-    };
+    const { companyId } = req.user!;
+    const { orderId } = req.params;
+    const { trackingNumber, trackingUrl } = req.body;
+
+    const fulfilled = await ShopifyOrderSyncService.fulfillShopifyOrder(
+      orderId,
+      companyId,
+      trackingNumber,
+      trackingUrl
+    );
+
+    res.json(fulfilled);
+  } catch (error: any) {
+    console.error("Error fulfilling order:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/shopify/orders/:orderId/retry-sync
+ * Retry failed order sync
+ */
+router.post("/orders/:orderId/retry-sync", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+    const { orderId } = req.params;
+
+    const result = await ShopifyOrderSyncService.retryOrderSync(orderId, companyId);
+
+    res.json(result);
+  } catch (error: any) {
+    console.error("Error retrying order sync:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/shopify/orders/statistics
+ * Get order statistics
+ */
+router.get("/orders/statistics", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+    const { storeId } = req.query;
+
+    const stats = await ShopifyOrderSyncService.getOrderStatistics(
+      companyId,
+      storeId as string | undefined
+    );
 
     res.json(stats);
-  } catch (error) {
-    console.error("Error fetching stats:", error);
-    res.status(500).json({ message: "Failed to fetch statistics" });
+  } catch (error: any) {
+    console.error("Error fetching order statistics:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// WEBHOOK ROUTES (Public - No Auth)
+// ============================================================================
+
+/**
+ * POST /api/shopify/webhooks
+ * Receive webhooks from Shopify
+ */
+router.post("/webhooks", async (req, res) => {
+  try {
+    const topic = req.headers["x-shopify-topic"] as string;
+    const hmac = req.headers["x-shopify-hmac-sha256"] as string;
+    const shopDomain = req.headers["x-shopify-shop-domain"] as string;
+
+    if (!topic || !hmac || !shopDomain) {
+      return res.status(400).json({ error: "Missing required headers" });
+    }
+
+    // Find store by domain
+    const stores = await db.query.shopifyStores.findMany({
+      where: (stores, { eq }) => eq(stores.shopifyDomain, shopDomain),
+      limit: 1,
+    });
+
+    if (stores.length === 0) {
+      return res.status(404).json({ error: "Store not found" });
+    }
+
+    const store = stores[0];
+
+    // Verify webhook signature
+    const body = JSON.stringify(req.body);
+    const webhookSecret = ShopifyService.decryptCredential(store.webhookSecret!);
+    const signatureValid = ShopifyService.verifyWebhookSignature(body, hmac, webhookSecret);
+
+    // Log webhook
+    const webhook = await ShopifyService.logWebhook({
+      shopifyStoreId: store.id,
+      webhookTopic: topic,
+      payload: req.body,
+      headers: req.headers as any,
+      signatureValid,
+    });
+
+    if (!signatureValid) {
+      return res.status(401).json({ error: "Invalid webhook signature" });
+    }
+
+    // Process webhook asynchronously
+    ShopifyWebhookHandler.processWebhook(webhook.id).catch((error) => {
+      console.error("Webhook processing failed:", error);
+    });
+
+    res.json({ success: true, webhookId: webhook.id });
+  } catch (error: any) {
+    console.error("Error handling webhook:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/shopify/webhooks/process-unprocessed
+ * Process unprocessed webhooks (background job)
+ */
+router.post("/webhooks/process-unprocessed", requireAuth, async (req, res) => {
+  try {
+    const result = await ShopifyWebhookHandler.processUnprocessedWebhooks();
+
+    res.json(result);
+  } catch (error: any) {
+    console.error("Error processing unprocessed webhooks:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// ANALYTICS & STATISTICS ROUTES
+// ============================================================================
+
+/**
+ * GET /api/shopify/analytics/dashboard
+ * Get Shopify integration dashboard analytics
+ */
+router.get("/analytics/dashboard", requireAuth, async (req, res) => {
+  try {
+    const { companyId } = req.user!;
+
+    // Get all relevant statistics
+    const stores = await ShopifyService.getStores(companyId);
+    const orderStats = await ShopifyOrderSyncService.getOrderStatistics(companyId);
+    const prescriptionsRequiringReview =
+      await PrescriptionVerificationService.getUploadsRequiringReview(companyId);
+
+    const analytics = {
+      stores: {
+        total: stores.length,
+        active: stores.filter((s) => s.status === "active").length,
+        inactive: stores.filter((s) => s.status === "inactive").length,
+      },
+      orders: orderStats,
+      prescriptions: {
+        requiresReview: prescriptionsRequiringReview.length,
+      },
+      lastUpdated: new Date(),
+    };
+
+    res.json(analytics);
+  } catch (error: any) {
+    console.error("Error fetching analytics:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 
 export default router;
+
+// Need to import db for webhook route
+import { db } from "../db";
