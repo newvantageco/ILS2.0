@@ -108,6 +108,7 @@ import monitoringRoutes from "./routes/monitoring";
 import importRoutes from "./routes/import";
 import apiManagementRoutes from "./routes/api-management";
 import clinicalReportingRoutes from "./routes/clinical-reporting";
+import integrationsRoutes from "./routes/integrations";
 import { websocketService } from "./websocket";
 import path from "path";
 import {
@@ -323,6 +324,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Clinical Reporting routes (CDS, reports, trends, quality metrics)
   app.use('/api/clinical-reporting', isAuthenticated, clinicalReportingRoutes);
+
+  // Integration Hub routes (connectors, sync, FHIR/HL7, monitoring)
+  app.use('/api/integrations', isAuthenticated, integrationsRoutes);
 
   // Dynamic RBAC routes (role and permission management)
   console.log('🔧 Registering Dynamic RBAC routes at /api/roles');
