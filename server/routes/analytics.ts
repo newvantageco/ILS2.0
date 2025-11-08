@@ -26,6 +26,15 @@ const analyticsQuerySchema = z.object({
   interval: z.enum(['hour', 'day', 'week', 'month']).default('day'),
 });
 
+// Helper to get and validate companyId from request
+const getCompanyId = (req: Request): string => {
+  const companyId = req.user?.companyId;
+  if (!companyId) {
+    throw new Error('Company ID is required');
+  }
+  return companyId;
+};
+
 // Helper to get date range (default last 30 days)
 const getDateRange = (startDate?: string, endDate?: string) => {
   const end = endDate ? new Date(endDate) : new Date();
@@ -39,7 +48,7 @@ const getDateRange = (startDate?: string, endDate?: string) => {
  */
 router.get('/overview', async (req: Request, res: Response) => {
   try {
-    const companyId = req.user!.companyId;
+    const companyId = getCompanyId(req);
     const { startDate, endDate } = req.query;
     const { start, end } = getDateRange(startDate as string, endDate as string);
 
@@ -156,7 +165,7 @@ router.get('/overview', async (req: Request, res: Response) => {
  */
 router.get('/sales-trends', async (req: Request, res: Response) => {
   try {
-    const companyId = req.user!.companyId;
+    const companyId = getCompanyId(req);
     const { startDate, endDate, interval = 'day' } = req.query;
     const { start, end } = getDateRange(startDate as string, endDate as string);
 
@@ -217,7 +226,7 @@ router.get('/sales-trends', async (req: Request, res: Response) => {
  */
 router.get('/product-performance', async (req: Request, res: Response) => {
   try {
-    const companyId = req.user!.companyId;
+    const companyId = getCompanyId(req);
     const { startDate, endDate } = req.query;
     const { start, end } = getDateRange(startDate as string, endDate as string);
 
@@ -269,7 +278,7 @@ router.get('/product-performance', async (req: Request, res: Response) => {
  */
 router.get('/category-breakdown', async (req: Request, res: Response) => {
   try {
-    const companyId = req.user!.companyId;
+    const companyId = getCompanyId(req);
     const { startDate, endDate } = req.query;
     const { start, end } = getDateRange(startDate as string, endDate as string);
 
@@ -317,7 +326,7 @@ router.get('/category-breakdown', async (req: Request, res: Response) => {
  */
 router.get('/staff-performance', async (req: Request, res: Response) => {
   try {
-    const companyId = req.user!.companyId;
+    const companyId = getCompanyId(req);
     const { startDate, endDate } = req.query;
     const { start, end } = getDateRange(startDate as string, endDate as string);
 
@@ -362,7 +371,7 @@ router.get('/staff-performance', async (req: Request, res: Response) => {
  */
 router.get('/customer-insights', async (req: Request, res: Response) => {
   try {
-    const companyId = req.user!.companyId;
+    const companyId = getCompanyId(req);
     const { startDate, endDate } = req.query;
     const { start, end } = getDateRange(startDate as string, endDate as string);
 
@@ -455,7 +464,7 @@ router.get('/customer-insights', async (req: Request, res: Response) => {
  */
 router.get('/real-time', async (req: Request, res: Response) => {
   try {
-    const companyId = req.user!.companyId;
+    const companyId = getCompanyId(req);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -512,7 +521,7 @@ import * as advancedAnalytics from '../storage/advancedAnalytics';
  */
 router.get('/customer-lifetime-value', async (req: Request, res: Response) => {
   try {
-    const companyId = req.user!.companyId;
+    const companyId = getCompanyId(req);
     const limit = parseInt(req.query.limit as string) || 20;
     
     const clvData = await advancedAnalytics.getCustomerLifetimeValue(companyId, limit);
@@ -529,7 +538,7 @@ router.get('/customer-lifetime-value', async (req: Request, res: Response) => {
  */
 router.get('/product-affinity', async (req: Request, res: Response) => {
   try {
-    const companyId = req.user!.companyId;
+    const companyId = getCompanyId(req);
     const minOccurrences = parseInt(req.query.minOccurrences as string) || 3;
     
     const affinityData = await advancedAnalytics.getProductAffinity(companyId, minOccurrences);
@@ -546,7 +555,7 @@ router.get('/product-affinity', async (req: Request, res: Response) => {
  */
 router.get('/revenue-by-hour', async (req: Request, res: Response) => {
   try {
-    const companyId = req.user!.companyId;
+    const companyId = getCompanyId(req);
     const { startDate, endDate } = req.query;
     const { start, end } = getDateRange(startDate as string, endDate as string);
     
@@ -564,7 +573,7 @@ router.get('/revenue-by-hour', async (req: Request, res: Response) => {
  */
 router.get('/revenue-by-day-of-week', async (req: Request, res: Response) => {
   try {
-    const companyId = req.user!.companyId;
+    const companyId = getCompanyId(req);
     const { startDate, endDate } = req.query;
     const { start, end } = getDateRange(startDate as string, endDate as string);
     
@@ -582,7 +591,7 @@ router.get('/revenue-by-day-of-week', async (req: Request, res: Response) => {
  */
 router.get('/inventory-turnover', async (req: Request, res: Response) => {
   try {
-    const companyId = req.user!.companyId;
+    const companyId = getCompanyId(req);
     const days = parseInt(req.query.days as string) || 30;
     
     const turnoverData = await advancedAnalytics.getInventoryTurnover(companyId, days);
@@ -599,7 +608,7 @@ router.get('/inventory-turnover', async (req: Request, res: Response) => {
  */
 router.get('/peak-hours', async (req: Request, res: Response) => {
   try {
-    const companyId = req.user!.companyId;
+    const companyId = getCompanyId(req);
     const { startDate, endDate } = req.query;
     const { start, end } = getDateRange(startDate as string, endDate as string);
     
@@ -617,7 +626,7 @@ router.get('/peak-hours', async (req: Request, res: Response) => {
  */
 router.get('/abandonment-funnel', async (req: Request, res: Response) => {
   try {
-    const companyId = req.user!.companyId;
+    const companyId = getCompanyId(req);
     const { startDate, endDate } = req.query;
     const { start, end } = getDateRange(startDate as string, endDate as string);
     

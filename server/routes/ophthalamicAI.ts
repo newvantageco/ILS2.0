@@ -10,11 +10,20 @@
  * - Business insights
  */
 
-import { Router } from "express";
+import { Router, Request } from "express";
 import { OphthalamicAIService } from "../services/OphthalamicAIService.js";
 import { requireAuth } from "../middleware/auth.js";
 
 const router = Router();
+
+// Helper to get and validate companyId from request
+const getCompanyId = (req: Request): string => {
+  const companyId = req.user?.companyId;
+  if (!companyId) {
+    throw new Error('Company ID is required');
+  }
+  return companyId;
+};
 
 /**
  * @swagger
@@ -75,7 +84,7 @@ const router = Router();
  */
 router.post("/query", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = getCompanyId(req);
     const { question, patientId, conversationHistory } = req.body;
 
     if (!question) {
@@ -183,7 +192,7 @@ router.post("/query", requireAuth, async (req, res) => {
  */
 router.post("/lens-recommendations", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = getCompanyId(req);
     const { prescriptionId, lifestyle } = req.body;
 
     if (!prescriptionId) {
@@ -265,7 +274,7 @@ router.post("/lens-recommendations", requireAuth, async (req, res) => {
  */
 router.post("/contact-lens-recommendations", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = getCompanyId(req);
     const { patientId, assessment } = req.body;
 
     if (!patientId) {
@@ -335,7 +344,7 @@ router.post("/contact-lens-recommendations", requireAuth, async (req, res) => {
  */
 router.get("/explain-prescription/:prescriptionId", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = getCompanyId(req);
     const { prescriptionId } = req.params;
 
     const explanation = await OphthalamicAIService.explainPrescription(
@@ -405,7 +414,7 @@ router.get("/explain-prescription/:prescriptionId", requireAuth, async (req, res
  */
 router.get("/nhs-guidance/:patientId", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = getCompanyId(req);
     const { patientId } = req.params;
 
     const guidance = await OphthalamicAIService.getNhsGuidance(
@@ -481,7 +490,7 @@ router.get("/nhs-guidance/:patientId", requireAuth, async (req, res) => {
  */
 router.post("/business-insights", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = getCompanyId(req);
     const { query } = req.body;
 
     if (!query) {
