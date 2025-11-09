@@ -44,6 +44,7 @@ const SupplierDashboard = lazy(() => import("@/pages/SupplierDashboard"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
 const PlatformAdminPage = lazy(() => import("@/pages/PlatformAdminPage"));
 const CompanyAdminPage = lazy(() => import("@/pages/CompanyAdminPage"));
+const DispenserDashboard = lazy(() => import("@/pages/DispenserDashboard"));
 
 // ECP Pages
 const PatientsPage = lazy(() => import("@/pages/PatientsPage"));
@@ -176,7 +177,7 @@ class RouteErrorBoundary extends React.Component<
   }
 }
 
-function AppLayout({ children, userRole }: { children: React.ReactNode; userRole: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin" }) {
+function AppLayout({ children, userRole }: { children: React.ReactNode; userRole: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin" | "dispenser" }) {
   const { logout } = useAuth();
   const [showWelcome, setShowWelcome] = useState(false);
   
@@ -295,7 +296,7 @@ function AuthenticatedApp() {
   if (!user) {
     return (
       <Suspense fallback={<RouteLoadingFallback />}>
-        <Landing />
+        <LandingNew />
       </Suspense>
     );
   }
@@ -591,6 +592,17 @@ function AuthenticatedApp() {
             <Route path="/company-admin/ai-assistant" component={AIAssistantPage} />
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
             <Route path="/ecp/company" component={CompanyManagementPage} />
+          </>
+        )}
+
+        {userRole === "dispenser" && (
+          <>
+            <Route path="/dispenser/dashboard" component={DispenserDashboard} />
+            <Route path="/ecp/pos" component={OpticalPOSPage} />
+            <Route path="/ecp/patients" component={PatientsPage} />
+            <Route path="/ecp/inventory" component={InventoryManagement} />
+            <Route path="/ecp/prescriptions" component={PrescriptionsPage} />
+            <Route path="/ecp/invoices" component={InvoicesPage} />
           </>
         )}
 

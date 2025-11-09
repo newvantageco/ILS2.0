@@ -52,7 +52,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getUserDisplayName, getUserInitials } from "@/lib/authUtils";
 
 interface AppSidebarProps {
-  userRole?: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin";
+  userRole?: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin" | "dispenser";
 }
 
 const menuItems = {
@@ -180,6 +180,14 @@ const menuItems = {
     { title: "Analytics", url: "/company-admin/analytics", icon: BarChart3 },
     { title: "AI Assistant", url: "/company-admin/ai-assistant", icon: Brain },
   ],
+  dispenser: [
+    { title: "Dashboard", url: "/dispenser/dashboard", icon: Home },
+    { title: "Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
+    { title: "Patients", url: "/ecp/patients", icon: UserCircle },
+    { title: "Inventory", url: "/ecp/inventory", icon: Archive },
+    { title: "Prescriptions", url: "/ecp/prescriptions", icon: FileText },
+    { title: "Invoices", url: "/ecp/invoices", icon: Receipt },
+  ],
 };
 
 const roleLabels = {
@@ -190,6 +198,7 @@ const roleLabels = {
   admin: "Administrator",
   platform_admin: "Master Admin",
   company_admin: "Company Administrator",
+  dispenser: "Dispenser",
 };
 
 export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {

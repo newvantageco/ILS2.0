@@ -42,7 +42,7 @@ interface CommandItem {
 }
 
 interface CommandPaletteProps {
-  userRole: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin";
+  userRole: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin" | "dispenser";
 }
 
 export function CommandPalette({ userRole }: CommandPaletteProps) {
