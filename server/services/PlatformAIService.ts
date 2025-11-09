@@ -210,13 +210,17 @@ export class PlatformAIService {
         )
       );
 
-    const inventoryData = metrics.map(m => ({
-      name: m.productName,
-      product_name: m.productName,
-      units_sold: m.unitsSold,
-      current_stock: m.currentStockLevel,
-      revenue: m.totalRevenue
-    }));
+    // Extract inventory data from topItems JSON field
+    const inventoryData = metrics.flatMap(m => {
+      const topItems = (m.topItems as any) || [];
+      return Array.isArray(topItems) ? topItems.map((item: any) => ({
+        name: item.name || item.sku,
+        product_name: item.name || item.sku,
+        units_sold: item.units || 0,
+        current_stock: 0, // Not available in this schema
+        revenue: parseFloat(item.revenue || '0')
+      })) : [];
+    });
 
     const analysis = await this.executePythonAnalysis('analyze_inventory', {
       inventory_data: inventoryData
@@ -323,17 +327,17 @@ export class PlatformAIService {
       .from(platformPracticeComparison)
       .where(
         and(
-          gte(platformPracticeComparison.comparisonDate, startDate),
-          lte(platformPracticeComparison.comparisonDate, endDate)
+          gte(platformPracticeComparison.periodStart, startDate),
+          lte(platformPracticeComparison.periodEnd, endDate)
         )
       )
-      .orderBy(desc(platformPracticeComparison.comparisonDate))
+      .orderBy(desc(platformPracticeComparison.periodEnd))
       .limit(1);
 
     const platformBenchmarks = platformMetrics.length > 0 ? {
-      revenue: Number(platformMetrics[0].platformAverageRevenue),
-      retention_rate: 75, // Default benchmark
-      no_show_rate: Number(platformMetrics[0].platformAverageNoShowRate)
+      revenue: Number(platformMetrics[0].totalRevenue),
+      retention_rate: Number(platformMetrics[0].patientRetentionRate || 75), // Use actual retention or default
+      no_show_rate: 100 - Number(platformMetrics[0].conversionRate || 90) // Estimate from conversion rate
     } : companyAvg;
 
     const analysis = await this.executePythonAnalysis('compare_performance', {

@@ -58,6 +58,10 @@ router.get(
       const { patientId } = req.params;
       const { companyId } = req.user!;
 
+      if (!companyId) {
+        return res.status(400).json({ error: 'Company ID is required' });
+      }
+
       logger.info('Fetching latest recommendations for patient', {
         patientId,
         companyId,

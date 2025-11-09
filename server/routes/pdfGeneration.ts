@@ -18,6 +18,9 @@ router.post('/receipt/:transactionId', async (req: Request, res: Response) => {
   try {
     const { transactionId } = req.params;
     const companyId = req.user!.companyId;
+    if (!companyId) {
+      return res.status(400).json({ error: 'Company ID is required' });
+    }
 
     const pdfBuffer = await pdfService.generateReceipt(transactionId);
 
@@ -37,6 +40,9 @@ router.post('/receipt/:transactionId', async (req: Request, res: Response) => {
 router.post('/invoice', async (req: Request, res: Response) => {
   try {
     const companyId = req.user!.companyId;
+    if (!companyId) {
+      return res.status(400).json({ error: 'Company ID is required' });
+    }
 
     const invoiceSchema = z.object({
       invoiceNumber: z.string(),
@@ -138,6 +144,9 @@ router.post('/label', async (req: Request, res: Response) => {
 router.get('/templates', async (req: Request, res: Response) => {
   try {
     const companyId = req.user!.companyId;
+    if (!companyId) {
+      return res.status(400).json({ error: 'Company ID is required' });
+    }
 
     const templates = await db
       .select()
@@ -158,6 +167,9 @@ router.get('/templates', async (req: Request, res: Response) => {
 router.post('/templates', async (req: Request, res: Response) => {
   try {
     const companyId = req.user!.companyId;
+    if (!companyId) {
+      return res.status(400).json({ error: 'Company ID is required' });
+    }
 
     const templateSchema = z.object({
       name: z.string().max(100),
@@ -202,6 +214,9 @@ router.put('/templates/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const companyId = req.user!.companyId;
+    if (!companyId) {
+      return res.status(400).json({ error: 'Company ID is required' });
+    }
 
     const templateSchema = z.object({
       name: z.string().max(100).optional(),
@@ -255,6 +270,9 @@ router.delete('/templates/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const companyId = req.user!.companyId;
+    if (!companyId) {
+      return res.status(400).json({ error: 'Company ID is required' });
+    }
 
     const [deletedTemplate] = await db
       .delete(pdfTemplates)
