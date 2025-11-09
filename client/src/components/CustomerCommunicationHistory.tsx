@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import DOMPurify from "dompurify";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -372,7 +373,7 @@ export function CustomerCommunicationHistory({ patientEmail, patientId }: Props)
                   <h3 className="font-semibold text-sm mb-3">Email Content</h3>
                   <div
                     className="p-4 border rounded bg-white"
-                    dangerouslySetInnerHTML={{ __html: selectedEmail.htmlContent }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedEmail.htmlContent) }}
                   />
                 </div>
               </div>

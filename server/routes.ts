@@ -3842,8 +3842,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/webhooks/lims-status', async (req, res) => {
     try {
       const { WebhookService } = await import('./services/WebhookService');
-      
-      const webhookSecret = process.env.LIMS_WEBHOOK_SECRET || 'default-secret';
+
+      const webhookSecret = process.env.LIMS_WEBHOOK_SECRET;
+      if (!webhookSecret) {
+        return res.status(500).json({ message: 'Webhook secret not configured' });
+      }
+
       const webhookService = new WebhookService(storage, {
         secret: webhookSecret,
       });

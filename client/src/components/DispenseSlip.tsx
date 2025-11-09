@@ -377,23 +377,25 @@ export function DispenseSlip({
       </Card>
 
       {/* Print Styles */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        @media print {
-          @page {
-            size: A4;
-            margin: 1cm;
+      <style>
+        {`
+          @media print {
+            @page {
+              size: A4;
+              margin: 1cm;
+            }
+
+            body {
+              print-color-adjust: exact;
+              -webkit-print-color-adjust: exact;
+            }
+
+            #dispense-slip {
+              page-break-inside: avoid;
+            }
           }
-          
-          body {
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
-          }
-          
-          #dispense-slip {
-            page-break-inside: avoid;
-          }
-        }
-      `}} />
+        `}
+      </style>
     </div>
   );
 }

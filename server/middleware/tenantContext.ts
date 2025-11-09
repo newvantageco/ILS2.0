@@ -7,6 +7,7 @@ import { Request, Response, NextFunction } from 'express';
 import { db } from '../db';
 import { users, companies } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import { createLogger, type Logger } from '../utils/logger';
 
 // Extend Express Request to include tenant context
 declare global {
@@ -35,6 +36,8 @@ export interface TenantContext {
  * Middleware to set tenant context from authenticated user
  * Must be used AFTER authentication middleware
  */
+const logger = createLogger('TenantContext');
+
 export const setTenantContext = async (
   req: Request,
   res: Response,
@@ -43,8 +46,8 @@ export const setTenantContext = async (
   try {
     // Check if user is authenticated
     if (!req.user || !req.user.id) {
-      return res.status(401).json({ 
-        error: 'Authentication required for multi-tenant access' 
+      return res.status(401).json({
+        error: 'Authentication required for multi-tenant access'
       });
     }
 
@@ -59,8 +62,8 @@ export const setTenantContext = async (
     });
 
     if (!user || !user.companyId) {
-      return res.status(403).json({ 
-        error: 'User not associated with any company' 
+      return res.status(403).json({
+        error: 'User not associated with any company'
       });
     }
 
@@ -74,8 +77,8 @@ export const setTenantContext = async (
     });
 
     if (!company) {
-      return res.status(404).json({ 
-        error: 'Company not found' 
+      return res.status(404).json({
+        error: 'Company not found'
       });
     }
 
@@ -98,9 +101,9 @@ export const setTenantContext = async (
 
     next();
   } catch (error) {
-    console.error('Tenant context error:', error);
-    return res.status(500).json({ 
-      error: 'Failed to set tenant context' 
+    logger.error('Tenant context error:', error as Error);
+    return res.status(500).json({
+      error: 'Failed to set tenant context'
     });
   }
 };
@@ -172,20 +175,16 @@ export const logTenantActivity = (action: string) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Log activity (implement your logging logic)
-      console.log({
-        timestamp: new Date().toISOString(),
-        tenantId: req.tenantId,
-        userId: req.user?.id,
+      logger.info('Tenant activity logged', {
         action,
         path: req.path,
         method: req.method,
-        ip: req.ip,
       });
 
       next();
     } catch (error) {
       // Don't block request if logging fails
-      console.error('Activity logging failed:', error);
+      logger.error('Activity logging failed:', error as Error);
       next();
     }
   };
@@ -201,8 +200,8 @@ export const checkSubscriptionStatus = async (
 ) => {
   try {
     if (!req.companyData) {
-      return res.status(500).json({ 
-        error: 'Company data not loaded' 
+      return res.status(500).json({
+        error: 'Company data not loaded'
       });
     }
 
@@ -210,7 +209,7 @@ export const checkSubscriptionStatus = async (
 
     // Check subscription status
     if (company.subscriptionStatus !== 'active') {
-      return res.status(402).json({ 
+      return res.status(402).json({
         error: 'Subscription inactive',
         message: 'Your company subscription is not active. Please contact support.',
         status: company.subscriptionStatus,
@@ -222,9 +221,9 @@ export const checkSubscriptionStatus = async (
 
     next();
   } catch (error) {
-    console.error('Subscription check error:', error);
-    return res.status(500).json({ 
-      error: 'Failed to verify subscription status' 
+    logger.error('Subscription check error:', error as Error);
+    return res.status(500).json({
+      error: 'Failed to verify subscription status'
     });
   }
 };

@@ -2,6 +2,7 @@ import * as tf from '@tensorflow/tfjs-node';
 import { storage } from '../storage';
 import * as fs from 'fs';
 import * as path from 'path';
+import { createLogger, type Logger } from '../utils/logger';
 
 /**
  * Neural Network Service for AI Learning
@@ -23,10 +24,12 @@ export class NeuralNetworkService {
   private companyId: string;
   private isTraining: boolean = false;
   private trainingProgress: number = 0;
+  private logger: Logger;
 
   constructor(companyId: string) {
     this.companyId = companyId;
     this.modelPath = path.join(process.cwd(), 'data', 'models', companyId);
+    this.logger = createLogger(`NeuralNetworkService-${companyId}`);
   }
 
   /**
@@ -38,13 +41,13 @@ export class NeuralNetworkService {
       const modelExists = await this.modelExists();
       if (modelExists) {
         await this.loadModel();
-        console.log(`Loaded existing model for company ${this.companyId}`);
+        this.logger.info('Loaded existing model for company');
       } else {
         await this.createModel();
-        console.log(`Created new model for company ${this.companyId}`);
+        this.logger.info('Created new model for company');
       }
     } catch (error) {
-      console.error('Error initializing neural network:', error);
+      this.logger.error('Error initializing neural network:', error as Error);
       await this.createModel();
     }
   }
@@ -102,7 +105,7 @@ export class NeuralNetworkService {
       metrics: ['accuracy'],
     });
 
-    console.log('Neural network model created');
+    this.logger.info('Neural network model created');
   }
 
   /**
@@ -125,9 +128,9 @@ export class NeuralNetworkService {
     try {
       // Fetch training data from company conversations and feedback
       const trainingData = await this.fetchTrainingData();
-      
+
       if (trainingData.questions.length === 0) {
-        console.log('No training data available');
+        this.logger.info('No training data available');
         this.isTraining = false;
         return;
       }
@@ -156,8 +159,8 @@ export class NeuralNetworkService {
         callbacks: {
           onEpochEnd: (epoch, logs) => {
             this.trainingProgress = ((epoch + 1) / epochs) * 100;
-            console.log(`Epoch ${epoch + 1}/${epochs} - Loss: ${logs?.loss.toFixed(4)} - Accuracy: ${logs?.acc?.toFixed(4)}`);
-            
+            this.logger.debug(`Epoch ${epoch + 1}/${epochs} - Loss: ${logs?.loss.toFixed(4)} - Accuracy: ${logs?.acc?.toFixed(4)}`);
+
             if (onProgress) {
               onProgress(this.trainingProgress, epoch + 1, logs);
             }
@@ -172,9 +175,9 @@ export class NeuralNetworkService {
       // Save the trained model
       await this.saveModel();
 
-      console.log('Model training completed');
+      this.logger.info('Model training completed');
     } catch (error) {
-      console.error('Error training model:', error);
+      this.logger.error('Error training model:', error as Error);
       throw error;
     } finally {
       this.isTraining = false;
@@ -226,10 +229,10 @@ export class NeuralNetworkService {
         }
       }
 
-      console.log(`Fetched ${questions.length} training examples`);
+      this.logger.info('Fetched training examples', { count: questions.length });
       return { questions, answers };
     } catch (error) {
-      console.error('Error fetching training data:', error);
+      this.logger.error('Error fetching training data:', error as Error);
       return { questions: [], answers: [] };
     }
   }
@@ -274,7 +277,7 @@ export class NeuralNetworkService {
       index++;
     }
 
-    console.log(`Built vocabulary with ${this.tokenizer.size} tokens`);
+    this.logger.info('Built vocabulary with tokens', { tokenCount: this.tokenizer.size });
   }
 
   /**
@@ -331,7 +334,7 @@ export class NeuralNetworkService {
 
       return predictedText;
     } catch (error) {
-      console.error('Error making prediction:', error);
+      this.logger.error('Error making prediction:', error as Error);
       throw error;
     }
   }
@@ -390,9 +393,9 @@ export class NeuralNetworkService {
       };
       fs.writeFileSync(tokenizerPath, JSON.stringify(tokenizerData));
 
-      console.log(`Model saved to ${this.modelPath}`);
+      this.logger.info('Model saved successfully');
     } catch (error) {
-      console.error('Error saving model:', error);
+      this.logger.error('Error saving model:', error as Error);
       throw error;
     }
   }
@@ -412,9 +415,9 @@ export class NeuralNetworkService {
       this.tokenizer = new Map(tokenizerData.tokenizer);
       this.reverseTokenizer = new Map(tokenizerData.reverseTokenizer);
 
-      console.log(`Model loaded from ${this.modelPath}`);
+      this.logger.info('Model loaded successfully');
     } catch (error) {
-      console.error('Error loading model:', error);
+      this.logger.error('Error loading model:', error as Error);
       throw error;
     }
   }

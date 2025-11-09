@@ -10,13 +10,24 @@ import { eq } from 'drizzle-orm';
 
 async function setPassword() {
   const email = 'admin@newvantageco.com';
-  const defaultPassword = 'NewVantage2025!'; // Change this to desired password
-  
+  const password = process.env.NEW_PASSWORD;
+
+  if (!password) {
+    console.error('❌ Error: NEW_PASSWORD environment variable is required');
+    console.error('Usage: NEW_PASSWORD=your_secure_password npx tsx server/scripts/setNewVantagePassword.ts');
+    process.exit(1);
+  }
+
+  if (password.length < 12) {
+    console.error('❌ Error: Password must be at least 12 characters long');
+    process.exit(1);
+  }
+
   try {
     console.log('Setting password for NEW VANTAGE CO LTD admin user...');
-    
+
     // Hash the password
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
     
     // Update the user with the hashed password
     const result = await db
@@ -39,17 +50,15 @@ async function setPassword() {
     console.log('✅ Password set successfully!');
     console.log('');
     console.log('================================================');
-    console.log('NEW VANTAGE CO LTD Login Credentials');
+    console.log('NEW VANTAGE CO LTD User Updated');
     console.log('================================================');
-    console.log('Email:    ', email);
-    console.log('Password: ', defaultPassword);
-    console.log('');
-    console.log('Company ID:', result[0].companyId);
-    console.log('User ID:   ', result[0].id);
-    console.log('Role:      ', result[0].role);
+    console.log('Email:      ', email);
+    console.log('Company ID: ', result[0].companyId);
+    console.log('User ID:    ', result[0].id);
+    console.log('Role:       ', result[0].role);
     console.log('================================================');
     console.log('');
-    console.log('⚠️  IMPORTANT: Change this password after first login!');
+    console.log('⚠️  IMPORTANT: Store credentials securely!');
     console.log('');
     
     process.exit(0);
