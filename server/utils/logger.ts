@@ -6,6 +6,9 @@
 import pino from 'pino';
 import type { Logger } from 'pino';
 
+// Re-export Logger type for use in other modules
+export type { Logger };
+
 const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
 

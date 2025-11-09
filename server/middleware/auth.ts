@@ -63,6 +63,11 @@ export const requireRole = (allowedRoles: typeof roleEnum.enumValues[number][]) 
  */
 export const requireAuth = authenticateUser;
 
+/**
+ * Another alias for authenticateUser (used in GDPR and other routes)
+ */
+export const isAuthenticated = authenticateUser;
+
 async function validateToken(token: string) {
   try {
     const [session] = await db
