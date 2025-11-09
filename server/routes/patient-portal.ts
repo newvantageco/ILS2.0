@@ -384,9 +384,8 @@ router.get('/appointments/providers', authenticatePatient, async (req, res) => {
   try {
     const { appointmentTypeId } = req.query;
 
-    const providers = await AppointmentBookingService.getAvailableProviders(
-      appointmentTypeId as string | undefined
-    );
+    // Note: appointmentTypeId filter not yet implemented in service
+    const providers = await AppointmentBookingService.getAvailableProviders();
 
     res.json({
       success: true,
@@ -490,8 +489,10 @@ router.get('/appointments', authenticatePatient, async (req, res) => {
 
     const appointments = await AppointmentBookingService.getPatientAppointments(
       account.patientId,
-      status as any,
-      upcoming === 'true'
+      {
+        status: status as any,
+        upcoming: upcoming === 'true'
+      }
     );
 
     res.json({
