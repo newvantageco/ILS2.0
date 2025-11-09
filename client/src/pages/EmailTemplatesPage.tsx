@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import DOMPurify from "dompurify";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -517,7 +518,7 @@ export default function EmailTemplatesPage() {
                   <Label className="text-sm font-medium">HTML Content</Label>
                   <div
                     className="mt-2 p-4 border rounded bg-white"
-                    dangerouslySetInnerHTML={{ __html: previewTemplate.htmlContent }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewTemplate.htmlContent) }}
                   />
                 </div>
                 {previewTemplate.textContent && (
