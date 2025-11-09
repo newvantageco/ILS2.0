@@ -17,6 +17,9 @@ import { PrescriptionVerificationService } from '../../server/services/Prescript
 import { OphthalamicAIService } from '../../server/services/OphthalamicAIService';
 import { setupTest, teardownTest } from '../helpers/testDb';
 import { createMockShopifyOrder, createMockOpenAIResponse } from '../helpers/mockData';
+import { db } from '../../server/db';
+import { patients, orders } from '../../shared/schema';
+import { eq } from 'drizzle-orm';
 
 describe('Shopify to Prescription Fulfillment Workflow', () => {
   let testCompany: any;

@@ -5,8 +5,12 @@
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { ShopifyOrderSyncService } from '../../server/services/ShopifyOrderSyncService';
-import { setupTest, teardownTest } from '../helpers/testDb';
+import { PrescriptionVerificationService } from '../../server/services/PrescriptionVerificationService';
+import { setupTest, teardownTest, createTestPatient } from '../helpers/testDb';
 import { createMockShopifyOrder } from '../helpers/mockData';
+import { db } from '../../server/db';
+import { orders } from '../../shared/schema';
+import { eq } from 'drizzle-orm';
 
 describe('ShopifyOrderSyncService', () => {
   let syncService: ShopifyOrderSyncService;
