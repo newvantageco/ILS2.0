@@ -157,6 +157,7 @@ export interface ClaimSubmissionBatch {
   payerId: string;
   claimIds: string[];
   totalClaims: number;
+  succeeded: number; // Number of successfully submitted claims
   totalChargeAmount: number;
   submittedAt: Date;
   submittedBy: string;
@@ -634,6 +635,7 @@ export class ClaimsManagementService {
       payerId: this.claims.get(claimIds[0])?.primaryPayerId || '',
       claimIds: successfulClaims,
       totalClaims: successfulClaims.length,
+      succeeded: successfulClaims.length,
       totalChargeAmount,
       submittedAt: new Date(),
       submittedBy,

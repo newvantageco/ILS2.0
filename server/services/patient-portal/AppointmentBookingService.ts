@@ -653,6 +653,54 @@ export class AppointmentBookingService {
       this.bookings.set(bookingId, booking);
     }
   }
+
+  // ========== Additional Methods ==========
+
+  /**
+   * Get available providers
+   * Returns list of providers who have availability configured
+   */
+  static getAvailableProviders(): Array<{
+    providerId: string;
+    providerName: string;
+    availableDays: number[];
+  }> {
+    const providerMap = new Map<string, Set<number>>();
+
+    // Group availability by provider
+    this.availability.forEach((avail) => {
+      if (!providerMap.has(avail.providerId)) {
+        providerMap.set(avail.providerId, new Set());
+      }
+      providerMap.get(avail.providerId)!.add(avail.dayOfWeek);
+    });
+
+    // Convert to array with provider info
+    const providers: Array<{
+      providerId: string;
+      providerName: string;
+      availableDays: number[];
+    }> = [];
+
+    this.availability.forEach((avail) => {
+      if (!providers.find((p) => p.providerId === avail.providerId)) {
+        providers.push({
+          providerId: avail.providerId,
+          providerName: avail.providerName,
+          availableDays: Array.from(providerMap.get(avail.providerId) || []).sort(),
+        });
+      }
+    });
+
+    return providers;
+  }
+
+  /**
+   * Get booking by ID
+   */
+  static getBooking(bookingId: string): AppointmentBooking | null {
+    return this.bookings.get(bookingId) || null;
+  }
 }
 
 // Initialize appointment types on module load
