@@ -729,16 +729,16 @@ export class ShopifyIntegrationService {
     const recommendations = await IntelligentLensRecommendationService.generateRecommendations(
       {
         rightEye: {
-          sphere: parseFloat(prescription.sphereOD) || 0,
-          cylinder: parseFloat(prescription.cylinderOD) || 0,
-          axis: parseInt(prescription.axisOD) || 0,
-          add: parseFloat(prescription.addOD || "0") || 0,
+          sphere: parseFloat(prescription.odSphere) || 0,
+          cylinder: parseFloat(prescription.odCylinder) || 0,
+          axis: parseInt(prescription.odAxis) || 0,
+          add: parseFloat(prescription.odAdd || "0") || 0,
         },
         leftEye: {
-          sphere: parseFloat(prescription.sphereOS) || 0,
-          cylinder: parseFloat(prescription.cylinderOS) || 0,
-          axis: parseInt(prescription.axisOS) || 0,
-          add: parseFloat(prescription.addOS || "0") || 0,
+          sphere: parseFloat(prescription.osSphere) || 0,
+          cylinder: parseFloat(prescription.osCylinder) || 0,
+          axis: parseInt(prescription.osAxis) || 0,
+          add: parseFloat(prescription.osAdd || "0") || 0,
         },
         pd: parseFloat(prescription.pd) || 63,
       },
@@ -750,7 +750,7 @@ export class ShopifyIntegrationService {
         drivesDaily: true,
         outdoorHoursPerDay: 1,
       },
-      await this.getPatientAge(shopifyOrder.ilsPatientId!)
+      await this.getPatientAge(shopifyOrder.patientId!)
     );
 
     return recommendations;

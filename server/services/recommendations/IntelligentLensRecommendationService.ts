@@ -505,7 +505,7 @@ export class IntelligentLensRecommendationService {
     const [latestRx] = await db.select()
       .from(prescriptions)
       .where(eq(prescriptions.patientId, patientId))
-      .orderBy(desc(prescriptions.prescriptionDate))
+      .orderBy(desc(prescriptions.issueDate))
       .limit(1);
 
     if (!latestRx) throw new Error('No prescription found');

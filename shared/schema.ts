@@ -4685,6 +4685,7 @@ export const shopifyOrders = pgTable("shopify_orders", {
   shopifyStoreId: varchar("shopify_store_id", { length: 255 }).notNull().references(() => shopifyStores.id, { onDelete: "cascade" }),
   ilsOrderId: varchar("ils_order_id", { length: 255 }).references(() => orders.id),
   patientId: varchar("patient_id", { length: 255 }).references(() => patients.id),
+  prescriptionId: varchar("prescription_id", { length: 255 }).references(() => prescriptions.id),
 
   // Shopify Order Details
   shopifyOrderNumber: varchar("shopify_order_number", { length: 100 }).notNull(),
