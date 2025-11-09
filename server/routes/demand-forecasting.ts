@@ -46,7 +46,7 @@ async function getUserInfo(req: any): Promise<{ userId: string; companyId: strin
 
     return { userId, companyId: user.companyId };
   } catch (error) {
-    logger.error(error as Error, "Failed to get user info");
+    logger.error({ err: error }, "Failed to get user info");
     return null;
   }
 }
@@ -120,7 +120,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         },
       });
     } catch (error) {
-      logger.error(error as Error, "Failed to generate forecasts");
+      logger.error({ err: error }, "Failed to generate forecasts");
       res.status(500).json({ 
         message: "Failed to generate forecasts",
         error: (error as Error).message 
@@ -184,7 +184,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         stats,
       });
     } catch (error) {
-      logger.error(error as Error, "Failed to fetch forecasts");
+      logger.error({ err: error }, "Failed to fetch forecasts");
       res.status(500).json({ 
         message: "Failed to fetch forecasts",
         error: (error as Error).message 
@@ -260,7 +260,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         },
       });
     } catch (error) {
-      logger.error(error as Error, "Failed to fetch patterns");
+      logger.error({ err: error }, "Failed to fetch patterns");
       res.status(500).json({ 
         message: "Failed to fetch patterns",
         error: (error as Error).message 
@@ -329,7 +329,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         },
       });
     } catch (error) {
-      logger.error(error as Error, "Failed to update forecast");
+      logger.error({ err: error }, "Failed to update forecast");
       res.status(500).json({ 
         message: "Failed to update forecast",
         error: (error as Error).message 
@@ -437,7 +437,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         })),
       });
     } catch (error) {
-      logger.error(error as Error, "Failed to fetch accuracy metrics");
+      logger.error({ err: error }, "Failed to fetch accuracy metrics");
       res.status(500).json({ 
         message: "Failed to fetch accuracy metrics",
         error: (error as Error).message 
@@ -500,7 +500,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         },
       });
     } catch (error) {
-      logger.error(error as Error, "Failed to generate recommendations");
+      logger.error({ err: error }, "Failed to generate recommendations");
       res.status(500).json({ 
         message: "Failed to generate recommendations",
         error: (error as Error).message 
@@ -537,7 +537,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         },
       });
     } catch (error) {
-      logger.error(error as Error, "Failed to identify surge periods");
+      logger.error({ err: error }, "Failed to identify surge periods");
       res.status(500).json({ 
         message: "Failed to identify surge periods",
         error: (error as Error).message 
@@ -568,7 +568,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         ...anomalies,
       });
     } catch (error) {
-      logger.error(error as Error, "Failed to detect anomalies");
+      logger.error({ err: error }, "Failed to detect anomalies");
       res.status(500).json({ 
         message: "Failed to detect anomalies",
         error: (error as Error).message 

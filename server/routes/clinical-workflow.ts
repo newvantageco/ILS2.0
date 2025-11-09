@@ -25,10 +25,10 @@ router.get(
     try {
       const { examinationId } = req.params;
 
-      logger.info('Fetching dispensing recommendations', {
+      logger.info({
         examinationId,
         userId: req.user?.id,
-      });
+      }, 'Fetching dispensing recommendations');
 
       const recommendations = await clinicalWorkflowService.getDispensingRecommendations(
         examinationId
@@ -36,7 +36,7 @@ router.get(
 
       res.json(recommendations);
     } catch (error) {
-      logger.error('Failed to fetch recommendations', error as Error);
+      logger.error({ err: error }, 'Failed to fetch recommendations');
       res.status(500).json({
         error: 'Failed to fetch recommendations',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -58,10 +58,10 @@ router.get(
       const { patientId } = req.params;
       const { companyId } = req.user!;
 
-      logger.info('Fetching latest recommendations for patient', {
+      logger.info({
         patientId,
         companyId,
-      });
+      }, 'Fetching latest recommendations for patient');
 
       // Get patient's examinations
       const examinations = await storage.getEyeExaminations(companyId);
@@ -84,7 +84,7 @@ router.get(
 
       res.json(recommendations);
     } catch (error) {
-      logger.error('Failed to fetch latest recommendations', error as Error);
+      logger.error({ err: error }, 'Failed to fetch latest recommendations');
       res.status(500).json({
         error: 'Failed to fetch latest recommendations',
         message: error instanceof Error ? error.message : 'Unknown error',

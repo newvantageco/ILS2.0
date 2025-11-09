@@ -42,7 +42,7 @@ export async function runInventoryMonitoring() {
     // Process each company
     for (const company of activeCompanies) {
       try {
-        logger.info(`Scanning inventory for company: ${company.name}`, { companyId: company.id });
+        logger.info({ companyId: company.id }, `Scanning inventory for company: ${company.name}`);
 
         // Use 'system' as userId for automated scans
         const draftPOs = await purchasingService.generatePurchaseOrders(
@@ -51,10 +51,10 @@ export async function runInventoryMonitoring() {
         );
 
         if (draftPOs.length > 0) {
-          logger.info(`Generated ${draftPOs.length} draft PO(s) for ${company.name}`, {
+          logger.info({
             companyId: company.id,
             poCount: draftPOs.length,
-          });
+          }, `Generated ${draftPOs.length} draft PO(s) for ${company.name}`);
 
           totalDraftPOs += draftPOs.length;
 
@@ -65,9 +65,9 @@ export async function runInventoryMonitoring() {
             success: true,
           });
         } else {
-          logger.info(`No low stock items found for ${company.name}`, {
+          logger.info({
             companyId: company.id,
-          });
+          }, `No low stock items found for ${company.name}`);
 
           results.push({
             companyId: company.id,
@@ -77,9 +77,10 @@ export async function runInventoryMonitoring() {
           });
         }
       } catch (error) {
-        logger.error(`Failed to process company: ${company.name}`, error as Error, {
+        logger.error({
+          err: error,
           companyId: company.id,
-        });
+        }, `Failed to process company: ${company.name}`);
 
         results.push({
           companyId: company.id,
@@ -91,11 +92,11 @@ export async function runInventoryMonitoring() {
       }
     }
 
-    logger.info('Inventory monitoring scan completed', {
+    logger.info({
       companiesScanned: activeCompanies.length,
       totalDraftPOs,
       results,
-    });
+    }, 'Inventory monitoring scan completed');
 
     return {
       success: true,
@@ -104,7 +105,7 @@ export async function runInventoryMonitoring() {
       results,
     };
   } catch (error) {
-    logger.error('Inventory monitoring scan failed', error as Error);
+    logger.error({ err: error }, 'Inventory monitoring scan failed');
     return {
       success: false,
       error: (error as Error).message,
@@ -127,10 +128,10 @@ export function startInventoryMonitoringCron() {
     timezone: 'America/New_York',
   });
 
-  logger.info('Inventory monitoring cron job started', {
+  logger.info({
     schedule: '9:00 AM and 3:00 PM daily',
     timezone: 'America/New_York',
-  });
+  }, 'Inventory monitoring cron job started');
 }
 
 /**

@@ -51,7 +51,7 @@ async function getUserInfo(req: any): Promise<{ userId: string; companyId: strin
 
     return { userId, companyId: user.companyId };
   } catch (error) {
-    logger.error(error as Error, "Failed to get user info");
+    logger.error({ err: error }, "Failed to get user info");
     return null;
   }
 }
@@ -203,7 +203,7 @@ export function registerMarketplaceRoutes(app: Express) {
       });
 
     } catch (error) {
-      logger.error(error as Error, "Failed to search marketplace");
+      logger.error({ err: error }, "Failed to search marketplace");
       res.status(500).json({ message: "Failed to search marketplace" });
     }
   });
@@ -285,7 +285,7 @@ export function registerMarketplaceRoutes(app: Express) {
       });
 
     } catch (error) {
-      logger.error(error as Error, "Failed to get company profile");
+      logger.error({ err: error }, "Failed to get company profile");
       res.status(500).json({ message: "Failed to get company profile" });
     }
   });
@@ -326,7 +326,7 @@ export function registerMarketplaceRoutes(app: Express) {
       });
 
     } catch (error) {
-      logger.error(error as Error, "Failed to get my profile");
+      logger.error({ err: error }, "Failed to get my profile");
       res.status(500).json({ message: "Failed to get my profile" });
     }
   });
@@ -377,7 +377,7 @@ export function registerMarketplaceRoutes(app: Express) {
       }
 
     } catch (error) {
-      logger.error(error as Error, "Failed to update profile");
+      logger.error({ err: error }, "Failed to update profile");
       res.status(500).json({ message: "Failed to update profile" });
     }
   });
@@ -482,7 +482,7 @@ export function registerMarketplaceRoutes(app: Express) {
       res.json(request);
 
     } catch (error) {
-      logger.error(error as Error, "Failed to request connection");
+      logger.error({ err: error }, "Failed to request connection");
       res.status(500).json({ message: "Failed to request connection" });
     }
   });
@@ -548,7 +548,7 @@ export function registerMarketplaceRoutes(app: Express) {
       res.json(enrichedRequests);
 
     } catch (error) {
-      logger.error(error as Error, "Failed to get connection requests");
+      logger.error({ err: error }, "Failed to get connection requests");
       res.status(500).json({ message: "Failed to get connection requests" });
     }
   });
@@ -646,7 +646,7 @@ export function registerMarketplaceRoutes(app: Express) {
       });
 
     } catch (error) {
-      logger.error(error as Error, "Failed to approve connection request");
+      logger.error({ err: error }, "Failed to approve connection request");
       res.status(500).json({ message: "Failed to approve connection request" });
     }
   });
@@ -701,7 +701,7 @@ export function registerMarketplaceRoutes(app: Express) {
       res.json(updatedRequest);
 
     } catch (error) {
-      logger.error(error as Error, "Failed to reject connection request");
+      logger.error({ err: error }, "Failed to reject connection request");
       res.status(500).json({ message: "Failed to reject connection request" });
     }
   });
@@ -752,7 +752,7 @@ export function registerMarketplaceRoutes(app: Express) {
       res.json(updatedRequest);
 
     } catch (error) {
-      logger.error(error as Error, "Failed to cancel connection request");
+      logger.error({ err: error }, "Failed to cancel connection request");
       res.status(500).json({ message: "Failed to cancel connection request" });
     }
   });
@@ -822,7 +822,7 @@ export function registerMarketplaceRoutes(app: Express) {
       res.json(enrichedRelationships);
 
     } catch (error) {
-      logger.error(error as Error, "Failed to get connections");
+      logger.error({ err: error }, "Failed to get connections");
       res.status(500).json({ message: "Failed to get connections" });
     }
   });
@@ -884,7 +884,7 @@ export function registerMarketplaceRoutes(app: Express) {
       res.json(updatedRelationship);
 
     } catch (error) {
-      logger.error(error as Error, "Failed to disconnect");
+      logger.error({ err: error }, "Failed to disconnect");
       res.status(500).json({ message: "Failed to disconnect" });
     }
   });
@@ -929,7 +929,7 @@ export function registerMarketplaceRoutes(app: Express) {
       res.json(stats);
 
     } catch (error) {
-      logger.error(error as Error, "Failed to get marketplace stats");
+      logger.error({ err: error }, "Failed to get marketplace stats");
       res.status(500).json({ message: "Failed to get marketplace stats" });
     }
   });

@@ -29,7 +29,7 @@ export function startClinicalAnomalyDetectionCron() {
       // Placeholder - detection logic would iterate through companies
       logger.info('Clinical anomaly detection completed (placeholder)');
     } catch (error) {
-      logger.error('Fatal error in clinical anomaly detection cron', error as Error);
+      logger.error({ err: error }, 'Fatal error in clinical anomaly detection cron');
     }
   }, {
     timezone: 'America/New_York' // Change to your timezone
@@ -49,7 +49,7 @@ export async function detectAnomaliesNow() {
   try {
     logger.info('Manual anomaly detection completed (placeholder)');
   } catch (error) {
-    logger.error('Failed to detect anomalies manually', error as Error);
+    logger.error({ err: error }, 'Failed to detect anomalies manually');
     throw error;
   }
 }

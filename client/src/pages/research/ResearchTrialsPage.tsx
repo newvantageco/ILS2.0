@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Plus, FileText, Download, Filter, Users, Calendar, AlertTriangle } from 'lucide-react';
+import { Plus, FileText, Download, Filter, Users, Calendar, AlertTriangle, Activity } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Trial {

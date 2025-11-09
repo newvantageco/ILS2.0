@@ -154,7 +154,6 @@ export default function ShopifyIntegrationPage() {
       <PageHeader
         title="Shopify Integration"
         description="Connect your Shopify store to enable online prescription eyewear sales"
-        icon={<ShoppingBag className="h-8 w-8" />}
       />
 
       <Tabs defaultValue="overview" className="space-y-6">

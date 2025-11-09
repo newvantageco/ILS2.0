@@ -45,7 +45,7 @@ async function getUserInfo(req: any): Promise<{ userId: string; companyId: strin
 
     return { userId, companyId: user.companyId };
   } catch (error) {
-    logger.error(error as Error, "Failed to get user info");
+    logger.error({ err: error }, "Failed to get user info");
     return null;
   }
 }
@@ -113,7 +113,7 @@ export function registerAutonomousPORoutes(app: Express) {
         offset: parseInt(offset as string),
       });
     } catch (error) {
-      logger.error(error as Error, "Failed to fetch AI purchase orders");
+      logger.error({ err: error }, "Failed to fetch AI purchase orders");
       res.status(500).json({ message: "Failed to fetch purchase orders" });
     }
   });
@@ -159,7 +159,7 @@ export function registerAutonomousPORoutes(app: Express) {
         items,
       });
     } catch (error) {
-      logger.error(error as Error, "Failed to fetch AI purchase order");
+      logger.error({ err: error }, "Failed to fetch AI purchase order");
       res.status(500).json({ message: "Failed to fetch purchase order" });
     }
   });
@@ -208,7 +208,7 @@ export function registerAutonomousPORoutes(app: Express) {
         purchaseOrders: draftPOs,
       });
     } catch (error) {
-      logger.error(error as Error, "Failed to generate purchase orders");
+      logger.error({ err: error }, "Failed to generate purchase orders");
       res.status(500).json({ 
         message: "Failed to generate purchase orders",
         error: (error as Error).message 
@@ -273,7 +273,7 @@ export function registerAutonomousPORoutes(app: Express) {
         officialPoId,
       });
     } catch (error) {
-      logger.error(error as Error, "Failed to approve purchase order");
+      logger.error({ err: error }, "Failed to approve purchase order");
       res.status(500).json({ 
         message: "Failed to approve purchase order",
         error: (error as Error).message 
@@ -325,7 +325,7 @@ export function registerAutonomousPORoutes(app: Express) {
         message: "Purchase order rejected",
       });
     } catch (error) {
-      logger.error(error as Error, "Failed to reject purchase order");
+      logger.error({ err: error }, "Failed to reject purchase order");
       res.status(500).json({ 
         message: "Failed to reject purchase order",
         error: (error as Error).message 
@@ -367,7 +367,7 @@ export function registerAutonomousPORoutes(app: Express) {
 
       res.json(stats);
     } catch (error) {
-      logger.error(error as Error, "Failed to fetch PO stats");
+      logger.error({ err: error }, "Failed to fetch PO stats");
       res.status(500).json({ message: "Failed to fetch statistics" });
     }
   });

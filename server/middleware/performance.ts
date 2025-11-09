@@ -40,10 +40,11 @@ const SLOW_REQUEST_THRESHOLD = 1000; // ms
  * Tracks response time and status for each request
  */
 export const performanceMonitoring = (
-  req: AuthenticatedRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
+  const authReq = req as AuthenticatedRequest;
   const startTime = performance.now();
   const startDate = new Date();
 
@@ -58,13 +59,13 @@ export const performanceMonitoring = (
   // Capture when response is sent
   res.send = function (data: any) {
     const duration = performance.now() - startTime;
-    logPerformanceMetric(req, res, duration, startDate, queryCount, queriesDuration);
+    logPerformanceMetric(authReq, res, duration, startDate, queryCount, queriesDuration);
     return originalSend.call(this, data);
   };
 
   res.json = function (data: any) {
     const duration = performance.now() - startTime;
-    logPerformanceMetric(req, res, duration, startDate, queryCount, queriesDuration);
+    logPerformanceMetric(authReq, res, duration, startDate, queryCount, queriesDuration);
     return originalJson.call(this, data);
   };
 
@@ -301,7 +302,7 @@ export function getSystemHealth() {
   const recent = getMetricsWindow(5);
 
   return {
-    status: recent.errorRate > 10 || recent.avgResponseTime > 2000 ? 'degraded' : 'healthy',
+    status: Number(recent.errorRate) > 10 || recent.avgResponseTime > 2000 ? 'degraded' : 'healthy',
     timestamp: new Date().toISOString(),
     memory: mem,
     performance: {
