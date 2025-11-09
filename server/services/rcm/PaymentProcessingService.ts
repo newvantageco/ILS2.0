@@ -805,6 +805,62 @@ export class PaymentProcessingService {
       .sort((a, b) => b.statementDate.getTime() - a.statementDate.getTime());
   }
 
+  /**
+   * Get statements by patient (alias for getPatientStatements)
+   */
+  static getStatementsByPatient(patientId: string): PatientStatement[] {
+    return this.getPatientStatements(patientId);
+  }
+
+  // ========== Convenience Methods ==========
+
+  /**
+   * Get payment by ID (alias for getPayment)
+   */
+  static getPaymentById(paymentId: string): Payment | null {
+    return this.getPayment(paymentId);
+  }
+
+  /**
+   * Get payments by claim
+   */
+  static getPaymentsByClaim(claimId: string): Payment[] {
+    return this.listPayments({ claimId });
+  }
+
+  /**
+   * Get payments by patient
+   */
+  static getPaymentsByPatient(patientId: string): Payment[] {
+    return this.listPayments({ patientId });
+  }
+
+  /**
+   * Get payment plan by ID (alias for getPaymentPlan)
+   */
+  static getPaymentPlanById(planId: string): PaymentPlan | null {
+    return this.getPaymentPlan(planId);
+  }
+
+  /**
+   * Get payment plans by patient
+   */
+  static getPaymentPlansByPatient(patientId: string): PaymentPlan[] {
+    return Array.from(this.paymentPlans.values())
+      .filter((p) => p.patientId === patientId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  /**
+   * Record installment payment (alias for recordPlanPayment)
+   */
+  static recordInstallmentPayment(
+    planId: string,
+    paymentData: Omit<Payment, 'id' | 'paymentNumber' | 'type' | 'status' | 'createdAt'>
+  ): Payment {
+    return this.recordPlanPayment(planId, paymentData);
+  }
+
   // ========== Statistics ==========
 
   /**

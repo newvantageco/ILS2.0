@@ -733,6 +733,197 @@ export class BillingAutomationService {
     return feeItem ? feeItem.amount : null;
   }
 
+  /**
+   * List fee schedules
+   */
+  static getFeeSchedules(active?: boolean): FeeSchedule[] {
+    let schedules = Array.from(this.feeSchedules.values());
+
+    if (active !== undefined) {
+      schedules = schedules.filter((fs) => fs.active === active);
+    }
+
+    return schedules.sort((a, b) => b.effectiveDate.getTime() - a.effectiveDate.getTime());
+  }
+
+  // ========== Payer Contracts ==========
+
+  /**
+   * Create payer contract
+   */
+  static createPayerContract(contractData: Omit<PayerContract, 'id' | 'contractNumber'>): PayerContract {
+    const contractNumber = `CON-${Date.now()}`;
+
+    const contract: PayerContract = {
+      id: crypto.randomUUID(),
+      contractNumber,
+      ...contractData,
+    };
+
+    this.contracts.set(contract.id, contract);
+
+    logger.info({ contractId: contract.id, payerName: contract.payerName }, 'Payer contract created');
+
+    return contract;
+  }
+
+  /**
+   * Get payer contracts
+   */
+  static getPayerContracts(payerId?: string, active?: boolean): PayerContract[] {
+    let contracts = Array.from(this.contracts.values());
+
+    if (payerId) {
+      contracts = contracts.filter((c) => c.payerId === payerId);
+    }
+
+    if (active !== undefined) {
+      const isActive = active;
+      contracts = contracts.filter((c) => (c.status === 'active') === isActive);
+    }
+
+    return contracts.sort((a, b) => b.effectiveDate.getTime() - a.effectiveDate.getTime());
+  }
+
+  // ========== Charge Capture Rules ==========
+
+  /**
+   * Create charge capture rule
+   */
+  static createChargeCaptureRule(ruleData: Omit<ChargeCaptureRule, 'id' | 'createdAt'>): ChargeCaptureRule {
+    const rule: ChargeCaptureRule = {
+      id: crypto.randomUUID(),
+      ...ruleData,
+      createdAt: new Date(),
+    };
+
+    this.chargeCaptureRules.set(rule.id, rule);
+
+    logger.info({ ruleId: rule.id, name: rule.name }, 'Charge capture rule created');
+
+    return rule;
+  }
+
+  /**
+   * Get charge capture rules
+   */
+  static getChargeCaptureRules(active?: boolean): ChargeCaptureRule[] {
+    let rules = Array.from(this.chargeCaptureRules.values());
+
+    if (active !== undefined) {
+      rules = rules.filter((r) => r.active === active);
+    }
+
+    return rules.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  // ========== Convenience Methods ==========
+
+  /**
+   * Get charge by ID (alias for getCharge)
+   */
+  static getChargeById(chargeId: string): Charge | null {
+    return this.getCharge(chargeId);
+  }
+
+  /**
+   * Get charges by patient
+   */
+  static getChargesByPatient(patientId: string): Charge[] {
+    return this.listCharges({ patientId });
+  }
+
+  /**
+   * Get charges by encounter
+   */
+  static getChargesByEncounter(encounterId: string): Charge[] {
+    return this.listCharges({ encounterId });
+  }
+
+  /**
+   * Get collections case by ID (alias for getCollectionsCase)
+   */
+  static getCollectionsCaseById(caseId: string): CollectionsCase | null {
+    return this.getCollectionsCase(caseId);
+  }
+
+  /**
+   * Get collections cases by patient
+   */
+  static getCollectionsCasesByPatient(patientId: string): CollectionsCase[] {
+    return Array.from(this.collectionsCases.values())
+      .filter((c) => c.patientId === patientId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  /**
+   * Get collections activities by case (alias for getCaseActivities)
+   */
+  static getCollectionsActivitiesByCase(caseId: string): CollectionsActivity[] {
+    return this.getCaseActivities(caseId);
+  }
+
+  /**
+   * Add collections activity (alias for recordCollectionsActivity)
+   */
+  static addCollectionsActivity(
+    caseId: string,
+    activity: Omit<CollectionsActivity, 'id' | 'caseId' | 'activityDate'>
+  ): CollectionsActivity {
+    return this.recordCollectionsActivity(caseId, activity);
+  }
+
+  /**
+   * Create write-off (alias for requestWriteOff)
+   */
+  static createWriteOff(
+    writeOffData: Omit<WriteOff, 'id' | 'writeOffNumber' | 'status' | 'requestedAt'>
+  ): WriteOff {
+    return this.requestWriteOff(writeOffData);
+  }
+
+  /**
+   * Get write-offs by patient
+   */
+  static getWriteOffsByPatient(patientId: string): WriteOff[] {
+    return Array.from(this.writeOffs.values())
+      .filter((w) => w.patientId === patientId)
+      .sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+  }
+
+  /**
+   * Reject write-off
+   */
+  static rejectWriteOff(writeOffId: string, rejectedBy: string, reason?: string): WriteOff | null {
+    const writeOff = this.writeOffs.get(writeOffId);
+
+    if (!writeOff) {
+      return null;
+    }
+
+    if (writeOff.status !== 'pending') {
+      logger.warn({ writeOffId }, 'Cannot reject non-pending write-off');
+      return null;
+    }
+
+    writeOff.status = 'rejected';
+    writeOff.approvedBy = rejectedBy;
+    writeOff.approvedAt = new Date();
+
+    this.writeOffs.set(writeOffId, writeOff);
+
+    logger.info({ writeOffId, rejectedBy, reason }, 'Write-off rejected');
+
+    return writeOff;
+  }
+
+  /**
+   * Generate aging report (alias for getAgingReport)
+   */
+  static generateAgingReport(): Record<CollectionsCase['agingBucket'], number> {
+    return this.getAgingReport();
+  }
+
   // ========== Statistics ==========
 
   /**

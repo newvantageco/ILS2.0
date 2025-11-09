@@ -486,4 +486,174 @@ export class ShopifyOrderSyncService {
         .toFixed(2),
     };
   }
+
+  // ========== Additional Methods ==========
+
+  /**
+   * Sync single order from Shopify (convenience wrapper)
+   */
+  static async syncOrder(storeId: string, companyId: string, shopifyOrderId: string) {
+    // Fetch order from Shopify
+    const orderData = await ShopifyService.syncOrder(storeId, companyId, shopifyOrderId);
+
+    // Transform and sync to ILS
+    const transformedData: ShopifyOrderData = {
+      shopifyOrderId: orderData.id.toString(),
+      shopifyOrderNumber: orderData.order_number?.toString() || orderData.id.toString(),
+      shopifyOrderName: orderData.name || `#${orderData.order_number}`,
+      customerEmail: orderData.customer?.email || '',
+      customerPhone: orderData.customer?.phone || null,
+      customerName: orderData.customer
+        ? `${orderData.customer.first_name || ''} ${orderData.customer.last_name || ''}`.trim()
+        : 'Guest Customer',
+      shippingAddress: orderData.shipping_address || null,
+      billingAddress: orderData.billing_address || null,
+      orderItems: orderData.line_items || [],
+      subtotal: orderData.subtotal_price || '0',
+      tax: orderData.total_tax || '0',
+      shipping: orderData.total_shipping_price_set?.shop_money?.amount || '0',
+      total: orderData.total_price || '0',
+      currency: orderData.currency || 'USD',
+      shopifyFulfillmentStatus: orderData.fulfillment_status || null,
+      shopifyFinancialStatus: orderData.financial_status || 'pending',
+      shopifyCreatedAt: orderData.created_at,
+      shopifyUpdatedAt: orderData.updated_at,
+    };
+
+    return await this.syncOrderFromShopify(storeId, companyId, transformedData);
+  }
+
+  /**
+   * Get orders needing sync
+   */
+  static async getOrdersNeedingSync(companyId: string, storeId?: string) {
+    const query = storeId
+      ? and(
+          eq(shopifyOrders.companyId, companyId),
+          eq(shopifyOrders.shopifyStoreId, storeId),
+          eq(shopifyOrders.syncStatus, 'pending')
+        )
+      : and(
+          eq(shopifyOrders.companyId, companyId),
+          eq(shopifyOrders.syncStatus, 'pending')
+        );
+
+    return await db
+      .select()
+      .from(shopifyOrders)
+      .where(query)
+      .orderBy(shopifyOrders.shopifyCreatedAt);
+  }
+
+  /**
+   * Get sync history
+   */
+  static async getSyncHistory(companyId: string, limit: number = 50) {
+    return await db
+      .select()
+      .from(shopifyOrders)
+      .where(eq(shopifyOrders.companyId, companyId))
+      .orderBy(shopifyOrders.syncedAt)
+      .limit(limit);
+  }
+
+  /**
+   * Link prescription to order
+   */
+  static async linkPrescription(shopifyOrderId: string, companyId: string, prescriptionId: string) {
+    const [updated] = await db
+      .update(shopifyOrders)
+      .set({
+        prescriptionId,
+        prescriptionVerified: true,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(shopifyOrders.id, shopifyOrderId),
+          eq(shopifyOrders.companyId, companyId)
+        )
+      )
+      .returning();
+
+    return updated;
+  }
+
+  /**
+   * Process webhook for order
+   */
+  static async processWebhook(storeId: string, companyId: string, topic: string, payload: any) {
+    // Handle different webhook topics
+    switch (topic) {
+      case 'orders/create':
+      case 'orders/updated':
+        return await this.syncOrder(storeId, companyId, payload.id.toString());
+
+      case 'orders/fulfilled':
+        // Mark order as fulfilled
+        const [order] = await db
+          .select()
+          .from(shopifyOrders)
+          .where(
+            and(
+              eq(shopifyOrders.shopifyStoreId, storeId),
+              eq(shopifyOrders.shopifyOrderId, payload.id.toString())
+            )
+          )
+          .limit(1);
+
+        if (order) {
+          return await this.updateOrderStatus(order.id, companyId, 'completed');
+        }
+        break;
+
+      default:
+        console.log(`Unhandled order webhook: ${topic}`);
+    }
+
+    return null;
+  }
+
+  /**
+   * Sync multiple orders in bulk
+   */
+  static async syncBulk(storeId: string, companyId: string, orderIds: string[]) {
+    const results = [];
+
+    for (const orderId of orderIds) {
+      try {
+        const result = await this.syncOrder(storeId, companyId, orderId);
+        results.push({ orderId, success: true, data: result });
+      } catch (error) {
+        results.push({ orderId, success: false, error: (error as Error).message });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Update order status
+   */
+  static async updateOrderStatus(
+    shopifyOrderId: string,
+    companyId: string,
+    status: 'pending' | 'synced' | 'processing' | 'completed' | 'failed'
+  ) {
+    const [updated] = await db
+      .update(shopifyOrders)
+      .set({
+        syncStatus: status,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(shopifyOrders.id, shopifyOrderId),
+          eq(shopifyOrders.companyId, companyId)
+        )
+      )
+      .returning();
+
+    return updated;
+  }
 }

@@ -485,4 +485,122 @@ export class ShopifyService {
       })
       .where(eq(shopifyWebhooks.id, webhookId));
   }
+
+  // ========== Additional Methods ==========
+
+  /**
+   * Get orders from Shopify
+   */
+  static async getOrders(storeId: string, companyId: string, filters?: {
+    status?: string;
+    limit?: number;
+    sinceId?: string;
+  }) {
+    const apiConfig = await this.getStoreAPIConfig(storeId, companyId);
+
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    if (filters?.sinceId) params.append('since_id', filters.sinceId);
+
+    const response = await this.makeShopifyRequest(
+      apiConfig,
+      'GET',
+      `/admin/api/${this.API_VERSION}/orders.json?${params.toString()}`
+    );
+
+    return response.orders || [];
+  }
+
+  /**
+   * Sync a single order
+   */
+  static async syncOrder(storeId: string, companyId: string, orderId: string) {
+    const apiConfig = await this.getStoreAPIConfig(storeId, companyId);
+
+    const response = await this.makeShopifyRequest(
+      apiConfig,
+      'GET',
+      `/admin/api/${this.API_VERSION}/orders/${orderId}.json`
+    );
+
+    return response.order;
+  }
+
+  /**
+   * Create fulfillment (alias for fulfillOrder)
+   */
+  static async createFulfillment(
+    storeId: string,
+    companyId: string,
+    orderId: string,
+    fulfillmentData: {
+      trackingNumber?: string;
+      trackingUrl?: string;
+      trackingCompany?: string;
+      lineItems: { id: string; quantity: number }[];
+    }
+  ) {
+    return this.fulfillOrder(storeId, companyId, orderId, fulfillmentData);
+  }
+
+  /**
+   * Generate webhook signature for verification
+   */
+  static generateWebhookSignature(body: string, secret: string): string {
+    return crypto
+      .createHmac('sha256', secret)
+      .update(body, 'utf8')
+      .digest('base64');
+  }
+
+  /**
+   * Verify webhook request
+   */
+  static verifyWebhook(body: string, hmacHeader: string, secret: string): boolean {
+    return this.verifyWebhookSignature(body, hmacHeader, secret);
+  }
+
+  /**
+   * Handle incoming webhook
+   */
+  static async handleWebhook(
+    storeId: string,
+    companyId: string,
+    topic: string,
+    payload: any
+  ) {
+    // Log the webhook
+    const webhook = await this.logWebhook({
+      storeId,
+      topic,
+      payload,
+      receivedAt: new Date(),
+    });
+
+    // Process based on topic
+    try {
+      switch (topic) {
+        case 'orders/create':
+        case 'orders/updated':
+          // Handle order webhook
+          await this.syncOrder(storeId, companyId, payload.id.toString());
+          break;
+        case 'products/create':
+        case 'products/update':
+          // Handle product webhook
+          await this.syncProducts(storeId, companyId);
+          break;
+        default:
+          console.log(`Unhandled webhook topic: ${topic}`);
+      }
+
+      await this.markWebhookProcessed(webhook.id);
+    } catch (error) {
+      await this.markWebhookProcessed(webhook.id, (error as Error).message);
+      throw error;
+    }
+
+    return webhook;
+  }
 }

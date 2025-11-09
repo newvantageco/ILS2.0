@@ -430,6 +430,20 @@ export class ClaimsManagementService {
     return payers.sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  /**
+   * Get payers (alias for listPayers)
+   */
+  static getPayers(active?: boolean): Payer[] {
+    return this.listPayers(active);
+  }
+
+  /**
+   * Create payer (alias for registerPayer)
+   */
+  static createPayer(payer: Omit<Payer, 'id'>): Payer {
+    return this.registerPayer(payer);
+  }
+
   // ========== Claim Management ==========
 
   /**
@@ -667,6 +681,36 @@ export class ClaimsManagementService {
     }
 
     return claims.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  /**
+   * Get claim by ID (alias for getClaim)
+   */
+  static getClaimById(claimId: string): Claim | null {
+    return this.getClaim(claimId);
+  }
+
+  /**
+   * Get claims by patient
+   */
+  static getClaimsByPatient(patientId: string): Claim[] {
+    return this.listClaims({ patientId });
+  }
+
+  /**
+   * Get claims by provider
+   */
+  static getClaimsByProvider(providerId: string): Claim[] {
+    return Array.from(this.claims.values())
+      .filter((c) => c.renderingProviderId === providerId || c.billingProviderId === providerId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  /**
+   * Get claims by status
+   */
+  static getClaimsByStatus(status: ClaimStatus): Claim[] {
+    return this.listClaims({ status });
   }
 
   // ========== Adjudication ==========
