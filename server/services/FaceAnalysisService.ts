@@ -38,6 +38,11 @@ export interface FaceMeasurements {
   jawlineWidth: number;
   foreheadWidth: number;
   cheekboneWidth: number;
+  pupillaryDistance?: number; // PD in millimeters
+  pupillaryDistanceMono?: { // Monocular PD
+    right: number; // Right eye to nose center
+    left: number; // Left eye to nose center
+  };
 }
 
 export interface FaceAnalysisResult {
@@ -81,6 +86,143 @@ export class FaceAnalysisService {
   }
 
   /**
+   * Measure Pupillary Distance (PD) from a frontal face photo
+   * Requires: Credit card or ID card in photo for scale reference (85.6mm x 53.98mm standard)
+   */
+  static async measurePupillaryDistance(
+    photoDataUrl: string,
+    options: {
+      patientId: string;
+      companyId: string;
+      referenceObjectType?: "credit_card" | "id_card" | "ruler" | "coin";
+      referenceObjectSize?: number; // in mm, if custom
+    }
+  ): Promise<{
+    pupillaryDistance: number;
+    pupillaryDistanceMono: { right: number; left: number };
+    confidence: number;
+    accuracy: string;
+    calibrationDetails: any;
+  }> {
+    const startTime = Date.now();
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4-vision-preview",
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert optometrist with expertise in measuring pupillary distance (PD) from photos.
+
+PD is the distance between the centers of the pupils in millimeters. Normal adult PD ranges from 54-74mm, with average being 63mm.
+
+Monocular PD is the distance from each pupil to the center of the nose bridge.
+
+IMPORTANT: You MUST use the reference object (credit card, ID card, ruler, or coin) visible in the photo for accurate scale calibration.
+
+Standard reference sizes:
+- Credit card: 85.6mm width, 53.98mm height
+- UK ID card: 85.6mm width
+- UK £1 coin: 22.5mm diameter
+- UK £2 coin: 28.4mm diameter
+- Ruler: Use visible mm markings
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "pupillaryDistance": 63.5,
+  "pupillaryDistanceMono": {
+    "right": 31.5,
+    "left": 32.0
+  },
+  "confidence": 90,
+  "accuracy": "±0.5mm",
+  "calibration": {
+    "referenceObjectDetected": true,
+    "referenceObjectType": "credit_card",
+    "referenceObjectWidthPixels": 450,
+    "referenceObjectWidthMm": 85.6,
+    "pixelsPerMm": 5.25,
+    "pupilLeftX": 200,
+    "pupilRightX": 534,
+    "noseCenterX": 367,
+    "pupilDistancePixels": 334
+  }
+}
+
+Steps:
+1. Detect reference object in photo and measure its width in pixels
+2. Calculate pixels-per-mm scale factor
+3. Locate left pupil center, right pupil center, and nose bridge center
+4. Measure pixel distance between pupils
+5. Convert to millimeters using scale factor
+6. Calculate monocular PD (left pupil to nose, right pupil to nose)
+7. Assess confidence based on photo quality, face angle, reference object visibility
+
+Photo quality requirements:
+- Frontal view (eyes level, face perpendicular to camera)
+- Eyes open and looking straight ahead
+- Good lighting (no shadows on eyes)
+- Reference object clearly visible and in same plane as face
+- Minimal head tilt or rotation`,
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `Please measure the pupillary distance from this photo. Reference object: ${options.referenceObjectType || "credit_card"}`,
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: photoDataUrl,
+                },
+              },
+            ],
+          },
+        ],
+        max_tokens: 800,
+      });
+
+      const content = response.choices[0]?.message?.content || "{}";
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error("Invalid response format from OpenAI");
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+
+      // Validate PD is within reasonable range
+      if (parsed.pupillaryDistance < 50 || parsed.pupillaryDistance > 80) {
+        throw new Error(`Invalid PD measurement: ${parsed.pupillaryDistance}mm. Normal range is 54-74mm. Please retake photo with proper reference object.`);
+      }
+
+      // Save PD measurement to database
+      await this.savePDMeasurement({
+        patientId: options.patientId,
+        companyId: options.companyId,
+        pupillaryDistance: parsed.pupillaryDistance,
+        pupillaryDistanceMono: parsed.pupillaryDistanceMono,
+        confidence: parsed.confidence,
+        photoUrl: photoDataUrl,
+        calibrationData: parsed.calibration,
+        processingTime: Date.now() - startTime,
+      });
+
+      return {
+        pupillaryDistance: parsed.pupillaryDistance,
+        pupillaryDistanceMono: parsed.pupillaryDistanceMono,
+        confidence: parsed.confidence,
+        accuracy: parsed.accuracy || "±1mm",
+        calibrationDetails: parsed.calibration,
+      };
+    } catch (error: any) {
+      console.error("PD measurement error:", error);
+      throw new Error(`PD measurement failed: ${error.message}`);
+    }
+  }
+
+  /**
    * Analyze face using OpenAI Vision API
    */
   private static async analyzeWithOpenAI(photoDataUrl: string): Promise<FaceAnalysisResult> {
@@ -94,6 +236,7 @@ export class FaceAnalysisService {
 2. Confidence score (0-100)
 3. Face measurements (relative proportions, not absolute values)
 4. Additional characteristics (skin tone, hair color, eye color if visible)
+5. If possible, also measure pupillary distance (PD) in mm if a reference object is visible
 
 Respond ONLY with valid JSON in this exact format:
 {
@@ -104,7 +247,12 @@ Respond ONLY with valid JSON in this exact format:
     "faceWidth": 1.0,
     "jawlineWidth": 0.85,
     "foreheadWidth": 0.95,
-    "cheekboneWidth": 1.0
+    "cheekboneWidth": 1.0,
+    "pupillaryDistance": 63.5,
+    "pupillaryDistanceMono": {
+      "right": 31.5,
+      "left": 32.0
+    }
   },
   "skinTone": "warm",
   "hairColor": "brown",
@@ -311,5 +459,77 @@ Face shape classification guide:
           eq(patientFaceAnalysis.companyId, companyId)
         )
       );
+  }
+
+  /**
+   * Save PD measurement to database
+   */
+  private static async savePDMeasurement(data: {
+    patientId: string;
+    companyId: string;
+    pupillaryDistance: number;
+    pupillaryDistanceMono: { right: number; left: number };
+    confidence: number;
+    photoUrl: string;
+    calibrationData: any;
+    processingTime: number;
+  }) {
+    // Store PD measurement in face analysis table with special flag
+    // Or create separate PD measurements table if preferred
+    const [result] = await db
+      .insert(patientFaceAnalysis)
+      .values({
+        patientId: data.patientId,
+        companyId: data.companyId,
+        faceShape: "unknown" as any, // Not measuring face shape in PD-only analysis
+        faceShapeConfidence: data.confidence.toString(),
+        faceLength: "0",
+        faceWidth: "0",
+        jawlineWidth: "0",
+        foreheadWidth: "0",
+        cheekboneWidth: "0",
+        photoUrl: data.photoUrl,
+        aiModel: "gpt-4-vision-pd-measurement",
+        processingTime: data.processingTime,
+        rawAnalysisData: {
+          type: "pd_measurement",
+          pupillaryDistance: data.pupillaryDistance,
+          pupillaryDistanceMono: data.pupillaryDistanceMono,
+          calibration: data.calibrationData,
+        } as any,
+      })
+      .returning();
+
+    return result;
+  }
+
+  /**
+   * Get latest PD measurement for a patient
+   */
+  static async getLatestPDMeasurement(patientId: string, companyId: string) {
+    const [result] = await db
+      .select()
+      .from(patientFaceAnalysis)
+      .where(
+        and(
+          eq(patientFaceAnalysis.patientId, patientId),
+          eq(patientFaceAnalysis.companyId, companyId),
+          eq(patientFaceAnalysis.aiModel, "gpt-4-vision-pd-measurement")
+        )
+      )
+      .orderBy(desc(patientFaceAnalysis.analyzedAt))
+      .limit(1);
+
+    if (!result) return null;
+
+    const rawData = result.rawAnalysisData as any;
+    return {
+      pupillaryDistance: rawData.pupillaryDistance,
+      pupillaryDistanceMono: rawData.pupillaryDistanceMono,
+      confidence: parseFloat(result.faceShapeConfidence),
+      calibration: rawData.calibration,
+      analyzedAt: result.analyzedAt,
+      photoUrl: result.photoUrl,
+    };
   }
 }
