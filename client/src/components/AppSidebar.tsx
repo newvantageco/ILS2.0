@@ -24,6 +24,7 @@ import {
   UserCircle,
   FileText,
   ShoppingCart,
+  ShoppingBag,
   Archive,
   Brain,
   Building2,
@@ -158,6 +159,7 @@ const menuItems = {
     { title: "AI Forecasting", url: "/admin/ai-forecasting", icon: TrendingUp },
     { title: "Audit Logs", url: "/admin/audit-logs", icon: FileSearch },
     { title: "Platform Settings", url: "/admin/platform", icon: Shield },
+    { title: "Shopify Integration", url: "/admin/shopify", icon: ShoppingBag },
     { title: "AI Assistant", url: "/admin/ai-assistant", icon: Brain },
     { title: "AI Settings", url: "/admin/ai-settings", icon: Settings },
     { title: "Email Analytics", url: "/admin/email-analytics", icon: Mail },
@@ -170,6 +172,7 @@ const menuItems = {
     { title: "All Companies", url: "/platform-admin/companies", icon: Building2 },
     { title: "Diary / Bookings", url: "/ecp/test-rooms/bookings", icon: CalendarDays },
     { title: "Platform Settings", url: "/platform-admin/settings", icon: Shield },
+    { title: "Shopify Integration", url: "/platform-admin/shopify", icon: ShoppingBag },
     // ECP Testing
     { title: "ECP: Patients", url: "/ecp/patients", icon: UserCircle },
     { title: "ECP: Point of Sale", url: "/ecp/pos", icon: ShoppingCart },

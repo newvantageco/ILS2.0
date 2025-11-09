@@ -12,7 +12,7 @@
  */
 
 import { ExternalAIService, type AIMessage } from "./ExternalAIService.js";
-import { db } from "../db/index.js";
+import { db } from "../../db/index.js";
 import {
   patients,
   prescriptions,

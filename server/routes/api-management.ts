@@ -9,7 +9,7 @@ import { Router, type Request, type Response } from 'express';
 import { PublicAPIService } from '../services/PublicAPIService.js';
 import { WebhookDeliveryService } from '../services/webhooks/WebhookDeliveryService.js';
 import { APIAnalyticsService } from '../services/api/APIAnalyticsService.js';
-import { isAuthenticated } from '../middleware/auth.js';
+import { authenticateUser } from '../middleware/auth.js';
 import { loggers } from '../utils/logger.js';
 
 const router = Router();
@@ -17,7 +17,7 @@ const logger = loggers.api;
 const publicAPI = new PublicAPIService();
 
 // Apply authentication to all routes
-router.use(isAuthenticated);
+router.use(authenticateUser);
 
 // =============================================================================
 // API KEY MANAGEMENT

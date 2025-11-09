@@ -6,7 +6,7 @@
  */
 
 import express, { Request, Response } from 'express';
-import { isAuthenticated } from '../middleware/auth.js';
+import { authenticateUser } from '../middleware/auth.js';
 import { IntegrationFramework } from '../services/integrations/IntegrationFramework.js';
 import { ConnectorRegistry } from '../services/integrations/ConnectorRegistry.js';
 import { DataSyncEngine } from '../services/integrations/DataSyncEngine.js';
@@ -23,7 +23,7 @@ const logger = loggers.api;
  * Get available connectors
  * GET /api/integrations/connectors
  */
-router.get('/connectors', isAuthenticated, async (req: Request, res: Response) => {
+router.get('/connectors', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { type, isAvailable, tag, search } = req.query;
 
@@ -53,7 +53,7 @@ router.get('/connectors', isAuthenticated, async (req: Request, res: Response) =
  * Get connector by ID
  * GET /api/integrations/connectors/:connectorId
  */
-router.get('/connectors/:connectorId', isAuthenticated, async (req: Request, res: Response) => {
+router.get('/connectors/:connectorId', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { connectorId } = req.params;
 
@@ -83,7 +83,7 @@ router.get('/connectors/:connectorId', isAuthenticated, async (req: Request, res
  * Get connector statistics
  * GET /api/integrations/connectors/stats
  */
-router.get('/connectors-stats', isAuthenticated, async (req: Request, res: Response) => {
+router.get('/connectors-stats', authenticateUser, async (req: Request, res: Response) => {
   try {
     const stats = ConnectorRegistry.getConnectorStats();
 
@@ -106,7 +106,7 @@ router.get('/connectors-stats', isAuthenticated, async (req: Request, res: Respo
  * Get all integrations
  * GET /api/integrations
  */
-router.get('/', isAuthenticated, async (req: Request, res: Response) => {
+router.get('/', authenticateUser, async (req: Request, res: Response) => {
   try {
     const companyId = (req as any).user.companyId;
     const { type, status, provider } = req.query;
@@ -135,7 +135,7 @@ router.get('/', isAuthenticated, async (req: Request, res: Response) => {
  * Get integration by ID
  * GET /api/integrations/:integrationId
  */
-router.get('/:integrationId', isAuthenticated, async (req: Request, res: Response) => {
+router.get('/:integrationId', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { integrationId } = req.params;
 
@@ -165,7 +165,7 @@ router.get('/:integrationId', isAuthenticated, async (req: Request, res: Respons
  * Create integration
  * POST /api/integrations
  */
-router.post('/', isAuthenticated, async (req: Request, res: Response) => {
+router.post('/', authenticateUser, async (req: Request, res: Response) => {
   try {
     const companyId = (req as any).user.companyId;
     const userId = (req as any).user.id;
@@ -203,7 +203,7 @@ router.post('/', isAuthenticated, async (req: Request, res: Response) => {
  * Update integration
  * PUT /api/integrations/:integrationId
  */
-router.put('/:integrationId', isAuthenticated, async (req: Request, res: Response) => {
+router.put('/:integrationId', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { integrationId } = req.params;
 
@@ -235,7 +235,7 @@ router.put('/:integrationId', isAuthenticated, async (req: Request, res: Respons
  * Delete integration
  * DELETE /api/integrations/:integrationId
  */
-router.delete('/:integrationId', isAuthenticated, async (req: Request, res: Response) => {
+router.delete('/:integrationId', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { integrationId } = req.params;
 
@@ -265,7 +265,7 @@ router.delete('/:integrationId', isAuthenticated, async (req: Request, res: Resp
  * Test integration connection
  * POST /api/integrations/:integrationId/test
  */
-router.post('/:integrationId/test', isAuthenticated, async (req: Request, res: Response) => {
+router.post('/:integrationId/test', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { integrationId } = req.params;
 
@@ -288,7 +288,7 @@ router.post('/:integrationId/test', isAuthenticated, async (req: Request, res: R
  * Pause integration
  * POST /api/integrations/:integrationId/pause
  */
-router.post('/:integrationId/pause', isAuthenticated, async (req: Request, res: Response) => {
+router.post('/:integrationId/pause', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { integrationId } = req.params;
 
@@ -311,7 +311,7 @@ router.post('/:integrationId/pause', isAuthenticated, async (req: Request, res: 
  * Resume integration
  * POST /api/integrations/:integrationId/resume
  */
-router.post('/:integrationId/resume', isAuthenticated, async (req: Request, res: Response) => {
+router.post('/:integrationId/resume', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { integrationId } = req.params;
 
@@ -336,7 +336,7 @@ router.post('/:integrationId/resume', isAuthenticated, async (req: Request, res:
  * Start sync job
  * POST /api/integrations/:integrationId/sync
  */
-router.post('/:integrationId/sync', isAuthenticated, async (req: Request, res: Response) => {
+router.post('/:integrationId/sync', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { integrationId } = req.params;
     const { entity } = req.body;
@@ -373,7 +373,7 @@ router.post('/:integrationId/sync', isAuthenticated, async (req: Request, res: R
  * Get sync job status
  * GET /api/integrations/:integrationId/jobs/:jobId
  */
-router.get('/:integrationId/jobs/:jobId', isAuthenticated, async (req: Request, res: Response) => {
+router.get('/:integrationId/jobs/:jobId', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { jobId } = req.params;
 
@@ -403,7 +403,7 @@ router.get('/:integrationId/jobs/:jobId', isAuthenticated, async (req: Request, 
  * Get sync jobs for integration
  * GET /api/integrations/:integrationId/jobs
  */
-router.get('/:integrationId/jobs', isAuthenticated, async (req: Request, res: Response) => {
+router.get('/:integrationId/jobs', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { integrationId } = req.params;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -428,7 +428,7 @@ router.get('/:integrationId/jobs', isAuthenticated, async (req: Request, res: Re
  * Get integration events
  * GET /api/integrations/:integrationId/events
  */
-router.get('/:integrationId/events', isAuthenticated, async (req: Request, res: Response) => {
+router.get('/:integrationId/events', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { integrationId } = req.params;
     const limit = parseInt(req.query.limit as string) || 100;
@@ -453,7 +453,7 @@ router.get('/:integrationId/events', isAuthenticated, async (req: Request, res: 
  * Get integration statistics
  * GET /api/integrations/:integrationId/stats
  */
-router.get('/:integrationId/stats', isAuthenticated, async (req: Request, res: Response) => {
+router.get('/:integrationId/stats', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { integrationId } = req.params;
 
@@ -478,7 +478,7 @@ router.get('/:integrationId/stats', isAuthenticated, async (req: Request, res: R
  * Convert patient to FHIR
  * POST /api/integrations/fhir/patient
  */
-router.post('/fhir/patient', isAuthenticated, async (req: Request, res: Response) => {
+router.post('/fhir/patient', authenticateUser, async (req: Request, res: Response) => {
   try {
     const fhirPatient = HealthcareInterop.toFHIRPatient(req.body);
 
@@ -499,7 +499,7 @@ router.post('/fhir/patient', isAuthenticated, async (req: Request, res: Response
  * Convert FHIR patient to local format
  * POST /api/integrations/fhir/patient/import
  */
-router.post('/fhir/patient/import', isAuthenticated, async (req: Request, res: Response) => {
+router.post('/fhir/patient/import', authenticateUser, async (req: Request, res: Response) => {
   try {
     const patient = HealthcareInterop.fromFHIRPatient(req.body);
 
@@ -520,7 +520,7 @@ router.post('/fhir/patient/import', isAuthenticated, async (req: Request, res: R
  * Create HL7 ADT message
  * POST /api/integrations/hl7/adt
  */
-router.post('/hl7/adt', isAuthenticated, async (req: Request, res: Response) => {
+router.post('/hl7/adt', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { patient, eventType } = req.body;
 
@@ -543,7 +543,7 @@ router.post('/hl7/adt', isAuthenticated, async (req: Request, res: Response) => 
  * Parse HL7 message
  * POST /api/integrations/hl7/parse
  */
-router.post('/hl7/parse', isAuthenticated, async (req: Request, res: Response) => {
+router.post('/hl7/parse', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { message } = req.body;
 
@@ -568,7 +568,7 @@ router.post('/hl7/parse', isAuthenticated, async (req: Request, res: Response) =
  * Get health check for integration
  * GET /api/integrations/:integrationId/health
  */
-router.get('/:integrationId/health', isAuthenticated, async (req: Request, res: Response) => {
+router.get('/:integrationId/health', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { integrationId } = req.params;
 
@@ -598,7 +598,7 @@ router.get('/:integrationId/health', isAuthenticated, async (req: Request, res: 
  * Get alerts for integration
  * GET /api/integrations/:integrationId/alerts
  */
-router.get('/:integrationId/alerts', isAuthenticated, async (req: Request, res: Response) => {
+router.get('/:integrationId/alerts', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { integrationId } = req.params;
     const { severity, resolved } = req.query;
@@ -626,7 +626,7 @@ router.get('/:integrationId/alerts', isAuthenticated, async (req: Request, res: 
  * Acknowledge alert
  * POST /api/integrations/alerts/:alertId/acknowledge
  */
-router.post('/alerts/:alertId/acknowledge', isAuthenticated, async (req: Request, res: Response) => {
+router.post('/alerts/:alertId/acknowledge', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { alertId } = req.params;
     const userId = (req as any).user.id;
@@ -657,7 +657,7 @@ router.post('/alerts/:alertId/acknowledge', isAuthenticated, async (req: Request
  * Resolve alert
  * POST /api/integrations/alerts/:alertId/resolve
  */
-router.post('/alerts/:alertId/resolve', isAuthenticated, async (req: Request, res: Response) => {
+router.post('/alerts/:alertId/resolve', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { alertId } = req.params;
     const userId = (req as any).user.id;
@@ -688,7 +688,7 @@ router.post('/alerts/:alertId/resolve', isAuthenticated, async (req: Request, re
  * Get monitoring dashboard
  * GET /api/integrations/monitoring/dashboard
  */
-router.get('/monitoring/dashboard', isAuthenticated, async (req: Request, res: Response) => {
+router.get('/monitoring/dashboard', authenticateUser, async (req: Request, res: Response) => {
   try {
     const dashboard = IntegrationMonitoring.getMonitoringDashboard();
 

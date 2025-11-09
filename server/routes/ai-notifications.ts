@@ -50,7 +50,7 @@ async function getUserInfo(req: any): Promise<{ userId: string; companyId: strin
 
     return { userId, companyId: user.companyId };
   } catch (error) {
-    logger.error("Failed to get user info", error as Error);
+    logger.error(error as Error, "Failed to get user info");
     return null;
   }
 }
@@ -111,7 +111,7 @@ export function registerAINotificationRoutes(app: Express) {
         offset: parseInt(offset as string),
       });
     } catch (error) {
-      logger.error("Failed to fetch AI notifications", error as Error);
+      logger.error(error as Error, "Failed to fetch AI notifications");
       res.status(500).json({ message: "Failed to fetch notifications" });
     }
   });
@@ -146,7 +146,7 @@ export function registerAINotificationRoutes(app: Express) {
 
       res.json({ count: parseInt(result[0]?.count.toString() || "0") });
     } catch (error) {
-      logger.error("Failed to get unread count", error as Error);
+      logger.error(error as Error, "Failed to get unread count");
       res.status(500).json({ message: "Failed to get unread count" });
     }
   });
@@ -205,7 +205,7 @@ export function registerAINotificationRoutes(app: Express) {
         res.status(400).json({ message: "Invalid notificationIds parameter" });
       }
     } catch (error) {
-      logger.error("Failed to mark notifications as read", error as Error);
+      logger.error(error as Error, "Failed to mark notifications as read");
       res.status(500).json({ message: "Failed to mark notifications as read" });
     }
   });
@@ -283,7 +283,7 @@ export function registerAINotificationRoutes(app: Express) {
         notifications: [summaryNotification.id, ...notificationIds],
       });
     } catch (error) {
-      logger.error("Failed to generate briefing", error as Error);
+      logger.error(error as Error, "Failed to generate briefing");
       res.status(500).json({ 
         message: "Failed to generate briefing",
         error: (error as Error).message 

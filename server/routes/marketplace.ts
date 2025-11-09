@@ -51,7 +51,7 @@ async function getUserInfo(req: any): Promise<{ userId: string; companyId: strin
 
     return { userId, companyId: user.companyId };
   } catch (error) {
-    logger.error("Failed to get user info", error as Error);
+    logger.error(error as Error, "Failed to get user info");
     return null;
   }
 }
@@ -111,7 +111,7 @@ export function registerMarketplaceRoutes(app: Express) {
         offset = 0 
       } = req.query;
 
-      logger.info("Searching marketplace", { companyId, companyType, search });
+      logger.info({ companyId, companyType, search }, "Searching marketplace");
 
       // Get current company info
       const currentCompany = await db.query.companies.findFirst({
@@ -203,7 +203,7 @@ export function registerMarketplaceRoutes(app: Express) {
       });
 
     } catch (error) {
-      logger.error("Failed to search marketplace", error as Error);
+      logger.error(error as Error, "Failed to search marketplace");
       res.status(500).json({ message: "Failed to search marketplace" });
     }
   });
@@ -223,7 +223,7 @@ export function registerMarketplaceRoutes(app: Express) {
       const { companyId } = userInfo;
       const targetCompanyId = req.params.id;
 
-      logger.info("Getting company profile", { companyId, targetCompanyId });
+      logger.info({ companyId, targetCompanyId }, "Getting company profile");
 
       // Get company
       const company = await db.query.companies.findFirst({
@@ -285,7 +285,7 @@ export function registerMarketplaceRoutes(app: Express) {
       });
 
     } catch (error) {
-      logger.error("Failed to get company profile", error as Error);
+      logger.error(error as Error, "Failed to get company profile");
       res.status(500).json({ message: "Failed to get company profile" });
     }
   });
@@ -304,7 +304,7 @@ export function registerMarketplaceRoutes(app: Express) {
 
       const { companyId } = userInfo;
 
-      logger.info("Getting my profile", { companyId });
+      logger.info({ companyId }, "Getting my profile");
 
       // Get company
       const company = await db.query.companies.findFirst({
@@ -326,7 +326,7 @@ export function registerMarketplaceRoutes(app: Express) {
       });
 
     } catch (error) {
-      logger.error("Failed to get my profile", error as Error);
+      logger.error(error as Error, "Failed to get my profile");
       res.status(500).json({ message: "Failed to get my profile" });
     }
   });
@@ -346,7 +346,7 @@ export function registerMarketplaceRoutes(app: Express) {
       const { companyId } = userInfo;
       const profileData = req.body;
 
-      logger.info("Updating my profile", { companyId });
+      logger.info({ companyId }, "Updating my profile");
 
       // Check if profile exists
       const existingProfile = await db.query.companyProfiles.findFirst({
@@ -377,7 +377,7 @@ export function registerMarketplaceRoutes(app: Express) {
       }
 
     } catch (error) {
-      logger.error("Failed to update profile", error as Error);
+      logger.error(error as Error, "Failed to update profile");
       res.status(500).json({ message: "Failed to update profile" });
     }
   });
@@ -397,7 +397,7 @@ export function registerMarketplaceRoutes(app: Express) {
       const { companyId, userId } = userInfo;
       const { targetCompanyId, message, proposedTerms } = req.body;
 
-      logger.info("Requesting connection", { companyId, targetCompanyId });
+      logger.info({ companyId, targetCompanyId }, "Requesting connection");
 
       if (companyId === targetCompanyId) {
         return res.status(400).json({ message: "Cannot connect to yourself" });
@@ -482,7 +482,7 @@ export function registerMarketplaceRoutes(app: Express) {
       res.json(request);
 
     } catch (error) {
-      logger.error("Failed to request connection", error as Error);
+      logger.error(error as Error, "Failed to request connection");
       res.status(500).json({ message: "Failed to request connection" });
     }
   });
@@ -502,7 +502,7 @@ export function registerMarketplaceRoutes(app: Express) {
       const { companyId } = userInfo;
       const { type = 'all' } = req.query;
 
-      logger.info("Getting connection requests", { companyId, type });
+      logger.info({ companyId, type }, "Getting connection requests");
 
       const conditions: any[] = [eq(connectionRequests.status, 'pending')];
 
@@ -548,7 +548,7 @@ export function registerMarketplaceRoutes(app: Express) {
       res.json(enrichedRequests);
 
     } catch (error) {
-      logger.error("Failed to get connection requests", error as Error);
+      logger.error(error as Error, "Failed to get connection requests");
       res.status(500).json({ message: "Failed to get connection requests" });
     }
   });
@@ -569,7 +569,7 @@ export function registerMarketplaceRoutes(app: Express) {
       const requestId = req.params.id;
       const { responseMessage, agreedTerms } = req.body;
 
-      logger.info("Approving connection request", { companyId, requestId });
+      logger.info({ companyId, requestId }, "Approving connection request");
 
       // Get request
       const request = await db.query.connectionRequests.findFirst({
@@ -646,7 +646,7 @@ export function registerMarketplaceRoutes(app: Express) {
       });
 
     } catch (error) {
-      logger.error("Failed to approve connection request", error as Error);
+      logger.error(error as Error, "Failed to approve connection request");
       res.status(500).json({ message: "Failed to approve connection request" });
     }
   });
@@ -667,7 +667,7 @@ export function registerMarketplaceRoutes(app: Express) {
       const requestId = req.params.id;
       const { responseMessage } = req.body;
 
-      logger.info("Rejecting connection request", { companyId, requestId });
+      logger.info({ companyId, requestId }, "Rejecting connection request");
 
       // Get request
       const request = await db.query.connectionRequests.findFirst({
@@ -701,7 +701,7 @@ export function registerMarketplaceRoutes(app: Express) {
       res.json(updatedRequest);
 
     } catch (error) {
-      logger.error("Failed to reject connection request", error as Error);
+      logger.error(error as Error, "Failed to reject connection request");
       res.status(500).json({ message: "Failed to reject connection request" });
     }
   });
@@ -721,7 +721,7 @@ export function registerMarketplaceRoutes(app: Express) {
       const { companyId } = userInfo;
       const requestId = req.params.id;
 
-      logger.info("Canceling connection request", { companyId, requestId });
+      logger.info({ companyId, requestId }, "Canceling connection request");
 
       // Get request
       const request = await db.query.connectionRequests.findFirst({
@@ -752,7 +752,7 @@ export function registerMarketplaceRoutes(app: Express) {
       res.json(updatedRequest);
 
     } catch (error) {
-      logger.error("Failed to cancel connection request", error as Error);
+      logger.error(error as Error, "Failed to cancel connection request");
       res.status(500).json({ message: "Failed to cancel connection request" });
     }
   });
@@ -772,7 +772,7 @@ export function registerMarketplaceRoutes(app: Express) {
       const { companyId } = userInfo;
       const { relationshipType, status = 'active' } = req.query;
 
-      logger.info("Getting connections", { companyId, relationshipType, status });
+      logger.info({ companyId, relationshipType, status }, "Getting connections");
 
       // Build conditions for bidirectional relationships
       const conditions: any[] = [
@@ -822,7 +822,7 @@ export function registerMarketplaceRoutes(app: Express) {
       res.json(enrichedRelationships);
 
     } catch (error) {
-      logger.error("Failed to get connections", error as Error);
+      logger.error(error as Error, "Failed to get connections");
       res.status(500).json({ message: "Failed to get connections" });
     }
   });
@@ -842,7 +842,7 @@ export function registerMarketplaceRoutes(app: Express) {
       const { companyId } = userInfo;
       const relationshipId = req.params.id;
 
-      logger.info("Disconnecting", { companyId, relationshipId });
+      logger.info({ companyId, relationshipId }, "Disconnecting");
 
       // Get relationship
       const relationship = await db.query.companyRelationships.findFirst({
@@ -884,7 +884,7 @@ export function registerMarketplaceRoutes(app: Express) {
       res.json(updatedRelationship);
 
     } catch (error) {
-      logger.error("Failed to disconnect", error as Error);
+      logger.error(error as Error, "Failed to disconnect");
       res.status(500).json({ message: "Failed to disconnect" });
     }
   });
@@ -929,7 +929,7 @@ export function registerMarketplaceRoutes(app: Express) {
       res.json(stats);
 
     } catch (error) {
-      logger.error("Failed to get marketplace stats", error as Error);
+      logger.error(error as Error, "Failed to get marketplace stats");
       res.status(500).json({ message: "Failed to get marketplace stats" });
     }
   });

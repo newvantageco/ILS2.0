@@ -45,7 +45,7 @@ async function getUserInfo(req: any): Promise<{ userId: string; companyId: strin
 
     return { userId, companyId: user.companyId };
   } catch (error) {
-    logger.error("Failed to get user info", error as Error);
+    logger.error(error as Error, "Failed to get user info");
     return null;
   }
 }
@@ -113,7 +113,7 @@ export function registerAutonomousPORoutes(app: Express) {
         offset: parseInt(offset as string),
       });
     } catch (error) {
-      logger.error("Failed to fetch AI purchase orders", error as Error);
+      logger.error(error as Error, "Failed to fetch AI purchase orders");
       res.status(500).json({ message: "Failed to fetch purchase orders" });
     }
   });
@@ -159,7 +159,7 @@ export function registerAutonomousPORoutes(app: Express) {
         items,
       });
     } catch (error) {
-      logger.error("Failed to fetch AI purchase order", error as Error);
+      logger.error(error as Error, "Failed to fetch AI purchase order");
       res.status(500).json({ message: "Failed to fetch purchase order" });
     }
   });
@@ -178,7 +178,7 @@ export function registerAutonomousPORoutes(app: Express) {
 
       const { userId, companyId } = userInfo;
 
-      logger.info("Manually generating purchase orders", { companyId, userId });
+      logger.info({ companyId, userId }, "Manually generating purchase orders");
 
       const draftPOs = await purchasingService.generatePurchaseOrders(companyId, userId);
 
@@ -208,7 +208,7 @@ export function registerAutonomousPORoutes(app: Express) {
         purchaseOrders: draftPOs,
       });
     } catch (error) {
-      logger.error("Failed to generate purchase orders", error as Error);
+      logger.error(error as Error, "Failed to generate purchase orders");
       res.status(500).json({ 
         message: "Failed to generate purchase orders",
         error: (error as Error).message 
@@ -250,7 +250,7 @@ export function registerAutonomousPORoutes(app: Express) {
 
       const draftPO = draftPOResult[0];
 
-      logger.info("Approving AI-generated PO", { aiPoId: id, userId });
+      logger.info({ aiPoId: id, userId }, "Approving AI-generated PO");
 
       const officialPoId = await purchasingService.approvePurchaseOrder(id, userId, notes);
 
@@ -273,7 +273,7 @@ export function registerAutonomousPORoutes(app: Express) {
         officialPoId,
       });
     } catch (error) {
-      logger.error("Failed to approve purchase order", error as Error);
+      logger.error(error as Error, "Failed to approve purchase order");
       res.status(500).json({ 
         message: "Failed to approve purchase order",
         error: (error as Error).message 
@@ -317,7 +317,7 @@ export function registerAutonomousPORoutes(app: Express) {
         return res.status(404).json({ message: "Purchase order not found" });
       }
 
-      logger.info("Rejecting AI-generated PO", { aiPoId: id, userId });
+      logger.info({ aiPoId: id, userId }, "Rejecting AI-generated PO");
 
       await purchasingService.rejectPurchaseOrder(id, userId, notes);
 
@@ -325,7 +325,7 @@ export function registerAutonomousPORoutes(app: Express) {
         message: "Purchase order rejected",
       });
     } catch (error) {
-      logger.error("Failed to reject purchase order", error as Error);
+      logger.error(error as Error, "Failed to reject purchase order");
       res.status(500).json({ 
         message: "Failed to reject purchase order",
         error: (error as Error).message 
@@ -367,7 +367,7 @@ export function registerAutonomousPORoutes(app: Express) {
 
       res.json(stats);
     } catch (error) {
-      logger.error("Failed to fetch PO stats", error as Error);
+      logger.error(error as Error, "Failed to fetch PO stats");
       res.status(500).json({ message: "Failed to fetch statistics" });
     }
   });

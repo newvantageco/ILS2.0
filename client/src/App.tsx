@@ -98,7 +98,7 @@ const ComplianceDashboardPage = lazy(() => import("@/pages/ComplianceDashboardPa
 const AIModelManagementPage = lazy(() => import("@/pages/AIModelManagementPage"));
 const MLModelManagementPage = lazy(() => import("@/pages/MLModelManagementPage"));
 const PythonMLDashboardPage = lazy(() => import("@/pages/PythonMLDashboardPage"));
-const ShopifyIntegrationPage = lazy(() => import("@/pages/ShopifyIntegrationPage"));
+const ShopifyIntegrationPage = lazy(() => import("@/pages/integrations/ShopifyIntegrationPage"));
 const FeatureFlagsPage = lazy(() => import("@/pages/FeatureFlagsPage"));
 const APIDocumentationPage = lazy(() => import("@/pages/APIDocumentationPage"));
 const SupplierLibraryPage = lazy(() => import("@/pages/SupplierLibraryPage"));

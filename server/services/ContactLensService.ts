@@ -10,7 +10,7 @@
  * - NHS funding integration
  */
 
-import { db } from "../db/index.js";
+import { db } from "../../db/index.js";
 import {
   contactLensAssessments,
   contactLensFittings,
@@ -620,37 +620,37 @@ export class ContactLensService {
 
     return {
       totalPrescriptions: prescriptions.length,
-      activePrescriptions: prescriptions.filter((p) => p.isActive).length,
-      nhsFundedPrescriptions: prescriptions.filter((p) => p.nhsFunded).length,
+      activePrescriptions: prescriptions.filter((p: any) => p.isActive).length,
+      nhsFundedPrescriptions: prescriptions.filter((p: any) => p.nhsFunded).length,
 
       lensTypeBreakdown: {
-        soft: prescriptions.filter((p) => p.odLensType === "soft").length,
-        rgp: prescriptions.filter((p) => p.odLensType === "rigid_gas_permeable").length,
-        hybrid: prescriptions.filter((p) => p.odLensType === "hybrid").length,
-        scleral: prescriptions.filter((p) => p.odLensType === "scleral").length,
+        soft: prescriptions.filter((p: any) => p.odLensType === "soft").length,
+        rgp: prescriptions.filter((p: any) => p.odLensType === "rigid_gas_permeable").length,
+        hybrid: prescriptions.filter((p: any) => p.odLensType === "hybrid").length,
+        scleral: prescriptions.filter((p: any) => p.odLensType === "scleral").length,
       },
 
       designBreakdown: {
-        spherical: prescriptions.filter((p) => p.odDesign === "spherical").length,
-        toric: prescriptions.filter((p) => p.odDesign === "toric").length,
-        multifocal: prescriptions.filter((p) => p.odDesign === "multifocal").length,
-        monovision: prescriptions.filter((p) => p.odDesign === "monovision").length,
+        spherical: prescriptions.filter((p: any) => p.odDesign === "spherical").length,
+        toric: prescriptions.filter((p: any) => p.odDesign === "toric").length,
+        multifocal: prescriptions.filter((p: any) => p.odDesign === "multifocal").length,
+        monovision: prescriptions.filter((p: any) => p.odDesign === "monovision").length,
       },
 
       replacementScheduleBreakdown: {
-        daily: prescriptions.filter((p) => p.replacementSchedule === "daily_disposable").length,
-        twoWeekly: prescriptions.filter((p) => p.replacementSchedule === "two_weekly").length,
-        monthly: prescriptions.filter((p) => p.replacementSchedule === "monthly").length,
-        quarterly: prescriptions.filter((p) => p.replacementSchedule === "quarterly").length,
-        yearly: prescriptions.filter((p) => p.replacementSchedule === "yearly").length,
+        daily: prescriptions.filter((p: any) => p.replacementSchedule === "daily_disposable").length,
+        twoWeekly: prescriptions.filter((p: any) => p.replacementSchedule === "two_weekly").length,
+        monthly: prescriptions.filter((p: any) => p.replacementSchedule === "monthly").length,
+        quarterly: prescriptions.filter((p: any) => p.replacementSchedule === "quarterly").length,
+        yearly: prescriptions.filter((p: any) => p.replacementSchedule === "yearly").length,
       },
 
       aftercareStats: {
         totalAppointments: aftercare.length,
-        completed: aftercare.filter((a) => a.status === "scheduled").length,
-        noShows: aftercare.filter((a) => a.status === "no_show").length,
-        problemReports: aftercare.filter((a) => a.problemsReported).length,
-        prescriptionChanges: aftercare.filter((a) => a.prescriptionChanged).length,
+        completed: aftercare.filter((a: any) => a.status === "scheduled").length,
+        noShows: aftercare.filter((a: any) => a.status === "no_show").length,
+        problemReports: aftercare.filter((a: any) => a.problemsReported).length,
+        prescriptionChanges: aftercare.filter((a: any) => a.prescriptionChanged).length,
       },
     };
   }
@@ -708,7 +708,7 @@ export class ContactLensService {
     // Contact lenses are NHS-funded for specific medical conditions
     const eligibleReasons = ["diabetes", "glaucoma", "registered_blind"];
 
-    const eligibleExemptions = exemptions.filter((e) =>
+    const eligibleExemptions = exemptions.filter((e: any) =>
       eligibleReasons.includes(e.exemptionReason)
     );
 

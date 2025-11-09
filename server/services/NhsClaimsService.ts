@@ -19,7 +19,7 @@
  * 6. Queried - PCSE has questions
  */
 
-import { db } from "../db/index.js";
+import { db } from "../../db/index.js";
 import { nhsClaims, nhsPractitioners, nhsPatientExemptions, nhsPayments } from "../../shared/schema.js";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -342,32 +342,32 @@ export class NhsClaimsService {
 
     const summary = {
       totalClaims: claims.length,
-      draftClaims: claims.filter((c) => c.status === "draft").length,
-      submittedClaims: claims.filter((c) => c.status === "submitted").length,
-      acceptedClaims: claims.filter((c) => c.status === "accepted").length,
-      paidClaims: claims.filter((c) => c.status === "paid").length,
-      rejectedClaims: claims.filter((c) => c.status === "rejected").length,
-      queriedClaims: claims.filter((c) => c.status === "queried").length,
+      draftClaims: claims.filter((c: any) => c.status === "draft").length,
+      submittedClaims: claims.filter((c: any) => c.status === "submitted").length,
+      acceptedClaims: claims.filter((c: any) => c.status === "accepted").length,
+      paidClaims: claims.filter((c: any) => c.status === "paid").length,
+      rejectedClaims: claims.filter((c: any) => c.status === "rejected").length,
+      queriedClaims: claims.filter((c: any) => c.status === "queried").length,
 
       totalClaimAmount: claims.reduce(
-        (sum, c) => sum + parseFloat(c.claimAmount),
+        (sum: any, c: any) => sum + parseFloat(c.claimAmount),
         0
       ),
       totalPaidAmount: claims.reduce(
-        (sum, c) => sum + (c.paidAmount ? parseFloat(c.paidAmount) : 0),
+        (sum: any, c: any) => sum + (c.paidAmount ? parseFloat(c.paidAmount) : 0),
         0
       ),
 
       claimsByType: {
-        GOS1: claims.filter((c) => c.claimType === "GOS1").length,
-        GOS2: claims.filter((c) => c.claimType === "GOS2").length,
-        GOS3: claims.filter((c) => c.claimType === "GOS3").length,
-        GOS4: claims.filter((c) => c.claimType === "GOS4").length,
+        GOS1: claims.filter((c: any) => c.claimType === "GOS1").length,
+        GOS2: claims.filter((c: any) => c.claimType === "GOS2").length,
+        GOS3: claims.filter((c: any) => c.claimType === "GOS3").length,
+        GOS4: claims.filter((c: any) => c.claimType === "GOS4").length,
       },
 
       averageClaimAmount:
         claims.length > 0
-          ? claims.reduce((sum, c) => sum + parseFloat(c.claimAmount), 0) / claims.length
+          ? claims.reduce((sum: any, c: any) => sum + parseFloat(c.claimAmount), 0) / claims.length
           : 0,
 
       averageProcessingTime: this.calculateAverageProcessingTime(claims),

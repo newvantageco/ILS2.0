@@ -53,7 +53,7 @@ export interface WaitingRoomEntry {
   browserCompatible?: boolean;
 
   // Pre-visit info
-  questionnaireCom pleted: boolean;
+  questionnaireCompleted: boolean;
   consentSigned: boolean;
   paymentVerified: boolean;
 

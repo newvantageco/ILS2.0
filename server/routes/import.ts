@@ -17,7 +17,7 @@ import {
   type BatchImportRequest,
   type FieldMapping,
 } from '../validation/import.js';
-import { isAuthenticated } from '../middleware/auth.js';
+import { authenticateUser } from '../middleware/auth.js';
 
 const router = Router();
 const logger = loggers.api;
@@ -50,7 +50,7 @@ const upload = multer({
  */
 router.post(
   '/preview',
-  isAuthenticated,
+  authenticateUser,
   upload.single('file'),
   async (req: Request, res: Response) => {
     const filePath = req.file?.path;
@@ -113,7 +113,7 @@ router.post(
  */
 router.post(
   '/start',
-  isAuthenticated,
+  authenticateUser,
   upload.single('file'),
   async (req: Request, res: Response) => {
     const filePath = req.file?.path;
@@ -207,7 +207,7 @@ router.post(
  *
  * GET /api/import/status/:jobId
  */
-router.get('/status/:jobId', isAuthenticated, (req: Request, res: Response) => {
+router.get('/status/:jobId', authenticateUser, (req: Request, res: Response) => {
   const { jobId } = req.params;
 
   const status = ImportService.getImportStatus(jobId);
@@ -227,7 +227,7 @@ router.get('/status/:jobId', isAuthenticated, (req: Request, res: Response) => {
  *
  * GET /api/import/jobs
  */
-router.get('/jobs', isAuthenticated, (req: Request, res: Response) => {
+router.get('/jobs', authenticateUser, (req: Request, res: Response) => {
   const jobs = ImportService.getAllJobs();
 
   res.json({
@@ -241,7 +241,7 @@ router.get('/jobs', isAuthenticated, (req: Request, res: Response) => {
  *
  * POST /api/import/cancel/:jobId
  */
-router.post('/cancel/:jobId', isAuthenticated, (req: Request, res: Response) => {
+router.post('/cancel/:jobId', authenticateUser, (req: Request, res: Response) => {
   const { jobId } = req.params;
 
   const cancelled = ImportService.cancelImport(jobId);
@@ -263,7 +263,7 @@ router.post('/cancel/:jobId', isAuthenticated, (req: Request, res: Response) => 
  *
  * POST /api/import/rollback/:jobId
  */
-router.post('/rollback/:jobId', isAuthenticated, async (req: Request, res: Response) => {
+router.post('/rollback/:jobId', authenticateUser, async (req: Request, res: Response) => {
   const { jobId } = req.params;
 
   try {
@@ -292,7 +292,7 @@ router.post('/rollback/:jobId', isAuthenticated, async (req: Request, res: Respo
  *
  * POST /api/import/detect-mappings
  */
-router.post('/detect-mappings', isAuthenticated, (req: Request, res: Response) => {
+router.post('/detect-mappings', authenticateUser, (req: Request, res: Response) => {
   const { type, headers } = req.body;
 
   if (!type || !['patients', 'orders'].includes(type)) {
@@ -316,7 +316,7 @@ router.post('/detect-mappings', isAuthenticated, (req: Request, res: Response) =
  *
  * GET /api/import/transformations
  */
-router.get('/transformations', isAuthenticated, (req: Request, res: Response) => {
+router.get('/transformations', authenticateUser, (req: Request, res: Response) => {
   const transformations = DataTransformService.getAvailableTransformations();
 
   res.json({
@@ -332,7 +332,7 @@ router.get('/transformations', isAuthenticated, (req: Request, res: Response) =>
  */
 router.post(
   '/validate',
-  isAuthenticated,
+  authenticateUser,
   upload.single('file'),
   async (req: Request, res: Response) => {
     const filePath = req.file?.path;
@@ -402,7 +402,7 @@ router.post(
  *
  * GET /api/import/template/:type
  */
-router.get('/template/:type', isAuthenticated, (req: Request, res: Response) => {
+router.get('/template/:type', authenticateUser, (req: Request, res: Response) => {
   const { type } = req.params;
 
   if (!['patients', 'orders'].includes(type)) {

@@ -41,7 +41,7 @@ export interface ProjectTarget {
   metric: string;
   targetValue: number;
   targetDate: Date;
-  stretch GoalValue?: number;
+  stretchGoalValue?: number;
 }
 
 export interface QIIntervention {
@@ -74,7 +74,7 @@ export interface PDSACycle {
   };
   study: {
     results: string[];
-    compared ToObjective: string;
+    comparedToObjective: string;
     learnings: string[];
     unexpectedFindings: string[];
   };

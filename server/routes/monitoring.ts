@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import { isAuthenticated } from '../middleware/auth';
+import { authenticateUser } from '../middleware/auth';
 import {
   getPerformanceStats,
   getMetricsWindow,
@@ -70,7 +70,7 @@ router.get('/health', (req, res) => {
  *       200:
  *         description: Performance metrics
  */
-router.get('/metrics', isAuthenticated, (req, res) => {
+router.get('/metrics', authenticateUser, (req, res) => {
   try {
     // Check if user is admin
     if (req.user?.role !== 'platform_admin' && req.user?.role !== 'admin') {
@@ -108,7 +108,7 @@ router.get('/metrics', isAuthenticated, (req, res) => {
  *       200:
  *         description: Recent metrics
  */
-router.get('/metrics/recent', isAuthenticated, (req, res) => {
+router.get('/metrics/recent', authenticateUser, (req, res) => {
   try {
     // Check if user is admin
     if (req.user?.role !== 'platform_admin' && req.user?.role !== 'admin') {
@@ -142,7 +142,7 @@ router.get('/metrics/recent', isAuthenticated, (req, res) => {
  *       200:
  *         description: Memory usage statistics
  */
-router.get('/memory', isAuthenticated, (req, res) => {
+router.get('/memory', authenticateUser, (req, res) => {
   try {
     // Check if user is admin
     if (req.user?.role !== 'platform_admin' && req.user?.role !== 'admin') {
@@ -208,7 +208,7 @@ router.get('/prometheus', (req, res) => {
  *       200:
  *         description: Cleanup successful
  */
-router.post('/cleanup', isAuthenticated, (req, res) => {
+router.post('/cleanup', authenticateUser, (req, res) => {
   try {
     // Check if user is admin
     if (req.user?.role !== 'platform_admin' && req.user?.role !== 'admin') {

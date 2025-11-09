@@ -420,7 +420,7 @@ export default function QualityDashboard() {
                 <div className="flex items-center justify-between border-b pb-2">
                   <div>
                     <p className="font-medium">Improve Diabetes Control</p>
-                    <p className="text-sm text-muted-foreground">Target: HbA1c <8% | Current: 87%</p>
+                    <p className="text-sm text-muted-foreground">Target: HbA1c &lt;8% | Current: 87%</p>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Badge>In Progress</Badge>

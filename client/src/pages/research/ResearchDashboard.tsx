@@ -52,7 +52,7 @@ export default function ResearchDashboard() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect() => {
+  useEffect(() => {
     fetchStats();
   }, []);
 

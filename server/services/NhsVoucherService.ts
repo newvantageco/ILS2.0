@@ -23,7 +23,7 @@
  * - Diabetes, glaucoma, or registered blind
  */
 
-import { db } from "../db/index.js";
+import { db } from "../../db/index.js";
 import { nhsVouchers, nhsPatientExemptions, prescriptions } from "../../shared/schema.js";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 
@@ -146,14 +146,14 @@ export class NhsVoucherService {
     }
 
     // Extract prescription values
-    const sphereOD = parseFloat(prescription.sphereOD || "0");
-    const sphereOS = parseFloat(prescription.sphereOS || "0");
-    const cylinderOD = parseFloat(prescription.cylinderOD || "0");
-    const cylinderOS = parseFloat(prescription.cylinderOS || "0");
-    const addOD = parseFloat(prescription.addOD || "0");
-    const addOS = parseFloat(prescription.addOS || "0");
-    const prismOD = prescription.prismOD ? parseFloat(prescription.prismOD) : 0;
-    const prismOS = prescription.prismOS ? parseFloat(prescription.prismOS) : 0;
+    const sphereOD = parseFloat(prescription.odSphere || "0");
+    const sphereOS = parseFloat(prescription.osSphere || "0");
+    const cylinderOD = parseFloat(prescription.odCylinder || "0");
+    const cylinderOS = parseFloat(prescription.osCylinder || "0");
+    const addOD = parseFloat(prescription.odAdd || "0");
+    const addOS = parseFloat(prescription.osAdd || "0");
+    const prismOD = prescription.odPrism ? parseFloat(prescription.odPrism) : 0;
+    const prismOS = prescription.osPrism ? parseFloat(prescription.osPrism) : 0;
 
     // Check if high power
     const isHighPower =
@@ -336,7 +336,11 @@ export class NhsVoucherService {
         isRedeemed: true,
         redeemedAt: new Date(),
         status: "redeemed",
-        ...redemptionData,
+        redeemedAmount: redemptionData.redeemedAmount.toString(),
+        patientContribution: redemptionData.patientContribution?.toString(),
+        hasComplexSupplement: redemptionData.hasComplexSupplement,
+        supplementAmount: redemptionData.supplementAmount?.toString(),
+        supplementReason: redemptionData.supplementReason,
         updatedAt: new Date(),
       })
       .where(eq(nhsVouchers.id, voucherId))
@@ -451,33 +455,33 @@ export class NhsVoucherService {
 
     const stats = {
       totalVouchers: vouchers.length,
-      activeVouchers: vouchers.filter((v) => v.status === "active").length,
-      redeemedVouchers: vouchers.filter((v) => v.status === "redeemed").length,
-      expiredVouchers: vouchers.filter((v) => v.status === "expired").length,
-      cancelledVouchers: vouchers.filter((v) => v.status === "cancelled").length,
+      activeVouchers: vouchers.filter((v: any) => v.status === "active").length,
+      redeemedVouchers: vouchers.filter((v: any) => v.status === "redeemed").length,
+      expiredVouchers: vouchers.filter((v: any) => v.status === "expired").length,
+      cancelledVouchers: vouchers.filter((v: any) => v.status === "cancelled").length,
 
-      totalValue: vouchers.reduce((sum, v) => sum + parseFloat(v.voucherValue), 0),
+      totalValue: vouchers.reduce((sum: any, v: any) => sum + parseFloat(v.voucherValue), 0),
       totalRedeemed: vouchers
-        .filter((v) => v.isRedeemed)
-        .reduce((sum, v) => sum + parseFloat(v.redeemedAmount || "0"), 0),
+        .filter((v: any) => v.isRedeemed)
+        .reduce((sum: any, v: any) => sum + parseFloat(v.redeemedAmount || "0"), 0),
       totalPatientContribution: vouchers
-        .filter((v) => v.isRedeemed)
-        .reduce((sum, v) => sum + parseFloat(v.patientContribution || "0"), 0),
+        .filter((v: any) => v.isRedeemed)
+        .reduce((sum: any, v: any) => sum + parseFloat(v.patientContribution || "0"), 0),
 
       vouchersByType: {
-        A: vouchers.filter((v) => v.voucherType === "A").length,
-        B: vouchers.filter((v) => v.voucherType === "B").length,
-        C: vouchers.filter((v) => v.voucherType === "C").length,
-        D: vouchers.filter((v) => v.voucherType === "D").length,
-        E: vouchers.filter((v) => v.voucherType === "E").length,
-        F: vouchers.filter((v) => v.voucherType === "F").length,
-        G: vouchers.filter((v) => v.voucherType === "G").length,
-        H: vouchers.filter((v) => v.voucherType === "H").length,
+        A: vouchers.filter((v: any) => v.voucherType === "A").length,
+        B: vouchers.filter((v: any) => v.voucherType === "B").length,
+        C: vouchers.filter((v: any) => v.voucherType === "C").length,
+        D: vouchers.filter((v: any) => v.voucherType === "D").length,
+        E: vouchers.filter((v: any) => v.voucherType === "E").length,
+        F: vouchers.filter((v: any) => v.voucherType === "F").length,
+        G: vouchers.filter((v: any) => v.voucherType === "G").length,
+        H: vouchers.filter((v: any) => v.voucherType === "H").length,
       },
 
       redemptionRate:
         vouchers.length > 0
-          ? ((vouchers.filter((v) => v.isRedeemed).length / vouchers.length) * 100).toFixed(1)
+          ? ((vouchers.filter((v: any) => v.isRedeemed).length / vouchers.length) * 100).toFixed(1)
           : 0,
     };
 

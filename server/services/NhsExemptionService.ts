@@ -27,7 +27,7 @@
  * - Family history of glaucoma (40+)
  */
 
-import { db } from "../db/index.js";
+import { db } from "../../db/index.js";
 import { nhsPatientExemptions, patients } from "../../shared/schema.js";
 import { eq, and, or, gte, lte, desc } from "drizzle-orm";
 
@@ -69,7 +69,7 @@ export class NhsExemptionService {
       );
 
     // Filter valid exemptions
-    const validExemptions = exemptions.filter((exemption) => {
+    const validExemptions = exemptions.filter((exemption: any) => {
       // Lifelong exemptions are always valid
       if (exemption.isLifelong) return true;
 
@@ -316,7 +316,7 @@ export class NhsExemptionService {
       .from(nhsPatientExemptions)
       .where(eq(nhsPatientExemptions.companyId, companyId));
 
-    const activeExemptions = exemptions.filter((e) => e.isActive);
+    const activeExemptions = exemptions.filter((e: any) => e.isActive);
 
     const stats = {
       totalExemptions: exemptions.length,
@@ -324,35 +324,35 @@ export class NhsExemptionService {
       inactiveExemptions: exemptions.length - activeExemptions.length,
 
       byReason: {
-        age_under_16: activeExemptions.filter((e) => e.exemptionReason === "age_under_16").length,
+        age_under_16: activeExemptions.filter((e: any) => e.exemptionReason === "age_under_16").length,
         age_16_18_education: activeExemptions.filter(
-          (e) => e.exemptionReason === "age_16_18_education"
+          (e: any) => e.exemptionReason === "age_16_18_education"
         ).length,
-        age_60_plus: activeExemptions.filter((e) => e.exemptionReason === "age_60_plus").length,
-        income_support: activeExemptions.filter((e) => e.exemptionReason === "income_support")
+        age_60_plus: activeExemptions.filter((e: any) => e.exemptionReason === "age_60_plus").length,
+        income_support: activeExemptions.filter((e: any) => e.exemptionReason === "income_support")
           .length,
         jobseekers_allowance: activeExemptions.filter(
-          (e) => e.exemptionReason === "jobseekers_allowance"
+          (e: any) => e.exemptionReason === "jobseekers_allowance"
         ).length,
-        pension_credit: activeExemptions.filter((e) => e.exemptionReason === "pension_credit")
+        pension_credit: activeExemptions.filter((e: any) => e.exemptionReason === "pension_credit")
           .length,
-        universal_credit: activeExemptions.filter((e) => e.exemptionReason === "universal_credit")
+        universal_credit: activeExemptions.filter((e: any) => e.exemptionReason === "universal_credit")
           .length,
-        hc2_certificate: activeExemptions.filter((e) => e.exemptionReason === "hc2_certificate")
+        hc2_certificate: activeExemptions.filter((e: any) => e.exemptionReason === "hc2_certificate")
           .length,
-        hc3_certificate: activeExemptions.filter((e) => e.exemptionReason === "hc3_certificate")
+        hc3_certificate: activeExemptions.filter((e: any) => e.exemptionReason === "hc3_certificate")
           .length,
-        diabetes: activeExemptions.filter((e) => e.exemptionReason === "diabetes").length,
-        glaucoma: activeExemptions.filter((e) => e.exemptionReason === "glaucoma").length,
-        registered_blind: activeExemptions.filter((e) => e.exemptionReason === "registered_blind")
+        diabetes: activeExemptions.filter((e: any) => e.exemptionReason === "diabetes").length,
+        glaucoma: activeExemptions.filter((e: any) => e.exemptionReason === "glaucoma").length,
+        registered_blind: activeExemptions.filter((e: any) => e.exemptionReason === "registered_blind")
           .length,
       },
 
-      verifiedExemptions: activeExemptions.filter((e) => e.verifiedAt).length,
-      unverifiedExemptions: activeExemptions.filter((e) => !e.verifiedAt).length,
+      verifiedExemptions: activeExemptions.filter((e: any) => e.verifiedAt).length,
+      unverifiedExemptions: activeExemptions.filter((e: any) => !e.verifiedAt).length,
 
-      lifelongExemptions: activeExemptions.filter((e) => e.isLifelong).length,
-      temporaryExemptions: activeExemptions.filter((e) => !e.isLifelong).length,
+      lifelongExemptions: activeExemptions.filter((e: any) => e.isLifelong).length,
+      temporaryExemptions: activeExemptions.filter((e: any) => !e.isLifelong).length,
     };
 
     return stats;

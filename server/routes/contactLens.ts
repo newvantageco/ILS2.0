@@ -22,7 +22,7 @@ const router = Router();
 // Create assessment
 router.post("/assessments", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const assessment = await ContactLensService.createAssessment({
       ...req.body,
       companyId,
@@ -36,7 +36,7 @@ router.post("/assessments", requireAuth, async (req, res) => {
 // Get patient assessments
 router.get("/assessments/patient/:patientId", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { patientId } = req.params;
     const assessments = await ContactLensService.getPatientAssessments(patientId, companyId);
     res.json(assessments);
@@ -48,7 +48,7 @@ router.get("/assessments/patient/:patientId", requireAuth, async (req, res) => {
 // Get latest assessment
 router.get("/assessments/patient/:patientId/latest", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { patientId } = req.params;
     const assessment = await ContactLensService.getLatestAssessment(patientId, companyId);
     res.json(assessment);
@@ -62,7 +62,7 @@ router.get("/assessments/patient/:patientId/latest", requireAuth, async (req, re
 // Create fitting
 router.post("/fittings", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const fitting = await ContactLensService.createFitting({
       ...req.body,
       companyId,
@@ -76,7 +76,7 @@ router.post("/fittings", requireAuth, async (req, res) => {
 // Get patient fittings
 router.get("/fittings/patient/:patientId", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { patientId } = req.params;
     const fittings = await ContactLensService.getPatientFittings(patientId, companyId);
     res.json(fittings);
@@ -90,7 +90,7 @@ router.get("/fittings/patient/:patientId", requireAuth, async (req, res) => {
 // Create prescription
 router.post("/prescriptions", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const prescription = await ContactLensService.createPrescription({
       ...req.body,
       companyId,
@@ -104,7 +104,7 @@ router.post("/prescriptions", requireAuth, async (req, res) => {
 // Get patient prescriptions
 router.get("/prescriptions/patient/:patientId", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { patientId } = req.params;
     const prescriptions = await ContactLensService.getPatientPrescriptions(patientId, companyId);
     res.json(prescriptions);
@@ -116,7 +116,7 @@ router.get("/prescriptions/patient/:patientId", requireAuth, async (req, res) =>
 // Get active prescription
 router.get("/prescriptions/patient/:patientId/active", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { patientId } = req.params;
     const prescription = await ContactLensService.getActivePrescription(patientId, companyId);
     res.json(prescription);
@@ -128,7 +128,7 @@ router.get("/prescriptions/patient/:patientId/active", requireAuth, async (req, 
 // Deactivate prescription
 router.post("/prescriptions/:prescriptionId/deactivate", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { prescriptionId } = req.params;
     const prescription = await ContactLensService.deactivatePrescription(prescriptionId, companyId);
     res.json(prescription);
@@ -142,7 +142,7 @@ router.post("/prescriptions/:prescriptionId/deactivate", requireAuth, async (req
 // Create aftercare appointment
 router.post("/aftercare", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const aftercare = await ContactLensService.createAftercareAppointment({
       ...req.body,
       companyId,
@@ -156,7 +156,7 @@ router.post("/aftercare", requireAuth, async (req, res) => {
 // Update aftercare
 router.put("/aftercare/:aftercareId", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { aftercareId } = req.params;
     const aftercare = await ContactLensService.updateAftercare(aftercareId, companyId, req.body);
     res.json(aftercare);
@@ -168,7 +168,7 @@ router.put("/aftercare/:aftercareId", requireAuth, async (req, res) => {
 // Get patient aftercare
 router.get("/aftercare/patient/:patientId", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { patientId } = req.params;
     const aftercare = await ContactLensService.getPatientAftercare(patientId, companyId);
     res.json(aftercare);
@@ -180,7 +180,7 @@ router.get("/aftercare/patient/:patientId", requireAuth, async (req, res) => {
 // Get upcoming aftercare
 router.get("/aftercare/upcoming", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const daysAhead = req.query.days ? parseInt(req.query.days as string) : 30;
     const aftercare = await ContactLensService.getUpcomingAftercare(companyId, daysAhead);
     res.json(aftercare);
@@ -194,7 +194,7 @@ router.get("/aftercare/upcoming", requireAuth, async (req, res) => {
 // Find inventory item
 router.post("/inventory/find", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { brand, baseCurve, diameter, power, cylinder, axis, addition } = req.body;
     const item = await ContactLensService.findInventoryItem(
       companyId,
@@ -215,7 +215,7 @@ router.post("/inventory/find", requireAuth, async (req, res) => {
 // Get low stock items
 router.get("/inventory/low-stock", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const items = await ContactLensService.getLowStockItems(companyId);
     res.json(items);
   } catch (error: any) {
@@ -226,7 +226,7 @@ router.get("/inventory/low-stock", requireAuth, async (req, res) => {
 // Update inventory stock
 router.post("/inventory/:inventoryId/update-stock", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { inventoryId } = req.params;
     const { quantityChange } = req.body;
     const item = await ContactLensService.updateInventoryStock(inventoryId, companyId, quantityChange);
@@ -241,7 +241,7 @@ router.post("/inventory/:inventoryId/update-stock", requireAuth, async (req, res
 // Get CL statistics
 router.get("/statistics", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { startDate, endDate } = req.query;
 
     if (!startDate || !endDate) {
@@ -264,7 +264,7 @@ router.get("/statistics", requireAuth, async (req, res) => {
 // Check NHS eligibility
 router.get("/nhs-eligibility/:patientId", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { patientId } = req.params;
     const eligibility = await ContactLensService.checkNhsEligibility(patientId, companyId);
     res.json(eligibility);

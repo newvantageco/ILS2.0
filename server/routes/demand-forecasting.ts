@@ -46,7 +46,7 @@ async function getUserInfo(req: any): Promise<{ userId: string; companyId: strin
 
     return { userId, companyId: user.companyId };
   } catch (error) {
-    logger.error("Failed to get user info", error as Error);
+    logger.error(error as Error, "Failed to get user info");
     return null;
   }
 }
@@ -69,7 +69,7 @@ export function registerDemandForecastingRoutes(app: Express) {
       const { companyId } = userInfo;
       const { daysAhead = 14, productId = null } = req.body;
 
-      logger.info("Generating demand forecasts", { companyId, daysAhead, productId });
+      logger.info({ companyId, daysAhead, productId }, "Generating demand forecasts");
 
       // Generate forecasts using AI service
       const forecasts = await forecastingService.generateForecast(daysAhead);
@@ -105,7 +105,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         })
       );
 
-      logger.info("Forecasts generated and stored", { count: storedForecasts.length });
+      logger.info({ count: storedForecasts.length }, "Forecasts generated and stored");
 
       res.json({
         success: true,
@@ -120,7 +120,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         },
       });
     } catch (error) {
-      logger.error("Failed to generate forecasts", error as Error);
+      logger.error(error as Error, "Failed to generate forecasts");
       res.status(500).json({ 
         message: "Failed to generate forecasts",
         error: (error as Error).message 
@@ -184,7 +184,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         stats,
       });
     } catch (error) {
-      logger.error("Failed to fetch forecasts", error as Error);
+      logger.error(error as Error, "Failed to fetch forecasts");
       res.status(500).json({ 
         message: "Failed to fetch forecasts",
         error: (error as Error).message 
@@ -207,7 +207,7 @@ export function registerDemandForecastingRoutes(app: Express) {
       const { companyId } = userInfo;
       const { productId = null, active = "true" } = req.query;
 
-      logger.info("Fetching seasonal patterns", { companyId, productId });
+      logger.info({ companyId, productId }, "Fetching seasonal patterns");
 
       // Analyze patterns using service
       const patterns = await forecastingService.analyzeSeasonalPatterns();
@@ -260,7 +260,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         },
       });
     } catch (error) {
-      logger.error("Failed to fetch patterns", error as Error);
+      logger.error(error as Error, "Failed to fetch patterns");
       res.status(500).json({ 
         message: "Failed to fetch patterns",
         error: (error as Error).message 
@@ -288,7 +288,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         return res.status(400).json({ message: "actualDemand must be a number" });
       }
 
-      logger.info("Updating forecast with actual demand", { forecastId, actualDemand });
+      logger.info({ forecastId, actualDemand }, "Updating forecast with actual demand");
 
       // Fetch the forecast
       const forecast = await db.query.demandForecasts.findFirst({
@@ -329,7 +329,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         },
       });
     } catch (error) {
-      logger.error("Failed to update forecast", error as Error);
+      logger.error(error as Error, "Failed to update forecast");
       res.status(500).json({ 
         message: "Failed to update forecast",
         error: (error as Error).message 
@@ -352,7 +352,7 @@ export function registerDemandForecastingRoutes(app: Express) {
       const { companyId } = userInfo;
       const { productId = null, period = "30" } = req.query;
 
-      logger.info("Fetching accuracy metrics", { companyId, productId, period });
+      logger.info({ companyId, productId, period }, "Fetching accuracy metrics");
 
       // Get metrics from service
       const metrics = await forecastingService.getMetrics();
@@ -437,7 +437,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         })),
       });
     } catch (error) {
-      logger.error("Failed to fetch accuracy metrics", error as Error);
+      logger.error(error as Error, "Failed to fetch accuracy metrics");
       res.status(500).json({ 
         message: "Failed to fetch accuracy metrics",
         error: (error as Error).message 
@@ -460,7 +460,7 @@ export function registerDemandForecastingRoutes(app: Express) {
       const { companyId } = userInfo;
       const { daysAhead = "7" } = req.query;
 
-      logger.info("Generating recommendations", { companyId, daysAhead });
+      logger.info({ companyId, daysAhead }, "Generating recommendations");
 
       // Get staffing recommendations
       const staffingRecs = await forecastingService.getStaffingRecommendations(parseInt(daysAhead as string));
@@ -500,7 +500,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         },
       });
     } catch (error) {
-      logger.error("Failed to generate recommendations", error as Error);
+      logger.error(error as Error, "Failed to generate recommendations");
       res.status(500).json({ 
         message: "Failed to generate recommendations",
         error: (error as Error).message 
@@ -522,7 +522,7 @@ export function registerDemandForecastingRoutes(app: Express) {
 
       const { daysAhead = "30" } = req.query;
 
-      logger.info("Identifying surge periods", { daysAhead });
+      logger.info({ daysAhead }, "Identifying surge periods");
 
       const surges = await forecastingService.identifySurgePeriods(parseInt(daysAhead as string));
 
@@ -537,7 +537,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         },
       });
     } catch (error) {
-      logger.error("Failed to identify surge periods", error as Error);
+      logger.error(error as Error, "Failed to identify surge periods");
       res.status(500).json({ 
         message: "Failed to identify surge periods",
         error: (error as Error).message 
@@ -559,7 +559,7 @@ export function registerDemandForecastingRoutes(app: Express) {
 
       const { daysBack = "30" } = req.query;
 
-      logger.info("Detecting anomalies", { daysBack });
+      logger.info({ daysBack }, "Detecting anomalies");
 
       const anomalies = await forecastingService.detectAnomalies(parseInt(daysBack as string));
 
@@ -568,7 +568,7 @@ export function registerDemandForecastingRoutes(app: Express) {
         ...anomalies,
       });
     } catch (error) {
-      logger.error("Failed to detect anomalies", error as Error);
+      logger.error(error as Error, "Failed to detect anomalies");
       res.status(500).json({ 
         message: "Failed to detect anomalies",
         error: (error as Error).message 

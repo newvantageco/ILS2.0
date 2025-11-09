@@ -107,7 +107,7 @@ const rejectPrescriptionSchema = z.object({
  */
 router.get("/stores", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
 
     const stores = await ShopifyService.getStores(companyId);
 
@@ -124,7 +124,7 @@ router.get("/stores", requireAuth, async (req, res) => {
  */
 router.get("/stores/:storeId", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { storeId } = req.params;
 
     const store = await ShopifyService.getStore(storeId, companyId);
@@ -215,7 +215,7 @@ router.get("/stores/:storeId", requireAuth, async (req, res) => {
  */
 router.post("/stores/connect", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const validatedData = connectStoreSchema.parse(req.body);
 
     const store = await ShopifyService.connectStore({
@@ -239,11 +239,11 @@ router.post("/stores/connect", requireAuth, async (req, res) => {
  */
 router.put("/stores/:storeId/settings", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { storeId } = req.params;
     const validatedData = updateStoreSettingsSchema.parse(req.body);
 
-    const store = await ShopifyService.updateStore(storeId, companyId, validatedData);
+    const store = await ShopifyService.updateStore(storeId, companyId, validatedData as any);
 
     res.json(store);
   } catch (error: any) {
@@ -261,7 +261,7 @@ router.put("/stores/:storeId/settings", requireAuth, async (req, res) => {
  */
 router.post("/stores/:storeId/disconnect", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { storeId } = req.params;
 
     const store = await ShopifyService.disconnectStore(storeId, companyId);
@@ -279,7 +279,7 @@ router.post("/stores/:storeId/disconnect", requireAuth, async (req, res) => {
  */
 router.post("/stores/:storeId/sync-products", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { storeId } = req.params;
 
     const result = await ShopifyService.syncProducts(storeId, companyId);
@@ -297,7 +297,7 @@ router.post("/stores/:storeId/sync-products", requireAuth, async (req, res) => {
  */
 router.get("/stores/:storeId/products", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { storeId } = req.params;
 
     const products = await ShopifyService.getProducts(storeId, companyId);
@@ -391,7 +391,7 @@ router.get("/stores/:storeId/products", requireAuth, async (req, res) => {
  */
 router.post("/prescriptions/upload", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const validatedData = uploadPrescriptionSchema.parse(req.body);
 
     const upload = await PrescriptionVerificationService.uploadPrescription({
@@ -415,7 +415,7 @@ router.post("/prescriptions/upload", requireAuth, async (req, res) => {
  */
 router.get("/prescriptions/:uploadId", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { uploadId } = req.params;
 
     const upload = await PrescriptionVerificationService.getUpload(uploadId, companyId);
@@ -435,7 +435,7 @@ router.get("/prescriptions/:uploadId", requireAuth, async (req, res) => {
  */
 router.get("/prescriptions/review/pending", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
 
     const uploads = await PrescriptionVerificationService.getUploadsRequiringReview(companyId);
 
@@ -452,7 +452,8 @@ router.get("/prescriptions/review/pending", requireAuth, async (req, res) => {
  */
 router.post("/prescriptions/:uploadId/verify", requireAuth, async (req, res) => {
   try {
-    const { companyId, id: userId } = req.user!;
+    const companyId = req.user!.companyId!;
+    const userId = req.user!.id!;
     const { uploadId } = req.params;
     const validatedData = verifyPrescriptionSchema.parse(req.body);
 
@@ -479,7 +480,8 @@ router.post("/prescriptions/:uploadId/verify", requireAuth, async (req, res) => 
  */
 router.post("/prescriptions/:uploadId/reject", requireAuth, async (req, res) => {
   try {
-    const { companyId, id: userId } = req.user!;
+    const companyId = req.user!.companyId!;
+    const userId = req.user!.id!;
     const { uploadId } = req.params;
     const { rejectionReason } = rejectPrescriptionSchema.parse(req.body);
 
@@ -506,7 +508,7 @@ router.post("/prescriptions/:uploadId/reject", requireAuth, async (req, res) => 
  */
 router.get("/prescriptions/status/:status", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { status } = req.params;
 
     const uploads = await PrescriptionVerificationService.getUploadsByStatus(companyId, status);
@@ -582,7 +584,7 @@ router.get("/prescriptions/status/:status", requireAuth, async (req, res) => {
  */
 router.get("/orders", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { storeId, status } = req.query;
 
     let orders;
@@ -608,7 +610,7 @@ router.get("/orders", requireAuth, async (req, res) => {
  */
 router.get("/orders/requiring-prescription", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
 
     const orders = await ShopifyOrderSyncService.getOrdersRequiringPrescription(companyId);
 
@@ -625,7 +627,7 @@ router.get("/orders/requiring-prescription", requireAuth, async (req, res) => {
  */
 router.post("/orders/:orderId/create-ils-order", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { orderId } = req.params;
 
     const ilsOrder = await ShopifyOrderSyncService.createILSOrder(orderId, companyId);
@@ -643,7 +645,7 @@ router.post("/orders/:orderId/create-ils-order", requireAuth, async (req, res) =
  */
 router.post("/orders/:orderId/fulfill", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { orderId } = req.params;
     const { trackingNumber, trackingUrl } = req.body;
 
@@ -667,7 +669,7 @@ router.post("/orders/:orderId/fulfill", requireAuth, async (req, res) => {
  */
 router.post("/orders/:orderId/retry-sync", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { orderId } = req.params;
 
     const result = await ShopifyOrderSyncService.retryOrderSync(orderId, companyId);
@@ -685,7 +687,7 @@ router.post("/orders/:orderId/retry-sync", requireAuth, async (req, res) => {
  */
 router.get("/orders/statistics", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
     const { storeId } = req.query;
 
     const stats = await ShopifyOrderSyncService.getOrderStatistics(
@@ -732,7 +734,7 @@ router.post("/webhooks", async (req, res) => {
 
     // Verify webhook signature
     const body = JSON.stringify(req.body);
-    const webhookSecret = ShopifyService.decryptCredential(store.webhookSecret!);
+    const webhookSecret = (ShopifyService as any).decryptCredential(store.webhookSecret!);
     const signatureValid = ShopifyService.verifyWebhookSignature(body, hmac, webhookSecret);
 
     // Log webhook
@@ -785,7 +787,7 @@ router.post("/webhooks/process-unprocessed", requireAuth, async (req, res) => {
  */
 router.get("/analytics/dashboard", requireAuth, async (req, res) => {
   try {
-    const { companyId } = req.user!;
+    const companyId = req.user!.companyId!;
 
     // Get all relevant statistics
     const stores = await ShopifyService.getStores(companyId);
