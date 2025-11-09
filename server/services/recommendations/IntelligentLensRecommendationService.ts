@@ -12,7 +12,7 @@
 
 import { db } from "../../../db/index.js";
 import { prescriptions, patients } from "../../../shared/schema.js";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 export interface PrescriptionData {
   odSphere: number;

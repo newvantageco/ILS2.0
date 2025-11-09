@@ -1,8 +1,8 @@
 import { ShopifyService } from "./ShopifyService";
 import { ShopifyOrderSyncService } from "./ShopifyOrderSyncService";
 import { db } from "../db";
-import { shopifyStores, shopifyProducts } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { shopifyStores, shopifyProducts, shopifyOrders } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
 
 export class ShopifyWebhookHandler {
   /**
