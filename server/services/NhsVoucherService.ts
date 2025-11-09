@@ -152,8 +152,15 @@ export class NhsVoucherService {
     const cylinderOS = parseFloat(prescription.osCylinder || "0");
     const addOD = parseFloat(prescription.odAdd || "0");
     const addOS = parseFloat(prescription.osAdd || "0");
-    const prismOD = prescription.odPrism ? parseFloat(prescription.odPrism) : 0;
-    const prismOS = prescription.osPrism ? parseFloat(prescription.osPrism) : 0;
+    // Calculate total prism from horizontal and vertical components
+    const prismOD = Math.sqrt(
+      Math.pow(parseFloat(prescription.odPrismHorizontal || "0"), 2) +
+      Math.pow(parseFloat(prescription.odPrismVertical || "0"), 2)
+    );
+    const prismOS = Math.sqrt(
+      Math.pow(parseFloat(prescription.osPrismHorizontal || "0"), 2) +
+      Math.pow(parseFloat(prescription.osPrismVertical || "0"), 2)
+    );
 
     // Check if high power
     const isHighPower =

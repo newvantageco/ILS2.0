@@ -173,7 +173,7 @@ router.post('/claims/batch', async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: result,
-      message: `Successfully submitted ${result.succeeded.length} of ${claimIds.length} claims`
+      message: `Successfully submitted ${result.succeeded} of ${claimIds.length} claims`
     });
   } catch (error) {
     res.status(400).json({
@@ -605,11 +605,18 @@ router.post('/payment-plans/:id/installments', async (req: Request, res: Respons
  */
 router.get('/payment-plans/:id/overdue', async (req: Request, res: Response) => {
   try {
-    const overdue = PaymentProcessingService.checkOverdueInstallments(req.params.id);
+    // Check and update overdue installments
+    PaymentProcessingService.checkOverdueInstallments();
+
+    // Get the updated plan to check for overdue status
+    const plan = PaymentProcessingService.getPaymentPlan(req.params.id);
     res.json({
       success: true,
-      data: overdue,
-      count: overdue.length
+      data: {
+        planId: req.params.id,
+        hasOverdue: plan ? plan.daysPastDue > 0 : false,
+        daysPastDue: plan?.daysPastDue || 0,
+      }
     });
   } catch (error) {
     res.status(500).json({

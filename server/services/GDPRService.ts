@@ -89,16 +89,16 @@ export class GDPRService {
             db.select().from(orders).where(eq(orders.ecpId, userId)),
 
             // Eye examinations
-            db.select().from(eyeExaminations).where(eq(eyeExaminations.performedBy, userId)),
+            db.select().from(eyeExaminations).where(eq(eyeExaminations.ecpId, userId)),
 
             // Prescriptions
-            db.select().from(prescriptions).where(eq(prescriptions.prescribedBy, userId)),
+            db.select().from(prescriptions).where(eq(prescriptions.ecpId, userId)),
 
             // Consult logs
             db.select().from(consultLogs).where(eq(consultLogs.ecpId, userId)),
 
             // Invoices
-            db.select().from(invoices).where(eq(invoices.createdBy, userId)),
+            db.select().from(invoices).where(eq(invoices.ecpId, userId)),
 
             // Audit logs (user's actions)
             db.select().from(auditLogs).where(eq(auditLogs.userId, userId)).limit(1000), // Limit for performance
@@ -172,7 +172,7 @@ export class GDPRService {
             .delete(eyeExaminations)
             .where(
               and(
-                eq(eyeExaminations.performedBy, userId),
+                eq(eyeExaminations.ecpId, userId),
                 // Add date filter here
               )
             )
@@ -184,7 +184,7 @@ export class GDPRService {
             .delete(prescriptions)
             .where(
               and(
-                eq(prescriptions.prescribedBy, userId),
+                eq(prescriptions.ecpId, userId),
                 // Add date filter here
               )
             )
@@ -208,7 +208,7 @@ export class GDPRService {
             .delete(invoices)
             .where(
               and(
-                eq(invoices.createdBy, userId),
+                eq(invoices.ecpId, userId),
                 // Add date filter here
               )
             )
@@ -256,21 +256,23 @@ export class GDPRService {
     thirdParty: boolean;
     lastUpdated: Date | null;
   }> {
+    // Check if user exists
     const [user] = await db
-      .select({
-        marketingConsent: users.marketingConsent,
-        analyticsConsent: users.analyticsConsent,
-        thirdPartyConsent: users.thirdPartyConsent,
-        consentUpdatedAt: users.consentUpdatedAt,
-      })
+      .select({ id: users.id, createdAt: users.createdAt })
       .from(users)
       .where(eq(users.id, userId));
 
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // TODO: Consent fields not yet implemented in users table
+    // Returning default values until consent management is implemented
     return {
-      marketing: user?.marketingConsent ?? false,
-      analytics: user?.analyticsConsent ?? false,
-      thirdParty: user?.thirdPartyConsent ?? false,
-      lastUpdated: user?.consentUpdatedAt ?? null,
+      marketing: false,
+      analytics: false,
+      thirdParty: false,
+      lastUpdated: null,
     };
   }
 

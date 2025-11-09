@@ -290,21 +290,25 @@ export class NhsClaimsService {
   ) {
     const { status, startDate, endDate, limit = 50, offset = 0 } = options || {};
 
-    let query = db.select().from(nhsClaims).where(eq(nhsClaims.companyId, companyId));
+    // Build where conditions
+    const conditions: any[] = [eq(nhsClaims.companyId, companyId)];
 
     if (status) {
-      query = query.where(eq(nhsClaims.status, status as any));
+      conditions.push(eq(nhsClaims.status, status as any));
     }
 
     if (startDate) {
-      query = query.where(gte(nhsClaims.claimDate, startDate));
+      conditions.push(gte(nhsClaims.claimDate, startDate));
     }
 
     if (endDate) {
-      query = query.where(lte(nhsClaims.claimDate, endDate));
+      conditions.push(lte(nhsClaims.claimDate, endDate));
     }
 
-    const claims = await query
+    const claims = await db
+      .select()
+      .from(nhsClaims)
+      .where(and(...conditions))
       .orderBy(desc(nhsClaims.claimDate))
       .limit(limit)
       .offset(offset);

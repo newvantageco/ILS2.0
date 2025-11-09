@@ -453,7 +453,7 @@ Response format (JSON):
   "trends": ["Trend 1", "Trend 2"]
 }`;
 
-    const userMessage = `Practice: ${company?.organizationName || "Unknown"}
+    const userMessage = `Practice: ${company?.name || "Unknown"}
 
 Recent Performance (Last 30 days):
 - CL Prescriptions: ${clStats.totalPrescriptions}
