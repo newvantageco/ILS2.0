@@ -71,7 +71,7 @@ describe('ShopifyService', () => {
         })
       ) as any;
 
-      const orders = await shopifyService.getOrders();
+      const orders = await ShopifyService.getOrders();
 
       expect(orders).toHaveLength(2);
       expect(orders[0].order_number).toBe(1001);
@@ -87,7 +87,7 @@ describe('ShopifyService', () => {
         })
       ) as any;
 
-      await expect(shopifyService.getOrders()).rejects.toThrow();
+      await expect(ShopifyService.getOrders()).rejects.toThrow();
     });
 
     it('should filter orders by status', async () => {
@@ -103,7 +103,7 @@ describe('ShopifyService', () => {
         })
       ) as any;
 
-      const orders = await shopifyService.getOrders({ fulfillment_status: 'unfulfilled' });
+      const orders = await ShopifyService.getOrders({ fulfillment_status: 'unfulfilled' });
 
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('fulfillment_status=unfulfilled'),
@@ -123,7 +123,7 @@ describe('ShopifyService', () => {
         })
       ) as any;
 
-      const syncedOrder = await shopifyService.syncOrder(mockOrder.id);
+      const syncedOrder = await ShopifyService.syncOrder(mockOrder.id);
 
       expect(syncedOrder).toBeDefined();
       expect(syncedOrder.shopifyOrderId).toBe(mockOrder.id.toString());
@@ -141,14 +141,14 @@ describe('ShopifyService', () => {
       ) as any;
 
       // Sync once
-      await shopifyService.syncOrder(mockOrder.id);
+      await ShopifyService.syncOrder(mockOrder.id);
 
       // Sync again - should update, not create duplicate
-      const secondSync = await shopifyService.syncOrder(mockOrder.id);
+      const secondSync = await ShopifyService.syncOrder(mockOrder.id);
 
       expect(secondSync).toBeDefined();
       // Verify only one order exists
-      const allOrders = await shopifyService.getOrders();
+      const allOrders = await ShopifyService.getOrders();
       expect(allOrders.filter(o => o.id === mockOrder.id)).toHaveLength(1);
     });
 
@@ -170,7 +170,7 @@ describe('ShopifyService', () => {
         })
       ) as any;
 
-      const syncedOrder = await shopifyService.syncOrder(mockOrder.id);
+      const syncedOrder = await ShopifyService.syncOrder(mockOrder.id);
 
       expect(syncedOrder.customerEmail).toBe('john.doe@example.com');
       expect(syncedOrder.customerName).toBe('John Doe');
@@ -182,9 +182,9 @@ describe('ShopifyService', () => {
     it('should verify webhook signature', () => {
       const payload = JSON.stringify(createMockShopifyOrder());
       const secret = 'test_webhook_secret';
-      const signature = shopifyService.generateWebhookSignature(payload, secret);
+      const signature = ShopifyService.generateWebhookSignature(payload, secret);
 
-      const isValid = shopifyService.verifyWebhook(payload, signature, secret);
+      const isValid = ShopifyService.verifyWebhook(payload, signature, secret);
 
       expect(isValid).toBe(true);
     });
@@ -194,7 +194,7 @@ describe('ShopifyService', () => {
       const secret = 'test_webhook_secret';
       const invalidSignature = 'invalid_signature';
 
-      const isValid = shopifyService.verifyWebhook(payload, invalidSignature, secret);
+      const isValid = ShopifyService.verifyWebhook(payload, invalidSignature, secret);
 
       expect(isValid).toBe(false);
     });
@@ -202,11 +202,11 @@ describe('ShopifyService', () => {
     it('should process order creation webhook', async () => {
       const mockOrder = createMockShopifyOrder();
 
-      const result = await shopifyService.handleWebhook('orders/create', mockOrder);
+      const result = await ShopifyService.handleWebhook('orders/create', mockOrder);
 
       expect(result).toBe(true);
       // Verify order was created in database
-      const orders = await shopifyService.getOrders();
+      const orders = await ShopifyService.getOrders();
       expect(orders.some(o => o.id === mockOrder.id)).toBe(true);
     });
 
@@ -214,14 +214,14 @@ describe('ShopifyService', () => {
       const mockOrder = createMockShopifyOrder();
 
       // Create order first
-      await shopifyService.handleWebhook('orders/create', mockOrder);
+      await ShopifyService.handleWebhook('orders/create', mockOrder);
 
       // Update order
       const updatedOrder = { ...mockOrder, financial_status: 'refunded' };
-      await shopifyService.handleWebhook('orders/updated', updatedOrder);
+      await ShopifyService.handleWebhook('orders/updated', updatedOrder);
 
       // Verify order was updated
-      const orders = await shopifyService.getOrders();
+      const orders = await ShopifyService.getOrders();
       const order = orders.find(o => o.id === mockOrder.id);
       expect(order?.financial_status).toBe('refunded');
     });
@@ -245,7 +245,7 @@ describe('ShopifyService', () => {
         })
       ) as any;
 
-      const fulfillment = await shopifyService.createFulfillment(mockOrder.id, {
+      const fulfillment = await ShopifyService.createFulfillment(mockOrder.id, {
         line_items: mockOrder.line_items.map(item => ({ id: item.id })),
         tracking_number: 'TRACK123',
         tracking_company: 'Royal Mail',
@@ -267,7 +267,7 @@ describe('ShopifyService', () => {
       ) as any;
 
       await expect(
-        shopifyService.createFulfillment(123456, {
+        ShopifyService.createFulfillment(123456, {
           line_items: [],
         })
       ).rejects.toThrow();
@@ -289,7 +289,7 @@ describe('ShopifyService', () => {
       const startTime = Date.now();
 
       try {
-        await shopifyService.getOrders();
+        await ShopifyService.getOrders();
       } catch (error) {
         // Expected to throw
       }
@@ -318,7 +318,7 @@ describe('ShopifyService', () => {
         });
       }) as any;
 
-      const orders = await shopifyService.getOrders();
+      const orders = await ShopifyService.getOrders();
 
       expect(callCount).toBe(3);
       expect(orders).toBeDefined();
@@ -332,7 +332,7 @@ describe('ShopifyService', () => {
         })
       ) as any;
 
-      await expect(shopifyService.getOrders()).rejects.toThrow();
+      await expect(ShopifyService.getOrders()).rejects.toThrow();
     });
   });
 });

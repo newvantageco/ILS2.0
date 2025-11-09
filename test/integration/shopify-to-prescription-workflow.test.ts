@@ -60,7 +60,7 @@ describe('Shopify to Prescription Fulfillment Workflow', () => {
     // ==========================================
     // STEP 2: Order synchronized to ILS
     // ==========================================
-    const syncedOrder = await syncService.syncOrder(shopifyOrder);
+    const syncedOrder = await ShopifyOrderSyncService.syncOrder(shopifyOrder);
 
     expect(syncedOrder).toHaveProperty('ilsOrderId');
     expect(syncedOrder).toHaveProperty('patientId');
@@ -122,7 +122,7 @@ describe('Shopify to Prescription Fulfillment Workflow', () => {
     // ==========================================
     // STEP 5: Prescription linked to order
     // ==========================================
-    const linkedOrder = await syncService.linkPrescription(
+    const linkedOrder = await ShopifyOrderSyncService.linkPrescription(
       syncedOrder.ilsOrderId,
       prescriptionUpload.id
     );
@@ -180,7 +180,7 @@ describe('Shopify to Prescription Fulfillment Workflow', () => {
     // ==========================================
     // STEP 7: Order processed
     // ==========================================
-    const processedOrder = await syncService.updateOrderStatus(
+    const processedOrder = await ShopifyOrderSyncService.updateOrderStatus(
       syncedOrder.ilsOrderId,
       'in_production',
       {
@@ -196,7 +196,7 @@ describe('Shopify to Prescription Fulfillment Workflow', () => {
     // ==========================================
     // STEP 8: Order fulfilled
     // ==========================================
-    const fulfilledOrder = await syncService.updateOrderStatus(
+    const fulfilledOrder = await ShopifyOrderSyncService.updateOrderStatus(
       syncedOrder.ilsOrderId,
       'shipped',
       {
@@ -251,7 +251,7 @@ describe('Shopify to Prescription Fulfillment Workflow', () => {
   it('should handle workflow with manual prescription review', async () => {
     // Order received
     const shopifyOrder = createMockShopifyOrder();
-    const syncedOrder = await syncService.syncOrder(shopifyOrder);
+    const syncedOrder = await ShopifyOrderSyncService.syncOrder(shopifyOrder);
 
     // Prescription upload with low confidence
     const mockLowConfidenceResponse = {
@@ -310,7 +310,7 @@ describe('Shopify to Prescription Fulfillment Workflow', () => {
     expect(approved.reviewedBy).toBe('optometrist-123');
 
     // Link and continue workflow
-    const linkedOrder = await syncService.linkPrescription(
+    const linkedOrder = await ShopifyOrderSyncService.linkPrescription(
       syncedOrder.ilsOrderId,
       approved.id
     );
@@ -322,7 +322,7 @@ describe('Shopify to Prescription Fulfillment Workflow', () => {
   it('should handle workflow with rejected prescription', async () => {
     // Order received
     const shopifyOrder = createMockShopifyOrder();
-    const syncedOrder = await syncService.syncOrder(shopifyOrder);
+    const syncedOrder = await ShopifyOrderSyncService.syncOrder(shopifyOrder);
 
     // Unreadable prescription
     const mockUnreadableResponse = {

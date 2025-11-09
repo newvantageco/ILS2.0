@@ -28,7 +28,7 @@ describe('ShopifyOrderSyncService', () => {
     it('should sync new Shopify order to ILS database', async () => {
       const mockOrder = createMockShopifyOrder();
 
-      const result = await syncService.syncOrder(mockOrder);
+      const result = await ShopifyOrderSyncService.syncOrder(mockOrder);
 
       expect(result).toHaveProperty('ilsOrderId');
       expect(result).toHaveProperty('shopifyOrderId');
@@ -46,7 +46,7 @@ describe('ShopifyOrderSyncService', () => {
         },
       });
 
-      const result = await syncService.syncOrder(mockOrder);
+      const result = await ShopifyOrderSyncService.syncOrder(mockOrder);
 
       expect(result.patientId).toBeDefined();
       expect(result.customerEmail).toBe('new.customer@example.com');
@@ -59,7 +59,7 @@ describe('ShopifyOrderSyncService', () => {
         ],
       });
 
-      const result = await syncService.syncOrder(mockOrder);
+      const result = await ShopifyOrderSyncService.syncOrder(mockOrder);
 
       expect(result.prescriptionUploadId).toBe('upload-123');
     });
@@ -80,7 +80,7 @@ describe('ShopifyOrderSyncService', () => {
         ],
       });
 
-      const result = await syncService.syncOrder(mockOrder);
+      const result = await ShopifyOrderSyncService.syncOrder(mockOrder);
 
       expect(result.lensType).toBe('Progressive');
       expect(result.lensMaterial).toBe('Polycarbonate');
@@ -91,13 +91,13 @@ describe('ShopifyOrderSyncService', () => {
       const mockOrder = createMockShopifyOrder();
 
       // Sync once
-      const first = await syncService.syncOrder(mockOrder);
+      const first = await ShopifyOrderSyncService.syncOrder(mockOrder);
 
       // Update Shopify order
       mockOrder.financial_status = 'refunded';
 
       // Sync again
-      const second = await syncService.syncOrder(mockOrder);
+      const second = await ShopifyOrderSyncService.syncOrder(mockOrder);
 
       expect(second.ilsOrderId).toBe(first.ilsOrderId);
       expect(second.financialStatus).toBe('refunded');
@@ -117,7 +117,7 @@ describe('ShopifyOrderSyncService', () => {
         },
       });
 
-      const result = await syncService.syncOrder(mockOrder);
+      const result = await ShopifyOrderSyncService.syncOrder(mockOrder);
 
       expect(result.patientId).toBe(existingPatient.id);
     });
@@ -131,7 +131,7 @@ describe('ShopifyOrderSyncService', () => {
         },
       });
 
-      const result = await syncService.syncOrder(mockOrder);
+      const result = await ShopifyOrderSyncService.syncOrder(mockOrder);
 
       expect(result.patientId).toBeDefined();
       // Verify patient was created
@@ -146,7 +146,7 @@ describe('ShopifyOrderSyncService', () => {
         customer: null,
       });
 
-      const result = await syncService.syncOrder(mockOrder);
+      const result = await ShopifyOrderSyncService.syncOrder(mockOrder);
 
       expect(result.patientId).toBeNull();
       expect(result.status).toBe('synced');
@@ -167,7 +167,7 @@ describe('ShopifyOrderSyncService', () => {
         ],
       });
 
-      const result = await syncService.syncOrder(mockOrder);
+      const result = await ShopifyOrderSyncService.syncOrder(mockOrder);
 
       expect(result.prescriptionId).toBeDefined();
     });
@@ -176,7 +176,7 @@ describe('ShopifyOrderSyncService', () => {
       const mockOrder = createMockShopifyOrder();
       // No prescription in metadata
 
-      const result = await syncService.syncOrder(mockOrder);
+      const result = await ShopifyOrderSyncService.syncOrder(mockOrder);
 
       expect(result.prescriptionId).toBeNull();
       expect(result.awaitingPrescription).toBe(true);
@@ -186,7 +186,7 @@ describe('ShopifyOrderSyncService', () => {
       const mockOrder = createMockShopifyOrder();
 
       // Sync order without prescription
-      const synced = await syncService.syncOrder(mockOrder);
+      const synced = await ShopifyOrderSyncService.syncOrder(mockOrder);
       expect(synced.prescriptionId).toBeNull();
 
       // Upload prescription
@@ -200,7 +200,7 @@ describe('ShopifyOrderSyncService', () => {
       });
 
       // Link prescription to order
-      const linked = await syncService.linkPrescription(
+      const linked = await ShopifyOrderSyncService.linkPrescription(
         synced.ilsOrderId,
         upload.id
       );
@@ -218,7 +218,7 @@ describe('ShopifyOrderSyncService', () => {
         createMockShopifyOrder({ id: 1003 }),
       ];
 
-      const results = await syncService.syncBulk(mockOrders);
+      const results = await ShopifyOrderSyncService.syncBulk(mockOrders);
 
       expect(results).toHaveLength(3);
       expect(results.filter(r => r.status === 'synced')).toHaveLength(3);
@@ -231,7 +231,7 @@ describe('ShopifyOrderSyncService', () => {
         createMockShopifyOrder({ id: 1003 }),
       ];
 
-      const results = await syncService.syncBulk(mockOrders);
+      const results = await ShopifyOrderSyncService.syncBulk(mockOrders);
 
       expect(results).toHaveLength(3);
       const succeeded = results.filter(r => r.status === 'synced');
@@ -251,7 +251,7 @@ describe('ShopifyOrderSyncService', () => {
         progressReports++;
       };
 
-      await syncService.syncBulk(mockOrders, { onProgress });
+      await ShopifyOrderSyncService.syncBulk(mockOrders, { onProgress });
 
       expect(progressReports).toBeGreaterThan(0);
     });
@@ -264,7 +264,7 @@ describe('ShopifyOrderSyncService', () => {
 
       const mockOrder = createMockShopifyOrder();
 
-      await expect(syncService.syncOrder(mockOrder)).rejects.toThrow('Database error');
+      await expect(ShopifyOrderSyncService.syncOrder(mockOrder)).rejects.toThrow('Database error');
     });
 
     it('should continue bulk sync after individual failures', async () => {
@@ -284,7 +284,7 @@ describe('ShopifyOrderSyncService', () => {
         return Promise.resolve([{ id: 'order-' + callCount }] as any);
       });
 
-      const results = await syncService.syncBulk(mockOrders, {
+      const results = await ShopifyOrderSyncService.syncBulk(mockOrders, {
         continueOnError: true,
       });
 
@@ -298,7 +298,7 @@ describe('ShopifyOrderSyncService', () => {
     it('should process order creation webhook', async () => {
       const mockOrder = createMockShopifyOrder();
 
-      const result = await syncService.processWebhook('orders/create', mockOrder);
+      const result = await ShopifyOrderSyncService.processWebhook('orders/create', mockOrder);
 
       expect(result.success).toBe(true);
       expect(result.ilsOrderId).toBeDefined();
@@ -308,11 +308,11 @@ describe('ShopifyOrderSyncService', () => {
       const mockOrder = createMockShopifyOrder();
 
       // Create order
-      await syncService.syncOrder(mockOrder);
+      await ShopifyOrderSyncService.syncOrder(mockOrder);
 
       // Update order
       mockOrder.financial_status = 'paid';
-      const result = await syncService.processWebhook('orders/updated', mockOrder);
+      const result = await ShopifyOrderSyncService.processWebhook('orders/updated', mockOrder);
 
       expect(result.success).toBe(true);
     });
@@ -321,10 +321,10 @@ describe('ShopifyOrderSyncService', () => {
       const mockOrder = createMockShopifyOrder();
 
       // Create order
-      const synced = await syncService.syncOrder(mockOrder);
+      const synced = await ShopifyOrderSyncService.syncOrder(mockOrder);
 
       // Cancel order
-      const result = await syncService.processWebhook('orders/cancelled', mockOrder);
+      const result = await ShopifyOrderSyncService.processWebhook('orders/cancelled', mockOrder);
 
       expect(result.success).toBe(true);
       // Verify order status updated
@@ -339,7 +339,7 @@ describe('ShopifyOrderSyncService', () => {
     it('should track last sync time', async () => {
       const mockOrder = createMockShopifyOrder();
 
-      const result = await syncService.syncOrder(mockOrder);
+      const result = await ShopifyOrderSyncService.syncOrder(mockOrder);
 
       expect(result.lastSyncedAt).toBeDefined();
       expect(result.lastSyncedAt).toBeInstanceOf(Date);
@@ -348,9 +348,9 @@ describe('ShopifyOrderSyncService', () => {
     it('should retrieve sync history', async () => {
       const mockOrder = createMockShopifyOrder();
 
-      await syncService.syncOrder(mockOrder);
+      await ShopifyOrderSyncService.syncOrder(mockOrder);
 
-      const history = await syncService.getSyncHistory(mockOrder.id.toString());
+      const history = await ShopifyOrderSyncService.getSyncHistory(mockOrder.id.toString());
 
       expect(history).toBeDefined();
       expect(history.length).toBeGreaterThan(0);
@@ -361,10 +361,10 @@ describe('ShopifyOrderSyncService', () => {
       const order1 = createMockShopifyOrder({ id: 1001 });
       const order2 = createMockShopifyOrder({ id: 1002 });
 
-      await syncService.syncOrder(order1);
+      await ShopifyOrderSyncService.syncOrder(order1);
       // order2 intentionally not synced
 
-      const needsResync = await syncService.getOrdersNeedingSync(testCompany.id);
+      const needsResync = await ShopifyOrderSyncService.getOrdersNeedingSync(testCompany.id);
 
       expect(needsResync.some(o => o.shopifyOrderId === '1002')).toBe(true);
     });
