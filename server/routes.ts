@@ -115,6 +115,8 @@ import biAnalyticsRoutes from "./routes/bi-analytics";
 import communicationsRoutes from "./routes/communications";
 import systemAdminRoutes from "./routes/system-admin";
 import aiMlRoutes from "./routes/ai-ml";
+import bookingRoutes from "./routes/booking";
+import lensRecommendationsRoutes from "./routes/lens-recommendations";
 import { websocketService } from "./websocket";
 import path from "path";
 import {
@@ -351,6 +353,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // AI & Machine Learning routes (clinical decision support, predictive analytics, NLP)
   app.use('/api/ai-ml', isAuthenticated, aiMlRoutes);
+
+  // Advanced Booking System routes (multi-provider scheduling, waitlist, reminders)
+  app.use('/api/booking', bookingRoutes);
+
+  // Intelligent Lens Recommendation routes (prescription + lifestyle analysis)
+  app.use('/api/lens-recommendations', lensRecommendationsRoutes);
 
   // Dynamic RBAC routes (role and permission management)
   console.log('🔧 Registering Dynamic RBAC routes at /api/roles');
