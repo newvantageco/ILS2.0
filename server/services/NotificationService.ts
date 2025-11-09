@@ -62,10 +62,9 @@ export class NotificationServiceImpl implements NotificationService {
       await Promise.all([
         this.channelHandlers.websocket?.(fullNotification),
         this.channelHandlers.email?.(fullNotification),
-        this.channelHandlers.sms?.(fullNotification)
+        this.channelHandlers.sms?.(fullNotification),
+        this.notifySubscribers(fullNotification)
       ]);
-
-      this.notifySubscribers(fullNotification);
     } catch (error) {
       console.error('Error sending notification:', error);
       throw error;
@@ -121,29 +120,52 @@ export class NotificationServiceImpl implements NotificationService {
       .where(sql`(${schema.notifications.target} ->> 'type') = 'user' AND (${schema.notifications.target} ->> 'id') = ${userId}`);
   }
 
-  notifySubscribers(notification: Notification): void {
+  async notifySubscribers(notification: Notification): Promise<void> {
     const targetType = notification.target.type;
     const targetId = notification.target.id;
 
-    this.subscribers.forEach((callback, userId) => {
-      if (
-        (targetType === 'user' && targetId === userId) ||
-        (targetType === 'role' && this.userHasRole(userId, targetId)) ||
-        (targetType === 'organization' && this.userInOrganization(userId, targetId))
-      ) {
+    // Process subscribers in parallel
+    const notificationPromises = Array.from(this.subscribers.entries()).map(async ([userId, callback]) => {
+      let shouldNotify = false;
+
+      if (targetType === 'user' && targetId === userId) {
+        shouldNotify = true;
+      } else if (targetType === 'role') {
+        shouldNotify = await this.userHasRole(userId, targetId);
+      } else if (targetType === 'organization') {
+        shouldNotify = await this.userInOrganization(userId, targetId);
+      }
+
+      if (shouldNotify) {
         callback(notification);
       }
     });
+
+    await Promise.all(notificationPromises);
   }
 
-  private userHasRole(userId: string, roleId: string): boolean {
-    // TODO: Implement role check from database
-    return false;
+  private async userHasRole(userId: string, roleId: string): Promise<boolean> {
+    try {
+      const user = await db.query.users.findFirst({
+        where: eq(schema.users.id, userId),
+      });
+      return user?.role === roleId;
+    } catch (error) {
+      console.error('Error checking user role:', error);
+      return false;
+    }
   }
 
-  private userInOrganization(userId: string, orgId: string): boolean {
-    // TODO: Implement organization check from database
-    return false;
+  private async userInOrganization(userId: string, orgId: string): Promise<boolean> {
+    try {
+      const user = await db.query.users.findFirst({
+        where: eq(schema.users.id, userId),
+      });
+      return user?.companyId === orgId;
+    } catch (error) {
+      console.error('Error checking user organization:', error);
+      return false;
+    }
   }
 }
 export default NotificationServiceImpl;

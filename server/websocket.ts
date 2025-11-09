@@ -17,6 +17,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { Server as HTTPServer } from "http";
 import { createLogger, type Logger } from "./utils/logger";
 import type { IncomingMessage } from "http";
+import { getRedisConnection } from "./queue/config";
 
 export interface WebSocketMessage {
   type: "order_status" | "anomaly_alert" | "bottleneck_alert" | "metric_update" | "lims_sync";
@@ -232,18 +233,18 @@ export class WebSocketService {
 
   // ========== PRIVATE METHODS ==========
 
-  private handleConnection(socket: WebSocket, request: IncomingMessage): void {
+  private async handleConnection(socket: WebSocket, request: IncomingMessage): Promise<void> {
     const clientId = this.generateClientId();
-    
-    this.logger.info("WebSocket connection attempt", { 
+
+    this.logger.info("WebSocket connection attempt", {
       clientId,
       ip: request.socket.remoteAddress,
     });
 
-    // Extract auth info from query params or headers
-    const auth = this.extractAuthInfo(request);
+    // Extract and validate auth info from session
+    const auth = await this.extractAuthInfo(request);
     if (!auth) {
-      this.logger.warn("WebSocket connection rejected - missing auth", { clientId });
+      this.logger.warn("WebSocket connection rejected - authentication failed", { clientId });
       socket.close(4001, "Authentication required");
       return;
     }
@@ -433,28 +434,110 @@ export class WebSocketService {
     }, this.HEARTBEAT_INTERVAL);
   }
 
-  private extractAuthInfo(request: IncomingMessage): {
+  private async extractAuthInfo(request: IncomingMessage): Promise<{
     userId: string;
     organizationId: string;
     roles: string[];
-  } | null {
-    // Extract from query params (for demo purposes)
-    // In production, validate JWT token from Authorization header or query param
-    const url = new URL(request.url || "", `http://${request.headers.host}`);
-    const userId = url.searchParams.get("userId");
-    const organizationId = url.searchParams.get("organizationId");
-    const roles = url.searchParams.get("roles")?.split(",") || ["user"];
+  } | null> {
+    try {
+      // Extract session cookie from request
+      const cookies = request.headers.cookie;
+      if (!cookies) {
+        this.logger.warn("No cookies in WebSocket upgrade request");
+        return null;
+      }
 
-    if (!userId || !organizationId) {
+      // Parse cookies to find session ID
+      const cookieArray = cookies.split(';').map(c => c.trim());
+      let sessionCookie: string | null = null;
+
+      for (const cookie of cookieArray) {
+        if (cookie.startsWith('connect.sid=')) {
+          sessionCookie = cookie.substring('connect.sid='.length);
+          break;
+        }
+      }
+
+      if (!sessionCookie) {
+        this.logger.warn("No session cookie found in request");
+        return null;
+      }
+
+      // Decode the session cookie (format: s:sessionId.signature)
+      const decodedCookie = decodeURIComponent(sessionCookie);
+      const sessionId = decodedCookie.startsWith('s:')
+        ? decodedCookie.substring(2).split('.')[0]
+        : decodedCookie;
+
+      if (!sessionId) {
+        this.logger.warn("Invalid session ID format");
+        return null;
+      }
+
+      // Verify session exists in Redis or memory store
+      const redisClient = getRedisConnection();
+      if (redisClient) {
+        // Check Redis session store
+        const sessionKey = `session:${sessionId}`;
+        const sessionData = await redisClient.get(sessionKey);
+
+        if (!sessionData) {
+          this.logger.warn("Session not found in Redis", { sessionId });
+          return null;
+        }
+
+        // Parse session data
+        const session = JSON.parse(sessionData);
+        const user = session.passport?.user;
+
+        if (!user) {
+          this.logger.warn("No user in session", { sessionId });
+          return null;
+        }
+
+        // Extract user information from session
+        const userId = user.claims?.sub || user.id;
+        const organizationId = user.companyId;
+        const role = user.role || 'user';
+
+        if (!userId || !organizationId) {
+          this.logger.warn("Missing userId or organizationId in session", { sessionId });
+          return null;
+        }
+
+        return {
+          userId,
+          organizationId,
+          roles: [role],
+        };
+      } else {
+        // If Redis is not available, session validation cannot be performed
+        // In development with memory store, sessions are not accessible here
+        this.logger.warn("Session validation not available - Redis not configured");
+
+        // Fallback: Extract from query params (development only)
+        if (process.env.NODE_ENV === 'development') {
+          const url = new URL(request.url || "", `http://${request.headers.host}`);
+          const userId = url.searchParams.get("userId");
+          const organizationId = url.searchParams.get("organizationId");
+          const roles = url.searchParams.get("roles")?.split(",") || ["user"];
+
+          if (userId && organizationId) {
+            this.logger.debug("Using query param auth (development mode)", { userId, organizationId });
+            return {
+              userId,
+              organizationId,
+              roles,
+            };
+          }
+        }
+
+        return null;
+      }
+    } catch (error) {
+      this.logger.error("Error extracting auth info", error as Error);
       return null;
     }
-
-    // TODO: Validate token and extract claims
-    return {
-      userId,
-      organizationId,
-      roles,
-    };
   }
 
   private generateClientId(): string {
