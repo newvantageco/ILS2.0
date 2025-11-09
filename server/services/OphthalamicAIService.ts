@@ -155,8 +155,8 @@ Response format (JSON):
 }`;
 
     const userMessage = `Prescription:
-- Right Eye (OD): SPH ${prescription.sphereOD}, CYL ${prescription.cylinderOD}, AXIS ${prescription.axisOD}, ADD ${prescription.addOD}
-- Left Eye (OS): SPH ${prescription.sphereOS}, CYL ${prescription.cylinderOS}, AXIS ${prescription.axisOS}, ADD ${prescription.addOS}
+- Right Eye (OD): SPH ${prescription.odSphere}, CYL ${prescription.odCylinder}, AXIS ${prescription.odAxis}, ADD ${prescription.odAdd}
+- Left Eye (OS): SPH ${prescription.osSphere}, CYL ${prescription.osCylinder}, AXIS ${prescription.osAxis}, ADD ${prescription.osAdd}
 - PD: ${prescription.pd}
 
 ${lifestyle ? `Lifestyle:
@@ -213,7 +213,7 @@ What lens types, materials, and coatings would you recommend?`;
           eq(prescriptions.companyId, companyId)
         )
       )
-      .orderBy(desc(prescriptions.prescriptionDate))
+      .orderBy(desc(prescriptions.issueDate))
       .limit(1);
 
     const systemPrompt = `You are an expert contact lens specialist.
@@ -258,9 +258,9 @@ ${assessment ? `
 ` : ""}
 ${spectaclePrescription ? `
 Spectacle Prescription:
-- OD: SPH ${spectaclePrescription.sphereOD}, CYL ${spectaclePrescription.cylinderOD}
-- OS: SPH ${spectaclePrescription.sphereOS}, CYL ${spectaclePrescription.cylinderOS}
-- ADD: ${spectaclePrescription.addOD || "None"}
+- OD: SPH ${spectaclePrescription.odSphere}, CYL ${spectaclePrescription.odCylinder}
+- OS: SPH ${spectaclePrescription.osSphere}, CYL ${spectaclePrescription.osCylinder}
+- ADD: ${spectaclePrescription.odAdd || "None"}
 ` : ""}
 
 What contact lenses would you recommend for this patient?`;
@@ -314,8 +314,8 @@ Response format (JSON):
 }`;
 
     const userMessage = `Prescription values:
-- Right Eye (OD): SPH ${prescription.sphereOD}, CYL ${prescription.cylinderOD}, AXIS ${prescription.axisOD}${prescription.addOD ? `, ADD ${prescription.addOD}` : ""}
-- Left Eye (OS): SPH ${prescription.sphereOS}, CYL ${prescription.cylinderOS}, AXIS ${prescription.axisOS}${prescription.addOS ? `, ADD ${prescription.addOS}` : ""}
+- Right Eye (OD): SPH ${prescription.odSphere}, CYL ${prescription.odCylinder}, AXIS ${prescription.odAxis}${prescription.odAdd ? `, ADD ${prescription.odAdd}` : ""}
+- Left Eye (OS): SPH ${prescription.osSphere}, CYL ${prescription.osCylinder}, AXIS ${prescription.osAxis}${prescription.osAdd ? `, ADD ${prescription.osAdd}` : ""}
 - PD: ${prescription.pd}
 
 Please explain this prescription to the patient in simple terms.`;
@@ -557,7 +557,7 @@ Response format: Always respond in valid JSON with this structure:
               eq(prescriptions.companyId, context.companyId)
             )
           )
-          .orderBy(desc(prescriptions.prescriptionDate))
+          .orderBy(desc(prescriptions.issueDate))
           .limit(1);
 
         if (latestRx) {

@@ -573,7 +573,7 @@ export class ShopifyIntegrationService {
       .insert(prescriptions)
       .values({
         id: crypto.randomUUID(),
-        patientId: shopifyOrder.ilsPatientId!,
+        patientId: shopifyOrder.patientId!,
         companyId: (
           await db
             .select()
@@ -659,7 +659,7 @@ export class ShopifyIntegrationService {
     const pdMeasurement = await FaceAnalysisService.measurePupillaryDistance(
       selfieImageUrl,
       {
-        patientId: shopifyOrder.ilsPatientId!,
+        patientId: shopifyOrder.patientId!,
         companyId: (
           await db
             .select()
