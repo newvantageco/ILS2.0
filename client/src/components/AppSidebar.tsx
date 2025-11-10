@@ -45,6 +45,8 @@ import {
   Mail,
   Key,
   Activity,
+  Store,
+  Heart,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -78,6 +80,9 @@ const menuItems = {
       { title: "New Order", url: "/ecp/new-order", icon: Package },
       { title: "My Orders", url: "/ecp/orders", icon: ClipboardList },
       { title: "Returns", url: "/ecp/returns", icon: TrendingUp },
+    ],
+    integrations: [
+      { title: "NHS Integration", url: "/ecp/nhs", icon: Heart },
     ],
     analytics: [
       { title: "AI Assistant", url: "/ecp/ai-assistant", icon: Brain },
@@ -151,6 +156,8 @@ const menuItems = {
     { title: "Email Analytics", url: "/admin/email-analytics", icon: Mail },
     { title: "Email Templates", url: "/admin/email-templates", icon: FileType },
     { title: "BI Dashboard", url: "/admin/bi-dashboard", icon: BarChart3 },
+    { title: "Shopify Integration", url: "/admin/shopify", icon: Store },
+    { title: "NHS Integration", url: "/admin/nhs", icon: Heart },
   ],
   platform_admin: [
     { title: "Platform Dashboard", url: "/platform-admin/dashboard", icon: Home },
@@ -163,6 +170,8 @@ const menuItems = {
     { title: "Platform Settings", url: "/platform-admin/settings", icon: Shield },
     { title: "AI Assistant", url: "/admin/ai-assistant", icon: Brain },
     { title: "BI Dashboard", url: "/admin/bi-dashboard", icon: BarChart3 },
+    { title: "Shopify Integration", url: "/platform-admin/shopify", icon: Store },
+    { title: "NHS Integration", url: "/platform-admin/nhs", icon: Heart },
   ],
   company_admin: [
     { title: "Dashboard", url: "/company-admin/dashboard", icon: Home },
@@ -172,6 +181,14 @@ const menuItems = {
     { title: "Permissions", url: "/admin/permissions", icon: KeyRound },
     { title: "Analytics", url: "/company-admin/analytics", icon: BarChart3 },
     { title: "AI Assistant", url: "/company-admin/ai-assistant", icon: Brain },
+  ],
+  dispenser: [
+    { title: "Dashboard", url: "/dispenser/dashboard", icon: Home },
+    { title: "Inventory", url: "/dispenser/inventory", icon: Archive },
+    { title: "Orders", url: "/dispenser/orders", icon: ClipboardList },
+    { title: "Point of Sale", url: "/dispenser/pos", icon: ShoppingCart },
+    { title: "Patients", url: "/dispenser/patients", icon: UserCircle },
+    { title: "Analytics", url: "/dispenser/analytics", icon: LineChart },
   ],
 };
 
@@ -183,6 +200,7 @@ const roleLabels = {
   admin: "Administrator",
   platform_admin: "Master Admin",
   company_admin: "Company Administrator",
+  dispenser: "Dispenser",
 };
 
 export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
@@ -330,6 +348,33 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {items.analytics.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        <Link 
+                          href={item.url}
+                          aria-label={item.title}
+                          aria-current={location === item.url ? "page" : undefined}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {/* Integrations Section */}
+            <SidebarGroup>
+              <SidebarGroupLabel>Integrations</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {items.integrations.map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild

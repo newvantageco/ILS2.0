@@ -10,7 +10,7 @@ export class InMemoryEventBus {
     const list = this.handlers.get(eventName) || [];
     list.push(handler);
     this.handlers.set(eventName, list);
-    this.logger.debug("handler subscribed", { eventName });
+    this.logger.debug({ eventName }, "handler subscribed");
     return () => this.unsubscribe(eventName, handler);
   }
 
@@ -20,14 +20,14 @@ export class InMemoryEventBus {
       eventName,
       list.filter((h) => h !== handler)
     );
-    this.logger.debug("handler unsubscribed", { eventName });
+    this.logger.debug({ eventName }, "handler unsubscribed");
   }
 
   // Fire-and-forget publishing to avoid blocking the caller (Order creation)
   publish(eventName: string, payload: any) {
     const list = this.handlers.get(eventName) || [];
     if (list.length === 0) {
-      this.logger.debug("publish: no handlers registered", { eventName });
+      this.logger.debug({ eventName }, "publish: no handlers registered");
       return;
     }
 
@@ -36,7 +36,7 @@ export class InMemoryEventBus {
       Promise.resolve()
         .then(() => handler(payload))
         .catch((err) => {
-          this.logger.error("event handler error", err as Error, { eventName });
+          this.logger.error({ err, eventName }, "event handler error");
         });
     }
   }

@@ -17,13 +17,13 @@ export class RedisListEventBus {
     const list = this.handlers.get(eventName) || [];
     list.push(handler);
     this.handlers.set(eventName, list);
-    this.logger.debug("handler subscribed", { eventName });
+    this.logger.debug({ eventName }, "handler subscribed");
 
     // Start background consumer for this event if not already running
     if (!this.running.get(eventName)) {
       this.running.set(eventName, true);
       this.startConsumerLoop(eventName).catch((err) => {
-        this.logger.error('Redis consumer loop error', err as Error, { eventName });
+        this.logger.error({ err, eventName }, 'Redis consumer loop error');
         this.running.set(eventName, false);
       });
     }
@@ -37,7 +37,7 @@ export class RedisListEventBus {
       eventName,
       list.filter((h) => h !== handler)
     );
-    this.logger.debug("handler unsubscribed", { eventName });
+    this.logger.debug({ eventName }, "handler unsubscribed");
   }
 
   async publish(eventName: string, payload: any) {
@@ -45,15 +45,15 @@ export class RedisListEventBus {
     try {
       // Push JSON payload to the list (durable until popped)
       await this.redis.rpush(key, JSON.stringify(payload));
-      this.logger.debug('published to redis list', { eventName });
+      this.logger.debug({ eventName }, 'published to redis list');
     } catch (err) {
-      this.logger.error('Failed to publish to redis', err as Error, { eventName });
+      this.logger.error({ err, eventName }, 'Failed to publish to redis');
     }
   }
 
   private async startConsumerLoop(eventName: string) {
     const key = `events:${eventName}`;
-    this.logger.info('Starting redis consumer loop', { eventName });
+    this.logger.info({ eventName }, 'Starting redis consumer loop');
 
     while (this.running.get(eventName)) {
       try {
@@ -75,15 +75,15 @@ export class RedisListEventBus {
         for (const handler of handlers) {
           Promise.resolve()
             .then(() => handler(payload))
-            .catch((err) => this.logger.error('event handler error', err as Error, { eventName }));
+            .catch((err) => this.logger.error({ err, eventName }, 'event handler error'));
         }
       } catch (err) {
-        this.logger.error('Redis consumer loop exception', err as Error, { eventName });
+        this.logger.error({ err, eventName }, 'Redis consumer loop exception');
         // Backoff a bit to avoid busy-looping on fatal Redis errors
         await new Promise((r) => setTimeout(r, 1000));
       }
     }
 
-    this.logger.info('Consumer loop exiting', { eventName });
+    this.logger.info({ eventName }, 'Consumer loop exiting');
   }
 }

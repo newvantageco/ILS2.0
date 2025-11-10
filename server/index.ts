@@ -89,7 +89,7 @@ app.use(express.urlencoded({ extended: false }));
 // ============== COMPRESSION (Performance Optimization) ==============
 // Enable gzip/deflate compression for responses
 app.use(compression({
-  filter: (req, res) => {
+  filter: (req: express.Request, res: express.Response) => {
     if (req.headers['x-no-compression']) {
       return false;
     }
@@ -121,50 +121,53 @@ app.use('/api/auth/signup', authRateLimiter);
 app.use('/api/auth/signup-email', authRateLimiter);
 app.use('/api/onboarding', authRateLimiter);
 
+// ============== SESSION CONFIGURATION ==============
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret) {
+  throw new Error(
+    "❌ SESSION_SECRET must be set in .env file for security.\n" +
+    "Generate one with: openssl rand -hex 32\n" +
+    "Then add to .env: SESSION_SECRET=<generated-value>"
+  );
+}
+
+// Use Redis for session store (Chunk 10: Infrastructure Scale)
+const redisClient = getRedisConnection();
+const sessionConfig = {
+  secret: sessionSecret,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true, // XSS protection
+    secure: process.env.NODE_ENV === 'production', // HTTPS in production
+    sameSite: 'strict' as const, // CSRF protection
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+  },
+  store: undefined as any, // Will be set below if Redis available
+};
+
+// Add Redis store if available, otherwise use default memory store
+if (redisClient) {
+  sessionConfig.store = new RedisStore({
+    client: redisClient,
+    prefix: "session:",
+  });
+  log("✅ Using Redis for session storage (fast, scalable)", "express");
+} else {
+  log("⚠️  Using memory store for sessions (Redis unavailable)", "express");
+}
+
+const sessionMiddleware = session(sessionConfig);
+app.use(sessionMiddleware);
+
+// Store session middleware for WebSocket auth
+app.set('sessionMiddleware', sessionMiddleware);
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Setup authentication strategies
 if (process.env.NODE_ENV === "development") {
-  const sessionSecret = process.env.SESSION_SECRET;
-  if (!sessionSecret) {
-    throw new Error(
-      "❌ SESSION_SECRET must be set in .env file for security.\n" +
-      "Generate one with: openssl rand -hex 32\n" +
-      "Then add to .env: SESSION_SECRET=<generated-value>"
-    );
-  }
-
-  // Use Redis for session store (Chunk 10: Infrastructure Scale)
-  const redisClient = getRedisConnection();
-  const sessionConfig = {
-    secret: sessionSecret,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true, // XSS protection
-      secure: process.env.NODE_ENV === 'production', // HTTPS in production
-      sameSite: 'strict' as const, // CSRF protection
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    },
-    store: undefined as any, // Will be set below if Redis available
-  };
-
-  // Add Redis store if available, otherwise use default memory store
-  if (redisClient) {
-    sessionConfig.store = new RedisStore({
-      client: redisClient,
-      prefix: "session:",
-    });
-    log("✅ Using Redis for session storage (fast, scalable)", "express");
-  } else {
-    log("⚠️  Using memory store for sessions (Redis unavailable)", "express");
-  }
-
-  const sessionMiddleware = session(sessionConfig);
-  app.use(sessionMiddleware);
-  
-  // Store session middleware for WebSocket auth
-  app.set('sessionMiddleware', sessionMiddleware);
-
-  app.use(passport.initialize());
-  app.use(passport.session());
   setupLocalAuth();
 }
 

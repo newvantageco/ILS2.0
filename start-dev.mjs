@@ -47,7 +47,7 @@ log(colors.cyan, 'PYTHON', 'Starting Python Analytics Service on port 8000...');
 const pythonExecutable = join(__dirname, '.venv', 'bin', 'python');
 const pythonService = spawn(pythonExecutable, ['main.py'], {
   cwd: join(__dirname, 'python-service'),
-  env: { ...process.env, PYTHONUNBUFFERED: '1' },
+  env: { ...process.env, PYTHONUNBUFFERED: '1', PORT: '8000' },
   stdio: ['ignore', 'pipe', 'pipe']
 });
 

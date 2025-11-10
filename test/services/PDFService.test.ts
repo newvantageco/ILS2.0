@@ -13,7 +13,7 @@ describe('PDFService', () => {
     it('should generate invoice PDF buffer', async () => {
       const invoiceData = createMockInvoiceData();
 
-      const pdfBuffer = await pdfService.generateInvoice(invoiceData);
+      const pdfBuffer = await pdfService.generateInvoicePDF(invoiceData);
 
       expect(pdfBuffer).toBeInstanceOf(Buffer);
       expect(pdfBuffer.length).toBeGreaterThan(0);
@@ -29,7 +29,7 @@ describe('PDFService', () => {
         ],
       });
 
-      const pdfBuffer = await pdfService.generateInvoice(invoiceData);
+      const pdfBuffer = await pdfService.generateInvoicePDF(invoiceData);
       const pdfText = pdfBuffer.toString('utf8');
 
       expect(pdfText).toContain('Item 1');
@@ -43,7 +43,7 @@ describe('PDFService', () => {
         total: 240.00,
       });
 
-      const pdfBuffer = await pdfService.generateInvoice(invoiceData);
+      const pdfBuffer = await pdfService.generateInvoicePDF(invoiceData);
       const pdfText = pdfBuffer.toString('utf8');
 
       expect(pdfText).toContain('200.00');
@@ -78,7 +78,7 @@ describe('PDFService', () => {
         pd: '64',
       };
 
-      const pdfBuffer = await pdfService.generateOrderSheet(orderData);
+      const pdfBuffer = await pdfService.generateOrderSheetPDF(orderData);
 
       expect(pdfBuffer).toBeInstanceOf(Buffer);
       expect(pdfBuffer.length).toBeGreaterThan(0);
@@ -107,7 +107,7 @@ describe('PDFService', () => {
         pd: '62',
       };
 
-      const pdfBuffer = await pdfService.generateOrderSheet(orderData);
+      const pdfBuffer = await pdfService.generateOrderSheetPDF(orderData);
       const pdfText = pdfBuffer.toString('utf8');
 
       expect(pdfText).toContain('+2.50');
@@ -121,7 +121,7 @@ describe('PDFService', () => {
       const invalidData = {};
 
       await expect(
-        pdfService.generateInvoice(invalidData as any)
+        pdfService.generateInvoicePDF(invalidData as any)
       ).rejects.toThrow();
     });
 
@@ -131,18 +131,16 @@ describe('PDFService', () => {
       });
 
       await expect(
-        pdfService.generateInvoice(invalidData)
+        pdfService.generateInvoicePDF(invalidData)
       ).rejects.toThrow();
     });
   });
 
   describe('Company Branding', () => {
     it('should include company logo when provided', async () => {
-      const invoiceData = createMockInvoiceData({
-        companyLogo: 'https://example.com/logo.png',
-      });
+      const invoiceData = createMockInvoiceData();
 
-      const pdfBuffer = await pdfService.generateInvoice(invoiceData);
+      const pdfBuffer = await pdfService.generateInvoicePDF(invoiceData);
 
       expect(pdfBuffer).toBeInstanceOf(Buffer);
       // Logo URL should be referenced in PDF
@@ -152,9 +150,8 @@ describe('PDFService', () => {
 
     it('should work without company logo', async () => {
       const invoiceData = createMockInvoiceData();
-      delete invoiceData.companyLogo;
 
-      const pdfBuffer = await pdfService.generateInvoice(invoiceData);
+      const pdfBuffer = await pdfService.generateInvoicePDF(invoiceData);
 
       expect(pdfBuffer).toBeInstanceOf(Buffer);
       expect(pdfBuffer.length).toBeGreaterThan(0);

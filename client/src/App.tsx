@@ -104,6 +104,7 @@ const AIModelManagementPage = lazy(() => import("@/pages/AIModelManagementPage")
 const MLModelManagementPage = lazy(() => import("@/pages/MLModelManagementPage"));
 const PythonMLDashboardPage = lazy(() => import("@/pages/PythonMLDashboardPage"));
 const ShopifyIntegrationPage = lazy(() => import("@/pages/integrations/ShopifyIntegrationPage"));
+const NHSIntegrationPage = lazy(() => import("@/pages/integrations/NHSIntegrationPage"));
 const FeatureFlagsPage = lazy(() => import("@/pages/FeatureFlagsPage"));
 const APIDocumentationPage = lazy(() => import("@/pages/APIDocumentationPage"));
 const SupplierLibraryPage = lazy(() => import("@/pages/SupplierLibraryPage"));
@@ -436,6 +437,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/prescription-templates" component={PrescriptionTemplatesPage} />
             <Route path="/ecp/clinical-protocols" component={ClinicalProtocolsPage} />
             <Route path="/ecp/analytics" component={BusinessAnalyticsPage} />
+            <Route path="/ecp/nhs" component={NHSIntegrationPage} />
             <Route path="/order/:id" component={OrderDetailsPage} />
             <Route path="/ecp/returns">
               <div className="text-center py-12">
@@ -529,6 +531,7 @@ function AuthenticatedApp() {
             <Route path="/admin/ml-models" component={MLModelManagementPage} />
             <Route path="/admin/python-ml" component={PythonMLDashboardPage} />
             <Route path="/admin/shopify" component={ShopifyIntegrationPage} />
+            <Route path="/admin/nhs" component={NHSIntegrationPage} />
             <Route path="/admin/feature-flags" component={FeatureFlagsPage} />
             <Route path="/admin/api-docs" component={APIDocumentationPage} />
             <Route path="/admin/platform">
@@ -554,6 +557,7 @@ function AuthenticatedApp() {
             <Route path="/platform-admin/ml-models" component={MLModelManagementPage} />
             <Route path="/platform-admin/python-ml" component={PythonMLDashboardPage} />
             <Route path="/platform-admin/shopify" component={ShopifyIntegrationPage} />
+            <Route path="/platform-admin/nhs" component={NHSIntegrationPage} />
             <Route path="/platform-admin/feature-flags" component={FeatureFlagsPage} />
             <Route path="/platform-admin/api-docs" component={APIDocumentationPage} />
             

@@ -4,7 +4,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Enums
-export const roleEnum = pgEnum("role", ["ecp", "admin", "lab_tech", "engineer", "supplier", "platform_admin", "company_admin"]);
+export const roleEnum = pgEnum("role", ["ecp", "admin", "lab_tech", "engineer", "supplier", "platform_admin", "company_admin", "dispenser"]);
 export const subscriptionPlanEnum = pgEnum("subscription_plan", ["full", "free_ecp"]);
 
 // Session storage table for Replit Auth
@@ -22,7 +22,7 @@ export const sessions = pgTable(
   ],
 );
 
-export const userRoleEnum = pgEnum("user_role", ["ecp", "lab_tech", "engineer", "supplier", "admin", "platform_admin", "company_admin"]);
+export const userRoleEnum = pgEnum("user_role", ["ecp", "lab_tech", "engineer", "supplier", "admin", "platform_admin", "company_admin", "dispenser"]);
 export const userRoleEnhancedEnum = pgEnum("user_role_enhanced", [
   "owner",
   "admin", 
