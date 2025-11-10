@@ -1,0 +1,219 @@
+name: Security Checks
+
+on:
+  schedule:
+    # Run weekly on Mondays at 9:00 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch: # Allow manual trigger
+  push:
+    branches: [ main ]
+
+jobs:
+  dependency-scan:
+    name: Dependency Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run npm audit
+        run: npm audit --json > audit-results.json || true
+      - name: Parse audit results
+        run: |
+          if [ -f audit-results.json ]; then
+            echo "📊 Security Audit Results:"
+            cat audit-results.json | jq '.metadata.vulnerabilities'
+
+            CRITICAL=$(cat audit-results.json | jq '.metadata.vulnerabilities.critical // 0')
+            HIGH=$(cat audit-results.json | jq '.metadata.vulnerabilities.high // 0')
+            MODERATE=$(cat audit-results.json | jq '.metadata.vulnerabilities.moderate // 0')
+            LOW=$(cat audit-results.json | jq '.metadata.vulnerabilities.low // 0')
+
+            echo ""
+            echo "🔍 Vulnerability Summary:"
+            echo "  Critical: $CRITICAL"
+            echo "  High: $HIGH"
+            echo "  Moderate: $MODERATE"
+            echo "  Low: $LOW"
+
+            if [ "$CRITICAL" -gt 0 ]; then
+              echo ""
+              echo "❌ CRITICAL vulnerabilities found! Please fix immediately."
+              exit 1
+            fi
+
+            if [ "$HIGH" -gt 5 ]; then
+              echo ""
+              echo "⚠️  Too many HIGH severity vulnerabilities found."
+              exit 1
+            fi
+          fi
+      - name: Upload audit results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: npm-audit-results
+          path: audit-results.json
+          retention-days: 30
+
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Install license checker
+        run: npm install -g license-checker
+      - name: Check licenses
+        run: |
+          license-checker --json > licenses.json
+          license-checker --summary
+
+          # Check for problematic licenses
+          if grep -q "GPL" licenses.json; then
+            echo "⚠️  Warning: GPL licensed dependencies found"
+            echo "Review licenses.json for compatibility with your license"
+          fi
+      - name: Upload license report
+        uses: actions/upload-artifact@v3
+        with:
+          name: license-report
+          path: licenses.json
+          retention-days: 30
+
+  code-scanning:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'javascript' ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ matrix.language }}
+          queries: +security-and-quality
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  secret-scanning:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+  docker-security-scan:
+    name: Docker Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  outdated-dependencies:
+    name: Check Outdated Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Check outdated packages
+        run: |
+          echo "📦 Checking for outdated dependencies..."
+          npm outdated || true
+
+          # Create issue if major updates available
+          OUTDATED=$(npm outdated --json || echo '{}')
+
+          echo "$OUTDATED" | jq -r 'to_entries[] | select(.value.latest != .value.current) | "\(.key): \(.value.current) -> \(.value.latest)"'
+
+  env-file-check:
+    name: Check for Leaked .env Files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for .env files in git
+        run: |
+          if git ls-files | grep -E '^\.env$'; then
+            echo "❌ .env file found in git history!"
+            echo "This may contain secrets. Please remove from git history immediately."
+            exit 1
+          fi
+
+          if git ls-files | grep -E '^\.env\.production$'; then
+            echo "❌ .env.production file found in git history!"
+            echo "Production environment files should never be committed."
+            exit 1
+          fi
+
+          echo "✅ No .env files found in git"
+
+  security-headers-check:
+    name: Security Headers Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check security middleware
+        run: |
+          # Check if security headers are properly configured
+          if ! grep -r "helmet" server/; then
+            echo "⚠️  Warning: Helmet.js not found in server code"
+            echo "Consider adding security headers middleware"
+          fi
+
+          if ! grep -r "rateLimit" server/; then
+            echo "⚠️  Warning: Rate limiting not found in server code"
+            echo "Consider adding rate limiting to prevent DDoS"
+          fi
+
+          # Check for CORS configuration
+          if ! grep -r "cors" server/; then
+            echo "⚠️  Warning: CORS configuration not found"
+            echo "Ensure CORS is properly configured for security"
+          fi
+
+          echo "✅ Security middleware checks completed"

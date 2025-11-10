@@ -1,0 +1,128 @@
+version: '3.8'
+
+# Development Docker Compose - with hot reload and development tools
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: ils-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ils_db_dev
+      POSTGRES_USER: ils_user
+      POSTGRES_PASSWORD: dev_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ils_user -d ils_db_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ils-dev-network
+
+  # Redis for sessions and caching
+  redis:
+    image: redis:7-alpine
+    container_name: ils-redis-dev
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ils-dev-network
+
+  # ILS Development Application (with hot reload)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: development
+    container_name: ils-app-dev
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://ils_user:dev_password@postgres:5432/ils_db_dev
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: development_session_secret
+      ALLOWED_ORIGINS: "*"
+      VITE_API_URL: http://localhost:5000
+    ports:
+      - "5001:5000"  # Different port for dev
+      - "5173:5173"  # Vite dev server
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    command: npm run dev
+    networks:
+      - ils-dev-network
+
+  # Adminer - Database Management UI
+  adminer:
+    image: adminer:latest
+    container_name: ils-adminer-dev
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    ports:
+      - "8082:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: nette
+    networks:
+      - ils-dev-network
+
+  # MailHog - Email testing tool
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: ils-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI
+    networks:
+      - ils-dev-network
+
+  # Redis Commander
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: ils-redis-commander-dev
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8083:8081"
+    networks:
+      - ils-dev-network
+
+networks:
+  ils-dev-network:
+    driver: bridge
+    name: ils-dev-network
+
+volumes:
+  postgres_dev_data:
+    name: ils-postgres-dev-data
+  redis_dev_data:
+    name: ils-redis-dev-data

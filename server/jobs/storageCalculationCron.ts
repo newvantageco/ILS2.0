@@ -28,7 +28,7 @@ export function startStorageCalculationCron() {
       // Placeholder - calculate storage for all companies
       logger.info('Storage calculation completed (implementation pending)');
     } catch (error) {
-      logger.error('Fatal error in storage calculation cron', error as Error);
+      logger.error({ err: error }, 'Fatal error in storage calculation cron');
     }
   }, {
     timezone: 'America/New_York' // Change to your timezone
@@ -48,7 +48,7 @@ export async function calculateStorageNow() {
   try {
     logger.info('Manual storage calculation completed (implementation pending)');
   } catch (error) {
-    logger.error('Failed to calculate storage manually', error as Error);
+    logger.error({ err: error }, 'Failed to calculate storage manually');
     throw error;
   }
 }

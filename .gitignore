@@ -22,3 +22,8 @@ python-service/*.pyc
 # Uploaded files
 uploads/
 !uploads/.gitkeep
+
+# Playwright test artifacts
+playwright-report/
+test-results/
+playwright/.cache/

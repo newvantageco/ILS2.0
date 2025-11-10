@@ -1,0 +1,135 @@
+name: Performance Monitoring
+
+on:
+  schedule:
+    # Run performance tests daily at midnight
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  lighthouse:
+    name: Lighthouse Performance Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          urls: |
+            https://ils.example.com
+            https://ils.example.com/login
+            https://ils.example.com/dashboard
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+  load-test:
+    name: Load Testing
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run load tests
+        run: |
+          cat > loadtest.js << 'EOF'
+          import http from 'k6/http';
+          import { check, sleep } from 'k6';
+
+          export const options = {
+            stages: [
+              { duration: '2m', target: 100 }, // Ramp up to 100 users
+              { duration: '5m', target: 100 }, // Stay at 100 users
+              { duration: '2m', target: 200 }, // Ramp up to 200 users
+              { duration: '5m', target: 200 }, // Stay at 200 users
+              { duration: '2m', target: 0 },   // Ramp down to 0 users
+            ],
+            thresholds: {
+              http_req_duration: ['p(95)<500'], // 95% of requests should be below 500ms
+              http_req_failed: ['rate<0.01'],   // Error rate should be less than 1%
+            },
+          };
+
+          export default function () {
+            const res = http.get('https://ils.example.com/api/health');
+            check(res, {
+              'status is 200': (r) => r.status === 200,
+              'response time < 500ms': (r) => r.timings.duration < 500,
+            });
+            sleep(1);
+          }
+          EOF
+
+          k6 run --out json=results.json loadtest.js
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results
+          path: results.json
+
+      - name: Analyze results
+        run: |
+          echo "Load test completed. Check artifacts for detailed results."
+
+  bundle-size:
+    name: Bundle Size Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Analyze bundle size
+        run: |
+          echo "Analyzing bundle sizes..."
+          du -sh dist/*
+
+          TOTAL_SIZE=$(du -sb dist | cut -f1)
+          TOTAL_SIZE_MB=$((TOTAL_SIZE / 1024 / 1024))
+
+          echo "Total bundle size: ${TOTAL_SIZE_MB}MB"
+
+          if [ $TOTAL_SIZE_MB -gt 10 ]; then
+            echo "::warning::Bundle size exceeds 10MB"
+          fi
+
+      - name: Comment bundle size
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+
+            const bundleSize = execSync('du -sh dist').toString().trim();
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Bundle Size Report\n\n\`\`\`\n${bundleSize}\n\`\`\``
+            });

@@ -40,9 +40,9 @@ export function startDailyBriefingCron() {
       // Generate briefings for each company
       for (const company of activeCompanies) {
         try {
-          logger.info(`Generating briefing for company: ${company.name}`, { 
-            companyId: company.id 
-          });
+          logger.info({
+            companyId: company.id
+          }, `Generating briefing for company: ${company.name}`);
 
           // Use first admin user as the userId (or system user)
           const briefing = await insightsService.generateDailyBriefing(
@@ -83,25 +83,26 @@ export function startDailyBriefingCron() {
           }
 
           successCount++;
-          logger.info(`Briefing generated successfully for ${company.name}`, {
+          logger.info({
             companyId: company.id,
             insightCount: briefing.insights.length
-          });
+          }, `Briefing generated successfully for ${company.name}`);
         } catch (error) {
           errorCount++;
-          logger.error(`Failed to generate briefing for ${company.name}`, error as Error, {
+          logger.error({
+            err: error,
             companyId: company.id
-          });
+          }, `Failed to generate briefing for ${company.name}`);
         }
       }
 
-      logger.info("Daily briefing generation completed", {
+      logger.info({
         total: activeCompanies.length,
         success: successCount,
         errors: errorCount
-      });
+      }, "Daily briefing generation completed");
     } catch (error) {
-      logger.error("Fatal error in daily briefing cron", error as Error);
+      logger.error({ err: error }, "Fatal error in daily briefing cron");
     }
   }, {
     timezone: "America/New_York" // Change to your timezone
@@ -165,7 +166,7 @@ export async function generateBriefingNow() {
 
     logger.info("Manual briefing generation completed");
   } catch (error) {
-    logger.error("Failed to generate manual briefing", error as Error);
+    logger.error({ err: error }, "Failed to generate manual briefing");
     throw error;
   }
 }

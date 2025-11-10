@@ -1,44 +1,1526 @@
-## Development Guide
+# Development Guide - ILS 2.0
 
-### Quick Start
-1. Install: `npm install`
-2. Migrate DB: `npm run db:push`
-3. Run dev: `npm run dev` → http://localhost:3000
+Comprehensive guide for local development, debugging, and troubleshooting.
 
-### Useful Scripts
-- Type check: `npm run check`
-- All tests: `npm run test:all`
-- Unit only: `npm run test:unit`
-- Integration only: `npm run test:integration`
-- Component tests: `npm run test:components`
-- E2E: `npm run test:e2e` (or `:headed`/`:ui`)
-- Build: `npm run build`
+## Table of Contents
 
-### Backend
-- Entry: `server/index.ts` → `registerRoutes()`; dev uses Vite middleware
-- Auth: `replitAuth.ts` (Replit OIDC) and `localAuth.ts` (email/password)
-- Storage: Drizzle via `shared/schema.ts` and `server/storage.ts`
-- WebSocket: `server/websocket.ts`
+- [Environment Setup](#environment-setup)
+- [Database Management](#database-management)
+- [Running the Application](#running-the-application)
+- [Development Tools](#development-tools)
+- [Debugging](#debugging)
+- [Working with AI Services](#working-with-ai-services)
+- [API Development](#api-development)
+- [Frontend Development](#frontend-development)
+- [Common Development Tasks](#common-development-tasks)
+- [Performance Optimization](#performance-optimization)
+- [Troubleshooting](#troubleshooting)
 
-### Frontend
-- Entry: `client/src/main.tsx` → `client/src/App.tsx`
-- Routing: Wouter + `useAuth` gates
-- State: TanStack Query in `client/src/lib/queryClient.ts`
+---
 
-### Environment
-- See README for required vars; copy `.env.example` if available
-- Port can be overridden via `PORT`
+## Environment Setup
 
-### Debugging
-- Server: add breakpoints in VSCode, run `tsx` in inspect mode if needed
-- Client: use React DevTools; network tab for API calls
+### Prerequisites Installation
 
-### Testing Notes
-- Keep tests colocated under `test/` (unit/integration) and component tests via Vitest
-- Playwright E2E expects server on `http://localhost:3000`
+**macOS:**
+```bash
+# Install Homebrew (if not installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-### Conventions
-- Use Zod validation for request payloads
-- Enforce role and tenancy checks on all protected routes
-- Prefer small, focused PRs and Conventional Commits
+# Install Node.js 20
+brew install node@20
 
+# Install PostgreSQL
+brew install postgresql@15
+brew services start postgresql@15
+
+# Install Redis (optional)
+brew install redis
+brew services start redis
+```
+
+**Ubuntu/Debian:**
+```bash
+# Install Node.js 20
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Install PostgreSQL
+sudo apt-get install postgresql-15 postgresql-contrib
+sudo systemctl start postgresql
+
+# Install Redis (optional)
+sudo apt-get install redis-server
+sudo systemctl start redis-server
+```
+
+**Windows:**
+```powershell
+# Install via Chocolatey
+choco install nodejs-lts postgresql redis-64
+
+# Or download installers:
+# Node.js: https://nodejs.org/
+# PostgreSQL: https://www.postgresql.org/download/windows/
+# Redis: https://redis.io/docs/getting-started/installation/install-redis-on-windows/
+```
+
+### Project Setup
+
+1. **Clone and install dependencies:**
+   ```bash
+   git clone https://github.com/newvantageco/ILS2.0.git
+   cd ILS2.0
+   npm install
+   ```
+
+2. **Configure environment variables:**
+   ```bash
+   cp .env.example .env
+   ```
+
+   Edit `.env` with your configuration:
+   ```env
+   # Database
+   DATABASE_URL="postgresql://postgres:password@localhost:5432/ils2_dev"
+
+   # Session (generate with: openssl rand -base64 32)
+   SESSION_SECRET="your-secure-random-string"
+
+   # AI Services (optional for basic development)
+   OPENAI_API_KEY="sk-..."
+   ANTHROPIC_API_KEY="sk-ant-..."
+
+   # Development
+   NODE_ENV="development"
+   PORT="5000"
+   ```
+
+3. **Set up database:**
+   ```bash
+   # Create database
+   createdb ils2_dev
+
+   # Push schema to database
+   npm run db:push
+
+   # (Optional) Seed with test data
+   npm run db:seed
+   ```
+
+4. **Verify installation:**
+   ```bash
+   npm run dev
+   ```
+
+   Visit http://localhost:5000 - you should see the login page.
+
+---
+
+## Database Management
+
+### Drizzle Studio
+
+Visual database browser and editor:
+
+```bash
+# Open Drizzle Studio
+npm run db:studio
+```
+
+Access at http://localhost:4983
+
+**Features:**
+- Browse all tables and relationships
+- Edit data directly
+- Run custom queries
+- View schema
+
+### Schema Changes
+
+**Development workflow:**
+
+1. **Edit schema:**
+   ```typescript
+   // shared/schema.ts
+   export const myNewTable = pgTable('my_new_table', {
+     id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+     companyId: text('company_id').notNull(),
+     name: text('name').notNull(),
+     createdAt: timestamp('created_at').defaultNow(),
+   });
+   ```
+
+2. **Push to development database:**
+   ```bash
+   npm run db:push
+   ```
+
+   This directly syncs your schema to the database (no migrations needed for dev).
+
+3. **For production, generate migration:**
+   ```bash
+   npm run db:generate
+   # Creates migration file in drizzle/migrations/
+
+   npm run db:migrate
+   # Applies migration to database
+   ```
+
+### Database Utilities
+
+**Reset database:**
+```bash
+# WARNING: Deletes all data
+dropdb ils2_dev
+createdb ils2_dev
+npm run db:push
+```
+
+**Backup database:**
+```bash
+pg_dump ils2_dev > backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+**Restore database:**
+```bash
+psql ils2_dev < backup_20240115_143000.sql
+```
+
+**Query database directly:**
+```bash
+psql ils2_dev
+
+# Example queries
+SELECT * FROM users LIMIT 10;
+SELECT * FROM patients WHERE company_id = 'comp_123';
+\dt  -- List all tables
+\d patients  -- Describe patients table
+```
+
+---
+
+## Running the Application
+
+### Development Mode
+
+**Full stack (recommended):**
+```bash
+npm run dev
+```
+
+This runs:
+- Vite dev server (frontend) on port 5173
+- Express API server (backend) on port 5000
+- Hot reload for both frontend and backend
+
+**Frontend only:**
+```bash
+cd client
+npm run dev
+```
+
+**Backend only:**
+```bash
+npm run server
+```
+
+### Production Mode
+
+**Build and preview:**
+```bash
+npm run build
+npm run preview
+```
+
+**Production server:**
+```bash
+NODE_ENV=production npm start
+```
+
+### Multiple Terminal Setup
+
+**Terminal 1 - Application:**
+```bash
+npm run dev
+```
+
+**Terminal 2 - Tests:**
+```bash
+npm run test:components -- --watch
+```
+
+**Terminal 3 - Database:**
+```bash
+npm run db:studio
+```
+
+**Terminal 4 - Git/Commands:**
+```bash
+# Available for git commands, inspections, etc.
+```
+
+---
+
+## Development Tools
+
+### VS Code Extensions
+
+**Essential:**
+- **ESLint** - JavaScript linting
+- **TypeScript** - Language support
+- **Tailwind CSS IntelliSense** - Tailwind autocomplete
+- **Prettier** - Code formatting (if configured)
+
+**Recommended:**
+- **GitLens** - Git visualization
+- **Error Lens** - Inline error highlighting
+- **REST Client** - API testing
+- **SQLTools** - Database browsing
+
+### VS Code Settings
+
+Create `.vscode/settings.json`:
+
+```json
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.git": true,
+    "**/dist": true
+  }
+}
+```
+
+### Browser DevTools
+
+**React DevTools:**
+- Install React DevTools extension for Chrome/Firefox
+- Inspect component props and state
+- Profile component renders
+
+**Redux DevTools (if using Redux):**
+- Time-travel debugging
+- Action inspection
+- State diff visualization
+
+---
+
+## Debugging
+
+### Backend Debugging
+
+**Console logging:**
+```typescript
+// Structured logging
+console.info('Processing order', { orderId, status });
+console.error('Failed to create patient', { error, patientData });
+console.debug('Database query', { query, params });
+```
+
+**VS Code debugger:**
+
+Create `.vscode/launch.json`:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Server",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "server"],
+      "skipFiles": ["<node_internals>/**"],
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }
+  ]
+}
+```
+
+**Set breakpoints and use:**
+- F5 to start debugging
+- F10 to step over
+- F11 to step into
+- Inspect variables in debug panel
+
+**Database query debugging:**
+```typescript
+// Log all Drizzle queries
+import { db } from './db';
+
+db.$client.on('query', (e) => {
+  console.debug('Query:', e.query);
+  console.debug('Params:', e.params);
+});
+```
+
+### Frontend Debugging
+
+**React DevTools:**
+```typescript
+// Add display names for debugging
+export function MyComponent() {
+  // Component logic
+}
+MyComponent.displayName = 'MyComponent';
+```
+
+**TanStack Query DevTools:**
+
+Already included in development mode. View at bottom-right of screen:
+- Query status
+- Cache data
+- Mutation status
+- Refetch controls
+
+**Console debugging:**
+```typescript
+// Debug component renders
+useEffect(() => {
+  console.debug('Component mounted', { props });
+  return () => console.debug('Component unmounted');
+}, []);
+
+// Debug state changes
+useEffect(() => {
+  console.debug('State changed', { oldValue, newValue });
+}, [value]);
+```
+
+### Network Debugging
+
+**Chrome DevTools Network Tab:**
+- Filter by "Fetch/XHR"
+- Inspect request/response headers
+- View response payloads
+- Monitor timing
+
+**API request logging:**
+```typescript
+// Log all API requests
+import axios from 'axios';
+
+axios.interceptors.request.use(config => {
+  console.debug('API Request:', {
+    method: config.method,
+    url: config.url,
+    data: config.data
+  });
+  return config;
+});
+
+axios.interceptors.response.use(
+  response => {
+    console.debug('API Response:', {
+      status: response.status,
+      data: response.data
+    });
+    return response;
+  },
+  error => {
+    console.error('API Error:', {
+      status: error.response?.status,
+      message: error.message,
+      data: error.response?.data
+    });
+    return Promise.reject(error);
+  }
+);
+```
+
+---
+
+## Working with AI Services
+
+### Local Development (Optional AI)
+
+The application works without AI services for basic development:
+
+```env
+# .env - Comment out AI keys
+# OPENAI_API_KEY="sk-..."
+# ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+AI features will gracefully fail with user-friendly messages.
+
+### OpenAI Integration
+
+**Setup:**
+```env
+OPENAI_API_KEY="sk-proj-..."
+```
+
+**Test in code:**
+```typescript
+// server/services/MasterAIService.ts
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// Test connection
+const response = await openai.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello!' }],
+  max_tokens: 50,
+});
+
+console.log('OpenAI response:', response.choices[0].message.content);
+```
+
+**Development tips:**
+- Use `gpt-3.5-turbo` for faster/cheaper testing
+- Set low `max_tokens` during development
+- Mock AI responses in tests
+- Monitor usage at https://platform.openai.com/usage
+
+### Anthropic Claude Integration
+
+**Setup:**
+```env
+ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+**Test in code:**
+```typescript
+// server/services/OphthalamicAIService.ts
+import Anthropic from '@anthropic-ai/sdk';
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+// Test connection
+const message = await anthropic.messages.create({
+  model: 'claude-3-sonnet-20240229',
+  max_tokens: 50,
+  messages: [{ role: 'user', content: 'Hello!' }],
+});
+
+console.log('Claude response:', message.content[0].text);
+```
+
+### Python RAG Service (Optional)
+
+**Start Python service:**
+```bash
+cd python-service
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python app.py
+```
+
+**Configure:**
+```env
+PYTHON_SERVICE_URL="http://localhost:8000"
+```
+
+---
+
+## API Development
+
+### Creating New Endpoints
+
+**1. Define route:**
+```typescript
+// server/routes/myFeature.ts
+import express from 'express';
+import { isAuthenticated } from '../middleware/auth';
+import { validateRequest } from '../middleware/validation';
+import { z } from 'zod';
+
+const router = express.Router();
+
+// Request validation schema
+const createItemSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+});
+
+/**
+ * @openapi
+ * /api/my-feature/items:
+ *   post:
+ *     summary: Create new item
+ *     tags: [MyFeature]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Item created successfully
+ */
+router.post(
+  '/items',
+  isAuthenticated,
+  validateRequest(createItemSchema),
+  async (req, res) => {
+    try {
+      const { name, description } = req.body;
+      const companyId = req.user!.companyId;
+
+      // Business logic here
+      const item = await createItem({ name, description, companyId });
+
+      res.status(201).json(item);
+    } catch (error) {
+      console.error('Failed to create item:', error);
+      res.status(500).json({ error: 'Failed to create item' });
+    }
+  }
+);
+
+export default router;
+```
+
+**2. Register route:**
+```typescript
+// server/routes.ts
+import myFeatureRoutes from './routes/myFeature';
+
+app.use('/api/my-feature', myFeatureRoutes);
+```
+
+**3. Test with curl:**
+```bash
+# Login first
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password"}' \
+  -c cookies.txt
+
+# Test endpoint
+curl -X POST http://localhost:5000/api/my-feature/items \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"name":"Test Item"}'
+```
+
+### API Testing
+
+**Using REST Client (VS Code):**
+
+Create `api-tests.http`:
+
+```http
+### Login
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password"
+}
+
+### Create Item
+POST http://localhost:5000/api/my-feature/items
+Content-Type: application/json
+
+{
+  "name": "Test Item",
+  "description": "Test description"
+}
+```
+
+**Using Postman:**
+1. Import collection from `/api-docs.json`
+2. Set up environment variables
+3. Create request collections
+4. Share with team
+
+---
+
+## Frontend Development
+
+### Component Development Workflow
+
+**1. Create component:**
+```typescript
+// client/src/components/MyComponent.tsx
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+
+interface MyComponentProps {
+  title: string;
+  onAction?: () => void;
+}
+
+export function MyComponent({ title, onAction }: MyComponentProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Button onClick={onAction}>Action</Button>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+**2. Add to Storybook (if configured):**
+```typescript
+// client/src/components/MyComponent.stories.tsx
+import type { Meta, StoryObj } from '@storybook/react';
+import { MyComponent } from './MyComponent';
+
+const meta: Meta<typeof MyComponent> = {
+  title: 'Components/MyComponent',
+  component: MyComponent,
+};
+
+export default meta;
+type Story = StoryObj<typeof MyComponent>;
+
+export const Default: Story = {
+  args: {
+    title: 'Example Title',
+  },
+};
+```
+
+**3. Use in page:**
+```typescript
+// client/src/pages/MyPage.tsx
+import { MyComponent } from '@/components/MyComponent';
+
+export default function MyPage() {
+  return (
+    <div>
+      <MyComponent
+        title="Dashboard"
+        onAction={() => console.log('Action clicked')}
+      />
+    </div>
+  );
+}
+```
+
+### Data Fetching with TanStack Query
+
+**Setup query:**
+```typescript
+// client/src/hooks/useItems.ts
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+export function useItems() {
+  return useQuery({
+    queryKey: ['items'],
+    queryFn: async () => {
+      const response = await fetch('/api/my-feature/items');
+      if (!response.ok) throw new Error('Failed to fetch items');
+      return response.json();
+    },
+  });
+}
+
+export function useCreateItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { name: string }) => {
+      const response = await fetch('/api/my-feature/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Failed to create item');
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate and refetch items query
+      queryClient.invalidateQueries({ queryKey: ['items'] });
+    },
+  });
+}
+```
+
+**Use in component:**
+```typescript
+function MyComponent() {
+  const { data: items, isLoading } = useItems();
+  const createItem = useCreateItem();
+
+  const handleCreate = () => {
+    createItem.mutate({ name: 'New Item' });
+  };
+
+  if (isLoading) return <div>Loading...</div>;
+
+  return (
+    <div>
+      <button onClick={handleCreate}>Create Item</button>
+      {items?.map(item => <div key={item.id}>{item.name}</div>)}
+    </div>
+  );
+}
+```
+
+---
+
+## Common Development Tasks
+
+### Adding a Form
+
+**Using React Hook Form + Zod:**
+
+```typescript
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+
+const formSchema = z.object({
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Invalid email address'),
+});
+
+type FormData = z.infer<typeof formSchema>;
+
+export function PatientForm({ onSubmit }: { onSubmit: (data: FormData) => void }) {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+  });
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <Input {...register('firstName')} placeholder="First Name" />
+        {errors.firstName && (
+          <p className="text-red-500 text-sm">{errors.firstName.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Input {...register('lastName')} placeholder="Last Name" />
+        {errors.lastName && (
+          <p className="text-red-500 text-sm">{errors.lastName.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Input {...register('email')} type="email" placeholder="Email" />
+        {errors.email && (
+          <p className="text-red-500 text-sm">{errors.email.message}</p>
+        )}
+      </div>
+
+      <Button type="submit">Submit</Button>
+    </form>
+  );
+}
+```
+
+### Adding a Modal/Dialog
+
+```typescript
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+
+export function CreatePatientDialog() {
+  const [open, setOpen] = useState(false);
+
+  const handleSubmit = (data: FormData) => {
+    // Handle form submission
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>Add Patient</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create New Patient</DialogTitle>
+        </DialogHeader>
+        <PatientForm onSubmit={handleSubmit} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
+
+### Adding a Table
+
+```typescript
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+
+export function PatientsTable({ patients }: { patients: Patient[] }) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Email</TableHead>
+          <TableHead>Phone</TableHead>
+          <TableHead>Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {patients.map((patient) => (
+          <TableRow key={patient.id}>
+            <TableCell>{patient.firstName} {patient.lastName}</TableCell>
+            <TableCell>{patient.email}</TableCell>
+            <TableCell>{patient.phone}</TableCell>
+            <TableCell>
+              <Button size="sm" variant="outline">Edit</Button>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+```
+
+---
+
+## Performance Optimization
+
+### Frontend Performance
+
+**Code splitting:**
+```typescript
+// Lazy load routes
+import { lazy, Suspense } from 'react';
+
+const PatientsPage = lazy(() => import('./pages/Patients'));
+const OrdersPage = lazy(() => import('./pages/Orders'));
+
+function App() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <Routes>
+        <Route path="/patients" element={<PatientsPage />} />
+        <Route path="/orders" element={<OrdersPage />} />
+      </Routes>
+    </Suspense>
+  );
+}
+```
+
+**Memoization:**
+```typescript
+import { memo, useMemo, useCallback } from 'react';
+
+// Memoize expensive component
+export const PatientCard = memo(({ patient }: { patient: Patient }) => {
+  return <div>{patient.name}</div>;
+});
+
+// Memoize expensive calculation
+function OrderSummary({ orders }: { orders: Order[] }) {
+  const totalRevenue = useMemo(() => {
+    return orders.reduce((sum, order) => sum + order.totalPrice, 0);
+  }, [orders]);
+
+  return <div>Total: £{totalRevenue}</div>;
+}
+
+// Memoize callback
+function ParentComponent() {
+  const handleClick = useCallback(() => {
+    console.log('Clicked');
+  }, []);
+
+  return <ChildComponent onClick={handleClick} />;
+}
+```
+
+**Query optimization:**
+```typescript
+// Prefetch data
+const queryClient = useQueryClient();
+
+queryClient.prefetchQuery({
+  queryKey: ['patients'],
+  queryFn: fetchPatients,
+});
+
+// Stale time to reduce refetches
+useQuery({
+  queryKey: ['patients'],
+  queryFn: fetchPatients,
+  staleTime: 5 * 60 * 1000, // 5 minutes
+});
+```
+
+### Backend Performance
+
+**Database indexing:**
+```typescript
+// Add indexes for frequently queried fields
+export const patients = pgTable('patients', {
+  id: text('id').primaryKey(),
+  companyId: text('company_id').notNull(),
+  email: text('email'),
+}, (table) => ({
+  companyIdIdx: index('patients_company_id_idx').on(table.companyId),
+  emailIdx: index('patients_email_idx').on(table.email),
+}));
+```
+
+**Query optimization:**
+```typescript
+// Bad - N+1 query problem
+const orders = await db.select().from(schema.orders);
+for (const order of orders) {
+  order.patient = await db.select()
+    .from(schema.patients)
+    .where(eq(schema.patients.id, order.patientId));
+}
+
+// Good - Join query
+const orders = await db.select()
+  .from(schema.orders)
+  .leftJoin(schema.patients, eq(schema.orders.patientId, schema.patients.id));
+```
+
+**Caching:**
+```typescript
+import NodeCache from 'node-cache';
+
+const cache = new NodeCache({ stdTTL: 600 }); // 10 minutes
+
+export async function getPatient(id: string) {
+  const cached = cache.get(id);
+  if (cached) return cached;
+
+  const patient = await db.select()
+    .from(schema.patients)
+    .where(eq(schema.patients.id, id));
+
+  cache.set(id, patient);
+  return patient;
+}
+```
+
+---
+
+## Performance Monitoring
+
+ILS 2.0 includes comprehensive performance monitoring to track API response times, database queries, and system health.
+
+### Monitoring Architecture
+
+**Components:**
+- **Performance Middleware** - Tracks all API requests and responses
+- **Query Instrumentation** - Monitors database query execution times
+- **Metrics Storage** - In-memory buffer with automatic cleanup
+- **Monitoring Endpoints** - RESTful APIs for metrics access
+- **Frontend Dashboard** - Real-time performance visualization
+
+### Monitoring Endpoints
+
+**Health Check:**
+```bash
+# System health status
+curl http://localhost:5000/api/monitoring/health
+
+# Response
+{
+  "status": "healthy",
+  "timestamp": "2024-11-08T10:30:00.000Z",
+  "uptime": 3600,
+  "memory": {
+    "heapUsed": "45.2 MB",
+    "heapTotal": "67.8 MB"
+  }
+}
+```
+
+**Performance Metrics (Admin Only):**
+```bash
+# Get overall performance statistics
+curl http://localhost:5000/api/monitoring/metrics \
+  -H "Cookie: session=..." \
+  -H "Content-Type: application/json"
+
+# Response
+{
+  "timestamp": "2024-11-08T10:30:00.000Z",
+  "metrics": {
+    "totalRequests": 1543,
+    "averageResponseTime": 245,
+    "slowRequests": 12,
+    "errorRate": "0.65",
+    "slowestEndpoints": [
+      {
+        "endpoint": "/api/ai/treatment-plan",
+        "avgDuration": 1234,
+        "maxDuration": 2500,
+        "count": 45,
+        "errorRate": "0.00"
+      }
+    ]
+  }
+}
+```
+
+**Recent Metrics (Time Window):**
+```bash
+# Get metrics for last 5 minutes
+curl http://localhost:5000/api/monitoring/metrics/recent?minutes=5
+
+# Response
+{
+  "timestamp": "2024-11-08T10:30:00.000Z",
+  "timeWindow": "5 minutes",
+  "metrics": {
+    "requests": 234,
+    "avgResponseTime": 189,
+    "p95ResponseTime": 456,
+    "p99ResponseTime": 789,
+    "errorRate": "0.43"
+  }
+}
+```
+
+**Prometheus Metrics:**
+```bash
+# Metrics in Prometheus format
+curl http://localhost:5000/api/monitoring/prometheus
+
+# Response (Prometheus exposition format)
+# HELP ils_http_requests_total Total HTTP requests
+# TYPE ils_http_requests_total counter
+ils_http_requests_total 1543
+
+# HELP ils_http_request_duration_ms Average HTTP request duration
+# TYPE ils_http_request_duration_ms gauge
+ils_http_request_duration_ms 245
+```
+
+**Other Endpoints:**
+- `GET /api/monitoring/memory` - Node.js memory usage
+- `POST /api/monitoring/cleanup` - Clear old metrics
+- `GET /api/monitoring/ready` - Kubernetes readiness probe
+- `GET /api/monitoring/alive` - Kubernetes liveness probe
+
+### Instrumenting Database Queries
+
+**Basic Query Instrumentation:**
+
+```typescript
+import { instrumentQuery } from '@/utils/queryInstrumentation';
+import { db } from '@/db';
+
+// Wrap database queries with instrumentation
+export async function getPatients(companyId: string) {
+  return instrumentQuery(
+    'getPatients', // Query name for tracking
+    () => db.select()
+      .from(schema.patients)
+      .where(eq(schema.patients.companyId, companyId)),
+    '/api/patients' // Optional endpoint context
+  );
+}
+```
+
+**Query Batching:**
+
+```typescript
+import { QueryBatch } from '@/utils/queryInstrumentation';
+
+export async function loadDashboardData(companyId: string) {
+  const batch = new QueryBatch('dashboardData');
+
+  // Execute multiple queries with tracking
+  const patients = await batch.execute('getPatients', () =>
+    db.select().from(schema.patients).where(eq(schema.patients.companyId, companyId))
+  );
+
+  const orders = await batch.execute('getOrders', () =>
+    db.select().from(schema.orders).where(eq(schema.orders.companyId, companyId))
+  );
+
+  // Log batch summary
+  batch.complete();
+
+  return { patients, orders };
+}
+```
+
+**Query Monitor:**
+
+```typescript
+import { createQueryMonitor } from '@/utils/queryInstrumentation';
+
+export async function complexOperation() {
+  const monitor = createQueryMonitor('complexOperation');
+
+  const users = await monitor.track('fetchUsers', () => fetchUsers());
+  const settings = await monitor.track('fetchSettings', () => fetchSettings());
+
+  // Log summary at the end
+  monitor.log();
+  // Output: Query Monitor [complexOperation]: total: 234ms, queries: 2, avg: 117ms
+
+  return { users, settings };
+}
+```
+
+### Query Caching
+
+**Cached Queries with TTL:**
+
+```typescript
+import { cachedQuery } from '@/utils/queryInstrumentation';
+
+export async function getProducts(companyId: string) {
+  return cachedQuery(
+    {
+      key: `products:${companyId}`,
+      ttl: 300, // 5 minutes
+    },
+    () => db.select()
+      .from(schema.products)
+      .where(eq(schema.products.companyId, companyId))
+  );
+}
+```
+
+**Cache Management:**
+
+```typescript
+import { clearQueryCache, cleanupExpiredCache } from '@/utils/queryInstrumentation';
+
+// Clear specific cache entry
+clearQueryCache('products:comp_123');
+
+// Clear all cache
+clearQueryCache();
+
+// Manual cleanup of expired entries
+cleanupExpiredCache();
+```
+
+**Note:** The query cache is separate from the Redis cache service and is intended for temporary query result caching. For persistent caching, use the `CacheService`.
+
+### Frontend Performance Dashboard
+
+**Using the PerformanceMonitor Component:**
+
+```typescript
+// client/src/pages/AdminDashboard.tsx
+import { PerformanceMonitor } from '@/components/PerformanceMonitor';
+
+export default function AdminDashboard() {
+  const { user } = useAuth();
+
+  // Only show to admins
+  if (user?.role !== 'admin' && user?.role !== 'platform_admin') {
+    return <div>Access denied</div>;
+  }
+
+  return (
+    <div>
+      <h1>System Monitoring</h1>
+      <PerformanceMonitor />
+    </div>
+  );
+}
+```
+
+**Features:**
+- ✅ Real-time metrics with auto-refresh (10-30s intervals)
+- ✅ System health status badge (healthy/degraded)
+- ✅ Key performance indicators: requests, response times, error rates
+- ✅ Percentile tracking (P95, P99)
+- ✅ Slowest endpoints table with color-coded performance
+- ✅ Visual status indicators (success/warning/error)
+
+**Auto-refresh Configuration:**
+
+The component uses TanStack Query with different refresh intervals:
+- Overall metrics: Refreshes every 30 seconds
+- Recent metrics (5 min window): Refreshes every 10 seconds
+
+### Performance Thresholds
+
+**Configured Thresholds:**
+
+```typescript
+// server/middleware/performance.ts
+const SLOW_QUERY_THRESHOLD = 100; // milliseconds
+const SLOW_REQUEST_THRESHOLD = 1000; // milliseconds
+const MAX_BUFFER_SIZE = 1000; // max metrics in buffer
+```
+
+**Health Status Criteria:**
+
+System is considered "healthy" when:
+- Error rate < 5%
+- Average response time < 1000ms
+
+System is "degraded" when:
+- Error rate ≥ 5%, OR
+- Average response time ≥ 1000ms
+
+### Metrics Retention
+
+**Automatic Cleanup:**
+
+Metrics are automatically cleaned up to prevent memory issues:
+
+```typescript
+// server/index.ts
+// Cleanup runs every 6 hours
+setInterval(() => {
+  clearOldMetrics(24); // Clean metrics older than 24 hours
+}, 6 * 60 * 60 * 1000);
+```
+
+**Manual Cleanup:**
+
+```bash
+# Trigger manual cleanup via API
+curl -X POST http://localhost:5000/api/monitoring/cleanup
+```
+
+### Monitoring in Development
+
+**Development Mode Features:**
+
+```typescript
+// Queries > 50ms are logged in development
+if (process.env.NODE_ENV === 'development' && duration > 50) {
+  console.debug(`🔍 Query "${queryName}": ${duration.toFixed(2)}ms`);
+}
+```
+
+**Console Output Examples:**
+
+```
+🔍 Query "getPatients": 67.42ms
+📦 Batch "dashboardData": 234.56ms total
+  - fetchPatients: 67.42ms
+  - fetchOrders: 89.31ms
+  - fetchMetrics: 77.83ms
+```
+
+### Production Monitoring Integration
+
+**Prometheus Integration:**
+
+The `/api/monitoring/prometheus` endpoint exports metrics in Prometheus format for integration with monitoring systems:
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: 'ils2'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['localhost:5000']
+    metrics_path: '/api/monitoring/prometheus'
+```
+
+**Kubernetes Health Probes:**
+
+```yaml
+# kubernetes deployment
+livenessProbe:
+  httpGet:
+    path: /api/monitoring/alive
+    port: 5000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /api/monitoring/ready
+    port: 5000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+```
+
+### Best Practices
+
+**1. Instrument Critical Paths:**
+```typescript
+// Always instrument queries in critical paths
+export async function createOrder(data: OrderData) {
+  // Wrap database operations
+  const order = await instrumentQuery('createOrder', () =>
+    db.insert(schema.orders).values(data).returning()
+  );
+
+  // Track AI service calls separately
+  const recommendations = await instrumentQuery('getAIRecommendations', () =>
+    aiService.getRecommendations(order.id)
+  );
+
+  return { order, recommendations };
+}
+```
+
+**2. Use Meaningful Query Names:**
+```typescript
+// Bad - Generic names
+instrumentQuery('query1', ...);
+
+// Good - Descriptive names
+instrumentQuery('getPatientsByCompany', ...);
+instrumentQuery('updateOrderStatus', ...);
+instrumentQuery('deleteExpiredSessions', ...);
+```
+
+**3. Monitor High-Traffic Endpoints:**
+```typescript
+// Add endpoint context to queries
+instrumentQuery('searchPatients', queryFn, '/api/patients/search');
+```
+
+**4. Cache Appropriately:**
+```typescript
+// Don't cache volatile data
+const realtimeOrders = await db.select()...  // No caching
+
+// Cache stable reference data
+const products = await cachedQuery(
+  { key: 'products', ttl: 3600 },
+  () => db.select().from(schema.products)
+);
+```
+
+**5. Regular Monitoring Review:**
+- Check `/api/monitoring/metrics` daily in production
+- Investigate endpoints with >1000ms average response time
+- Monitor error rates and set up alerts for >5%
+- Review slowest endpoints list for optimization opportunities
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**1. Port already in use:**
+```bash
+# Find process using port 5000
+lsof -i :5000  # macOS/Linux
+netstat -ano | findstr :5000  # Windows
+
+# Kill process
+kill -9 <PID>  # macOS/Linux
+taskkill /PID <PID> /F  # Windows
+
+# Or use different port
+PORT=5001 npm run dev
+```
+
+**2. Database connection errors:**
+```bash
+# Check PostgreSQL is running
+pg_isready
+
+# Start PostgreSQL
+brew services start postgresql@15  # macOS
+sudo systemctl start postgresql  # Linux
+```
+
+**3. Module not found errors:**
+```bash
+# Clear node_modules and reinstall
+rm -rf node_modules package-lock.json
+npm install
+
+# Clear build cache
+rm -rf dist .vite
+npm run build
+```
+
+**4. TypeScript errors:**
+```bash
+# Restart TypeScript server in VS Code
+Cmd+Shift+P -> "TypeScript: Restart TS Server"
+
+# Check types without build
+npm run type-check
+```
+
+**5. Hot reload not working:**
+```bash
+# Restart dev server
+# Increase file watcher limit (Linux)
+echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+```
+
+### Debug Checklist
+
+When something isn't working:
+
+1. **Check console** for errors (both browser and server)
+2. **Verify environment variables** are set correctly
+3. **Check database connection** and data
+4. **Clear caches** (browser, node_modules, build)
+5. **Restart services** (database, Redis, dev server)
+6. **Check logs** for detailed error messages
+7. **Verify dependencies** are installed (`npm install`)
+8. **Check branch** is up to date (`git pull`)
+
+---
+
+## Additional Resources
+
+### Documentation
+- [Testing Guide](./TESTING.md)
+- [Architecture Overview](./ARCHITECTURE.md)
+- [Contributing Guidelines](../CONTRIBUTING.md)
+- [API Documentation](http://localhost:5000/api-docs)
+
+### External Docs
+- [React Documentation](https://react.dev/)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
+- [Drizzle ORM](https://orm.drizzle.team/)
+- [TanStack Query](https://tanstack.com/query/latest)
+- [Tailwind CSS](https://tailwindcss.com/docs)
+- [shadcn/ui](https://ui.shadcn.com/)
+
+---
+
+**Happy coding! 🚀**
+
+Last Updated: November 2024

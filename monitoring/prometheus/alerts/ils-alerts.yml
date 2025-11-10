@@ -1,0 +1,144 @@
+# ILS 2.0 Alerting Rules
+
+groups:
+  - name: ils_api_alerts
+    interval: 30s
+    rules:
+      # High error rate
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "High API error rate detected"
+          description: "API error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      # Slow response time
+      - alert: SlowResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_request_duration_ms_bucket[5m])
+          ) > 1000
+        for: 10m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "API response time degraded"
+          description: "P95 response time is {{ $value }}ms (threshold: 1000ms)"
+
+      # High request rate (potential DDoS)
+      - alert: HighRequestRate
+        expr: |
+          sum(rate(http_requests_total[1m])) > 1000
+        for: 2m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Unusually high request rate"
+          description: "Request rate is {{ $value }} req/s (threshold: 1000 req/s)"
+
+  - name: ils_database_alerts
+    interval: 30s
+    rules:
+      # Database connection pool exhaustion
+      - alert: DatabaseConnectionPoolHigh
+        expr: |
+          pg_stat_activity_count / pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Database connection pool nearing capacity"
+          description: "{{ $value | humanizePercentage }} of max connections in use"
+
+      # Slow queries
+      - alert: SlowDatabaseQueries
+        expr: |
+          rate(pg_slow_queries_total[5m]) > 10
+        for: 10m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High number of slow database queries"
+          description: "{{ $value }} slow queries per second"
+
+  - name: ils_system_alerts
+    interval: 30s
+    rules:
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
+
+      # Disk space running low
+      - alert: LowDiskSpace
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Disk space running low"
+          description: "Only {{ $value }}% disk space remaining on {{ $labels.instance }}"
+
+  - name: ils_slo_alerts
+    interval: 1m
+    rules:
+      # SLO: 99.9% availability
+      - alert: SLOAvailabilityBreach
+        expr: |
+          (
+            sum(rate(http_requests_total{status!~"5.."}[30d]))
+            /
+            sum(rate(http_requests_total[30d]))
+          ) < 0.999
+        labels:
+          severity: critical
+          component: slo
+        annotations:
+          summary: "SLO availability breach"
+          description: "30-day availability is {{ $value | humanizePercentage }} (SLO: 99.9%)"
+
+      # SLO: P95 latency < 500ms
+      - alert: SLOLatencyBreach
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_request_duration_ms_bucket[30d])
+          ) > 500
+        labels:
+          severity: warning
+          component: slo
+        annotations:
+          summary: "SLO latency breach"
+          description: "30-day P95 latency is {{ $value }}ms (SLO: <500ms)"

@@ -1,0 +1,228 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  pr-title-check:
+    name: PR Title Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title format
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            test
+            chore
+            perf
+          scopes: |
+            auth
+            patients
+            orders
+            ai
+            ui
+            api
+            db
+            docs
+            deps
+          requireScope: false
+
+  pr-size-check:
+    name: PR Size Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check PR size
+        run: |
+          FILES_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | wc -l)
+          LINES_CHANGED=$(git diff --stat origin/${{ github.base_ref }}...HEAD | tail -1 | awk '{print $4+$6}')
+
+          echo "Files changed: $FILES_CHANGED"
+          echo "Lines changed: $LINES_CHANGED"
+
+          if [ "$FILES_CHANGED" -gt 50 ]; then
+            echo "⚠️  Warning: PR modifies $FILES_CHANGED files (recommended: <50)"
+            echo "Consider splitting this PR into smaller changes for easier review"
+          fi
+
+          if [ "$LINES_CHANGED" -gt 1000 ]; then
+            echo "⚠️  Warning: PR changes $LINES_CHANGED lines (recommended: <1000)"
+            echo "Large PRs are harder to review and more likely to introduce bugs"
+          fi
+
+  pr-description-check:
+    name: PR Description Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR description
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+
+            // Check minimum description length
+            if (body.length < 50) {
+              core.setFailed('PR description is too short. Please provide a detailed description of your changes.');
+              return;
+            }
+
+            // Check for required sections (optional)
+            const hasDescription = /##?\s*Description/i.test(body) || body.includes('What');
+            const hasTestPlan = /##?\s*Test Plan/i.test(body) || /##?\s*Testing/i.test(body) || body.includes('tested');
+
+            if (!hasDescription) {
+              core.warning('Consider adding a "Description" section to explain what this PR does');
+            }
+
+            if (!hasTestPlan) {
+              core.warning('Consider adding a "Test Plan" section to explain how this was tested');
+            }
+
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run ESLint with diff
+        run: |
+          # Get changed files
+          CHANGED_FILES=$(git diff --name-only --diff-filter=ACM origin/${{ github.base_ref }}...HEAD | grep -E '\.(ts|tsx|js|jsx)$' || true)
+
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "Linting changed files:"
+            echo "$CHANGED_FILES"
+            echo "$CHANGED_FILES" | xargs npx eslint || true
+          else
+            echo "No TypeScript/JavaScript files changed"
+          fi
+      - name: Check for TODO/FIXME comments
+        run: |
+          # Check for new TODO/FIXME comments in diff
+          NEW_TODOS=$(git diff origin/${{ github.base_ref }}...HEAD | grep -E '^\+.*\/\/(.*TODO|.*FIXME)' || true)
+
+          if [ -n "$NEW_TODOS" ]; then
+            echo "⚠️  New TODO/FIXME comments added:"
+            echo "$NEW_TODOS"
+            echo ""
+            echo "Please ensure TODOs are tracked as issues or remove before merging"
+          fi
+      - name: Check for console.log
+        run: |
+          # Check for new console.log in diff (excluding test files)
+          NEW_CONSOLE_LOGS=$(git diff origin/${{ github.base_ref }}...HEAD | grep -E '^\+.*console\.(log|debug|info)' | grep -v '\.test\.' | grep -v '\.spec\.' || true)
+
+          if [ -n "$NEW_CONSOLE_LOGS" ]; then
+            echo "⚠️  New console.log statements added:"
+            echo "$NEW_CONSOLE_LOGS"
+            echo ""
+            echo "Consider using proper logging instead of console.log"
+          fi
+
+  dependency-check:
+    name: Dependency Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check for package.json changes
+        run: |
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q 'package.json'; then
+            echo "📦 package.json was modified"
+
+            if ! git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q 'package-lock.json'; then
+              echo "⚠️  Warning: package.json changed but package-lock.json was not updated"
+              echo "Run 'npm install' to update package-lock.json"
+              exit 1
+            fi
+          fi
+
+  test-coverage-report:
+    name: Test Coverage Report
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run component tests with coverage
+        run: npm run test:components -- --coverage
+      - name: Comment coverage on PR
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Read coverage summary (if available)
+            let coverageComment = '## Test Coverage Report\n\n';
+
+            try {
+              const coverage = JSON.parse(fs.readFileSync('./coverage/coverage-summary.json', 'utf8'));
+              const total = coverage.total;
+
+              coverageComment += `| Metric | Coverage |\n`;
+              coverageComment += `|--------|----------|\n`;
+              coverageComment += `| Lines | ${total.lines.pct.toFixed(2)}% |\n`;
+              coverageComment += `| Statements | ${total.statements.pct.toFixed(2)}% |\n`;
+              coverageComment += `| Functions | ${total.functions.pct.toFixed(2)}% |\n`;
+              coverageComment += `| Branches | ${total.branches.pct.toFixed(2)}% |\n`;
+
+            } catch (error) {
+              coverageComment += 'Coverage report not available\n';
+            }
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' && comment.body.includes('Test Coverage Report')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: coverageComment
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: coverageComment
+              });
+            }

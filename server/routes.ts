@@ -93,6 +93,10 @@ import shopifyWebhookRoutes from "./routes/webhooks/shopify";
 import clinicalWorkflowRoutes from "./routes/clinical/workflow";
 import omaValidationRoutes from "./routes/clinical/oma-validation";
 import billingRoutes from "./routes/billing";
+import faceAnalysisRoutes from "./routes/faceAnalysis";
+import nhsRoutes from "./routes/nhs";
+import contactLensRoutes from "./routes/contactLens";
+import ophthalamicAIRoutes from "./routes/ophthalamicAI";
 import v1ApiRoutes from "./routes/api/v1";
 import queryOptimizerRoutes from "./routes/query-optimizer";
 import mlModelsRoutes from "./routes/ml-models";
@@ -100,17 +104,31 @@ import pythonMLRoutes from "./routes/python-ml";
 import shopifyRoutes from "./routes/shopify";
 import featureFlagsRoutes from "./routes/feature-flags";
 import dynamicRolesRouter from "./routes/dynamicRoles";
+import monitoringRoutes from "./routes/monitoring";
+import importRoutes from "./routes/import";
+import apiManagementRoutes from "./routes/api-management";
+import clinicalReportingRoutes from "./routes/clinical-reporting";
+import integrationsRoutes from "./routes/integrations";
+import patientPortalRoutes from "./routes/patient-portal";
+import telehealthRoutes from "./routes/telehealth";
+import biAnalyticsRoutes from "./routes/bi-analytics";
+import communicationsRoutes from "./routes/communications";
+import systemAdminRoutes from "./routes/system-admin";
+import aiMlRoutes from "./routes/ai-ml";
+import bookingRoutes from "./routes/booking";
+import lensRecommendationsRoutes from "./routes/lens-recommendations";
 import { websocketService } from "./websocket";
 import path from "path";
-import { 
-  publicApiLimiter, 
-  authLimiter, 
-  signupLimiter, 
-  webhookLimiter, 
+import {
+  publicApiLimiter,
+  authLimiter,
+  signupLimiter,
+  webhookLimiter,
   aiQueryLimiter,
   passwordResetLimiter,
   generalLimiter
 } from "./middleware/rateLimiter";
+import { setupSwagger } from "./swagger";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Apply general rate limiting to all routes
@@ -130,7 +148,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // API info endpoint
   app.get('/api', (_req, res) => {
-    res.status(200).json({ 
+    res.status(200).json({
       success: true,
       message: 'Integrated Lens System API',
       version: '2.0.0',
@@ -138,10 +156,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       endpoints: {
         health: '/health',
         api: '/api',
-        docs: '/api/documentation'
+        docs: '/api-docs',
+        docsJson: '/api-docs.json'
       }
     });
   });
+
+  // Setup API documentation (Swagger/OpenAPI)
+  setupSwagger(app);
 
   if (process.env.NODE_ENV !== 'development') {
     await setupReplitAuth(app);
@@ -266,6 +288,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // OMA validation routes (intelligent validation with confidence scoring)
   app.use('/api/clinical/oma', isAuthenticated, omaValidationRoutes);
 
+  // Face Analysis & Frame Recommendation routes (AI-powered face shape analysis)
+  app.use('/api/face-analysis', isAuthenticated, faceAnalysisRoutes);
+
+  // NHS/PCSE routes (UK - claims, vouchers, exemptions)
+  app.use('/api/nhs', isAuthenticated, nhsRoutes);
+
+  // Contact Lens routes (assessments, fittings, prescriptions, aftercare)
+  app.use('/api/contact-lens', isAuthenticated, contactLensRoutes);
+
+  // Ophthalmic AI Assistant routes (AI-powered ophthalmic guidance)
+  app.use('/api/ophthalmic-ai', isAuthenticated, ophthalamicAIRoutes);
+
   // Billing routes (usage tracking, metered billing)
   app.use('/api/billing', isAuthenticated, billingRoutes);
 
@@ -286,6 +320,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Feature Flags routes (feature toggle and A/B testing)
   app.use('/api/feature-flags', featureFlagsRoutes);
+
+  // Monitoring routes (performance metrics, health checks, system monitoring)
+  app.use('/api/monitoring', monitoringRoutes);
+
+  // Data Import routes (CSV/Excel import for patients and orders)
+  app.use('/api/import', isAuthenticated, importRoutes);
+
+  // API Management routes (API keys, webhooks, analytics)
+  app.use('/api/api-management', apiManagementRoutes);
+
+  // Clinical Reporting routes (CDS, reports, trends, quality metrics)
+  app.use('/api/clinical-reporting', isAuthenticated, clinicalReportingRoutes);
+
+  // Integration Hub routes (connectors, sync, FHIR/HL7, monitoring)
+  app.use('/api/integrations', isAuthenticated, integrationsRoutes);
+
+  // Patient Portal routes (patient-facing self-service portal)
+  app.use('/api/patient-portal', patientPortalRoutes);
+
+  // Telehealth routes (virtual visits, video sessions, waiting room)
+  app.use('/api/telehealth', isAuthenticated, telehealthRoutes);
+
+  // Business Intelligence & Analytics routes (metrics, dashboards, KPIs)
+  app.use('/api/analytics', isAuthenticated, biAnalyticsRoutes);
+
+  // Communications routes (messaging, campaigns, workflows)
+  app.use('/api/communications', isAuthenticated, communicationsRoutes);
+
+  // System Administration routes (monitoring, config, operations)
+  app.use('/api/system-admin', isAuthenticated, systemAdminRoutes);
+
+  // AI & Machine Learning routes (clinical decision support, predictive analytics, NLP)
+  app.use('/api/ai-ml', isAuthenticated, aiMlRoutes);
+
+  // Advanced Booking System routes (multi-provider scheduling, waitlist, reminders)
+  app.use('/api/booking', bookingRoutes);
+
+  // Intelligent Lens Recommendation routes (prescription + lifestyle analysis)
+  app.use('/api/lens-recommendations', lensRecommendationsRoutes);
 
   // Dynamic RBAC routes (role and permission management)
   console.log('🔧 Registering Dynamic RBAC routes at /api/roles');
@@ -2761,87 +2834,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Shopify Integration routes
-  app.get('/api/shopify/status', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      
-      if (!user || user.role !== 'ecp') {
-        return res.status(403).json({ message: "Only ECPs can access Shopify integration" });
-      }
-
-      if (!user.companyId) {
-        return res.status(400).json({ message: "User must be associated with a company" });
-      }
-
-      const { shopifyService } = await import("./services/ShopifyService");
-      const status = await shopifyService.getSyncStatus(user.companyId);
-      res.json(status);
-    } catch (error) {
-      console.error("Error fetching Shopify status:", error);
-      res.status(500).json({ message: "Failed to fetch Shopify status" });
-    }
-  });
-
-  app.post('/api/shopify/verify', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      
-      if (!user || user.role !== 'ecp') {
-        return res.status(403).json({ message: "Only ECPs can configure Shopify" });
-      }
-
-      const { shopUrl, accessToken, apiVersion } = req.body;
-
-      if (!shopUrl || !accessToken) {
-        return res.status(400).json({ message: "Shop URL and access token are required" });
-      }
-
-      const { shopifyService } = await import("./services/ShopifyService");
-      const result = await shopifyService.verifyConnection({
-        shopUrl,
-        accessToken,
-        apiVersion: apiVersion || '2024-10',
-      });
-
-      res.json(result);
-    } catch (error) {
-      console.error("Error verifying Shopify connection:", error);
-      res.status(500).json({ message: "Failed to verify connection" });
-    }
-  });
-
-  app.post('/api/shopify/sync', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      
-      if (!user || user.role !== 'ecp') {
-        return res.status(403).json({ message: "Only ECPs can sync Shopify data" });
-      }
-
-      if (!user.companyId) {
-        return res.status(400).json({ message: "User must be associated with a company" });
-      }
-
-      if (denyFreePlanAccess(user, res, "Shopify integration")) {
-        return;
-      }
-
-      const { shopifyService } = await import("./services/ShopifyService");
-      const result = await shopifyService.syncCustomers(user.companyId, user);
-      
-      res.json({
-        message: "Sync completed",
-        ...result,
-      });
-    } catch (error) {
-      console.error("Error syncing Shopify customers:", error);
-      res.status(500).json({ message: "Failed to sync customers" });
-    }
-  });
+  // Shopify Integration routes - Moved to /server/routes/shopify.ts
+  // See shopifyRoutes for all Shopify functionality including:
+  // - Store management (connect, disconnect, settings)
+  // - Product synchronization
+  // - Order synchronization
+  // - Prescription verification
+  // - Webhooks
 
   // Eye Examination routes
   app.get('/api/examinations', isAuthenticated, async (req: any, res) => {

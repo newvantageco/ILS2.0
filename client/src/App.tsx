@@ -56,6 +56,7 @@ const EyeTestPage = lazy(() => import("@/pages/EyeTestPage"));
 const TestRoomsPage = lazy(() => import("@/pages/TestRoomsPage"));
 const TestRoomBookingsPage = lazy(() => import("@/pages/TestRoomBookingsPage"));
 const OpticalPOSPage = lazy(() => import("@/pages/OpticalPOSPage"));
+const SmartFrameFinder = lazy(() => import("@/pages/SmartFrameFinder"));
 const ExaminationList = lazy(() => import("@/pages/ExaminationList"));
 const EyeExaminationComprehensive = lazy(() => import("@/pages/EyeExaminationComprehensive"));
 const AddOutsideRx = lazy(() => import("@/pages/AddOutsideRx"));
@@ -98,7 +99,7 @@ const ComplianceDashboardPage = lazy(() => import("@/pages/ComplianceDashboardPa
 const AIModelManagementPage = lazy(() => import("@/pages/AIModelManagementPage"));
 const MLModelManagementPage = lazy(() => import("@/pages/MLModelManagementPage"));
 const PythonMLDashboardPage = lazy(() => import("@/pages/PythonMLDashboardPage"));
-const ShopifyIntegrationPage = lazy(() => import("@/pages/ShopifyIntegrationPage"));
+const ShopifyIntegrationPage = lazy(() => import("@/pages/integrations/ShopifyIntegrationPage"));
 const FeatureFlagsPage = lazy(() => import("@/pages/FeatureFlagsPage"));
 const APIDocumentationPage = lazy(() => import("@/pages/APIDocumentationPage"));
 const SupplierLibraryPage = lazy(() => import("@/pages/SupplierLibraryPage"));
@@ -114,6 +115,19 @@ const MyConnectionsPage = lazy(() => import("@/pages/MyConnectionsPage"));
 
 // Platform Admin (Chunk 7)
 const PlatformInsightsDashboard = lazy(() => import("@/pages/PlatformInsightsDashboard"));
+
+// Healthcare Pages (Phases 17-21)
+const RCMDashboard = lazy(() => import("@/pages/rcm/RCMDashboard"));
+const ClaimsManagementPage = lazy(() => import("@/pages/rcm/ClaimsManagementPage"));
+const PaymentProcessingPage = lazy(() => import("@/pages/rcm/PaymentProcessingPage"));
+const PopulationHealthDashboard = lazy(() => import("@/pages/population-health/PopulationHealthDashboard"));
+const QualityDashboard = lazy(() => import("@/pages/quality/QualityDashboard"));
+const QualityMeasuresPage = lazy(() => import("@/pages/quality/QualityMeasuresPage"));
+const MHealthDashboard = lazy(() => import("@/pages/mhealth/MHealthDashboard"));
+const RemoteMonitoringPage = lazy(() => import("@/pages/mhealth/RemoteMonitoringPage"));
+const DeviceManagementPage = lazy(() => import("@/pages/mhealth/DeviceManagementPage"));
+const ResearchDashboard = lazy(() => import("@/pages/research/ResearchDashboard"));
+const ResearchTrialsPage = lazy(() => import("@/pages/research/ResearchTrialsPage"));
 
 // Other
 const GitHubPushPage = lazy(() => import("@/pages/github-push"));
@@ -396,6 +410,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/examination/:id" component={EyeExaminationComprehensive} />
             <Route path="/ecp/outside-rx" component={AddOutsideRx} />
             <Route path="/ecp/pos" component={OpticalPOSPage} />
+            <Route path="/ecp/smart-frame-finder" component={SmartFrameFinder} />
             <Route path="/ecp/invoices" component={InvoicesPage} />
             <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/ecp/test-rooms" component={TestRoomsPage} />
@@ -617,7 +632,20 @@ function AuthenticatedApp() {
         <Route path="/marketplace" component={MarketplacePage} />
         <Route path="/marketplace/companies/:id" component={CompanyProfilePage} />
         <Route path="/marketplace/my-connections" component={MyConnectionsPage} />
-        
+
+        {/* Healthcare Routes - Phases 17-21 */}
+        <Route path="/rcm/dashboard" component={RCMDashboard} />
+        <Route path="/rcm/claims" component={ClaimsManagementPage} />
+        <Route path="/rcm/payments" component={PaymentProcessingPage} />
+        <Route path="/population-health/dashboard" component={PopulationHealthDashboard} />
+        <Route path="/quality/dashboard" component={QualityDashboard} />
+        <Route path="/quality/measures" component={QualityMeasuresPage} />
+        <Route path="/mhealth/dashboard" component={MHealthDashboard} />
+        <Route path="/mhealth/monitoring" component={RemoteMonitoringPage} />
+        <Route path="/mhealth/devices" component={DeviceManagementPage} />
+        <Route path="/research/dashboard" component={ResearchDashboard} />
+        <Route path="/research/trials" component={ResearchTrialsPage} />
+
         {/* Platform Admin Routes (Chunk 7) */}
         <Route path="/platform-insights" component={PlatformInsightsDashboard} />
         

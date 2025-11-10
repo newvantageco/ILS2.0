@@ -1,0 +1,169 @@
+name: Automated Database Backup
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to backup'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  backup-production:
+    name: Backup Production Database
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event.inputs.environment == 'production'
+    environment: production
+
+    steps:
+      - name: Checkout backup scripts
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/backup
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Create database backup
+        run: |
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          BACKUP_FILE="ils_db_production_${TIMESTAMP}.sql.gz"
+
+          kubectl exec -n ils-production postgres-0 -- \
+            pg_dump -U ils_user ils_db | \
+            gzip > "${BACKUP_FILE}"
+
+          echo "BACKUP_FILE=${BACKUP_FILE}" >> $GITHUB_ENV
+
+      - name: Verify backup
+        run: |
+          if gzip -t "${BACKUP_FILE}"; then
+            echo "✅ Backup verification passed"
+            BACKUP_SIZE=$(du -h "${BACKUP_FILE}" | cut -f1)
+            echo "Backup size: ${BACKUP_SIZE}"
+          else
+            echo "❌ Backup verification failed"
+            exit 1
+          fi
+
+      - name: Upload to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          aws s3 cp "${BACKUP_FILE}" \
+            "s3://${{ secrets.S3_BACKUP_BUCKET }}/production/${BACKUP_FILE}" \
+            --storage-class STANDARD_IA
+
+      - name: Upload as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-backup
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 7
+
+      - name: Cleanup old S3 backups
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          # Delete backups older than 30 days
+          CUTOFF_DATE=$(date -d '30 days ago' +%Y%m%d)
+
+          aws s3 ls "s3://${{ secrets.S3_BACKUP_BUCKET }}/production/" | while read -r line; do
+            FILE_DATE=$(echo "$line" | awk '{print $4}' | grep -oP '\d{8}' | head -1)
+            FILE_NAME=$(echo "$line" | awk '{print $4}')
+
+            if [[ "$FILE_DATE" < "$CUTOFF_DATE" ]]; then
+              echo "Deleting old backup: ${FILE_NAME}"
+              aws s3 rm "s3://${{ secrets.S3_BACKUP_BUCKET }}/production/${FILE_NAME}"
+            fi
+          done
+
+      - name: Notify on failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: 'failure'
+          text: '❌ Database backup failed!'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Notify on success
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: 'success'
+          text: |
+            ✅ Database backup completed
+            File: ${{ env.BACKUP_FILE }}
+            Time: $(date)
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  backup-staging:
+    name: Backup Staging Database
+    runs-on: ubuntu-latest
+    if: github.event.inputs.environment == 'staging'
+    environment: staging
+
+    steps:
+      - name: Checkout backup scripts
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/backup
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Create database backup
+        run: |
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          BACKUP_FILE="ils_db_staging_${TIMESTAMP}.sql.gz"
+
+          kubectl exec -n ils-staging postgres-0 -- \
+            pg_dump -U ils_user ils_db | \
+            gzip > "${BACKUP_FILE}"
+
+          echo "BACKUP_FILE=${BACKUP_FILE}" >> $GITHUB_ENV
+
+      - name: Upload to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          aws s3 cp "${BACKUP_FILE}" \
+            "s3://${{ secrets.S3_BACKUP_BUCKET }}/staging/${BACKUP_FILE}"
+
+      - name: Upload as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-backup-staging
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 3

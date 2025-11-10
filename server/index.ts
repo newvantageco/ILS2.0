@@ -15,12 +15,13 @@ import {
   authRateLimiter 
 } from "./middleware/security";
 import { auditMiddleware } from "./middleware/audit";
-import { 
-  errorHandler, 
-  notFoundHandler, 
+import {
+  errorHandler,
+  notFoundHandler,
   setupGlobalErrorHandlers,
-  requestTimeout 
+  requestTimeout
 } from "./middleware/errorHandler";
+import { performanceMonitoring, clearOldMetrics } from "./middleware/performance";
 import { scheduledEmailService } from "./services/ScheduledEmailService";
 import { startDailyBriefingCron } from "./jobs/dailyBriefingCron";
 import { startInventoryMonitoringCron } from "./jobs/inventoryMonitoringCron";
@@ -127,39 +128,13 @@ if (process.env.NODE_ENV === "development") {
 // This must come AFTER authentication to capture user info
 app.use('/api', auditMiddleware);
 
+// ============== PERFORMANCE MONITORING ==============
+// Track API response times, database queries, and system metrics
+app.use(performanceMonitoring);
+
 // ============== REQUEST TIMEOUT (DDoS Protection) ==============
 // Set timeout for all requests (30 seconds default)
 app.use(requestTimeout(30000));
-
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
-    }
-  });
-
-  next();
-});
 
 (async () => {
   try {
@@ -273,6 +248,12 @@ app.use((req, res, next) => {
       // Start storage calculation cron job
       startStorageCalculationCron();
       log(`Storage calculation cron job started (3:00 AM daily)`);
+
+      // Start performance metrics cleanup (runs every 6 hours)
+      setInterval(() => {
+        clearOldMetrics(24); // Clean up metrics older than 24 hours
+        log(`Performance metrics cleanup completed`);
+      }, 6 * 60 * 60 * 1000); // Every 6 hours
     });
 
     // Handle server errors

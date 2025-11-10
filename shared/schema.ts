@@ -3441,6 +3441,292 @@ export const webhookDeliveries = pgTable("webhook_deliveries", {
   index("idx_webhook_deliveries_next_retry").on(table.nextRetryAt),
 ]);
 
+// ============== AI FACE ANALYSIS & FRAME RECOMMENDATION ==============
+
+/**
+ * Face Shape Types Enum
+ * Standard face shape classifications for frame recommendations
+ */
+export const faceShapeEnum = pgEnum("face_shape", [
+  "oval",
+  "round",
+  "square",
+  "heart",
+  "diamond",
+  "oblong",
+  "triangle"
+]);
+
+/**
+ * Frame Style Types Enum
+ * Frame style classifications for matching with face shapes
+ */
+export const frameStyleEnum = pgEnum("frame_style", [
+  "rectangle",
+  "square",
+  "round",
+  "oval",
+  "cat_eye",
+  "aviator",
+  "wayfarer",
+  "browline",
+  "rimless",
+  "semi_rimless",
+  "geometric",
+  "wrap"
+]);
+
+/**
+ * Frame Material Types Enum
+ */
+export const frameMaterialEnum = pgEnum("frame_material", [
+  "metal",
+  "plastic",
+  "acetate",
+  "titanium",
+  "wood",
+  "carbon_fiber",
+  "mixed"
+]);
+
+/**
+ * Patient Face Analysis Table
+ * Stores AI-analyzed face shape data for patients
+ */
+export const patientFaceAnalysis = pgTable("patient_face_analysis", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  patientId: varchar("patient_id", { length: 255 }).notNull().references(() => patients.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+
+  // Face analysis results
+  faceShape: faceShapeEnum("face_shape").notNull(),
+  faceShapeConfidence: decimal("face_shape_confidence", { precision: 5, scale: 2 }).notNull(), // 0-100%
+
+  // Face measurements (in relative units)
+  faceLength: decimal("face_length", { precision: 10, scale: 2 }),
+  faceWidth: decimal("face_width", { precision: 10, scale: 2 }),
+  jawlineWidth: decimal("jawline_width", { precision: 10, scale: 2 }),
+  foreheadWidth: decimal("forehead_width", { precision: 10, scale: 2 }),
+  cheekboneWidth: decimal("cheekbone_width", { precision: 10, scale: 2 }),
+
+  // Additional characteristics
+  skinTone: varchar("skin_tone", { length: 50 }), // warm, cool, neutral
+  hairColor: varchar("hair_color", { length: 50 }),
+  eyeColor: varchar("eye_color", { length: 50 }),
+
+  // Photo metadata
+  photoUrl: text("photo_url").notNull(), // Uploaded photo
+  thumbnailUrl: text("thumbnail_url"),
+
+  // AI processing metadata
+  aiModel: varchar("ai_model", { length: 100 }).notNull().default("tensorflow-facemesh-v1"),
+  processingTime: integer("processing_time"), // milliseconds
+  landmarkPoints: jsonb("landmark_points"), // Facial landmark coordinates
+  rawAnalysisData: jsonb("raw_analysis_data"), // Full AI response
+
+  // Timestamps
+  analyzedAt: timestamp("analyzed_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_face_analysis_patient").on(table.patientId),
+  index("idx_face_analysis_company").on(table.companyId),
+  index("idx_face_analysis_face_shape").on(table.faceShape),
+]);
+
+/**
+ * Frame Characteristics Table
+ * Extended frame metadata for AI recommendations
+ */
+export const frameCharacteristics = pgTable("frame_characteristics", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  productId: varchar("product_id", { length: 255 }).notNull().unique().references(() => products.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+
+  // Frame style and characteristics
+  frameStyle: frameStyleEnum("frame_style").notNull(),
+  frameMaterial: frameMaterialEnum("frame_material").notNull(),
+  frameSize: varchar("frame_size", { length: 50 }).notNull(), // small, medium, large
+
+  // Recommended face shapes (best matches)
+  recommendedFaceShapes: jsonb("recommended_face_shapes").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+
+  // Physical measurements (mm)
+  lensWidth: decimal("lens_width", { precision: 5, scale: 1 }), // e.g., 52.0 mm
+  bridgeWidth: decimal("bridge_width", { precision: 5, scale: 1 }), // e.g., 18.0 mm
+  templeLength: decimal("temple_length", { precision: 5, scale: 1 }), // e.g., 145.0 mm
+  frameHeight: decimal("frame_height", { precision: 5, scale: 1 }), // e.g., 38.0 mm
+
+  // Style attributes
+  gender: varchar("gender", { length: 20 }), // men, women, unisex
+  ageRange: varchar("age_range", { length: 50 }), // teen, young_adult, adult, senior
+  style: varchar("style", { length: 100 }), // professional, casual, sporty, fashion, classic
+  colorFamily: varchar("color_family", { length: 50 }), // black, brown, silver, gold, colorful
+
+  // Features
+  hasNosePads: boolean("has_nose_pads").default(false),
+  isAdjustable: boolean("is_adjustable").default(false),
+  isSunglasses: boolean("is_sunglasses").default(false),
+  isPolarized: boolean("is_polarized").default(false),
+
+  // AI recommendation score (calculated)
+  popularityScore: decimal("popularity_score", { precision: 5, scale: 2 }).default("0"), // 0-100
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_frame_chars_product").on(table.productId),
+  index("idx_frame_chars_company").on(table.companyId),
+  index("idx_frame_chars_style").on(table.frameStyle),
+  index("idx_frame_chars_material").on(table.frameMaterial),
+]);
+
+/**
+ * Frame Recommendations Table
+ * Stores AI-generated frame recommendations for patients
+ */
+export const frameRecommendations = pgTable("frame_recommendations", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  faceAnalysisId: varchar("face_analysis_id", { length: 255 }).notNull().references(() => patientFaceAnalysis.id, { onDelete: "cascade" }),
+  patientId: varchar("patient_id", { length: 255 }).notNull().references(() => patients.id, { onDelete: "cascade" }),
+  productId: varchar("product_id", { length: 255 }).notNull().references(() => products.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+
+  // Recommendation scoring
+  matchScore: decimal("match_score", { precision: 5, scale: 2 }).notNull(), // 0-100, AI confidence
+  matchReason: text("match_reason").notNull(), // Human-readable explanation
+
+  // Ranking
+  rank: integer("rank").notNull(), // 1 = best match
+
+  // User interaction
+  viewed: boolean("viewed").default(false),
+  viewedAt: timestamp("viewed_at"),
+  liked: boolean("liked").default(false),
+  likedAt: timestamp("liked_at"),
+  purchased: boolean("purchased").default(false),
+  purchasedAt: timestamp("purchased_at"),
+  dismissed: boolean("dismissed").default(false),
+  dismissedAt: timestamp("dismissed_at"),
+
+  // Analytics
+  clickCount: integer("click_count").default(0),
+  shareCount: integer("share_count").default(0),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_frame_recs_analysis").on(table.faceAnalysisId),
+  index("idx_frame_recs_patient").on(table.patientId),
+  index("idx_frame_recs_product").on(table.productId),
+  index("idx_frame_recs_company").on(table.companyId),
+  index("idx_frame_recs_match_score").on(table.matchScore),
+  index("idx_frame_recs_rank").on(table.rank),
+]);
+
+/**
+ * Frame Recommendation Analytics Table
+ * Tracks performance of frame recommendations
+ */
+export const frameRecommendationAnalytics = pgTable("frame_recommendation_analytics", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  productId: varchar("product_id", { length: 255 }).notNull().references(() => products.id, { onDelete: "cascade" }),
+
+  // Aggregated metrics
+  totalRecommendations: integer("total_recommendations").default(0),
+  totalViews: integer("total_views").default(0),
+  totalLikes: integer("total_likes").default(0),
+  totalPurchases: integer("total_purchases").default(0),
+  totalDismissals: integer("total_dismissals").default(0),
+
+  // Calculated rates
+  viewRate: decimal("view_rate", { precision: 5, scale: 2 }).default("0"), // views / recommendations
+  likeRate: decimal("like_rate", { precision: 5, scale: 2 }).default("0"), // likes / views
+  purchaseRate: decimal("purchase_rate", { precision: 5, scale: 2 }).default("0"), // purchases / views
+  dismissalRate: decimal("dismissal_rate", { precision: 5, scale: 2 }).default("0"), // dismissals / views
+
+  // Average metrics
+  avgMatchScore: decimal("avg_match_score", { precision: 5, scale: 2 }).default("0"),
+  avgRank: decimal("avg_rank", { precision: 5, scale: 2 }).default("0"),
+
+  // Time-based metrics
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_frame_rec_analytics_company").on(table.companyId),
+  index("idx_frame_rec_analytics_product").on(table.productId),
+  index("idx_frame_rec_analytics_period").on(table.periodStart, table.periodEnd),
+]);
+
+// Zod schemas for face analysis
+export const createFaceAnalysisSchema = z.object({
+  patientId: z.string().min(1, "Patient ID is required"),
+  companyId: z.string().min(1, "Company ID is required"),
+  faceShape: z.enum(["oval", "round", "square", "heart", "diamond", "oblong", "triangle"]),
+  faceShapeConfidence: z.number().min(0).max(100),
+  faceLength: z.number().optional(),
+  faceWidth: z.number().optional(),
+  jawlineWidth: z.number().optional(),
+  foreheadWidth: z.number().optional(),
+  cheekboneWidth: z.number().optional(),
+  skinTone: z.string().optional(),
+  hairColor: z.string().optional(),
+  eyeColor: z.string().optional(),
+  photoUrl: z.string().url(),
+  thumbnailUrl: z.string().url().optional(),
+  aiModel: z.string().default("tensorflow-facemesh-v1"),
+  processingTime: z.number().optional(),
+  landmarkPoints: z.any().optional(),
+  rawAnalysisData: z.any().optional(),
+});
+
+export const createFrameCharacteristicsSchema = z.object({
+  productId: z.string().min(1, "Product ID is required"),
+  companyId: z.string().min(1, "Company ID is required"),
+  frameStyle: z.enum(["rectangle", "square", "round", "oval", "cat_eye", "aviator", "wayfarer", "browline", "rimless", "semi_rimless", "geometric", "wrap"]),
+  frameMaterial: z.enum(["metal", "plastic", "acetate", "titanium", "wood", "carbon_fiber", "mixed"]),
+  frameSize: z.enum(["small", "medium", "large"]),
+  recommendedFaceShapes: z.array(z.string()),
+  lensWidth: z.number().optional(),
+  bridgeWidth: z.number().optional(),
+  templeLength: z.number().optional(),
+  frameHeight: z.number().optional(),
+  gender: z.string().optional(),
+  ageRange: z.string().optional(),
+  style: z.string().optional(),
+  colorFamily: z.string().optional(),
+  hasNosePads: z.boolean().default(false),
+  isAdjustable: z.boolean().default(false),
+  isSunglasses: z.boolean().default(false),
+  isPolarized: z.boolean().default(false),
+  popularityScore: z.number().min(0).max(100).default(0),
+});
+
+// Export types
+export type PatientFaceAnalysis = typeof patientFaceAnalysis.$inferSelect;
+export type InsertPatientFaceAnalysis = typeof patientFaceAnalysis.$inferInsert;
+export type FrameCharacteristics = typeof frameCharacteristics.$inferSelect;
+export type InsertFrameCharacteristics = typeof frameCharacteristics.$inferInsert;
+export type FrameRecommendation = typeof frameRecommendations.$inferSelect;
+export type InsertFrameRecommendation = typeof frameRecommendations.$inferInsert;
+export type FrameRecommendationAnalytics = typeof frameRecommendationAnalytics.$inferSelect;
+export type InsertFrameRecommendationAnalytics = typeof frameRecommendationAnalytics.$inferInsert;
+
 // Export schemas and types
 export const insertMarketInsightSchema = createInsertSchema(marketInsights);
 export const insertPlatformStatisticSchema = createInsertSchema(platformStatistics);
@@ -3464,4 +3750,1171 @@ export type WebhookSubscription = typeof webhookSubscriptions.$inferSelect;
 export type InsertWebhookSubscription = typeof webhookSubscriptions.$inferInsert;
 export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
 export type InsertWebhookDelivery = typeof webhookDeliveries.$inferInsert;
+
+// ============== NHS/PCSE INTEGRATION (UK) ==============
+
+/**
+ * NHS GOS Claim Types
+ * General Ophthalmic Services claim types for NHS sight tests
+ */
+export const nhsGosClaimTypeEnum = pgEnum("nhs_gos_claim_type", [
+  "GOS1", // Standard NHS sight test
+  "GOS2", // NHS sight test (under 16 or full-time education)
+  "GOS3", // Complex NHS sight test
+  "GOS4", // Domiciliary NHS sight test
+]);
+
+/**
+ * NHS Claim Status
+ */
+export const nhsClaimStatusEnum = pgEnum("nhs_claim_status", [
+  "draft",
+  "submitted",
+  "accepted",
+  "rejected",
+  "paid",
+  "queried",
+]);
+
+/**
+ * NHS Voucher Types
+ * Optical voucher categories based on prescription strength
+ */
+export const nhsVoucherTypeEnum = pgEnum("nhs_voucher_type", [
+  "A", // Single vision - low power
+  "B", // Single vision - high power or prism
+  "C", // Bifocal - low power
+  "D", // Bifocal - high power or prism
+  "E", // Tinted or photochromic lenses
+  "F", // Small frame supplement
+  "G", // Prism-controlled bifocals
+  "H", // Tinted lenses for medical condition
+]);
+
+/**
+ * NHS Exemption Reasons
+ */
+export const nhsExemptionReasonEnum = pgEnum("nhs_exemption_reason", [
+  "age_under_16",
+  "age_16_18_education",
+  "age_60_plus",
+  "income_support",
+  "jobseekers_allowance",
+  "pension_credit",
+  "universal_credit",
+  "hc2_certificate",
+  "hc3_certificate",
+  "war_pension",
+  "diabetes",
+  "glaucoma",
+  "registered_blind",
+  "family_history_glaucoma",
+]);
+
+/**
+ * NHS Practitioners Table
+ * GOC-registered optometrists and dispensing opticians
+ */
+export const nhsPractitioners = pgTable("nhs_practitioners", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // User reference
+  userId: varchar("user_id", { length: 255 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+
+  // GOC Registration
+  gocNumber: varchar("goc_number", { length: 20 }).notNull().unique(),
+  gocRegistrationType: varchar("goc_registration_type", { length: 50 }).notNull(), // "optometrist", "dispensing_optician"
+  gocExpiryDate: date("goc_expiry_date").notNull(),
+
+  // NHS Contract
+  performerNumber: varchar("performer_number", { length: 20 }).notNull().unique(),
+  nhsContractStartDate: date("nhs_contract_start_date"),
+  nhsContractEndDate: date("nhs_contract_end_date"),
+
+  // Professional Indemnity
+  indemnityProvider: varchar("indemnity_provider", { length: 255 }),
+  indemnityPolicyNumber: varchar("indemnity_policy_number", { length: 100 }),
+  indemnityExpiryDate: date("indemnity_expiry_date"),
+
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_nhs_practitioners_user").on(table.userId),
+  index("idx_nhs_practitioners_company").on(table.companyId),
+  index("idx_nhs_practitioners_goc").on(table.gocNumber),
+]);
+
+/**
+ * NHS Contract Details
+ * Practice-level NHS contract information
+ */
+export const nhsContractDetails = pgTable("nhs_contract_details", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  companyId: varchar("company_id", { length: 255 }).notNull().unique().references(() => companies.id, { onDelete: "cascade" }),
+
+  // Contract Details
+  contractNumber: varchar("contract_number", { length: 50 }).notNull().unique(),
+  contractHolderName: varchar("contract_holder_name", { length: 255 }).notNull(),
+  contractStartDate: date("contract_start_date").notNull(),
+  contractEndDate: date("contract_end_date"),
+
+  // Practice Details
+  odsCode: varchar("ods_code", { length: 20 }).notNull(), // Organisation Data Service code
+  practiceAddress: jsonb("practice_address").notNull(),
+
+  // PCSE Details
+  pcseAccountNumber: varchar("pcse_account_number", { length: 50 }),
+  pcseBankDetails: jsonb("pcse_bank_details"), // Encrypted
+
+  // Claim Submission
+  claimSubmissionEmail: varchar("claim_submission_email", { length: 255 }),
+  claimSubmissionMethod: varchar("claim_submission_method", { length: 50 }), // "email", "portal", "api"
+
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_nhs_contracts_company").on(table.companyId),
+  index("idx_nhs_contracts_ods").on(table.odsCode),
+]);
+
+/**
+ * NHS Claims
+ * GOS sight test claims submitted to PCSE
+ */
+export const nhsClaims = pgTable("nhs_claims", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  patientId: varchar("patient_id", { length: 255 }).notNull().references(() => patients.id),
+  examinationId: varchar("examination_id", { length: 255 }).references(() => eyeExaminations.id),
+  practitionerId: varchar("practitioner_id", { length: 255 }).notNull().references(() => nhsPractitioners.id),
+
+  // Claim Details
+  claimType: nhsGosClaimTypeEnum("claim_type").notNull(),
+  claimNumber: varchar("claim_number", { length: 50 }).notNull().unique(),
+  claimDate: date("claim_date").notNull(),
+  testDate: date("test_date").notNull(),
+
+  // Patient Details
+  patientNhsNumber: varchar("patient_nhs_number", { length: 20 }),
+  patientExemptionReason: nhsExemptionReasonEnum("patient_exemption_reason"),
+  patientExemptionEvidence: varchar("patient_exemption_evidence", { length: 255 }), // HC2/HC3 number, etc.
+
+  // Clinical Details
+  prescriptionIssued: boolean("prescription_issued").notNull().default(false),
+  referralMade: boolean("referral_made").notNull().default(false),
+  referralUrgency: varchar("referral_urgency", { length: 50 }), // "routine", "urgent", "emergency"
+  clinicalNotes: text("clinical_notes"),
+
+  // Claim Submission
+  status: nhsClaimStatusEnum("status").notNull().default("draft"),
+  submittedAt: timestamp("submitted_at"),
+  submittedBy: varchar("submitted_by", { length: 255 }).references(() => users.id),
+
+  // PCSE Response
+  pcseReference: varchar("pcse_reference", { length: 100 }),
+  pcseStatus: varchar("pcse_status", { length: 50 }),
+  pcseResponse: jsonb("pcse_response"),
+  rejectionReason: text("rejection_reason"),
+
+  // Payment
+  claimAmount: decimal("claim_amount", { precision: 10, scale: 2 }).notNull(),
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }),
+  paidAt: timestamp("paid_at"),
+  paymentReference: varchar("payment_reference", { length: 100 }),
+
+  // Metadata
+  metadata: jsonb("metadata"),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_nhs_claims_company").on(table.companyId),
+  index("idx_nhs_claims_patient").on(table.patientId),
+  index("idx_nhs_claims_examination").on(table.examinationId),
+  index("idx_nhs_claims_practitioner").on(table.practitionerId),
+  index("idx_nhs_claims_status").on(table.status),
+  index("idx_nhs_claims_date").on(table.claimDate),
+]);
+
+/**
+ * NHS Vouchers
+ * Optical vouchers for glasses/contact lenses
+ */
+export const nhsVouchers = pgTable("nhs_vouchers", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  patientId: varchar("patient_id", { length: 255 }).notNull().references(() => patients.id),
+  prescriptionId: varchar("prescription_id", { length: 255 }).references(() => prescriptions.id),
+  claimId: varchar("claim_id", { length: 255 }).references(() => nhsClaims.id),
+
+  // Voucher Details
+  voucherType: nhsVoucherTypeEnum("voucher_type").notNull(),
+  voucherNumber: varchar("voucher_number", { length: 50 }).notNull().unique(),
+  voucherValue: decimal("voucher_value", { precision: 10, scale: 2 }).notNull(),
+  issueDate: date("issue_date").notNull(),
+  expiryDate: date("expiry_date").notNull(),
+
+  // Patient Eligibility
+  exemptionReason: nhsExemptionReasonEnum("exemption_reason").notNull(),
+  exemptionEvidence: varchar("exemption_evidence", { length: 255 }),
+
+  // Prescription Requirements
+  sphereOD: decimal("sphere_od", { precision: 5, scale: 2 }),
+  sphereOS: decimal("sphere_os", { precision: 5, scale: 2 }),
+  cylinderOD: decimal("cylinder_od", { precision: 5, scale: 2 }),
+  cylinderOS: decimal("cylinder_os", { precision: 5, scale: 2 }),
+  prismRequired: boolean("prism_required").default(false),
+  tintRequired: boolean("tint_required").default(false),
+
+  // Redemption
+  isRedeemed: boolean("is_redeemed").notNull().default(false),
+  redeemedAt: timestamp("redeemed_at"),
+  redeemedAmount: decimal("redeemed_amount", { precision: 10, scale: 2 }),
+  patientContribution: decimal("patient_contribution", { precision: 10, scale: 2 }),
+
+  // Complex Lens Supplements
+  hasComplexSupplement: boolean("has_complex_supplement").default(false),
+  supplementAmount: decimal("supplement_amount", { precision: 10, scale: 2 }),
+  supplementReason: text("supplement_reason"),
+
+  // Status
+  status: varchar("status", { length: 50 }).notNull().default("active"), // "active", "redeemed", "expired", "cancelled"
+
+  // Metadata
+  metadata: jsonb("metadata"),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_nhs_vouchers_company").on(table.companyId),
+  index("idx_nhs_vouchers_patient").on(table.patientId),
+  index("idx_nhs_vouchers_status").on(table.status),
+  index("idx_nhs_vouchers_expiry").on(table.expiryDate),
+]);
+
+/**
+ * NHS Patient Exemptions
+ * Track patient NHS exemption status
+ */
+export const nhsPatientExemptions = pgTable("nhs_patient_exemptions", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  patientId: varchar("patient_id", { length: 255 }).notNull().references(() => patients.id),
+
+  // Exemption Details
+  exemptionReason: nhsExemptionReasonEnum("exemption_reason").notNull(),
+  evidenceType: varchar("evidence_type", { length: 100 }), // "HC2", "HC3", "Birth certificate", etc.
+  evidenceNumber: varchar("evidence_number", { length: 100 }),
+  evidenceDocumentUrl: text("evidence_document_url"),
+
+  // Validity
+  validFrom: date("valid_from").notNull(),
+  validUntil: date("valid_until"),
+  isLifelong: boolean("is_lifelong").default(false),
+
+  // Verification
+  verifiedBy: varchar("verified_by", { length: 255 }).references(() => users.id),
+  verifiedAt: timestamp("verified_at"),
+
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+
+  // Metadata
+  notes: text("notes"),
+  metadata: jsonb("metadata"),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_nhs_exemptions_company").on(table.companyId),
+  index("idx_nhs_exemptions_patient").on(table.patientId),
+  index("idx_nhs_exemptions_status").on(table.isActive),
+  index("idx_nhs_exemptions_expiry").on(table.validUntil),
+]);
+
+/**
+ * NHS Payments
+ * Track PCSE payments received
+ */
+export const nhsPayments = pgTable("nhs_payments", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+
+  // Payment Details
+  paymentReference: varchar("payment_reference", { length: 100 }).notNull().unique(),
+  paymentDate: date("payment_date").notNull(),
+  paymentAmount: decimal("payment_amount", { precision: 10, scale: 2 }).notNull(),
+
+  // Period Covered
+  periodStart: date("period_start").notNull(),
+  periodEnd: date("period_end").notNull(),
+
+  // Claims Included
+  claimCount: integer("claim_count").notNull().default(0),
+  claimIds: jsonb("claim_ids").$type<string[]>(),
+
+  // Payment Method
+  paymentMethod: varchar("payment_method", { length: 50 }), // "BACS", "cheque"
+  bankAccount: varchar("bank_account", { length: 20 }), // Last 4 digits
+
+  // Reconciliation
+  isReconciled: boolean("is_reconciled").notNull().default(false),
+  reconciledAt: timestamp("reconciled_at"),
+  reconciledBy: varchar("reconciled_by", { length: 255 }).references(() => users.id),
+  discrepancyAmount: decimal("discrepancy_amount", { precision: 10, scale: 2 }),
+  discrepancyNotes: text("discrepancy_notes"),
+
+  // Metadata
+  metadata: jsonb("metadata"),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_nhs_payments_company").on(table.companyId),
+  index("idx_nhs_payments_date").on(table.paymentDate),
+  index("idx_nhs_payments_reconciled").on(table.isReconciled),
+]);
+
+// Zod schemas for NHS
+export const createNhsPractitionerSchema = z.object({
+  userId: z.string().min(1),
+  companyId: z.string().min(1),
+  gocNumber: z.string().min(1).max(20),
+  gocRegistrationType: z.enum(["optometrist", "dispensing_optician"]),
+  gocExpiryDate: z.string(), // ISO date
+  performerNumber: z.string().min(1).max(20),
+  nhsContractStartDate: z.string().optional(),
+  nhsContractEndDate: z.string().optional(),
+  indemnityProvider: z.string().optional(),
+  indemnityPolicyNumber: z.string().optional(),
+  indemnityExpiryDate: z.string().optional(),
+});
+
+export const createNhsClaimSchema = z.object({
+  companyId: z.string().min(1),
+  patientId: z.string().min(1),
+  examinationId: z.string().optional(),
+  practitionerId: z.string().min(1),
+  claimType: z.enum(["GOS1", "GOS2", "GOS3", "GOS4"]),
+  testDate: z.string(), // ISO date
+  patientNhsNumber: z.string().optional(),
+  patientExemptionReason: z.string().optional(),
+  patientExemptionEvidence: z.string().optional(),
+  prescriptionIssued: z.boolean().default(false),
+  referralMade: z.boolean().default(false),
+  referralUrgency: z.enum(["routine", "urgent", "emergency"]).optional(),
+  clinicalNotes: z.string().optional(),
+  claimAmount: z.number().positive(),
+});
+
+export const createNhsVoucherSchema = z.object({
+  companyId: z.string().min(1),
+  patientId: z.string().min(1),
+  prescriptionId: z.string().optional(),
+  claimId: z.string().optional(),
+  voucherType: z.enum(["A", "B", "C", "D", "E", "F", "G", "H"]),
+  voucherValue: z.number().positive(),
+  issueDate: z.string(),
+  expiryDate: z.string(),
+  exemptionReason: z.string(),
+  exemptionEvidence: z.string().optional(),
+  sphereOD: z.number().optional(),
+  sphereOS: z.number().optional(),
+  cylinderOD: z.number().optional(),
+  cylinderOS: z.number().optional(),
+  prismRequired: z.boolean().default(false),
+  tintRequired: z.boolean().default(false),
+});
+
+// Export types
+export type NhsPractitioner = typeof nhsPractitioners.$inferSelect;
+export type InsertNhsPractitioner = typeof nhsPractitioners.$inferInsert;
+export type NhsContractDetails = typeof nhsContractDetails.$inferSelect;
+export type InsertNhsContractDetails = typeof nhsContractDetails.$inferInsert;
+export type NhsClaim = typeof nhsClaims.$inferSelect;
+export type InsertNhsClaim = typeof nhsClaims.$inferInsert;
+export type NhsVoucher = typeof nhsVouchers.$inferSelect;
+export type InsertNhsVoucher = typeof nhsVouchers.$inferInsert;
+export type NhsPatientExemption = typeof nhsPatientExemptions.$inferSelect;
+export type InsertNhsPatientExemption = typeof nhsPatientExemptions.$inferInsert;
+export type NhsPayment = typeof nhsPayments.$inferSelect;
+export type InsertNhsPayment = typeof nhsPayments.$inferInsert;
+
+/**
+ * =====================================================================
+ * CONTACT LENS MODULE
+ * Comprehensive contact lens assessment, fitting, and aftercare system
+ * =====================================================================
+ */
+
+// Contact Lens Enums
+export const clWearingScheduleEnum = pgEnum("cl_wearing_schedule", [
+  "daily_wear",
+  "extended_wear",
+  "continuous_wear",
+  "occasional_wear"
+]);
+
+export const clReplacementScheduleEnum = pgEnum("cl_replacement_schedule", [
+  "daily_disposable",
+  "two_weekly",
+  "monthly",
+  "quarterly",
+  "yearly"
+]);
+
+export const clLensTypeEnum = pgEnum("cl_lens_type", [
+  "soft",
+  "rigid_gas_permeable",
+  "hybrid",
+  "scleral",
+  "orthokeratology"
+]);
+
+export const clDesignEnum = pgEnum("cl_design", [
+  "spherical",
+  "toric",
+  "multifocal",
+  "monovision",
+  "custom"
+]);
+
+export const clFitAssessmentEnum = pgEnum("cl_fit_assessment", [
+  "optimal",
+  "acceptable",
+  "too_tight",
+  "too_loose",
+  "decentered"
+]);
+
+export const clAftercareStatusEnum = pgEnum("cl_aftercare_status", [
+  "scheduled",
+  "completed",
+  "cancelled",
+  "no_show",
+  "rescheduled"
+]);
+
+/**
+ * Contact Lens Assessments
+ * Initial patient evaluation for contact lens suitability
+ */
+export const contactLensAssessments = pgTable("contact_lens_assessments", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  patientId: varchar("patient_id", { length: 255 }).notNull().references(() => patients.id),
+  practitionerId: varchar("practitioner_id", { length: 255 }).references(() => users.id),
+
+  // Assessment Details
+  assessmentDate: date("assessment_date").notNull(),
+
+  // Patient History
+  previousClWearer: boolean("previous_cl_wearer").notNull().default(false),
+  previousClType: varchar("previous_cl_type", { length: 100 }),
+  reasonForDiscontinuation: text("reason_for_discontinuation"),
+
+  // Motivation & Lifestyle
+  motivationReason: text("motivation_reason"), // Sports, cosmetic, occupational, etc.
+  occupation: varchar("occupation", { length: 255 }),
+  hobbies: text("hobbies"),
+  screenTime: varchar("screen_time", { length: 50 }), // Low, moderate, high
+
+  // Medical Suitability
+  dryEyes: boolean("dry_eyes").default(false),
+  allergies: text("allergies"),
+  medications: text("medications"),
+  contraindications: text("contraindications"),
+
+  // Ocular Assessment
+  tearQuality: varchar("tear_quality", { length: 50 }), // Good, fair, poor
+  tearBreakupTime: decimal("tear_breakup_time", { precision: 4, scale: 1 }), // seconds
+  corneaCondition: text("cornea_condition"),
+  conjunctivaCondition: text("conjunctiva_condition"),
+  lidsCondition: text("lids_condition"),
+
+  // Recommendation
+  suitable: boolean("suitable").notNull(),
+  recommendedLensType: clLensTypeEnum("recommended_lens_type"),
+  recommendedWearingSchedule: clWearingScheduleEnum("recommended_wearing_schedule"),
+  notes: text("notes"),
+
+  // Metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("cl_assessments_company_idx").on(table.companyId),
+  index("cl_assessments_patient_idx").on(table.patientId),
+  index("cl_assessments_date_idx").on(table.assessmentDate),
+]);
+
+/**
+ * Contact Lens Fittings
+ * Trial lens fitting records
+ */
+export const contactLensFittings = pgTable("contact_lens_fittings", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  patientId: varchar("patient_id", { length: 255 }).notNull().references(() => patients.id),
+  assessmentId: varchar("assessment_id", { length: 255 }).references(() => contactLensAssessments.id),
+  practitionerId: varchar("practitioner_id", { length: 255 }).references(() => users.id),
+
+  // Fitting Details
+  fittingDate: date("fitting_date").notNull(),
+  eye: varchar("eye", { length: 2 }).notNull(), // OD or OS
+
+  // Trial Lens Details
+  trialLensBrand: varchar("trial_lens_brand", { length: 255 }).notNull(),
+  trialLensType: clLensTypeEnum("trial_lens_type").notNull(),
+  trialBaseCurve: decimal("trial_base_curve", { precision: 4, scale: 2 }), // mm
+  trialDiameter: decimal("trial_diameter", { precision: 4, scale: 1 }), // mm
+  trialPower: decimal("trial_power", { precision: 5, scale: 2 }), // D
+  trialCylinder: decimal("trial_cylinder", { precision: 5, scale: 2 }), // D (for toric)
+  trialAxis: integer("trial_axis"), // degrees (for toric)
+  trialAddition: decimal("trial_addition", { precision: 3, scale: 2 }), // D (for multifocal)
+
+  // Over-Refraction
+  overRefractionSphere: decimal("over_refraction_sphere", { precision: 5, scale: 2 }),
+  overRefractionCylinder: decimal("over_refraction_cylinder", { precision: 5, scale: 2 }),
+  overRefractionAxis: integer("over_refraction_axis"),
+
+  // Fit Assessment
+  centration: varchar("centration", { length: 50 }), // Central, superior, inferior, temporal, nasal
+  movement: varchar("movement", { length: 50 }), // Optimal, excessive, insufficient
+  coverage: varchar("coverage", { length: 50 }), // Full, partial
+  comfort: varchar("comfort", { length: 50 }), // Excellent, good, fair, poor
+  fitAssessment: clFitAssessmentEnum("fit_assessment").notNull(),
+
+  // Vision Assessment
+  distanceVision: varchar("distance_vision", { length: 10 }), // e.g., "6/6", "20/20"
+  nearVision: varchar("near_vision", { length: 10 }),
+
+  // Final Lens Parameters (if different from trial)
+  finalBaseCurve: decimal("final_base_curve", { precision: 4, scale: 2 }),
+  finalDiameter: decimal("final_diameter", { precision: 4, scale: 1 }),
+  finalPower: decimal("final_power", { precision: 5, scale: 2 }),
+  finalCylinder: decimal("final_cylinder", { precision: 5, scale: 2 }),
+  finalAxis: integer("final_axis"),
+  finalAddition: decimal("final_addition", { precision: 3, scale: 2 }),
+
+  // Teaching & Handling
+  insertionTaught: boolean("insertion_taught").default(false),
+  removalTaught: boolean("removal_taught").default(false),
+  careTaught: boolean("care_taught").default(false),
+  patientDemonstrated: boolean("patient_demonstrated").default(false),
+
+  notes: text("notes"),
+
+  // Metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("cl_fittings_company_idx").on(table.companyId),
+  index("cl_fittings_patient_idx").on(table.patientId),
+  index("cl_fittings_date_idx").on(table.fittingDate),
+]);
+
+/**
+ * Contact Lens Prescriptions
+ * Final CL prescription records
+ */
+export const contactLensPrescriptions = pgTable("contact_lens_prescriptions", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  patientId: varchar("patient_id", { length: 255 }).notNull().references(() => patients.id),
+  fittingId: varchar("fitting_id", { length: 255 }).references(() => contactLensFittings.id),
+  practitionerId: varchar("practitioner_id", { length: 255 }).references(() => users.id),
+
+  // Prescription Details
+  prescriptionDate: date("prescription_date").notNull(),
+  expiryDate: date("expiry_date"), // Usually 12 months from issue date
+
+  // Right Eye (OD)
+  odBrand: varchar("od_brand", { length: 255 }).notNull(),
+  odLensType: clLensTypeEnum("od_lens_type").notNull(),
+  odDesign: clDesignEnum("od_design").notNull(),
+  odBaseCurve: decimal("od_base_curve", { precision: 4, scale: 2 }).notNull(),
+  odDiameter: decimal("od_diameter", { precision: 4, scale: 1 }).notNull(),
+  odPower: decimal("od_power", { precision: 5, scale: 2 }).notNull(),
+  odCylinder: decimal("od_cylinder", { precision: 5, scale: 2 }),
+  odAxis: integer("od_axis"),
+  odAddition: decimal("od_addition", { precision: 3, scale: 2 }),
+  odColor: varchar("od_color", { length: 100 }), // For cosmetic lenses
+
+  // Left Eye (OS)
+  osBrand: varchar("os_brand", { length: 255 }).notNull(),
+  osLensType: clLensTypeEnum("os_lens_type").notNull(),
+  osDesign: clDesignEnum("os_design").notNull(),
+  osBaseCurve: decimal("os_base_curve", { precision: 4, scale: 2 }).notNull(),
+  osDiameter: decimal("os_diameter", { precision: 4, scale: 1 }).notNull(),
+  osPower: decimal("os_power", { precision: 5, scale: 2 }).notNull(),
+  osCylinder: decimal("os_cylinder", { precision: 5, scale: 2 }),
+  osAxis: integer("os_axis"),
+  osAddition: decimal("os_addition", { precision: 3, scale: 2 }),
+  osColor: varchar("os_color", { length: 100 }),
+
+  // Wearing Instructions
+  wearingSchedule: clWearingScheduleEnum("wearing_schedule").notNull(),
+  replacementSchedule: clReplacementScheduleEnum("replacement_schedule").notNull(),
+  maxWearingTime: integer("max_wearing_time"), // hours per day
+
+  // Care System Recommendation
+  careSystemBrand: varchar("care_system_brand", { length: 255 }),
+  careSystemType: varchar("care_system_type", { length: 100 }), // Multipurpose, peroxide, etc.
+
+  // Follow-up Schedule
+  firstFollowUpDate: date("first_follow_up_date"), // Usually 1 day
+  weekFollowUpDate: date("week_follow_up_date"), // Usually 1 week
+  monthFollowUpDate: date("month_follow_up_date"), // Usually 1 month
+
+  // Special Instructions
+  specialInstructions: text("special_instructions"),
+  notes: text("notes"),
+
+  // NHS Funding (if applicable)
+  nhsFunded: boolean("nhs_funded").default(false),
+  nhsExemptionId: varchar("nhs_exemption_id", { length: 255 }).references(() => nhsPatientExemptions.id),
+
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+
+  // Metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("cl_prescriptions_company_idx").on(table.companyId),
+  index("cl_prescriptions_patient_idx").on(table.patientId),
+  index("cl_prescriptions_date_idx").on(table.prescriptionDate),
+  index("cl_prescriptions_active_idx").on(table.isActive),
+]);
+
+/**
+ * Contact Lens Aftercare
+ * Follow-up appointments and monitoring
+ */
+export const contactLensAftercare = pgTable("contact_lens_aftercare", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  patientId: varchar("patient_id", { length: 255 }).notNull().references(() => patients.id),
+  prescriptionId: varchar("prescription_id", { length: 255 }).references(() => contactLensPrescriptions.id),
+  practitionerId: varchar("practitioner_id", { length: 255 }).references(() => users.id),
+
+  // Appointment Details
+  appointmentDate: date("appointment_date").notNull(),
+  appointmentType: varchar("appointment_type", { length: 50 }).notNull(), // Initial, routine, problem
+  status: clAftercareStatusEnum("status").notNull().default("scheduled"),
+
+  // Compliance Check
+  wearingTimeCompliance: varchar("wearing_time_compliance", { length: 50 }), // Good, fair, poor
+  replacementCompliance: varchar("replacement_compliance", { length: 50 }),
+  careSystemCompliance: varchar("care_system_compliance", { length: 50 }),
+  sleepingInLenses: boolean("sleeping_in_lenses"),
+  waterExposure: boolean("water_exposure"),
+
+  // Clinical Assessment
+  visualAcuityOD: varchar("visual_acuity_od", { length: 10 }),
+  visualAcuityOS: varchar("visual_acuity_os", { length: 10 }),
+  comfort: varchar("comfort", { length: 50 }),
+  lensConditionOD: varchar("lens_condition_od", { length: 100 }),
+  lensConditionOS: varchar("lens_condition_os", { length: 100 }),
+  fitAssessmentOD: clFitAssessmentEnum("fit_assessment_od"),
+  fitAssessmentOS: clFitAssessmentEnum("fit_assessment_os"),
+
+  // Ocular Health
+  corneaHealthOD: varchar("cornea_health_od", { length: 100 }),
+  corneaHealthOS: varchar("cornea_health_os", { length: 100 }),
+  conjunctivaHealthOD: varchar("conjunctiva_health_od", { length: 100 }),
+  conjunctivaHealthOS: varchar("conjunctiva_health_os", { length: 100 }),
+
+  // Problems Reported
+  problemsReported: text("problems_reported"),
+  adverseEvents: text("adverse_events"),
+
+  // Actions Taken
+  prescriptionChanged: boolean("prescription_changed").default(false),
+  lensesReplaced: boolean("lenses_replaced").default(false),
+  careSystemChanged: boolean("care_system_changed").default(false),
+  additionalTraining: boolean("additional_training").default(false),
+  referralMade: boolean("referral_made").default(false),
+
+  // Next Appointment
+  nextAppointmentDate: date("next_appointment_date"),
+  nextAppointmentReason: text("next_appointment_reason"),
+
+  notes: text("notes"),
+
+  // Metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("cl_aftercare_company_idx").on(table.companyId),
+  index("cl_aftercare_patient_idx").on(table.patientId),
+  index("cl_aftercare_date_idx").on(table.appointmentDate),
+  index("cl_aftercare_status_idx").on(table.status),
+]);
+
+/**
+ * Contact Lens Inventory
+ * Stock management for contact lenses
+ */
+export const contactLensInventory = pgTable("contact_lens_inventory", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+
+  // Product Details
+  brand: varchar("brand", { length: 255 }).notNull(),
+  productName: varchar("product_name", { length: 255 }).notNull(),
+  lensType: clLensTypeEnum("lens_type").notNull(),
+  design: clDesignEnum("design").notNull(),
+  replacementSchedule: clReplacementScheduleEnum("replacement_schedule").notNull(),
+
+  // Parameters
+  baseCurve: decimal("base_curve", { precision: 4, scale: 2 }).notNull(),
+  diameter: decimal("diameter", { precision: 4, scale: 1 }).notNull(),
+  power: decimal("power", { precision: 5, scale: 2 }).notNull(),
+  cylinder: decimal("cylinder", { precision: 5, scale: 2 }),
+  axis: integer("axis"),
+  addition: decimal("addition", { precision: 3, scale: 2 }),
+
+  // Stock Management
+  quantityInStock: integer("quantity_in_stock").notNull().default(0),
+  reorderLevel: integer("reorder_level").notNull().default(5),
+  reorderQuantity: integer("reorder_quantity").notNull().default(10),
+  unitCost: decimal("unit_cost", { precision: 10, scale: 2 }),
+  retailPrice: decimal("retail_price", { precision: 10, scale: 2 }),
+
+  // Supplier Information
+  supplierId: varchar("supplier_id", { length: 255 }),
+  supplierProductCode: varchar("supplier_product_code", { length: 100 }),
+
+  // Product Information
+  expiryDate: date("expiry_date"),
+  batchNumber: varchar("batch_number", { length: 100 }),
+
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+  isTrialLens: boolean("is_trial_lens").default(false),
+
+  // Metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("cl_inventory_company_idx").on(table.companyId),
+  index("cl_inventory_brand_idx").on(table.brand),
+  index("cl_inventory_stock_idx").on(table.quantityInStock),
+  index("cl_inventory_active_idx").on(table.isActive),
+  uniqueIndex("cl_inventory_unique").on(
+    table.companyId,
+    table.brand,
+    table.baseCurve,
+    table.diameter,
+    table.power,
+    table.cylinder,
+    table.axis,
+    table.addition
+  ),
+]);
+
+/**
+ * Contact Lens Orders
+ * Patient orders for contact lenses
+ */
+export const contactLensOrders = pgTable("contact_lens_orders", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  patientId: varchar("patient_id", { length: 255 }).notNull().references(() => patients.id),
+  prescriptionId: varchar("prescription_id", { length: 255 }).references(() => contactLensPrescriptions.id),
+
+  // Order Details
+  orderNumber: varchar("order_number", { length: 50 }).notNull().unique(),
+  orderDate: date("order_date").notNull(),
+
+  // Right Eye Order
+  odInventoryId: varchar("od_inventory_id", { length: 255 }).references(() => contactLensInventory.id),
+  odQuantity: integer("od_quantity").notNull(),
+  odUnitPrice: decimal("od_unit_price", { precision: 10, scale: 2 }).notNull(),
+
+  // Left Eye Order
+  osInventoryId: varchar("os_inventory_id", { length: 255 }).references(() => contactLensInventory.id),
+  osQuantity: integer("os_quantity").notNull(),
+  osUnitPrice: decimal("os_unit_price", { precision: 10, scale: 2 }).notNull(),
+
+  // Care System (if ordered)
+  careSystemInventoryId: varchar("care_system_inventory_id", { length: 255 }),
+  careSystemQuantity: integer("care_system_quantity"),
+  careSystemPrice: decimal("care_system_price", { precision: 10, scale: 2 }),
+
+  // Pricing
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+  discount: decimal("discount", { precision: 10, scale: 2 }).default("0"),
+  tax: decimal("tax", { precision: 10, scale: 2 }).default("0"),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+
+  // NHS Funding
+  nhsFunded: boolean("nhs_funded").default(false),
+  nhsVoucherId: varchar("nhs_voucher_id", { length: 255 }), // If applicable
+
+  // Status
+  status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, ordered, received, dispensed
+  orderedDate: date("ordered_date"),
+  receivedDate: date("received_date"),
+  dispensedDate: date("dispensed_date"),
+
+  notes: text("notes"),
+
+  // Metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("cl_orders_company_idx").on(table.companyId),
+  index("cl_orders_patient_idx").on(table.patientId),
+  index("cl_orders_date_idx").on(table.orderDate),
+  index("cl_orders_status_idx").on(table.status),
+]);
+
+// ============================================================================
+// SHOPIFY INTEGRATION
+// ============================================================================
+
+/**
+ * Shopify Store Connections
+ * Stores connected to ILS via Shopify app
+ */
+export const shopifyStoreStatusEnum = pgEnum("shopify_store_status", [
+  "active",
+  "inactive",
+  "suspended",
+  "expired"
+]);
+
+export const shopifyStores = pgTable("shopify_stores", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // Company Reference
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+
+  // Shopify Store Details
+  shopifyDomain: varchar("shopify_domain", { length: 255 }).notNull().unique(),
+  shopifyStoreId: varchar("shopify_store_id", { length: 255 }).notNull().unique(),
+  storeName: varchar("store_name", { length: 255 }).notNull(),
+  storeEmail: varchar("store_email", { length: 255 }),
+  storeUrl: varchar("store_url", { length: 500 }).notNull(),
+
+  // API Credentials (encrypted)
+  accessToken: text("access_token").notNull(), // Encrypted Shopify API token
+  apiKey: varchar("api_key", { length: 255 }).notNull(),
+  apiSecretKey: text("api_secret_key").notNull(), // Encrypted
+
+  // Webhook Configuration
+  webhookSecret: text("webhook_secret"), // For verifying Shopify webhooks
+
+  // Integration Settings
+  enablePrescriptionVerification: boolean("enable_prescription_verification").default(true),
+  enableAIRecommendations: boolean("enable_ai_recommendations").default(true),
+  enableAutoOrderSync: boolean("enable_auto_order_sync").default(true),
+  requirePrescriptionUpload: boolean("require_prescription_upload").default(false),
+
+  // Pricing Settings
+  markupPercentage: decimal("markup_percentage", { precision: 5, scale: 2 }).default("0"),
+
+  // Status
+  status: shopifyStoreStatusEnum("status").notNull().default("active"),
+  installedAt: timestamp("installed_at").notNull().defaultNow(),
+  lastSyncAt: timestamp("last_sync_at"),
+  expiresAt: timestamp("expires_at"),
+
+  // Metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("shopify_stores_company_idx").on(table.companyId),
+  index("shopify_stores_status_idx").on(table.status),
+]);
+
+/**
+ * Shopify Orders
+ * Orders synced from Shopify stores
+ */
+export const shopifyOrderSyncStatusEnum = pgEnum("shopify_order_sync_status", [
+  "pending",
+  "synced",
+  "processing",
+  "completed",
+  "failed",
+  "cancelled"
+]);
+
+export const shopifyOrders = pgTable("shopify_orders", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  shopifyStoreId: varchar("shopify_store_id", { length: 255 }).notNull().references(() => shopifyStores.id, { onDelete: "cascade" }),
+  ilsOrderId: varchar("ils_order_id", { length: 255 }).references(() => orders.id),
+  patientId: varchar("patient_id", { length: 255 }).references(() => patients.id),
+  prescriptionId: varchar("prescription_id", { length: 255 }).references(() => prescriptions.id),
+
+  // Shopify Order Details
+  shopifyOrderNumber: varchar("shopify_order_number", { length: 100 }).notNull(),
+  shopifyOrderId: varchar("shopify_order_id", { length: 255 }).notNull().unique(),
+  shopifyOrderName: varchar("shopify_order_name", { length: 100 }),
+
+  // Customer Details
+  customerEmail: varchar("customer_email", { length: 255 }),
+  customerPhone: varchar("customer_phone", { length: 50 }),
+  customerName: varchar("customer_name", { length: 255 }),
+  shippingAddress: jsonb("shipping_address"),
+  billingAddress: jsonb("billing_address"),
+
+  // Order Items
+  orderItems: jsonb("order_items").notNull(), // Array of line items
+
+  // Prescription Data
+  prescriptionData: jsonb("prescription_data"), // Uploaded prescription details
+  prescriptionVerified: boolean("prescription_verified").default(false),
+  prescriptionVerifiedAt: timestamp("prescription_verified_at"),
+  prescriptionVerifiedBy: varchar("prescription_verified_by", { length: 255 }),
+
+  // AI Recommendations
+  aiRecommendations: jsonb("ai_recommendations"), // AI suggested products
+  aiRecommendationUsed: boolean("ai_recommendation_used").default(false),
+
+  // Pricing
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+  tax: decimal("tax", { precision: 10, scale: 2 }).default("0"),
+  shipping: decimal("shipping", { precision: 10, scale: 2 }).default("0"),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 10 }).notNull().default("GBP"),
+
+  // Status
+  syncStatus: shopifyOrderSyncStatusEnum("sync_status").notNull().default("pending"),
+  shopifyFulfillmentStatus: varchar("shopify_fulfillment_status", { length: 50 }),
+  shopifyFinancialStatus: varchar("shopify_financial_status", { length: 50 }),
+
+  // Sync Details
+  syncedAt: timestamp("synced_at"),
+  lastSyncAttempt: timestamp("last_sync_attempt"),
+  syncError: text("sync_error"),
+  syncRetryCount: integer("sync_retry_count").default(0),
+
+  // Fulfillment
+  fulfilledAt: timestamp("fulfilled_at"),
+  trackingNumber: varchar("tracking_number", { length: 255 }),
+  trackingUrl: varchar("tracking_url", { length: 500 }),
+
+  notes: text("notes"),
+
+  // Metadata
+  shopifyCreatedAt: timestamp("shopify_created_at"),
+  shopifyUpdatedAt: timestamp("shopify_updated_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("shopify_orders_company_idx").on(table.companyId),
+  index("shopify_orders_store_idx").on(table.shopifyStoreId),
+  index("shopify_orders_sync_status_idx").on(table.syncStatus),
+  index("shopify_orders_shopify_id_idx").on(table.shopifyOrderId),
+  index("shopify_orders_ils_order_idx").on(table.ilsOrderId),
+]);
+
+/**
+ * Prescription Uploads
+ * Customer-uploaded prescriptions from Shopify
+ */
+export const prescriptionVerificationStatusEnum = pgEnum("prescription_verification_status", [
+  "pending",
+  "verified",
+  "rejected",
+  "expired",
+  "requires_review"
+]);
+
+export const prescriptionUploads = pgTable("prescription_uploads", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  shopifyOrderId: varchar("shopify_order_id", { length: 255 }).references(() => shopifyOrders.id),
+  patientId: varchar("patient_id", { length: 255 }).references(() => patients.id),
+
+  // Upload Details
+  fileUrl: text("file_url").notNull(),
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  fileType: varchar("file_type", { length: 50 }).notNull(), // pdf, jpg, png
+  fileSize: integer("file_size"), // in bytes
+
+  // AI Extraction
+  aiExtractedData: jsonb("ai_extracted_data"), // Prescription data extracted by AI
+  aiExtractionConfidence: decimal("ai_extraction_confidence", { precision: 5, scale: 2 }),
+
+  // Parsed Prescription Data
+  prescriptionData: jsonb("prescription_data"),
+  prescriptionDate: date("prescription_date"),
+  expiryDate: date("expiry_date"),
+  practitionerName: varchar("practitioner_name", { length: 255 }),
+  practitionerGocNumber: varchar("practitioner_goc_number", { length: 50 }),
+
+  // Verification
+  verificationStatus: prescriptionVerificationStatusEnum("verification_status").notNull().default("pending"),
+  verifiedBy: varchar("verified_by", { length: 255 }), // User ID who verified
+  verifiedAt: timestamp("verified_at"),
+  rejectionReason: text("rejection_reason"),
+
+  // Alerts
+  requiresReview: boolean("requires_review").default(false),
+  reviewNotes: text("review_notes"),
+
+  // Metadata
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("prescription_uploads_company_idx").on(table.companyId),
+  index("prescription_uploads_order_idx").on(table.shopifyOrderId),
+  index("prescription_uploads_status_idx").on(table.verificationStatus),
+  index("prescription_uploads_requires_review_idx").on(table.requiresReview),
+]);
+
+/**
+ * Shopify Product Sync
+ * Sync between ILS products and Shopify products
+ */
+export const shopifyProducts = pgTable("shopify_products", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  shopifyStoreId: varchar("shopify_store_id", { length: 255 }).notNull().references(() => shopifyStores.id, { onDelete: "cascade" }),
+
+  // Shopify Product Details
+  shopifyProductId: varchar("shopify_product_id", { length: 255 }).notNull(),
+  shopifyVariantId: varchar("shopify_variant_id", { length: 255 }),
+
+  // Product Information
+  productTitle: varchar("product_title", { length: 255 }).notNull(),
+  productType: varchar("product_type", { length: 100 }), // frames, lenses, contact_lenses, accessories
+  sku: varchar("sku", { length: 100 }),
+
+  // ILS Product Mapping
+  ilsProductId: varchar("ils_product_id", { length: 255 }),
+  ilsProductType: varchar("ils_product_type", { length: 50 }), // frame, lens, coating, contact_lens
+
+  // Pricing
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  compareAtPrice: decimal("compare_at_price", { precision: 10, scale: 2 }),
+
+  // Inventory
+  inventoryQuantity: integer("inventory_quantity").default(0),
+  trackInventory: boolean("track_inventory").default(false),
+
+  // Sync
+  lastSyncedAt: timestamp("last_synced_at"),
+  syncEnabled: boolean("sync_enabled").default(true),
+
+  // Metadata
+  productMetadata: jsonb("product_metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("shopify_products_company_idx").on(table.companyId),
+  index("shopify_products_store_idx").on(table.shopifyStoreId),
+  index("shopify_products_shopify_id_idx").on(table.shopifyProductId),
+  uniqueIndex("shopify_products_unique").on(table.shopifyStoreId, table.shopifyProductId, table.shopifyVariantId),
+]);
+
+/**
+ * Shopify Webhooks Log
+ * Track all webhooks received from Shopify
+ */
+export const shopifyWebhooks = pgTable("shopify_webhooks", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  shopifyStoreId: varchar("shopify_store_id", { length: 255 }).references(() => shopifyStores.id, { onDelete: "cascade" }),
+
+  // Webhook Details
+  webhookTopic: varchar("webhook_topic", { length: 100 }).notNull(), // orders/create, orders/updated, etc.
+  shopifyWebhookId: varchar("shopify_webhook_id", { length: 255 }),
+
+  // Payload
+  payload: jsonb("payload").notNull(),
+  headers: jsonb("headers"),
+
+  // Processing
+  processed: boolean("processed").default(false),
+  processedAt: timestamp("processed_at"),
+  processingError: text("processing_error"),
+  processingRetryCount: integer("processing_retry_count").default(0),
+
+  // Verification
+  signatureValid: boolean("signature_valid"),
+
+  // Metadata
+  receivedAt: timestamp("received_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("shopify_webhooks_store_idx").on(table.shopifyStoreId),
+  index("shopify_webhooks_topic_idx").on(table.webhookTopic),
+  index("shopify_webhooks_processed_idx").on(table.processed),
+  index("shopify_webhooks_received_idx").on(table.receivedAt),
+]);
+
+// Export Shopify Types
+export type ShopifyStore = typeof shopifyStores.$inferSelect;
+export type InsertShopifyStore = typeof shopifyStores.$inferInsert;
+export type ShopifyOrder = typeof shopifyOrders.$inferSelect;
+export type InsertShopifyOrder = typeof shopifyOrders.$inferInsert;
+export type PrescriptionUpload = typeof prescriptionUploads.$inferSelect;
+export type InsertPrescriptionUpload = typeof prescriptionUploads.$inferInsert;
+export type ShopifyProduct = typeof shopifyProducts.$inferSelect;
+export type InsertShopifyProduct = typeof shopifyProducts.$inferInsert;
+export type ShopifyWebhook = typeof shopifyWebhooks.$inferSelect;
+export type InsertShopifyWebhook = typeof shopifyWebhooks.$inferInsert;
+
+// Export Contact Lens Types
+export type ContactLensAssessment = typeof contactLensAssessments.$inferSelect;
+export type InsertContactLensAssessment = typeof contactLensAssessments.$inferInsert;
+export type ContactLensFitting = typeof contactLensFittings.$inferSelect;
+export type InsertContactLensFitting = typeof contactLensFittings.$inferInsert;
+export type ContactLensPrescription = typeof contactLensPrescriptions.$inferSelect;
+export type InsertContactLensPrescription = typeof contactLensPrescriptions.$inferInsert;
+export type ContactLensAftercare = typeof contactLensAftercare.$inferSelect;
+export type InsertContactLensAftercare = typeof contactLensAftercare.$inferInsert;
+export type ContactLensInventoryItem = typeof contactLensInventory.$inferSelect;
+export type InsertContactLensInventoryItem = typeof contactLensInventory.$inferInsert;
+export type ContactLensOrder = typeof contactLensOrders.$inferSelect;
+export type InsertContactLensOrder = typeof contactLensOrders.$inferInsert;
 

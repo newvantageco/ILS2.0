@@ -36,7 +36,7 @@ export function startUsageReportingCron() {
       
       logger.info('Usage reporting completed');
     } catch (error) {
-      logger.error('Fatal error in usage reporting cron', error as Error);
+      logger.error({ err: error }, 'Fatal error in usage reporting cron');
     }
   }, {
     timezone: 'America/New_York' // Change to your timezone
@@ -62,7 +62,7 @@ export async function reportUsageNow() {
     
     logger.info('Manual usage reporting completed');
   } catch (error) {
-    logger.error('Failed to report usage manually', error as Error);
+    logger.error({ err: error }, 'Failed to report usage manually');
     throw error;
   }
 }

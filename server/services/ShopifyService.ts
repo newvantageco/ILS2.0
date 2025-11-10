@@ -1,211 +1,606 @@
-import { storage } from "../storage";
-import type { User } from "@shared/schema";
+import { db } from "../db";
+import { shopifyStores, shopifyProducts, shopifyWebhooks } from "@shared/schema";
+import { eq, and, sql } from "drizzle-orm";
+import crypto from "crypto";
 
-interface ShopifyCustomer {
-  id: number;
-  email: string;
-  first_name: string;
-  last_name: string;
-  phone: string | null;
-  created_at: string;
-  updated_at: string;
-  addresses: {
-    address1?: string;
-    city?: string;
-    province?: string;
-    zip?: string;
-    country?: string;
-  }[];
-  tags?: string;
-  note?: string;
-}
-
-interface ShopifyConfig {
-  shopUrl: string;
+interface ShopifyStoreConfig {
+  shopifyDomain: string;
+  shopifyStoreId: string;
+  storeName: string;
+  storeEmail?: string;
+  storeUrl: string;
   accessToken: string;
-  apiVersion: string;
+  apiKey: string;
+  apiSecretKey: string;
+  companyId: string;
 }
 
-interface SyncResult {
-  success: number;
-  failed: number;
-  skipped: number;
-  errors: string[];
+interface ShopifyAPIConfig {
+  storeDomain: string;
+  accessToken: string;
+  apiVersion?: string;
 }
 
-/**
- * Shopify Integration Service
- * Syncs Shopify customers as patients in the ILS system
- */
 export class ShopifyService {
+  private static readonly API_VERSION = "2024-01";
+
   /**
-   * Fetch customers from Shopify store
+   * Install/Connect a Shopify store
    */
-  private async fetchShopifyCustomers(config: ShopifyConfig, limit: number = 250): Promise<ShopifyCustomer[]> {
-    const url = `https://${config.shopUrl}/admin/api/${config.apiVersion}/customers.json?limit=${limit}`;
-    
-    const response = await fetch(url, {
-      headers: {
-        'X-Shopify-Access-Token': config.accessToken,
-        'Content-Type': 'application/json',
-      },
+  static async connectStore(config: ShopifyStoreConfig) {
+    // Encrypt sensitive credentials
+    const encryptedAccessToken = this.encryptCredential(config.accessToken);
+    const encryptedApiSecret = this.encryptCredential(config.apiSecretKey);
+
+    // Generate webhook secret for verification
+    const webhookSecret = crypto.randomBytes(32).toString("hex");
+
+    const [store] = await db
+      .insert(shopifyStores)
+      .values({
+        companyId: config.companyId,
+        shopifyDomain: config.shopifyDomain,
+        shopifyStoreId: config.shopifyStoreId,
+        storeName: config.storeName,
+        storeEmail: config.storeEmail,
+        storeUrl: config.storeUrl,
+        accessToken: encryptedAccessToken,
+        apiKey: config.apiKey,
+        apiSecretKey: encryptedApiSecret,
+        webhookSecret: this.encryptCredential(webhookSecret),
+        status: "active",
+      })
+      .returning();
+
+    // Register webhooks with Shopify
+    await this.registerWebhooks(store.id, {
+      storeDomain: config.shopifyDomain,
+      accessToken: config.accessToken,
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Shopify API error: ${response.status} - ${error}`);
-    }
-
-    const data = await response.json();
-    return data.customers || [];
+    return store;
   }
 
   /**
-   * Verify Shopify credentials by making a test API call
+   * Update store connection
    */
-  async verifyConnection(config: ShopifyConfig): Promise<{ valid: boolean; error?: string }> {
-    try {
-      const url = `https://${config.shopUrl}/admin/api/${config.apiVersion}/shop.json`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'X-Shopify-Access-Token': config.accessToken,
-          'Content-Type': 'application/json',
-        },
-      });
+  static async updateStore(storeId: string, companyId: string, updates: Partial<ShopifyStoreConfig>) {
+    const updateData: any = {};
 
-      if (!response.ok) {
-        const error = await response.text();
-        return {
-          valid: false,
-          error: `Connection failed: ${response.status} - ${error}`,
-        };
+    if (updates.accessToken) {
+      updateData.accessToken = this.encryptCredential(updates.accessToken);
+    }
+    if (updates.apiSecretKey) {
+      updateData.apiSecretKey = this.encryptCredential(updates.apiSecretKey);
+    }
+    if (updates.storeName) updateData.storeName = updates.storeName;
+    if (updates.storeEmail) updateData.storeEmail = updates.storeEmail;
+
+    updateData.updatedAt = new Date();
+
+    const [store] = await db
+      .update(shopifyStores)
+      .set(updateData)
+      .where(and(eq(shopifyStores.id, storeId), eq(shopifyStores.companyId, companyId)))
+      .returning();
+
+    if (!store) {
+      throw new Error("Store not found");
+    }
+
+    return store;
+  }
+
+  /**
+   * Get store by ID
+   */
+  static async getStore(storeId: string, companyId: string) {
+    const [store] = await db
+      .select()
+      .from(shopifyStores)
+      .where(and(eq(shopifyStores.id, storeId), eq(shopifyStores.companyId, companyId)))
+      .limit(1);
+
+    if (!store) {
+      throw new Error("Store not found");
+    }
+
+    return store;
+  }
+
+  /**
+   * Get all stores for a company
+   */
+  static async getStores(companyId: string) {
+    return await db
+      .select()
+      .from(shopifyStores)
+      .where(eq(shopifyStores.companyId, companyId));
+  }
+
+  /**
+   * Disconnect/Deactivate store
+   */
+  static async disconnectStore(storeId: string, companyId: string) {
+    const [store] = await db
+      .update(shopifyStores)
+      .set({
+        status: "inactive",
+        updatedAt: new Date(),
+      })
+      .where(and(eq(shopifyStores.id, storeId), eq(shopifyStores.companyId, companyId)))
+      .returning();
+
+    if (!store) {
+      throw new Error("Store not found");
+    }
+
+    // Unregister webhooks
+    const apiConfig = await this.getStoreAPIConfig(storeId, companyId);
+    await this.unregisterWebhooks(apiConfig);
+
+    return store;
+  }
+
+  /**
+   * Register webhooks with Shopify
+   */
+  private static async registerWebhooks(storeId: string, apiConfig: ShopifyAPIConfig) {
+    const webhookTopics = [
+      "orders/create",
+      "orders/updated",
+      "orders/fulfilled",
+      "orders/cancelled",
+      "products/create",
+      "products/update",
+      "products/delete",
+    ];
+
+    const callbackUrl = process.env.SHOPIFY_WEBHOOK_URL || `${process.env.APP_URL}/api/shopify/webhooks`;
+
+    for (const topic of webhookTopics) {
+      try {
+        await this.makeShopifyRequest(apiConfig, "POST", "/admin/api/webhooks.json", {
+          webhook: {
+            topic,
+            address: callbackUrl,
+            format: "json",
+          },
+        });
+      } catch (error: any) {
+        console.error(`Failed to register webhook ${topic}:`, error.message);
       }
-
-      return { valid: true };
-    } catch (error) {
-      return {
-        valid: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
     }
   }
 
   /**
-   * Sync Shopify customers to patients
+   * Unregister webhooks from Shopify
    */
-  async syncCustomers(companyId: string, ecpUser: User): Promise<SyncResult> {
-    const result: SyncResult = {
-      success: 0,
-      failed: 0,
-      skipped: 0,
-      errors: [],
+  private static async unregisterWebhooks(apiConfig: ShopifyAPIConfig) {
+    try {
+      const webhooks = await this.makeShopifyRequest(apiConfig, "GET", "/admin/api/webhooks.json");
+
+      for (const webhook of webhooks.webhooks || []) {
+        await this.makeShopifyRequest(apiConfig, "DELETE", `/admin/api/webhooks/${webhook.id}.json`);
+      }
+    } catch (error: any) {
+      console.error("Failed to unregister webhooks:", error.message);
+    }
+  }
+
+  /**
+   * Make API request to Shopify
+   */
+  static async makeShopifyRequest(
+    config: ShopifyAPIConfig,
+    method: string,
+    endpoint: string,
+    body?: any
+  ): Promise<any> {
+    const apiVersion = config.apiVersion || this.API_VERSION;
+    const url = `https://${config.storeDomain}/admin/api/${apiVersion}${endpoint}`;
+
+    const options: RequestInit = {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": config.accessToken,
+      },
     };
 
-    try {
-      // Get company Shopify settings
-      const company = await storage.getCompany(companyId);
-      if (!company || !company.shopifyEnabled) {
-        throw new Error('Shopify integration not enabled for this company');
-      }
+    if (body && (method === "POST" || method === "PUT" || method === "PATCH")) {
+      options.body = JSON.stringify(body);
+    }
 
-      if (!company.shopifyShopUrl || !company.shopifyAccessToken) {
-        throw new Error('Shopify credentials not configured');
-      }
+    const response = await fetch(url, options);
 
-      const config: ShopifyConfig = {
-        shopUrl: company.shopifyShopUrl,
-        accessToken: company.shopifyAccessToken,
-        apiVersion: company.shopifyApiVersion || '2024-10',
-      };
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Shopify API error (${response.status}): ${errorText}`);
+    }
 
-      // Fetch customers from Shopify
-      const shopifyCustomers = await this.fetchShopifyCustomers(config);
+    if (response.status === 204) {
+      return {}; // No content
+    }
 
-      // Get existing patients to avoid duplicates
-      const existingPatients = await storage.getPatients(ecpUser.id, companyId);
-      const existingEmails = new Set(
-        existingPatients.filter((p: any) => p.email).map((p: any) => p.email!.toLowerCase())
-      );
+    return await response.json();
+  }
 
-      // Sync each customer
-      for (const customer of shopifyCustomers) {
-        try {
-          const email = customer.email?.toLowerCase();
-          
-          // Skip if patient already exists with this email
-          if (email && existingEmails.has(email)) {
-            result.skipped++;
-            continue;
-          }
+  /**
+   * Get store API configuration
+   */
+  static async getStoreAPIConfig(storeId: string, companyId: string): Promise<ShopifyAPIConfig> {
+    const store = await this.getStore(storeId, companyId);
 
-          const fullName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
-          if (!fullName) {
-            result.skipped++;
-            continue;
-          }
+    return {
+      storeDomain: store.shopifyDomain,
+      accessToken: this.decryptCredential(store.accessToken),
+    };
+  }
 
-          // Get primary address if available
-          const primaryAddress = customer.addresses?.[0];
+  /**
+   * Verify webhook signature from Shopify
+   */
+  static verifyWebhookSignature(body: string, hmacHeader: string, secret: string): boolean {
+    const hash = crypto.createHmac("sha256", secret).update(body, "utf8").digest("base64");
+    return hash === hmacHeader;
+  }
 
-          // Create patient
-          await storage.createPatient({
-            companyId,
-            ecpId: ecpUser.id,
-            name: fullName,
-            email: customer.email || null,
-            dateOfBirth: null, // Shopify doesn't typically store DOB
-            nhsNumber: null,
-            fullAddress: primaryAddress ? {
-              address: primaryAddress.address1 || null,
-              city: primaryAddress.city || null,
-              postcode: primaryAddress.zip || null,
-              province: primaryAddress.province || null,
-              country: primaryAddress.country || null,
-            } : null,
-            customerReferenceLabel: 'Shopify ID',
-            customerReferenceNumber: customer.id.toString(),
-          });
+  /**
+   * Sync products from Shopify
+   */
+  static async syncProducts(storeId: string, companyId: string) {
+    const apiConfig = await this.getStoreAPIConfig(storeId, companyId);
 
-          result.success++;
-        } catch (error) {
-          result.failed++;
-          result.errors.push(
-            `Failed to sync ${customer.first_name} ${customer.last_name}: ${
-              error instanceof Error ? error.message : 'Unknown error'
-            }`
-          );
+    // Fetch products from Shopify
+    const response = await this.makeShopifyRequest(apiConfig, "GET", "/admin/api/products.json?limit=250");
+
+    const products = response.products || [];
+    const syncedProducts = [];
+
+    for (const shopifyProduct of products) {
+      for (const variant of shopifyProduct.variants || []) {
+        // Check if product already exists
+        const [existingProduct] = await db
+          .select()
+          .from(shopifyProducts)
+          .where(
+            and(
+              eq(shopifyProducts.shopifyStoreId, storeId),
+              eq(shopifyProducts.shopifyProductId, String(shopifyProduct.id)),
+              eq(shopifyProducts.shopifyVariantId, String(variant.id))
+            )
+          )
+          .limit(1);
+
+        const productData = {
+          companyId,
+          shopifyStoreId: storeId,
+          shopifyProductId: String(shopifyProduct.id),
+          shopifyVariantId: String(variant.id),
+          productTitle: shopifyProduct.title,
+          productType: shopifyProduct.product_type || "unknown",
+          sku: variant.sku || "",
+          price: String(variant.price),
+          compareAtPrice: variant.compare_at_price ? String(variant.compare_at_price) : null,
+          inventoryQuantity: variant.inventory_quantity || 0,
+          trackInventory: variant.inventory_management === "shopify",
+          productMetadata: {
+            vendor: shopifyProduct.vendor,
+            tags: shopifyProduct.tags,
+            variantTitle: variant.title,
+          },
+          lastSyncedAt: new Date(),
+        };
+
+        if (existingProduct) {
+          // Update existing product
+          const [updated] = await db
+            .update(shopifyProducts)
+            .set({...productData, updatedAt: new Date()})
+            .where(eq(shopifyProducts.id, existingProduct.id))
+            .returning();
+          syncedProducts.push(updated);
+        } else {
+          // Create new product
+          const [created] = await db
+            .insert(shopifyProducts)
+            .values(productData)
+            .returning();
+          syncedProducts.push(created);
         }
       }
-
-      // Update last sync timestamp (Note: This requires adding method to storage)
-      // await storage.updateCompanyShopifySync(companyId, new Date());
-
-      return result;
-    } catch (error) {
-      result.errors.push(error instanceof Error ? error.message : 'Unknown error');
-      return result;
     }
+
+    // Update store last sync time
+    await db
+      .update(shopifyStores)
+      .set({ lastSyncAt: new Date() })
+      .where(eq(shopifyStores.id, storeId));
+
+    return {
+      syncedCount: syncedProducts.length,
+      products: syncedProducts,
+    };
   }
 
   /**
-   * Get sync status for a company
+   * Get products for a store
    */
-  async getSyncStatus(companyId: string): Promise<{
-    enabled: boolean;
-    lastSyncAt: Date | null;
-    shopUrl: string | null;
-    autoSync: boolean;
-  }> {
-    const company = await storage.getCompany(companyId);
-    
-    return {
-      enabled: company?.shopifyEnabled || false,
-      lastSyncAt: company?.shopifyLastSyncAt || null,
-      shopUrl: company?.shopifyShopUrl || null,
-      autoSync: company?.shopifyAutoSync || false,
+  static async getProducts(storeId: string, companyId: string) {
+    return await db
+      .select()
+      .from(shopifyProducts)
+      .where(
+        and(eq(shopifyProducts.shopifyStoreId, storeId), eq(shopifyProducts.companyId, companyId))
+      );
+  }
+
+  /**
+   * Update product inventory in Shopify
+   */
+  static async updateProductInventory(
+    storeId: string,
+    companyId: string,
+    shopifyInventoryItemId: string,
+    quantity: number
+  ) {
+    const apiConfig = await this.getStoreAPIConfig(storeId, companyId);
+
+    const response = await this.makeShopifyRequest(apiConfig, "POST", "/admin/api/inventory_levels/set.json", {
+      location_id: await this.getDefaultLocationId(apiConfig),
+      inventory_item_id: shopifyInventoryItemId,
+      available: quantity,
+    });
+
+    return response;
+  }
+
+  /**
+   * Get default location ID from Shopify
+   */
+  private static async getDefaultLocationId(apiConfig: ShopifyAPIConfig): Promise<string> {
+    const response = await this.makeShopifyRequest(apiConfig, "GET", "/admin/api/locations.json");
+    const locations = response.locations || [];
+
+    if (locations.length === 0) {
+      throw new Error("No locations found in Shopify store");
+    }
+
+    return String(locations[0].id);
+  }
+
+  /**
+   * Update order fulfillment in Shopify
+   */
+  static async fulfillOrder(
+    storeId: string,
+    companyId: string,
+    shopifyOrderId: string,
+    trackingNumber?: string,
+    trackingUrl?: string
+  ) {
+    const apiConfig = await this.getStoreAPIConfig(storeId, companyId);
+
+    const fulfillmentData: any = {
+      location_id: await this.getDefaultLocationId(apiConfig),
+      tracking_number: trackingNumber,
+      tracking_urls: trackingUrl ? [trackingUrl] : [],
+      notify_customer: true,
     };
+
+    const response = await this.makeShopifyRequest(
+      apiConfig,
+      "POST",
+      `/admin/api/orders/${shopifyOrderId}/fulfillments.json`,
+      { fulfillment: fulfillmentData }
+    );
+
+    return response.fulfillment;
+  }
+
+  /**
+   * Encrypt credential for storage
+   */
+  private static encryptCredential(credential: string): string {
+    const algorithm = "aes-256-cbc";
+    const key = Buffer.from(process.env.ENCRYPTION_KEY || crypto.randomBytes(32));
+    const iv = crypto.randomBytes(16);
+
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
+    let encrypted = cipher.update(credential, "utf8", "hex");
+    encrypted += cipher.final("hex");
+
+    return iv.toString("hex") + ":" + encrypted;
+  }
+
+  /**
+   * Decrypt credential from storage
+   */
+  private static decryptCredential(encryptedCredential: string): string {
+    const algorithm = "aes-256-cbc";
+    const key = Buffer.from(process.env.ENCRYPTION_KEY || crypto.randomBytes(32));
+
+    const parts = encryptedCredential.split(":");
+    const iv = Buffer.from(parts[0], "hex");
+    const encryptedText = parts[1];
+
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    let decrypted = decipher.update(encryptedText, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+
+    return decrypted;
+  }
+
+  /**
+   * Log webhook event
+   */
+  static async logWebhook(data: {
+    shopifyStoreId: string;
+    webhookTopic: string;
+    payload: any;
+    headers: any;
+    signatureValid: boolean;
+  }) {
+    const [webhook] = await db
+      .insert(shopifyWebhooks)
+      .values({
+        shopifyStoreId: data.shopifyStoreId,
+        webhookTopic: data.webhookTopic,
+        payload: data.payload,
+        headers: data.headers,
+        signatureValid: data.signatureValid,
+        processed: false,
+      })
+      .returning();
+
+    return webhook;
+  }
+
+  /**
+   * Mark webhook as processed
+   */
+  static async markWebhookProcessed(webhookId: string, error?: string) {
+    const [webhook] = await db
+      .update(shopifyWebhooks)
+      .set({
+        processed: true,
+        processedAt: new Date(),
+        processingError: error || null,
+      })
+      .where(eq(shopifyWebhooks.id, webhookId))
+      .returning();
+
+    return webhook;
+  }
+
+  /**
+   * Increment webhook retry count
+   */
+  static async incrementWebhookRetry(webhookId: string) {
+    await db
+      .update(shopifyWebhooks)
+      .set({
+        processingRetryCount: sql`processing_retry_count + 1`,
+      })
+      .where(eq(shopifyWebhooks.id, webhookId));
+  }
+
+  // ========== Additional Methods ==========
+
+  /**
+   * Get orders from Shopify
+   */
+  static async getOrders(storeId: string, companyId: string, filters?: {
+    status?: string;
+    limit?: number;
+    sinceId?: string;
+  }) {
+    const apiConfig = await this.getStoreAPIConfig(storeId, companyId);
+
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    if (filters?.sinceId) params.append('since_id', filters.sinceId);
+
+    const response = await this.makeShopifyRequest(
+      apiConfig,
+      'GET',
+      `/admin/api/${this.API_VERSION}/orders.json?${params.toString()}`
+    );
+
+    return response.orders || [];
+  }
+
+  /**
+   * Sync a single order
+   */
+  static async syncOrder(storeId: string, companyId: string, orderId: string) {
+    const apiConfig = await this.getStoreAPIConfig(storeId, companyId);
+
+    const response = await this.makeShopifyRequest(
+      apiConfig,
+      'GET',
+      `/admin/api/${this.API_VERSION}/orders/${orderId}.json`
+    );
+
+    return response.order;
+  }
+
+  /**
+   * Create fulfillment (alias for fulfillOrder)
+   */
+  static async createFulfillment(
+    storeId: string,
+    companyId: string,
+    orderId: string,
+    fulfillmentData: {
+      trackingNumber?: string;
+      trackingUrl?: string;
+      trackingCompany?: string;
+      lineItems: { id: string; quantity: number }[];
+    }
+  ) {
+    return this.fulfillOrder(storeId, companyId, orderId, fulfillmentData);
+  }
+
+  /**
+   * Generate webhook signature for verification
+   */
+  static generateWebhookSignature(body: string, secret: string): string {
+    return crypto
+      .createHmac('sha256', secret)
+      .update(body, 'utf8')
+      .digest('base64');
+  }
+
+  /**
+   * Verify webhook request
+   */
+  static verifyWebhook(body: string, hmacHeader: string, secret: string): boolean {
+    return this.verifyWebhookSignature(body, hmacHeader, secret);
+  }
+
+  /**
+   * Handle incoming webhook
+   */
+  static async handleWebhook(
+    storeId: string,
+    companyId: string,
+    topic: string,
+    payload: any
+  ) {
+    // Log the webhook
+    const webhook = await this.logWebhook({
+      storeId,
+      topic,
+      payload,
+      receivedAt: new Date(),
+    });
+
+    // Process based on topic
+    try {
+      switch (topic) {
+        case 'orders/create':
+        case 'orders/updated':
+          // Handle order webhook
+          await this.syncOrder(storeId, companyId, payload.id.toString());
+          break;
+        case 'products/create':
+        case 'products/update':
+          // Handle product webhook
+          await this.syncProducts(storeId, companyId);
+          break;
+        default:
+          console.log(`Unhandled webhook topic: ${topic}`);
+      }
+
+      await this.markWebhookProcessed(webhook.id);
+    } catch (error) {
+      await this.markWebhookProcessed(webhook.id, (error as Error).message);
+      throw error;
+    }
+
+    return webhook;
   }
 }
-
-export const shopifyService = new ShopifyService();
