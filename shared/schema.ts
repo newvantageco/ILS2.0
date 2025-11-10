@@ -821,7 +821,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: roleEnum("role"),
-  enhancedRole: userRoleEnhancedEnum("enhanced_role"),
+  enhancedRole: roleEnum("enhanced_role"),
   subscriptionPlan: subscriptionPlanEnum("subscription_plan").notNull().default("full"),
   gocNumber: varchar("goc_number"), // General Optical Council registration number
   accountNumber: varchar("account_number"),
@@ -854,7 +854,7 @@ export const users = pgTable("users", {
 export const userRoles = pgTable("user_roles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  role: userRoleEnum("role").notNull(),
+  role: roleEnum("role").notNull(),
   assignedAt: timestamp("assigned_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_user_roles_user_id").on(table.userId),
@@ -875,7 +875,7 @@ export const permissions = pgTable("permissions", {
 export const rolePermissions = pgTable("role_permissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
-  role: userRoleEnhancedEnum("role").notNull(),
+  role: roleEnum("role").notNull(),
   permissionId: varchar("permission_id").notNull().references(() => permissions.id, { onDelete: 'cascade' }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
@@ -996,7 +996,7 @@ export const auditLogs = pgTable("audit_logs", {
   // Who performed the action
   userId: varchar("user_id").references(() => users.id),
   userEmail: varchar("user_email"),
-  userRole: userRoleEnum("user_role"),
+  userRole: roleEnum("user_role"),
   companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
   
   // What action was performed

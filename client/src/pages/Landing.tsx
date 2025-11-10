@@ -95,7 +95,7 @@ export default function Landing() {
             </div>
             <div>
               <h1 className="font-bold text-xl">ILS 2.0</h1>
-              <p className="text-xs text-muted-foreground">Integrated Lens System</p>
+              <p className="text-xs text-muted-foreground">Healthcare Operating System</p>
             </div>
           </div>
           <Button onClick={handleSignIn} className="gap-2" aria-label="Sign in">
@@ -111,10 +111,10 @@ export default function Landing() {
           <div className="space-y-6">
             {/* Value Proposition */}
             <h2 className="text-5xl lg:text-6xl font-bold leading-tight">
-              The AI-Powered Operating System for Modern Optical Practices
+              Your Practice, Powered by Intelligence
             </h2>
             <p className="text-xl text-muted-foreground leading-relaxed">
-              Transform your practice with intelligent automation. ILS 2.0 combines prescription management, inventory control, point-of-sale, business intelligence, and an AI assistant trained on ophthalmic knowledge—all in one HIPAA-compliant, multi-tenant platform.
+              The first Healthcare Operating System purpose-built for optical care. From digital examinations to e-commerce, from NHS compliance to AI-powered insights—everything your practice needs in one platform.
             </p>
             
             {/* CTAs */}
@@ -675,7 +675,7 @@ export default function Landing() {
           {/* Bottom Bar */}
           <div className="pt-8 border-t border-border">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-              <p>© 2025 ILS 2.0 - Integrated Lens System. All rights reserved.</p>
+              <p>© 2025 ILS 2.0 - Healthcare Operating System. All rights reserved.</p>
               <div className="flex gap-6">
                 <button onClick={() => handleLearnMore("Privacy Policy")} className="hover:text-foreground transition-colors">
                   Privacy Policy

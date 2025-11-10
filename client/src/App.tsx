@@ -136,6 +136,7 @@ const ResearchTrialsPage = lazy(() => import("@/pages/research/ResearchTrialsPag
 
 // Other
 const GitHubPushPage = lazy(() => import("@/pages/github-push"));
+const PricingPage = lazy(() => import("@/pages/PricingPage"));
 
 // Loading fallback component
 function RouteLoadingFallback() {
@@ -273,6 +274,14 @@ function AuthenticatedApp() {
     return (
       <Suspense fallback={<RouteLoadingFallback />}>
         <LandingNew />
+      </Suspense>
+    );
+  }
+
+  if (location === '/pricing') {
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <PricingPage />
       </Suspense>
     );
   }

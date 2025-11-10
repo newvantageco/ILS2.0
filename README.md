@@ -1,25 +1,35 @@
-# Integrated Lens System (ILS)
+# ILS 2.0 - Healthcare Operating System for Optical Excellence
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue.svg)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18.3-61dafb.svg)](https://reactjs.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)]()
 
-> **Enterprise optical lab management platform** — A comprehensive, event-driven monorepo for managing lens orders, production workflows, analytics, and AI-powered insights.
+> **The complete platform for modern optical practices** — From clinical examinations to e-commerce, from NHS compliance to AI-powered intelligence. One platform, infinite possibilities.
 
 ---
 
-## 🎯 Overview
+## 🎯 What Is ILS 2.0?
 
-The **Integrated Lens System (ILS)** is a full-stack, multi-tenant enterprise platform designed for optical laboratories, eye care professionals, and suppliers. Built with modern technologies and best practices, ILS streamlines the entire lens production lifecycle from order submission to delivery.
+ILS 2.0 is the first **Healthcare Operating System** purpose-built for the optical industry. Think Salesforce + Epic + Shopify for eyecare—all in one platform.
 
-### Key Stakeholders
+### Not Just Another Practice Management System
 
-- **👓 Eye Care Professionals (ECPs)**: Submit, track, and manage patient lens orders
-- **🔬 Lab Technicians & Engineers**: Production queue management, quality control, job tracking
-- **📦 Suppliers**: Materials coordination, purchase order fulfillment
-- **👔 Administrators**: User management, platform configuration, analytics, and billing
-- **🤖 AI/ML Engine**: Automated quality checks, predictive analytics, intelligent recommendations
+While others focus on one piece of the puzzle, ILS 2.0 unifies your entire operation:
+
+- **Clinical Operations** → Digital examinations, prescriptions, patient records
+- **Laboratory Production** → Order tracking, quality control, equipment management
+- **E-Commerce** → Shopify integration, POS, frame recommendations
+- **Healthcare Compliance** → NHS integration, GDPR, audit trails
+- **Business Intelligence** → Real-time analytics, forecasting, custom reports
+- **AI-Powered** → Clinical assistant, automated workflows, predictive insights
+
+### Built For
+
+- **👓 Independent Practices** - Run your entire practice from your phone
+- **🔬 Optical Laboratories** - Production intelligence that prevents bottlenecks
+- **🏢 Healthcare Enterprises** - Complete RCM, population health, quality management
+- **🛍️ Optical Retailers** - Integrated e-commerce with clinical workflows
 
 ---
 
