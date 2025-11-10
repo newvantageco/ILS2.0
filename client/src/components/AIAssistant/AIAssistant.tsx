@@ -1,17 +1,20 @@
 /**
  * Subscriber AI Widget Component
- * 
+ *
  * React component that displays the AI Assistant for subscriber companies.
  * Each subscriber gets their own isolated AI instance with their data.
  */
 
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Input, Select, Badge, Spin, Alert, Tooltip, Statistic } from 'antd';
-import { RobotOutlined, SendOutlined, ReloadOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Bot, Send, RotateCcw, HelpCircle, Loader2 } from 'lucide-react';
 import './AIAssistant.css';
-
-const { TextArea } = Input;
-const { Option } = Select;
 
 interface AIAssistantProps {
   tenantId: string;
@@ -70,7 +73,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      
+
       if (response.ok) {
         const stats = await response.json();
         setUsageStats(stats);
@@ -112,7 +115,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json();
-        
+
         if (response.status === 429) {
           throw new Error('Rate limit exceeded. Please wait a moment before trying again.');
         } else if (response.status === 403) {
@@ -135,7 +138,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-      
+
       // Update usage stats
       fetchUsageStats();
 
@@ -181,181 +184,211 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
 
   return (
     <div className="ai-assistant-container">
-      <Card
-        title={
-          <div className="ai-assistant-header">
-            <RobotOutlined style={{ marginRight: 8 }} />
-            AI Assistant
-            <Badge 
-              count={subscriptionTier.toUpperCase()} 
-              style={{ marginLeft: 12, backgroundColor: '#52c41a' }}
-            />
-          </div>
-        }
-        extra={
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={clearConversation}
-            type="text"
-            title="Clear conversation"
-          />
-        }
-        className="ai-assistant-card"
-      >
-        {/* Usage Stats */}
-        {usageStats && (
-          <div className="usage-stats">
-            <Statistic
-              title="Requests Today"
-              value={usageStats.requestsCount}
-              suffix={`/ ${usageStats.remainingRequests + usageStats.requestsCount}`}
-              valueStyle={{ fontSize: 14 }}
-            />
-            <Statistic
-              title="Cache Hits"
-              value={usageStats.cacheHits}
-              suffix={`(${usageStats.requestsCount > 0 ? Math.round((usageStats.cacheHits / usageStats.requestsCount) * 100) : 0}%)`}
-              valueStyle={{ fontSize: 14, color: '#52c41a' }}
-            />
-          </div>
-        )}
+      <Card className="ai-assistant-card">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bot className="h-5 w-5" />
+              AI Assistant
+              <Badge variant="secondary" className="ml-2">
+                {subscriptionTier.toUpperCase()}
+              </Badge>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={clearConversation}
+              title="Clear conversation"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </CardTitle>
+        </CardHeader>
 
-        {/* Query Type Selector */}
-        <div className="query-type-selector">
-          <label>
-            Query Type:
-            <Tooltip title={getQueryTypeDescription(queryType)}>
-              <QuestionCircleOutlined style={{ marginLeft: 4 }} />
-            </Tooltip>
-          </label>
-          <Select
-            value={queryType}
-            onChange={setQueryType}
-            style={{ width: '100%', marginTop: 8 }}
-          >
-            {features.includes('ophthalmic_knowledge') && (
-              <Option value="ophthalmic_knowledge">
-                {getQueryTypeLabel('ophthalmic_knowledge')}
-              </Option>
-            )}
-            {features.includes('sales') && (
-              <Option value="sales">
-                {getQueryTypeLabel('sales')}
-              </Option>
-            )}
-            {features.includes('inventory') && (
-              <Option value="inventory">
-                {getQueryTypeLabel('inventory')}
-              </Option>
-            )}
-            {features.includes('patient_analytics') && (
-              <Option value="patient_analytics">
-                {getQueryTypeLabel('patient_analytics')}
-              </Option>
-            )}
-          </Select>
-          <p className="query-type-description">
-            {getQueryTypeDescription(queryType)}
-          </p>
-        </div>
-
-        {/* Error Display */}
-        {error && (
-          <Alert
-            message="Error"
-            description={error}
-            type="error"
-            closable
-            onClose={() => setError(null)}
-            style={{ marginBottom: 16 }}
-          />
-        )}
-
-        {/* Messages Display */}
-        <div className="messages-container">
-          {messages.length === 0 ? (
-            <div className="empty-state">
-              <RobotOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />
-              <p>Ask me anything about optical dispensing, your business data, or patient trends!</p>
-              <div className="example-queries">
-                <p><strong>Example questions:</strong></p>
-                <ul>
-                  <li>"What are progressive lenses?"</li>
-                  <li>"What were our top 3 selling products last month?"</li>
-                  <li>"Which items are low in stock?"</li>
-                  <li>"What percentage of patients purchased progressive lenses?"</li>
-                </ul>
+        <CardContent className="space-y-4">
+          {/* Usage Stats */}
+          {usageStats && (
+            <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+              <div>
+                <p className="text-sm text-muted-foreground">Requests Today</p>
+                <p className="text-2xl font-bold">
+                  {usageStats.requestsCount} / {usageStats.remainingRequests + usageStats.requestsCount}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Cache Hits</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {usageStats.cacheHits} ({usageStats.requestsCount > 0 ? Math.round((usageStats.cacheHits / usageStats.requestsCount) * 100) : 0}%)
+                </p>
               </div>
             </div>
-          ) : (
-            messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`message ${msg.role}`}
-              >
-                <div className="message-header">
-                  <strong>{msg.role === 'user' ? userName : 'AI Assistant'}</strong>
-                  <span className="message-time">
-                    {msg.timestamp.toLocaleTimeString()}
-                  </span>
-                </div>
-                <div className="message-content">
-                  {msg.content}
-                </div>
-                {msg.fromCache && (
-                  <Badge
-                    count="Cached"
-                    style={{ backgroundColor: '#52c41a', marginTop: 8 }}
-                  />
-                )}
-                {msg.tokensUsed && (
-                  <span className="tokens-used">
-                    {msg.tokensUsed} tokens
-                  </span>
-                )}
-              </div>
-            ))
           )}
-          {loading && (
-            <div className="message assistant loading">
-              <Spin /> Thinking...
+
+          {/* Query Type Selector */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium">Query Type:</label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{getQueryTypeDescription(queryType)}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
-          )}
-        </div>
 
-        {/* Input Area */}
-        <div className="input-area">
-          <TextArea
-            value={inputQuery}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInputQuery(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={`Ask about ${getQueryTypeLabel(queryType).toLowerCase()}...`}
-            autoSize={{ minRows: 2, maxRows: 4 }}
-            disabled={loading}
-          />
-          <Button
-            type="primary"
-            icon={<SendOutlined />}
-            onClick={handleSendQuery}
-            loading={loading}
-            disabled={!inputQuery.trim()}
-            style={{ marginTop: 8 }}
-          >
-            Send
-          </Button>
-        </div>
+            <Select value={queryType} onValueChange={(value: any) => setQueryType(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select query type" />
+              </SelectTrigger>
+              <SelectContent>
+                {features.includes('ophthalmic_knowledge') && (
+                  <SelectItem value="ophthalmic_knowledge">
+                    {getQueryTypeLabel('ophthalmic_knowledge')}
+                  </SelectItem>
+                )}
+                {features.includes('sales') && (
+                  <SelectItem value="sales">
+                    {getQueryTypeLabel('sales')}
+                  </SelectItem>
+                )}
+                {features.includes('inventory') && (
+                  <SelectItem value="inventory">
+                    {getQueryTypeLabel('inventory')}
+                  </SelectItem>
+                )}
+                {features.includes('patient_analytics') && (
+                  <SelectItem value="patient_analytics">
+                    {getQueryTypeLabel('patient_analytics')}
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
 
-        {/* Subscription Info */}
-        <div className="subscription-info">
-          <p>
-            <strong>Your Plan:</strong> {subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1)}
-          </p>
-          {subscriptionTier !== 'enterprise' && (
-            <p className="upgrade-prompt">
-              <a href="/subscription/upgrade">Upgrade</a> to unlock more features
+            <p className="text-xs text-muted-foreground">
+              {getQueryTypeDescription(queryType)}
             </p>
+          </div>
+
+          {/* Error Display */}
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>
+                {error}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-2"
+                  onClick={() => setError(null)}
+                >
+                  Dismiss
+                </Button>
+              </AlertDescription>
+            </Alert>
           )}
-        </div>
+
+          {/* Messages Display */}
+          <div className="messages-container min-h-[400px] max-h-[600px] overflow-y-auto border rounded-lg p-4 space-y-4">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
+                <Bot className="h-16 w-16 text-muted-foreground" />
+                <p className="text-muted-foreground">Ask me anything about optical dispensing, your business data, or patient trends!</p>
+                <div className="text-left space-y-2">
+                  <p className="font-semibold">Example questions:</p>
+                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                    <li>"What are progressive lenses?"</li>
+                    <li>"What were our top 3 selling products last month?"</li>
+                    <li>"Which items are low in stock?"</li>
+                    <li>"What percentage of patients purchased progressive lenses?"</li>
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <>
+                {messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`flex flex-col space-y-1 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+                  >
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <strong>{msg.role === 'user' ? userName : 'AI Assistant'}</strong>
+                      <span>{msg.timestamp.toLocaleTimeString()}</span>
+                    </div>
+                    <div className={`rounded-lg p-3 max-w-[80%] ${
+                      msg.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    }`}>
+                      {msg.content}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {msg.fromCache && (
+                        <Badge variant="secondary" className="text-xs">Cached</Badge>
+                      )}
+                      {msg.tokensUsed && (
+                        <span className="text-xs text-muted-foreground">
+                          {msg.tokensUsed} tokens
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {loading && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Thinking...</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Input Area */}
+          <div className="space-y-2">
+            <Textarea
+              value={inputQuery}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInputQuery(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder={`Ask about ${getQueryTypeLabel(queryType).toLowerCase()}...`}
+              disabled={loading}
+              rows={3}
+            />
+            <Button
+              onClick={handleSendQuery}
+              disabled={!inputQuery.trim() || loading}
+              className="w-full"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Send
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Subscription Info */}
+          <div className="text-sm text-muted-foreground border-t pt-4">
+            <p>
+              <strong>Your Plan:</strong> {subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1)}
+            </p>
+            {subscriptionTier !== 'enterprise' && (
+              <p className="mt-2">
+                <a href="/subscription/upgrade" className="text-primary hover:underline">
+                  Upgrade
+                </a> to unlock more features
+              </p>
+            )}
+          </div>
+        </CardContent>
       </Card>
     </div>
   );
