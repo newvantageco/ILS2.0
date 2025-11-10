@@ -5,14 +5,16 @@ dotenv.config();
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import passport from "passport";
+import compression from "compression";
+import morgan from "morgan";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupLocalAuth } from "./localAuth";
 import { ensureMasterUser } from "./masterUser";
-import { 
-  securityHeaders, 
-  globalRateLimiter, 
-  authRateLimiter 
+import {
+  securityHeaders,
+  globalRateLimiter,
+  authRateLimiter
 } from "./middleware/security";
 import { auditMiddleware } from "./middleware/audit";
 import {
@@ -83,6 +85,30 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: false }));
+
+// ============== COMPRESSION (Performance Optimization) ==============
+// Enable gzip/deflate compression for responses
+app.use(compression({
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  },
+  level: 6, // Compression level (0-9, 6 is good balance)
+}));
+
+// ============== HTTP REQUEST LOGGING (Morgan) ==============
+// Log HTTP requests for monitoring and debugging
+if (process.env.NODE_ENV === 'production') {
+  app.use(morgan('combined', {
+    skip: (req) => req.url === '/health' || req.url === '/metrics', // Skip health/metrics checks
+  }));
+} else {
+  app.use(morgan('dev', {
+    skip: (req) => req.url === '/health', // Skip health checks in dev too
+  }));
+}
 
 // ============== RATE LIMITING (DDoS Protection) ==============
 // Apply global rate limiter to all /api/* routes (100 req/15min per IP)
@@ -407,6 +433,50 @@ app.use(requestTimeout(30000));
       }
       process.exit(1);
     });
+
+    // ============== GRACEFUL SHUTDOWN (Production Best Practice) ==============
+    // Handle SIGTERM/SIGINT for graceful shutdown
+    const gracefulShutdown = async (signal: string) => {
+      log(`${signal} received, shutting down gracefully...`);
+
+      // Stop accepting new connections
+      server.close(async () => {
+        log('HTTP server closed');
+
+        try {
+          // Close database connections
+          const { db } = await import('./db');
+          await db.$client.end();
+          log('Database connections closed');
+
+          // Close Redis connections
+          const redisClient = getRedisConnection();
+          if (redisClient) {
+            await redisClient.quit();
+            log('Redis connections closed');
+          }
+
+          // Stop scheduled jobs
+          scheduledEmailService.stopAllJobs();
+          log('Scheduled jobs stopped');
+
+          log('Graceful shutdown completed');
+          process.exit(0);
+        } catch (error) {
+          console.error('Error during graceful shutdown:', error);
+          process.exit(1);
+        }
+      });
+
+      // Force close after 10 seconds if graceful shutdown fails
+      setTimeout(() => {
+        console.error('Forced shutdown after timeout');
+        process.exit(1);
+      }, 10000);
+    };
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
   } catch (error) {
     console.error("FATAL ERROR during server initialization:");

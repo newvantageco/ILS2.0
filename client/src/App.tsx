@@ -43,6 +43,9 @@ const LabDashboard = lazy(() => import("@/pages/LabDashboard"));
 const SupplierDashboard = lazy(() => import("@/pages/SupplierDashboard"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
 const PlatformAdminPage = lazy(() => import("@/pages/PlatformAdminPage"));
+const SystemHealthDashboard = lazy(() => import("@/pages/admin/SystemHealthDashboard"));
+const SystemConfigPage = lazy(() => import("@/pages/admin/SystemConfigPage"));
+const APIKeysManagementPage = lazy(() => import("@/pages/admin/APIKeysManagementPage"));
 const CompanyAdminPage = lazy(() => import("@/pages/CompanyAdminPage"));
 const DispenserDashboard = lazy(() => import("@/pages/DispenserDashboard"));
 
@@ -542,6 +545,9 @@ function AuthenticatedApp() {
             <Route path="/platform-admin/dashboard" component={PlatformAdminPage} />
             <Route path="/platform-admin/users" component={PlatformAdminPage} />
             <Route path="/platform-admin/companies" component={PlatformAdminPage} />
+            <Route path="/platform-admin/system-health" component={SystemHealthDashboard} />
+            <Route path="/platform-admin/system-config" component={SystemConfigPage} />
+            <Route path="/platform-admin/api-keys" component={APIKeysManagementPage} />
             <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/platform-admin/settings" component={SettingsPage} />
             <Route path="/platform-admin/ai-models" component={AIModelManagementPage} />

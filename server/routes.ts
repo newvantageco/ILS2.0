@@ -69,12 +69,13 @@ import { registerBiRoutes } from "./routes/bi";
 import { registerMasterAIRoutes } from "./routes/master-ai";
 import { registerAINotificationRoutes } from "./routes/ai-notifications";
 import { registerAutonomousPORoutes } from "./routes/ai-purchase-orders";
-import { registerAiAssistantRoutes } from "./routes/aiAssistant";
+// AI Assistant routes are now in master-ai.ts
 import { registerDemandForecastingRoutes } from "./routes/demand-forecasting";
 import { registerMarketplaceRoutes } from "./routes/marketplace";
 import { registerQueueRoutes } from "./routes/queue";
 // import { registerPlatformAIRoutes } from "./routes/platform-ai"; // Disabled - schema issues
 import platformAdminRoutes from "./routes/platform-admin";
+import systemAdminRoutes from "./routes/system-admin";
 import { registerPermissionRoutes } from "./routes/permissions";
 import { registerAdminRoutes } from "./routes/admin";
 import userManagementRoutes from "./routes/userManagement";
@@ -106,6 +107,40 @@ import featureFlagsRoutes from "./routes/feature-flags";
 import dynamicRolesRouter from "./routes/dynamicRoles";
 import { websocketService } from "./websocket";
 import path from "path";
+
+// Healthcare Platform Routes (Phases 17-21)
+import rcmRoutes from "./routes/rcm";
+import populationHealthRoutes from "./routes/population-health";
+import qualityRoutes from "./routes/quality";
+import mhealthRoutes from "./routes/mhealth";
+import researchRoutes from "./routes/research";
+import telehealthRoutes from "./routes/telehealth";
+
+// NHS Integration Routes
+import nhsRoutes from "./routes/nhs";
+
+// Patient Portal Routes
+import patientPortalRoutes from "./routes/patient-portal";
+
+// Additional Feature Routes
+import gdprRoutes from "./routes/gdpr";
+import twoFactorRoutes from "./routes/twoFactor";
+import integrationsRoutes from "./routes/integrations";
+import communicationsRoutes from "./routes/communications";
+import monitoringRoutes from "./routes/monitoring";
+import observabilityRoutes from "./routes/observability";
+// import bookingRoutes from "./routes/booking"; // TEMPORARILY DISABLED: missing appointments schema
+import contactLensRoutes from "./routes/contactLens";
+import clinicalReportingRoutes from "./routes/clinical-reporting";
+import faceAnalysisRoutes from "./routes/faceAnalysis";
+import lensRecommendationsRoutes from "./routes/lens-recommendations";
+import importRoutes from "./routes/import";
+import biAnalyticsRoutes from "./routes/bi-analytics";
+import apiManagementRoutes from "./routes/api-management";
+import { registerPaymentRoutes } from "./routes/payments";
+import aiMLRoutes from "./routes/ai-ml";
+import ophthalamicAIRoutes from "./routes/ophthalamicAI";
+import orderTrackingRoutes from "./routes/orderTracking";
 import { 
   publicApiLimiter, 
   authLimiter, 
@@ -182,8 +217,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAINotificationRoutes(app);
 
   // Company-specific AI Assistant (chat, knowledge, learning)
-  registerAiAssistantRoutes(app);
-  
+  // registerAiAssistantRoutes(app); // Moved to master-ai
+
   // Autonomous Purchasing: AI-generated purchase orders
   registerAutonomousPORoutes(app);
   
@@ -195,7 +230,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Platform Analytics: Cross-tenant insights & revenue (Chunk 7)
   app.use('/api/platform-admin', platformAdminRoutes);
-  
+
+  // System Admin: Configuration, monitoring, and operations
+  app.use('/api/system-admin', systemAdminRoutes);
+
   // Platform AI: Python ML analytics & predictions (DISABLED - schema issues)
   // registerPlatformAIRoutes(app);
   
@@ -299,6 +337,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.log('🔧 dynamicRolesRouter type:', typeof dynamicRolesRouter);
   app.use('/api/roles', isAuthenticated, dynamicRolesRouter);
   console.log('✅ Dynamic RBAC routes registered');
+
+  // ============================================================================
+  // HEALTHCARE PLATFORM ROUTES (Phases 17-21) - NOW CONNECTED!
+  // ============================================================================
+
+  // RCM (Revenue Cycle Management) routes
+  app.use('/api/rcm', isAuthenticated, rcmRoutes);
+
+  // Population Health Management routes
+  app.use('/api/population-health', isAuthenticated, populationHealthRoutes);
+
+  // Quality Measures & Compliance routes
+  app.use('/api/quality', isAuthenticated, qualityRoutes);
+
+  // Mobile Health (mHealth) routes
+  app.use('/api/mhealth', isAuthenticated, mhealthRoutes);
+
+  // Clinical Research Platform routes
+  app.use('/api/research', isAuthenticated, researchRoutes);
+
+  // Telehealth routes
+  app.use('/api/telehealth', isAuthenticated, telehealthRoutes);
+
+  // ============================================================================
+  // NHS INTEGRATION ROUTES - NOW CONNECTED!
+  // ============================================================================
+
+  // NHS/PCSE Integration routes (claims, vouchers, exemptions)
+  app.use('/api/nhs', isAuthenticated, nhsRoutes);
+
+  // ============================================================================
+  // PATIENT PORTAL & PUBLIC ROUTES - NOW CONNECTED!
+  // ============================================================================
+
+  // Patient Portal routes (public and authenticated)
+  app.use('/api/patient-portal', patientPortalRoutes);
+
+  // Online Booking routes (public) - TEMPORARILY DISABLED: missing appointments schema
+  // app.use('/api/booking', bookingRoutes);
+
+  // ============================================================================
+  // SECURITY & COMPLIANCE ROUTES - NOW CONNECTED!
+  // ============================================================================
+
+  // GDPR Compliance routes
+  app.use('/api/gdpr', isAuthenticated, gdprRoutes);
+
+  // Two-Factor Authentication routes
+  app.use('/api/two-factor', twoFactorRoutes);
+
+  // ============================================================================
+  // INTEGRATION & COMMUNICATION ROUTES - NOW CONNECTED!
+  // ============================================================================
+
+  // Integration Framework routes
+  app.use('/api/integrations', isAuthenticated, integrationsRoutes);
+
+  // Communications (email, SMS, campaigns) routes
+  app.use('/api/communications', isAuthenticated, communicationsRoutes);
+
+  // ============================================================================
+  // MONITORING & OBSERVABILITY ROUTES - NOW CONNECTED!
+  // ============================================================================
+
+  // System Monitoring routes
+  app.use('/api/monitoring', isAuthenticated, monitoringRoutes);
+
+  // Observability (tracing, metrics) routes
+  app.use('/api/observability', isAuthenticated, observabilityRoutes);
+
+  // ============================================================================
+  // ADDITIONAL FEATURE ROUTES - NOW CONNECTED!
+  // ============================================================================
+
+  // Contact Lens Management routes
+  app.use('/api/contact-lens', isAuthenticated, contactLensRoutes);
+
+  // Clinical Reporting routes
+  app.use('/api/clinical-reporting', isAuthenticated, clinicalReportingRoutes);
+
+  // Face Analysis (AI-powered) routes
+  app.use('/api/face-analysis', isAuthenticated, faceAnalysisRoutes);
+
+  // Lens Recommendations (AI-powered) routes
+  app.use('/api/lens-recommendations', isAuthenticated, lensRecommendationsRoutes);
+
+  // Data Import/Export routes
+  app.use('/api/import', isAuthenticated, importRoutes);
+
+  // BI Analytics routes
+  app.use('/api/bi-analytics', isAuthenticated, biAnalyticsRoutes);
+
+  // API Management routes
+  app.use('/api/api-management', isAuthenticated, apiManagementRoutes);
+
+  // Payment Processing routes
+  registerPaymentRoutes(app);
+
+  // AI/ML Service routes
+  app.use('/api/ai-ml', isAuthenticated, aiMLRoutes);
+
+  // Ophthalmic AI routes
+  app.use('/api/ophthalmic-ai', isAuthenticated, ophthalamicAIRoutes);
+
+  // Order Tracking routes
+  app.use('/api/order-tracking', orderTrackingRoutes);
 
   const FULL_PLAN = "full" as const;
   const FREE_ECP_PLAN = "free_ecp" as const;

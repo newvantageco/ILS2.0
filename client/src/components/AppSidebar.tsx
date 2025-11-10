@@ -43,6 +43,8 @@ import {
   FileType,
   BookOpen,
   Mail,
+  Key,
+  Activity,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -52,7 +54,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getUserDisplayName, getUserInitials } from "@/lib/authUtils";
 
 interface AppSidebarProps {
-  userRole?: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin";
+  userRole?: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin" | "dispenser";
 }
 
 const menuItems = {
@@ -154,6 +156,9 @@ const menuItems = {
     { title: "Platform Dashboard", url: "/platform-admin/dashboard", icon: Home },
     { title: "All Users", url: "/platform-admin/users", icon: Users },
     { title: "All Companies", url: "/platform-admin/companies", icon: Building2 },
+    { title: "System Health", url: "/platform-admin/system-health", icon: Activity },
+    { title: "System Configuration", url: "/platform-admin/system-config", icon: Settings },
+    { title: "API Keys", url: "/platform-admin/api-keys", icon: Key },
     { title: "Diary / Bookings", url: "/ecp/test-rooms/bookings", icon: CalendarDays },
     { title: "Platform Settings", url: "/platform-admin/settings", icon: Shield },
     { title: "AI Assistant", url: "/admin/ai-assistant", icon: Brain },

@@ -255,7 +255,7 @@ Dear {{firstName}} {{lastName}},
 This is a reminder that you have an outstanding balance:
 
 Invoice #: {{invoiceNumber}}
-Amount Due: ${{amountDue}}
+Amount Due: {{amountDue}}
 Due Date: {{dueDate}}
 
 You can make a payment online through your patient portal or call our billing department at {{billingPhone}}.
