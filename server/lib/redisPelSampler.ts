@@ -24,18 +24,18 @@ export function startPelSampler(redisClient: any, streams: string[], groupName =
         }
         try { setPelSize(streamKey, groupName, pendingCount); } catch (_) {}
       } catch (err) {
-        logger.debug('Failed to sample XPENDING for stream: ' + String(err), { stream: s, group: groupName });
+        logger.debug({ stream: s, group: groupName, err }, 'Failed to sample XPENDING for stream');
       }
     }
   };
 
   const interval = setInterval(() => {
     if (stopped) return;
-    runOnce().catch((err) => logger.error('PEL sampler run failed', err as Error));
+    runOnce().catch((err) => logger.error({ err }, 'PEL sampler run failed'));
   }, intervalMs);
 
   // Run immediately once
-  runOnce().catch((err) => logger.error('Initial PEL sampler run failed', err as Error));
+  runOnce().catch((err) => logger.error({ err }, 'Initial PEL sampler run failed'));
 
   return () => {
     stopped = true;

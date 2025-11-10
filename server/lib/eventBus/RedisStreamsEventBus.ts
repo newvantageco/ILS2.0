@@ -20,12 +20,12 @@ export class RedisStreamsEventBus {
     const list = this.handlers.get(eventName) || [];
     list.push(handler);
     this.handlers.set(eventName, list);
-    this.logger.debug('handler subscribed', { eventName });
+    this.logger.debug({ eventName }, 'handler subscribed');
 
     if (!this.running.get(eventName)) {
       this.running.set(eventName, true);
       this.startConsumerLoop(eventName).catch((err) => {
-        this.logger.error('Redis Streams consumer loop error', err as Error, { eventName });
+        this.logger.error({ err, eventName }, 'Redis Streams consumer loop error');
         this.running.set(eventName, false);
       });
     }
@@ -39,7 +39,7 @@ export class RedisStreamsEventBus {
       eventName,
       list.filter((h) => h !== handler)
     );
-    this.logger.debug('handler unsubscribed', { eventName });
+    this.logger.debug({ eventName }, 'handler unsubscribed');
   }
 
   async publish(eventName: string, payload: any) {
@@ -47,9 +47,9 @@ export class RedisStreamsEventBus {
     try {
       // XADD: add the payload as a field 'p' containing JSON
       await this.redis.xadd(streamKey, '*', 'p', JSON.stringify(payload));
-      this.logger.debug('published to redis stream', { eventName });
+      this.logger.debug({ eventName }, 'published to redis stream');
     } catch (err) {
-      this.logger.error('Failed to publish to redis stream', err as Error, { eventName });
+      this.logger.error({ err, eventName }, 'Failed to publish to redis stream');
     }
   }
 
@@ -57,13 +57,13 @@ export class RedisStreamsEventBus {
     try {
       // Attempt to create consumer group; ignore BUSYGROUP error
       await this.redis.xgroup('CREATE', streamKey, this.groupName, '$', 'MKSTREAM');
-      this.logger.info('Created consumer group', { streamKey, group: this.groupName });
+      this.logger.info({ streamKey, group: this.groupName }, 'Created consumer group');
     } catch (err: any) {
       if (String(err).includes('BUSYGROUP')) {
         // already exists
-        this.logger.debug('Consumer group already exists', { streamKey, group: this.groupName });
+        this.logger.debug({ streamKey, group: this.groupName }, 'Consumer group already exists');
       } else {
-        this.logger.error('Failed to create consumer group', err as Error, { streamKey });
+        this.logger.error({ err, streamKey }, 'Failed to create consumer group');
         throw err;
       }
     }
@@ -72,7 +72,7 @@ export class RedisStreamsEventBus {
   private async startConsumerLoop(eventName: string) {
     const streamKey = `stream:${eventName}`;
     await this.ensureGroup(streamKey);
-    this.logger.info('Starting redis streams consumer loop', { eventName, streamKey, group: this.groupName, consumer: this.consumerName });
+    this.logger.info({ eventName, streamKey, group: this.groupName, consumer: this.consumerName }, 'Starting redis streams consumer loop');
 
     while (this.running.get(eventName)) {
       try {
@@ -103,7 +103,7 @@ export class RedisStreamsEventBus {
               try {
                 await handler(payload);
               } catch (err) {
-                this.logger.error('event handler error', err as Error, { eventName, id });
+                this.logger.error({ err, eventName, id }, 'event handler error');
                 // Do not ack so it stays in PEL for inspection/retry
               }
             }
@@ -112,17 +112,17 @@ export class RedisStreamsEventBus {
             try {
               await this.redis.xack(streamKey, this.groupName, id);
             } catch (ackErr) {
-              this.logger.error('Failed to ACK stream entry', ackErr as Error, { eventName, id });
+              this.logger.error({ err: ackErr, eventName, id }, 'Failed to ACK stream entry');
             }
           }
         }
       } catch (err) {
-        this.logger.error('Redis Streams consumer loop exception', err as Error, { eventName });
+        this.logger.error({ err, eventName }, 'Redis Streams consumer loop exception');
         await new Promise((r) => setTimeout(r, 1000));
       }
     }
 
-    this.logger.info('Consumer loop exiting', { eventName });
+    this.logger.info({ eventName }, 'Consumer loop exiting');
   }
 
   // Attempt to claim pending entries older than minIdleMs and process them.
@@ -142,12 +142,12 @@ export class RedisStreamsEventBus {
           try { setPelSize(streamKey, this.groupName, pendingCount); } catch (_) { /* ignore */ }
         }
       } catch (metricErr) {
-        this.logger.debug('Failed to sample XPENDING summary for metrics', { eventName, err: metricErr as Error });
+        this.logger.debug({ eventName, err: metricErr }, 'Failed to sample XPENDING summary for metrics');
       }
       // Get up to maxCount pending entries
       const pending = await this.redis.xpending(streamKey, this.groupName, '-', '+', maxCount);
       if (!pending || pending.length === 0) {
-        this.logger.debug('No pending entries to reclaim', { eventName });
+        this.logger.debug({ eventName }, 'No pending entries to reclaim');
         return;
       }
 
@@ -168,7 +168,7 @@ export class RedisStreamsEventBus {
             // This is best-effort; if it fails we continue
             claimedEntries = await this.redis.send_command('XCLAIM', [streamKey, this.groupName, this.consumerName, String(minIdleMs), id]);
           } catch (inner) {
-            this.logger.error('Failed to XCLAIM pending entry', inner as Error, { eventName, id });
+            this.logger.error({ err: inner, eventName, id }, 'Failed to XCLAIM pending entry');
             continue;
           }
         }
@@ -189,38 +189,38 @@ export class RedisStreamsEventBus {
               await handler(payload);
             } catch (err) {
               allOk = false;
-              this.logger.error('Handler failed while reclaim processing', err as Error, { eventName, id: entryId });
+              this.logger.error({ err, eventName, id: entryId }, 'Handler failed while reclaim processing');
             }
           }
 
           if (allOk) {
             try {
               await this.redis.xack(streamKey, this.groupName, entryId);
-              this.logger.info('Reclaimed entry processed and ACKed', { eventName, id: entryId });
+              this.logger.info({ eventName, id: entryId }, 'Reclaimed entry processed and ACKed');
               try { incReclaimed(1); } catch (_) { /* ignore metrics errors */ }
             } catch (ackErr) {
-              this.logger.error('Failed to ACK reclaimed entry', ackErr as Error, { eventName, id: entryId });
+              this.logger.error({ err: ackErr, eventName, id: entryId }, 'Failed to ACK reclaimed entry');
             }
           } else {
-            this.logger.warn('Reclaimed entry processing failed; moving to DLQ stream', { eventName, id: entryId });
+            this.logger.warn({ eventName, id: entryId }, 'Reclaimed entry processing failed; moving to DLQ stream');
             try {
               const dlqKey = `stream:dlq:${eventName}`;
               // Store original id, payload and marker about failure for manual inspection
               await this.redis.xadd(dlqKey, '*', 'originalId', entryId, 'p', JSON.stringify(payload), 'claimedBy', this.consumerName, 'failedAt', String(Date.now()));
-              this.logger.info('Moved reclaimed entry to DLQ', { eventName, id: entryId, dlqKey });
+              this.logger.info({ eventName, id: entryId, dlqKey }, 'Moved reclaimed entry to DLQ');
               try { incDlq(1); } catch (_) { /* ignore metrics errors */ }
               // Acknowledge the original entry so it doesn't remain in PEL
               await this.redis.xack(streamKey, this.groupName, entryId);
             } catch (dlqErr) {
-              this.logger.error('Failed to move reclaimed entry to DLQ', dlqErr as Error, { eventName, id: entryId });
-              this.logger.warn('Leaving entry in PEL for manual inspection', { eventName, id: entryId });
+              this.logger.error({ err: dlqErr, eventName, id: entryId }, 'Failed to move reclaimed entry to DLQ');
+              this.logger.warn({ eventName, id: entryId }, 'Leaving entry in PEL for manual inspection');
             }
           }
         }
       }
     } catch (err) {
       try { incReclaimFailures(1); } catch (_) { /* ignore metrics errors */ }
-      this.logger.error('Failed during reclaimAndProcess', err as Error, { eventName });
+      this.logger.error({ err, eventName }, 'Failed during reclaimAndProcess');
     }
   }
 }

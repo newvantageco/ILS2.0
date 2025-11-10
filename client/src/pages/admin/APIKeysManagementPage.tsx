@@ -264,7 +264,7 @@ export default function APIKeysManagementPage() {
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
 
   // Fetch current API key values (masked)
-  const { data: apiKeys, isLoading } = useQuery({
+  const { data: apiKeys, isLoading } = useQuery<Record<string, string>>({
     queryKey: ["/api/system-admin/config/api-keys"],
   });
 

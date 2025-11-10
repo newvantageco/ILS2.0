@@ -101,7 +101,7 @@ export const setTenantContext = async (
 
     next();
   } catch (error) {
-    logger.error('Tenant context error:', error as Error);
+    logger.error({ err: error }, 'Tenant context error');
     return res.status(500).json({
       error: 'Failed to set tenant context'
     });
@@ -175,16 +175,16 @@ export const logTenantActivity = (action: string) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Log activity (implement your logging logic)
-      logger.info('Tenant activity logged', {
+      logger.info({
         action,
         path: req.path,
         method: req.method,
-      });
+      }, 'Tenant activity logged');
 
       next();
     } catch (error) {
       // Don't block request if logging fails
-      logger.error('Activity logging failed:', error as Error);
+      logger.error({ err: error }, 'Activity logging failed');
       next();
     }
   };
@@ -221,7 +221,7 @@ export const checkSubscriptionStatus = async (
 
     next();
   } catch (error) {
-    logger.error('Subscription check error:', error as Error);
+    logger.error({ err: error }, 'Subscription check error');
     return res.status(500).json({
       error: 'Failed to verify subscription status'
     });

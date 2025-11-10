@@ -125,7 +125,7 @@ export default function SystemConfigPage() {
   });
 
   // Fetch configuration history
-  const { data: history } = useQuery({
+  const { data: history } = useQuery<{ changes: any[] }>({
     queryKey: ["/api/system-admin/config/history"],
   });
 
