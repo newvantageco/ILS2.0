@@ -1,982 +1,751 @@
-# ILS 2.0 - Integrated Laboratory & Optical Practice Management System
+# Integrated Lens System (ILS)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18.x-blue)](https://reactjs.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-20.x-green)](https://nodejs.org/)
-[![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)](#deployment)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue.svg)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18.3-61dafb.svg)](https://reactjs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
+[![License](https://img.shields.io/badge/License-Proprietary-red.svg)]()
 
-> **World-class SaaS platform for UK optical practices** with AI-powered assistance, NHS compliance, Shopify e-commerce integration, Stripe billing, contact lens management, and comprehensive business intelligence.
-
----
-
-## 📋 Table of Contents
-
-- [Executive Summary](#executive-summary)
-- [Key Features](#key-features)
-- [Quick Start](#quick-start)
-- [Deployment](#deployment)
-- [Architecture](#architecture)
-- [API Reference](#api-reference)
-- [Development Guide](#development-guide)
-- [Documentation](#documentation)
+> **Enterprise optical lab management platform** — A comprehensive, event-driven monorepo for managing lens orders, production workflows, analytics, and AI-powered insights.
 
 ---
 
-## 🎯 Executive Summary
+## 🎯 Overview
 
-**ILS 2.0** is a comprehensive optical practice management system specifically designed for the UK market with:
+The **Integrated Lens System (ILS)** is a full-stack, multi-tenant enterprise platform designed for optical laboratories, eye care professionals, and suppliers. Built with modern technologies and best practices, ILS streamlines the entire lens production lifecycle from order submission to delivery.
 
-### Production-Ready Branch
-- **Branch**: `claude/repo-exploration-011CUwqQAJEnToj2dByi3AK9`
-- **Latest Commit**: `7560dc0`
-- **Status**: ✅ **READY FOR PRODUCTION DEPLOYMENT**
-- **Total Features**: 30+ major features, 200+ sub-features
-- **New Code**: ~5,500 lines of production-ready TypeScript
-- **Documentation**: Complete and comprehensive
+### Key Stakeholders
 
-### Core Capabilities
-
-**🏥 NHS Integration** - Full NHS/PCSE compliance with GOS claims, vouchers, exemptions, and payments
-
-**🤖 AI-Powered** - GPT-4 Vision for face analysis, PD measurement, prescription OCR, and intelligent recommendations
-
-**🛍️ Shopify E-Commerce** - Complete integration for selling prescription eyewear online
-
-**💳 Stripe Billing** - SaaS subscription system with three tiers (Starter £49/mo, Pro £149/mo, Enterprise £349/mo)
-
-**👁️ Contact Lens Management** - Complete clinical workflow from assessment to aftercare
-
-**📊 Business Intelligence** - Real-time analytics, demand forecasting, and insights
-
-**🎨 Modern UI/UX** - NHS-compliant design system with beautiful responsive interface
+- **👓 Eye Care Professionals (ECPs)**: Submit, track, and manage patient lens orders
+- **🔬 Lab Technicians & Engineers**: Production queue management, quality control, job tracking
+- **📦 Suppliers**: Materials coordination, purchase order fulfillment
+- **👔 Administrators**: User management, platform configuration, analytics, and billing
+- **🤖 AI/ML Engine**: Automated quality checks, predictive analytics, intelligent recommendations
 
 ---
 
-## 🌟 Key Features
+## ✨ Feature Highlights
 
-### 1. Shopify E-Commerce Integration
+### 🚀 **Production-Ready Capabilities**
 
-**Sell prescription eyewear online through Shopify:**
+#### **Order Management & Production Workflow**
+- ✅ Comprehensive order lifecycle management (draft → submitted → in-production → completed)
+- ✅ Real-time production queue with drag-and-drop job prioritization
+- ✅ Multi-stage quality control checkpoints with automated validation
+- ✅ Patient record management with prescription tracking
+- ✅ OMA file upload and parsing for digital frame tracing
+- ✅ Consult logging system with technical documentation library
 
-- ✅ **OAuth Store Connection** - Secure Shopify app integration
-- ✅ **Product & Inventory Sync** - Bi-directional synchronization
-- ✅ **Order Processing** - Auto-create patient records from Shopify customers
-- ✅ **AI Prescription OCR** - GPT-4 Vision extracts prescription from uploaded images
-- ✅ **PD Measurement from Photos** - Measure pupillary distance using webcam + credit card reference
-- ✅ **AI Lens Recommendations** - Prescription + lifestyle analysis for optimal lens selection
-- ✅ **Real-time Webhooks** - Automated order processing and inventory updates
-- ✅ **Customer-Facing Widgets** - Embeddable prescription upload and PD measurement tools
+#### **AI & Analytics Platform**
+- ✅ **AI Intelligence Dashboard**: Real-time insights, predictive analytics, anomaly detection
+- ✅ **Business Intelligence (BI)**: Custom report builder, KPI tracking, trend analysis
+- ✅ **Machine Learning Models**: Quality prediction, demand forecasting, process optimization
+- ✅ **Natural Language Processing**: AI-powered search and recommendations
+- ✅ **Autonomous AI Agents**: Automated decision-making for routine tasks
 
-**Widgets Available:**
-- Prescription Upload Widget (with AI OCR)
-- PD Measurement Widget (webcam-based)
+#### **Supplier & Purchase Order Management**
+- ✅ Full CRUD operations for supplier/vendor management
+- ✅ Automated purchase order generation with PDF export
+- ✅ Inventory tracking and material requisition workflows
+- ✅ Supplier performance analytics and vendor scorecards
 
-**Accuracy:**
-- PD Measurement: ±0.5mm to ±1mm
-- Prescription OCR: 85%+ confidence (manual review for lower)
+#### **User & Access Management**
+- ✅ Multi-role RBAC system (ECP, Lab Tech, Engineer, Supplier, Admin, AI Admin)
+- ✅ Account approval workflow with pending/active/suspended states
+- ✅ Team and organization management with hierarchy support
+- ✅ Audit logging for compliance and security tracking
+- ✅ Master user provisioning for operational control
 
-### 2. AI-Powered PD Measurement
+#### **Payments & Subscriptions**
+- ✅ Stripe integration for payment processing
+- ✅ Tiered subscription plans (Free, Pro, Premium, Enterprise)
+- ✅ Feature-based access control tied to subscription levels
+- ✅ Usage tracking and billing automation
 
-**Revolutionary webcam-based PD measurement:**
+#### **Background Jobs & Event-Driven Architecture**
+- ✅ BullMQ + Redis for reliable job queuing (email, PDF, notifications, AI tasks)
+- ✅ Event bus with pub/sub pattern for domain events
+- ✅ Graceful degradation when Redis unavailable
+- ✅ Cron-based scheduled jobs (daily briefings, inventory monitoring, anomaly detection)
 
-- ✅ **GPT-4 Vision Analysis** - Detects facial landmarks and pupil centers
-- ✅ **Credit Card Scale Reference** - Uses standard credit card (85.6mm) for calibration
-- ✅ **Binocular & Monocular PD** - Total distance and left/right measurements
-- ✅ **Confidence Scoring** - 0-100% confidence rating
-- ✅ **Validation** - Ensures PD within normal adult range (54-74mm)
-- ✅ **Database Storage** - Stores all measurements with calibration data
+#### **Real-Time Features**
+- ✅ WebSocket server for live updates and notifications
+- ✅ Broadcast system for multi-user collaboration
+- ✅ Real-time job status tracking on production dashboard
 
-**Use Cases:**
-- Online eyewear sales (Shopify)
-- Remote patient consultations
-- Self-service PD measurement for customers
-
-### 3. Stripe Subscription Billing
-
-**Complete SaaS billing system:**
-
-**Starter Plan - £49/month (£470/year)**
-- 1 Practice Location
-- Up to 2 Staff Users
-- 500 Patients
-- Basic POS System
-- 100 AI Credits/month
-- Email Support
-
-**Professional Plan - £149/month (£1,430/year)**
-- Up to 3 Practice Locations
-- Up to 10 Staff Users
-- 5,000 Patients
-- Advanced POS & Inventory
-- AI Features (Frame & Lens Recommendations, OCR)
-- NHS Claims Management
-- 500 AI Credits/month
-- Priority Support
-
-**Enterprise Plan - £349/month (£3,350/year)**
-- Unlimited Practice Locations
-- Unlimited Staff Users
-- Unlimited Patients
-- All AI Features Unlimited
-- PD Measurement from Photos
-- Shopify Integration
-- Custom Reports & Analytics
-- Unlimited AI Credits
-- 24/7 Priority Support
-
-**Features:**
-- ✅ Automated billing & invoicing
-- ✅ Self-service billing portal
-- ✅ Webhook automation for payment events
-- ✅ Plan upgrades/downgrades with prorated billing
-- ✅ Payment method management
-
-### 4. NHS/PCSE Integration
-
-**Complete NHS workflow for UK optical practices:**
-
-**NHS Practitioner Management**
-- GOC Registration tracking with expiry alerts
-- Qualification and specialization recording
-- Multi-practitioner support
-
-**NHS Claims (GOS 1-4)**
-- GOS 1: NHS sight test (£23.35)
-- GOS 2: Domiciliary sight test (£58.88)
-- GOS 3: Supplementary sight test (£30.45)
-- GOS 4: Home visit supplementary test (£65.98)
-- Automated claim validation and submission
-- Complete claim status tracking
-- Rejection handling and resubmission
-
-**NHS Optical Vouchers**
-- 8 voucher types (A-H) with automatic calculation
-- Smart voucher determination from prescription
-- High power, prism, bifocal, and tint detection
-- Voucher redemption and expiry tracking
-
-**NHS Patient Exemptions**
-- 10 exemption categories (age, benefits, income)
-- Exemption verification and evidence recording
-- Automatic expiry alerts
-
-**NHS Payments**
-- Payment recording and reconciliation
-- Batch payment allocation
-- Outstanding claims tracking
-- Payment discrepancy detection
-
-### 5. Contact Lens Management
-
-**Complete clinical contact lens workflow:**
-
-**Assessments**
-- New wearer, re-fit, and routine assessments
-- Motivation and lifestyle factor recording
-- Ocular health and tear film evaluation
-- Suitability decision with recommendations
-
-**Fittings**
-- 5 lens types: Soft, RGP, Hybrid, Scleral, Ortho-k
-- Trial lens tracking with bilateral fitting
-- Fitting assessment and over-refraction
-- Visual acuity recording
-
-**Prescriptions**
-- Comprehensive CL Rx with all parameters
-- Toric and multifocal support
-- Wearing and replacement schedules
-- Care system recommendations
-- Auto-expiry and follow-up scheduling
-- NHS funding tracking
-
-**Aftercare**
-- Automated aftercare scheduling (1-day, 1-week, 1-month)
-- Clinical findings and compliance assessment
-- Complication recording
-- Overdue alerts
-
-**Inventory**
-- Trial and retail lens inventory
-- Low stock alerts
-- Expiry tracking
-- Usage history and wastage monitoring
-
-### 6. AI-Powered Features
-
-**Smart Frame Finder (Face Analysis)**
-- GPT-4 Vision face shape analysis (7 shapes)
-- Confidence scoring 0-100%
-- Detailed facial measurements
-- Frame compatibility scoring
-- 14 frame shapes supported
-- Material and color recommendations
-- Reasoning explanations
-
-**Ophthalmic AI Assistant**
-- Expert clinical guidance (GPT-4 Turbo)
-- Lens recommendations (prescription + lifestyle)
-- Contact lens recommendations
-- Prescription explanations (patient-friendly)
-- NHS guidance and eligibility
-- Business insights and analytics
-
-**AI Capabilities:**
-- Context-aware responses
-- Multi-system integration
-- Conversation history
-- Usage tracking and quotas
-- Cache optimization
-
-### 7. Online Booking System
-
-**Patient-facing booking portal:**
-
-- ✅ 3-step booking process (type → date/time → details)
-- ✅ Real-time availability detection
-- ✅ Multi-provider scheduling
-- ✅ Automated reminders (24h email + 2h SMS)
-- ✅ Waitlist management
-- ✅ No-show tracking
-- ✅ Booking analytics
-
-**Features:**
-- Interactive calendar
-- Mobile-responsive design
-- Confirmation emails
-- Progress indicators
-- Printable confirmations
-
-### 8. Core PMS Features
-
-**Patient Management**
-- Patient registration and demographics
-- NHS number recording
-- Patient search (name, DOB, NHS number)
-- Medical history and allergies
-- Family member linking
-
-**Prescription Management**
-- Spectacle prescription recording
-- Distance and near prescriptions
-- PD recording
-- Prescription history and expiry tracking
-
-**Order Management**
-- Order creation and status tracking
-- Frame and lens selection
-- Coating selection
-- Lab integration
-- Order tracking
-
-**Examination Records**
-- Eye examination recording
-- Visual acuity and refraction
-- Ocular health assessment
-- IOP measurement
-- Recall dates
-
-**Inventory Management**
-- Frame inventory
-- Stock levels and low stock alerts
-- Supplier management
-- Purchase orders
-- Barcode support
-
-**Reporting & Analytics**
-- Sales and revenue reports
-- Patient demographics
-- Practitioner productivity
-- Financial reports
-- Export to CSV/Excel
+#### **Developer Experience**
+- ✅ TypeScript monorepo with strict type safety
+- ✅ Comprehensive test suite (Jest, Vitest, Playwright)
+- ✅ 98.5% codebase health score with zero critical issues
+- ✅ Hot module reloading for rapid development
+- ✅ Automated database migrations with Drizzle ORM
 
 ---
 
-## 🚀 Quick Start
+## 🏗️ Tech Stack
 
-### Prerequisites
+### **Frontend** (`client/`)
+| Technology | Purpose |
+|------------|---------|
+| **React 18.3** + **TypeScript 5.6** | Modern UI framework with strict type safety |
+| **Vite** | Lightning-fast dev server and optimized production builds |
+| **TanStack Query v5** | Server state management, caching, and synchronization |
+| **Wouter** | Lightweight routing (~1.5KB) |
+| **shadcn/ui** + **Radix UI** | Accessible, unstyled component primitives |
+| **Tailwind CSS** | Utility-first styling with dark mode support |
+| **Lucide React** | Beautiful, consistent icon library |
+| **React Hook Form** + **Zod** | Type-safe form validation |
+| **Recharts** | Data visualization for analytics dashboards |
 
-- **Node.js** >= 20.x
-- **PostgreSQL** >= 15.x with pgvector extension
-- **npm** or **pnpm**
-- **Redis** (optional, for caching)
+### **Backend** (`server/`)
+| Technology | Purpose |
+|------------|---------|
+| **Node.js 20+** + **Express** | High-performance REST API server |
+| **TypeScript (ESM)** | Strict type safety with ES modules |
+| **Neon Postgres** | Serverless PostgreSQL with connection pooling |
+| **Drizzle ORM** + **Drizzle-Zod** | Type-safe queries with automatic validation schemas |
+| **Passport.js** | Authentication middleware (OIDC + local strategies) |
+| **BullMQ** + **Redis** | Reliable background job processing |
+| **Socket.io** | WebSocket server for real-time features |
+| **Helmet** + **CORS** | Security middleware |
+| **Express Rate Limit** | DDoS protection and rate limiting |
 
-### Installation
+### **Python Services** (`python-service/`, `ai-service/`)
+| Technology | Purpose |
+|------------|---------|
+| **FastAPI** | High-performance async API framework |
+| **TensorFlow.js** / **PyTorch** | Machine learning model training and inference |
+| **Pandas** + **NumPy** | Data analysis and numerical computing |
+| **scikit-learn** | Classical ML algorithms |
+| **Anthropic Claude** / **OpenAI** | LLM integration for AI features |
 
+### **Infrastructure & DevOps**
+| Technology | Purpose |
+|------------|---------|
+| **npm workspaces** | Monorepo management |
+| **Jest** + **Vitest** | Unit and integration testing |
+| **Playwright** | End-to-end browser testing |
+| **ESBuild** | Fast production bundling |
+| **tsx** / **ts-node** | TypeScript execution in dev mode |
+| **Prometheus** | Metrics collection and monitoring |
+| **Node-cron** | Scheduled background tasks |
+
+### **Shared Contract** (`shared/`)
+- **Drizzle Schema** (90+ tables): Single source of truth for database structure
+- **Zod Validation Schemas**: Runtime type validation for API payloads
+- **TypeScript Types**: Shared interfaces across client/server boundaries
+
+---
+
+## 🚀 Getting Started
+
+### **Prerequisites**
+- **Node.js** 20+ and **npm** 9+
+- **PostgreSQL** 15+ (or use Neon serverless)
+- **Redis** 7+ (optional, for background jobs — graceful fallback if unavailable)
+- **Python** 3.10+ (optional, for AI/analytics services)
+
+### **Quick Start**
+
+#### 1️⃣ Clone the repository
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd ILS2.0
+git clone https://github.com/newvantageco/ILS2.0.git
+cd IntegratedLensSystem
+```
 
-# Checkout production-ready branch
-git checkout claude/repo-exploration-011CUwqQAJEnToj2dByi3AK9
-
-# Install dependencies
+#### 2️⃣ Install dependencies
+```bash
 npm install
+```
 
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your configuration
+#### 3️⃣ Configure environment variables
+Create a `.env` file in the project root:
 
-# Set up the database
+```bash
+# Database (Neon Postgres recommended)
+DATABASE_URL=postgresql://user:password@hostname/database
+
+# Session & Security
+SESSION_SECRET=your_secure_random_string_here
+ADMIN_SETUP_KEY=your_admin_key_for_first_user
+
+# Master User (Optional - auto-provisioned admin account)
+MASTER_USER_EMAIL=admin@example.com
+MASTER_USER_PASSWORD=secure_password_min_12_chars
+MASTER_USER_FIRST_NAME=Admin
+MASTER_USER_LAST_NAME=User
+MASTER_USER_ORGANIZATION=Platform Control
+
+# Redis (Optional - background jobs)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+
+# Email (Resend)
+RESEND_API_KEY=re_xxxxxxxxxxxx
+
+# Payments (Stripe)
+STRIPE_SECRET_KEY=sk_test_xxxxxxxxxxxx
+STRIPE_PUBLISHABLE_KEY=pk_test_xxxxxxxxxxxx
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxx
+
+# AI Services (Optional)
+OPENAI_API_KEY=sk-xxxxxxxxxxxx
+ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
+```
+
+#### 4️⃣ Initialize database
+```bash
 npm run db:push
+```
 
-# Start development server
+#### 5️⃣ Start development servers
+```bash
+# Start all services (client, server, Python services)
 npm run dev
+
+# OR start individually:
+npm run dev:node     # Node.js server only (port 5000)
+npm run dev:python   # Python analytics service only (port 8000)
 ```
 
-### Environment Variables
-
-Create a `.env` file:
-
-```env
-# Core
-DATABASE_URL=postgresql://user:password@localhost:5432/ils2
-APP_URL=https://your-domain.com
-NODE_ENV=production
-
-# Authentication
-JWT_SECRET=your-secure-secret-min-32-chars
-SESSION_SECRET=your-session-secret-min-32-chars
-
-# OpenAI (REQUIRED for AI features)
-OPENAI_API_KEY=sk-...
-
-# Shopify (optional, for e-commerce)
-SHOPIFY_API_KEY=your-key
-SHOPIFY_API_SECRET=your-secret
-
-# Stripe (optional, for billing)
-STRIPE_SECRET_KEY=sk_live_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_PRICE_STARTER_MONTHLY=price_...
-STRIPE_PRICE_STARTER_YEARLY=price_...
-STRIPE_PRICE_PRO_MONTHLY=price_...
-STRIPE_PRICE_PRO_YEARLY=price_...
-STRIPE_PRICE_ENTERPRISE_MONTHLY=price_...
-STRIPE_PRICE_ENTERPRISE_YEARLY=price_...
-
-# Email Service (optional)
-SENDGRID_API_KEY=SG....
-EMAIL_FROM=noreply@your-practice.com
-
-# SMS Service (optional)
-TWILIO_ACCOUNT_SID=AC...
-TWILIO_AUTH_TOKEN=...
-TWILIO_PHONE_NUMBER=+44...
-```
-
-### First Run
-
-1. **Access the application**: http://localhost:5000
-2. **Default credentials** (dev only):
-   - Email: `admin@ils.com`
-   - Password: `admin_password`
-3. **API Documentation**: http://localhost:5000/api-docs
+#### 6️⃣ Access the application
+- **Frontend**: [http://localhost:5000](http://localhost:5000)
+- **API**: [http://localhost:5000/api](http://localhost:5000/api)
+- **Python Service**: [http://localhost:8000](http://localhost:8000) _(if running)_
+- **Health Check**: [http://localhost:5000/api/health](http://localhost:5000/api/health)
 
 ---
 
-## 📦 Deployment
+## 📁 Project Structure
 
-### Production Deployment Options
+```
+IntegratedLensSystem/
+├── client/                    # React frontend (Vite + TypeScript)
+│   ├── src/
+│   │   ├── components/        # Reusable UI components
+│   │   │   ├── ui/            # shadcn/ui primitives
+│   │   │   ├── landing/       # Marketing/landing page components
+│   │   │   ├── dashboard/     # Dashboard-specific components
+│   │   │   └── ...
+│   │   ├── pages/             # Route-level page components
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── Orders.tsx
+│   │   │   ├── AIIntelligence.tsx
+│   │   │   └── ...
+│   │   ├── hooks/             # Custom React hooks (useAuth, useOrders, etc.)
+│   │   ├── lib/               # Utilities, API clients, helpers
+│   │   └── App.tsx            # Root component with routing
+│   ├── index.html
+│   └── vite.config.ts
+│
+├── server/                    # Express backend (TypeScript ESM)
+│   ├── index.ts               # Server entry point (middleware, cron, WebSocket)
+│   ├── routes.ts              # Main route registry (calls registerXXXRoutes)
+│   ├── storage.ts             # Data access layer (DbStorage singleton)
+│   ├── db.ts                  # Database connection (Drizzle + Neon)
+│   ├── routes/                # Modular route handlers
+│   │   ├── aiIntelligence.ts  # AI features and analytics
+│   │   ├── bi.ts              # Business intelligence reports
+│   │   ├── payments.ts        # Stripe integration
+│   │   ├── metrics.ts         # Prometheus metrics endpoint
+│   │   └── ...
+│   ├── middleware/            # Express middleware
+│   │   ├── auth.ts            # Authentication & RBAC
+│   │   ├── security.ts        # Helmet, CORS, rate limiting
+│   │   ├── errorHandler.ts    # Centralized error handling
+│   │   ├── audit.ts           # Audit logging
+│   │   └── validation.ts      # Zod validation helpers
+│   ├── workers/               # BullMQ background workers
+│   │   ├── emailWorker.ts
+│   │   ├── pdfWorker.ts
+│   │   ├── notificationWorker.ts
+│   │   └── aiWorker.ts
+│   ├── events/                # Event-driven architecture
+│   │   ├── EventBus.ts        # Pub/sub event bus (EventEmitter)
+│   │   └── handlers/          # Event listeners
+│   ├── services/              # Business logic services
+│   │   ├── EmailService.ts
+│   │   ├── PDFService.ts
+│   │   └── ...
+│   ├── queue/                 # BullMQ queue configuration
+│   │   └── config.ts          # Redis connection, queue init
+│   ├── jobs/                  # Cron-scheduled tasks
+│   │   ├── dailyBriefing.ts
+│   │   └── inventoryMonitoring.ts
+│   └── websocket/             # WebSocket server
+│       └── WebSocketBroadcaster.ts
+│
+├── shared/                    # Shared types & schemas (client + server)
+│   └── schema.ts              # Drizzle tables + Zod validation (3,589 lines, 90 tables)
+│
+├── python-service/            # FastAPI analytics service
+│   ├── main.py                # FastAPI app entry
+│   ├── requirements.txt
+│   └── start-service.sh       # Startup script
+│
+├── ai-service/                # Machine learning & AI models
+│   ├── models/
+│   ├── api/
+│   └── requirements.txt
+│
+├── scripts/                   # Utility scripts
+│   ├── migrate-storage.ts     # Data migration helpers
+│   └── ...
+│
+├── test/                      # Test suites
+│   ├── integration/           # API integration tests (Jest)
+│   ├── unit/                  # Unit tests (Jest)
+│   ├── components/            # Component tests (Vitest)
+│   └── e2e/                   # End-to-end tests (Playwright)
+│
+├── start-dev.mjs              # Dev orchestrator (spawns Python + Node)
+├── package.json               # Monorepo root package
+├── tsconfig.json              # TypeScript config (strict mode)
+├── vite.config.ts             # Vite config (client build)
+└── README.md                  # You are here! 👋
+```
 
-**Branch:** `claude/repo-exploration-011CUwqQAJEnToj2dByi3AK9`
-**Commit:** `7560dc0`
-**Status:** ✅ Production Ready
+---
 
-### Option 1: Traditional Server (PM2)
+## 🔐 Authentication & Authorization
+
+### **Authentication Methods**
+- **Replit Auth (OIDC)**: Primary authentication provider
+- **Local Email/Password**: Fallback authentication
+- **Session-based**: Express sessions with Redis store (or memory store fallback)
+
+### **Role-Based Access Control (RBAC)**
+
+| Role | Permissions |
+|------|-------------|
+| **👓 ECP** (Eye Care Professional) | Create orders, view own patients, track order status |
+| **🔬 Lab Tech** | View production queue, update job status, quality checks |
+| **🛠️ Engineer** | Advanced production controls, technical documentation access |
+| **📦 Supplier** | View assigned POs, update inventory, manage deliveries |
+| **👔 Admin** | User management, platform settings, analytics access |
+| **🤖 AI Admin** | Full AI platform access, model training, data insights |
+
+### **Master User Provisioning**
+
+For operational control, you can pre-configure a **master admin account** that automatically receives all roles. Set these environment variables:
 
 ```bash
-# Install PM2 globally
-npm install -g pm2
+MASTER_USER_EMAIL=master@example.com
+MASTER_USER_PASSWORD=secure_password_min_12_chars  # Must be 12+ characters
+MASTER_USER_FIRST_NAME=Master
+MASTER_USER_LAST_NAME=Admin
+MASTER_USER_ORGANIZATION=Platform Control
+```
 
-# Build application
+On startup, the server:
+1. Hashes the password securely (bcrypt)
+2. Creates the user if it doesn't exist
+3. Marks the account as **active** and **verified**
+4. Assigns **all available roles** (admin, ecp, lab_tech, engineer, supplier, ai_admin)
+
+Leave these variables empty to skip master user creation.
+
+### **Account Approval Workflow**
+
+New user registrations require admin approval:
+1. User registers → account status: **Pending**
+2. Admin reviews in `/admin/users` dashboard
+3. Admin approves → account status: **Active**
+4. User can now log in and access assigned features
+
+---
+
+## 🧪 Testing
+
+### **Test Suites**
+
+```bash
+# Run all tests with TypeScript check
+npm run test:all
+
+# Unit tests (Jest) - Fast feedback loop
+npm run test:unit
+
+# Integration tests (Jest) - API endpoints
+npm run test:integration
+npm test  # Alias for integration tests
+
+# Component tests (Vitest + jsdom) - React components
+npm run test:components
+
+# End-to-end tests (Playwright) - Full browser automation
+npm run test:e2e
+
+# Coverage report
+npm run test:coverage
+```
+
+### **Current Test Coverage**
+- ✅ **Integration Tests**: 8/8 passing (100%)
+- ✅ **Component Tests**: 19/19 passing (100%)
+- ✅ **TypeScript Compilation**: 0 errors
+- ✅ **Codebase Health**: 98.5% (production-ready)
+
+---
+
+## 🏭 Production Deployment
+
+### **Build for Production**
+
+```bash
+# Build client (Vite) + server (ESBuild)
 npm run build
 
-# Start application
-pm2 start dist/index.js --name ils2-production
-
-# Enable auto-restart on system boot
-pm2 startup
-pm2 save
-
-# Monitor
-pm2 monit
-
-# View logs
-pm2 logs ils2-production
+# Output:
+# - client/dist/        → Static frontend assets
+# - dist/               → Bundled server code
 ```
 
-### Option 2: Docker Deployment
+### **Start Production Server**
 
 ```bash
-# Build image
-docker build -t ils2-production .
-
-# Run container
-docker run -d \
-  --name ils2 \
-  -p 5000:5000 \
-  --env-file .env \
-  --restart unless-stopped \
-  ils2-production
+NODE_ENV=production npm start
+# OR
+NODE_ENV=production node dist/index.js
 ```
 
-### Option 3: Platform Deployment (Render/Railway/Fly.io)
+### **Environment Checklist**
 
-**Render.com Example:**
-1. Connect GitHub repository
-2. Create new Web Service
-3. Build command: `npm run build`
-4. Start command: `node dist/index.js`
-5. Add environment variables from `.env`
-6. Deploy
+Before deploying to production, ensure:
 
-### Database Setup
+- [ ] `DATABASE_URL` points to production Postgres instance
+- [ ] `SESSION_SECRET` is a strong, random string (256-bit recommended)
+- [ ] `REDIS_HOST` / `REDIS_PASSWORD` configured for production Redis
+- [ ] `STRIPE_SECRET_KEY` uses live keys (not test keys)
+- [ ] `RESEND_API_KEY` configured for production email domain
+- [ ] SSL/TLS certificates configured (terminate at reverse proxy or load balancer)
+- [ ] Rate limiting tuned for expected traffic
+- [ ] Monitoring/alerting configured (Prometheus `/metrics` endpoint)
+- [ ] Backup strategy implemented for database
+- [ ] Log aggregation configured (stdout → log collection service)
 
-```bash
-# Create database
-psql -U postgres
-CREATE DATABASE ils2_production;
-
-# Enable extensions
-\c ils2_production
-CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-# Run migrations
-npm run db:migrate
-```
-
-### External Services Setup
-
-**For Shopify Integration:**
-1. Create Shopify App in Partners Dashboard
-2. Set OAuth redirect: `https://your-domain.com/api/shopify/callback`
-3. Copy API credentials to `.env`
-
-**For Stripe Billing:**
-1. Create products in Stripe Dashboard (3 plans, monthly + yearly each)
-2. Copy price IDs to `.env`
-3. Configure webhook: `https://your-domain.com/api/billing/webhook`
-4. Copy webhook secret to `.env`
-
-**For AI Features:**
-- Ensure OpenAI API key has GPT-4 Vision access
-- Monitor usage/costs at https://platform.openai.com/usage
-
-### Post-Deployment Verification
-
-```bash
-# Check server health
-curl https://your-domain.com/api/health
-
-# Test authentication
-curl -X POST https://your-domain.com/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"password"}'
-
-# Test NHS endpoints
-curl https://your-domain.com/api/nhs/claims \
-  -H "Authorization: Bearer <token>"
-
-# Test AI endpoints
-curl -X POST https://your-domain.com/api/ophthalmic-ai/query \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"question":"What are the benefits of progressive lenses?"}'
-```
-
-### Security Checklist
-
-- [ ] HTTPS enabled (SSL certificate)
-- [ ] Environment variables secured (not in code)
-- [ ] Database backups encrypted
-- [ ] Strong session secret (32+ characters)
-- [ ] Rate limiting enabled
-- [ ] CORS configured correctly
-- [ ] GOC practitioner verification
-- [ ] NHS data encryption at rest
-- [ ] GDPR compliance
-- [ ] Audit logging enabled
+### **Recommended Production Stack**
+- **Hosting**: Railway, Render, AWS ECS, Google Cloud Run
+- **Database**: Neon (serverless Postgres), AWS RDS, Supabase
+- **Redis**: Upstash, Redis Cloud, AWS ElastiCache
+- **Reverse Proxy**: Nginx, Caddy, Cloudflare
+- **Monitoring**: Prometheus + Grafana, Datadog, New Relic
 
 ---
 
-## 🏗️ Architecture
-
-### Technology Stack
-
-**Frontend:**
-- React 18 with TypeScript
-- Vite (build tool)
-- TanStack Query v5 (server state)
-- Shadcn/ui + Tailwind CSS
-- Wouter (routing)
-- Recharts (data visualization)
-
-**Backend:**
-- Node.js 20
-- Express.js
-- TypeScript (strict mode)
-- Drizzle ORM
-- PostgreSQL 15+ with pgvector
-- Passport.js (authentication)
-- Zod (validation)
-
-**AI/ML:**
-- OpenAI GPT-4 Turbo
-- GPT-4 Vision
-- Anthropic Claude (alternative)
-
-**Infrastructure:**
-- Docker (containerization)
-- PM2 (process management)
-- Redis (caching & sessions)
-- GitHub Actions (CI/CD)
-
-### Project Structure
-
-```
-ILS2.0/
-├── client/                  # React frontend
-│   ├── src/
-│   │   ├── components/      # Reusable UI components
-│   │   ├── pages/           # Page components
-│   │   ├── hooks/           # Custom React hooks
-│   │   └── lib/             # Utilities and helpers
-│   └── public/
-│       └── shopify-widgets/ # Embeddable Shopify widgets
-├── server/                  # Express backend
-│   ├── routes/              # API routes
-│   ├── services/            # Business logic
-│   │   ├── billing/         # Stripe subscription service
-│   │   ├── integrations/    # Shopify integration service
-│   │   ├── booking/         # Advanced booking service
-│   │   ├── notifications/   # Smart notification service
-│   │   └── recommendations/ # AI recommendation services
-│   ├── middleware/          # Express middleware
-│   └── db.ts                # Database connection
-├── shared/                  # Shared code (types, schemas)
-│   ├── schema.ts            # Database schema
-│   └── roles.ts             # Unified role system
-└── docs/                    # Documentation (archived)
-```
-
-### Database Schema
-
-**50+ Tables including:**
-
-**Core:**
-- users, companies, patients, prescriptions, orders
-
-**NHS:**
-- nhs_practitioners, nhs_contract_details, nhs_claims
-- nhs_vouchers, nhs_patient_exemptions, nhs_payments
-
-**Contact Lens:**
-- contact_lens_assessments, contact_lens_fittings
-- contact_lens_prescriptions, contact_lens_aftercare
-- contact_lens_inventory, contact_lens_orders
-
-**AI & Analytics:**
-- patient_face_analysis, frame_characteristics
-- frame_recommendations, frame_recommendation_analytics
-
-**Shopify:**
-- shopify_stores, shopify_products, shopify_orders
-
-**Billing:**
-- Companies table includes Stripe customer/subscription fields
-
-### Multi-Tenancy
-
-Complete data isolation per company using `companyId` filtering on all queries.
-
-### Role-Based Access Control
-
-**13 Roles:**
-- Platform Admin
-- Practice Owner, Practice Manager
-- Optometrist, Dispensing Optician, Contact Lens Optician
-- Receptionist, Retail Assistant
-- Lab Manager, Lab Technician, Quality Control
-- Supplier, Inventory Manager
-
-**30+ Granular Permissions:**
-- Patients (view, create, edit, delete)
-- Appointments (view, create, edit, delete)
-- Orders (view, create, edit, delete)
-- NHS Claims (view, create, submit, approve)
-- Inventory (view, edit, reorder)
-- Reports (view, export)
-- Settings (view, edit)
-- AI Features (access)
-
----
-
-## 📡 API Reference
-
-### Core Endpoints
-
-**Authentication**
-```
-POST   /api/auth/login          # User login
-POST   /api/auth/signup         # User registration
-GET    /api/auth/logout         # User logout
-```
-
-**Patients**
-```
-GET    /api/patients            # List patients
-POST   /api/patients            # Create patient
-GET    /api/patients/:id        # Get patient
-PATCH  /api/patients/:id        # Update patient
-DELETE /api/patients/:id        # Delete patient
-```
-
-**Orders**
-```
-GET    /api/orders              # List orders
-POST   /api/orders              # Create order
-GET    /api/orders/:id          # Get order
-PATCH  /api/orders/:id/status   # Update status
-DELETE /api/orders/:id          # Cancel order
-```
-
-**NHS Claims**
-```
-GET    /api/nhs/claims                      # List claims
-POST   /api/nhs/claims                      # Create claim
-GET    /api/nhs/claims/:id                  # Get claim
-PATCH  /api/nhs/claims/:id                  # Update claim
-POST   /api/nhs/claims/:id/submit           # Submit claim
-GET    /api/nhs/claims/stats                # Claim statistics
-```
-
-**Contact Lens**
-```
-GET    /api/contact-lens/assessments        # List assessments
-POST   /api/contact-lens/assessments        # Create assessment
-GET    /api/contact-lens/fittings           # List fittings
-POST   /api/contact-lens/fittings           # Create fitting
-GET    /api/contact-lens/prescriptions      # List prescriptions
-POST   /api/contact-lens/prescriptions      # Create prescription
-GET    /api/contact-lens/aftercare          # List aftercare appointments
-POST   /api/contact-lens/aftercare          # Create aftercare
-GET    /api/contact-lens/inventory/low-stock # Low stock items
-```
-
-**AI Services**
-```
-POST   /api/ophthalmic-ai/query             # AI assistant query
-POST   /api/ophthalmic-ai/lens-recommendations
-POST   /api/ophthalmic-ai/frame-analysis
-POST   /api/face-analysis/measure-pd        # PD measurement
-POST   /api/lens-recommendations/generate   # Intelligent lens recommendations
-```
-
-**Shopify Integration**
-```
-POST   /api/shopify/connect                 # Initiate OAuth
-GET    /api/shopify/callback                # OAuth callback
-GET    /api/shopify/connections             # List stores
-POST   /api/shopify/sync/:connectionId      # Sync products
-POST   /api/shopify/webhooks/orders/create  # Order webhook
-POST   /api/shopify/public/prescription-upload  # Upload Rx (public)
-POST   /api/shopify/public/pd-measurement   # Measure PD (public)
-POST   /api/shopify/public/lens-recommendations # Get AI recs (public)
-```
-
-**Stripe Billing**
-```
-POST   /api/billing/customer                # Create customer
-POST   /api/billing/subscription            # Create subscription
-PUT    /api/billing/subscription/:companyId # Update subscription
-DELETE /api/billing/subscription/:companyId # Cancel subscription
-GET    /api/billing/subscription/:companyId # Get subscription status
-POST   /api/billing/portal-session          # Billing portal session
-POST   /api/billing/webhook                 # Stripe webhook
-```
-
-**Booking**
-```
-GET    /api/booking/available-slots         # Get available slots
-POST   /api/booking/appointments            # Create appointment
-GET    /api/booking/appointments/:id        # Get appointment
-PATCH  /api/booking/appointments/:id        # Update appointment
-DELETE /api/booking/appointments/:id        # Cancel appointment
-POST   /api/booking/waitlist                # Add to waitlist
-GET    /api/booking/stats                   # Booking analytics
-```
-
-**Analytics**
-```
-GET    /api/analytics/overview              # Dashboard metrics
-GET    /api/analytics/orders                # Order analytics
-GET    /api/analytics/revenue               # Revenue tracking
-```
-
-**Monitoring**
-```
-GET    /api/monitoring/health               # System health check
-GET    /api/monitoring/metrics              # Performance metrics (admin)
-GET    /api/monitoring/prometheus           # Prometheus format
-```
-
-### Full API Documentation
-
-Interactive Swagger documentation available at: http://localhost:5000/api-docs
-
----
-
-## 💻 Development Guide
-
-### Available Scripts
+## 📊 Development Commands
 
 ```bash
 # Development
-npm run dev              # Start dev server (frontend + backend)
-npm run build            # Build for production
-npm run preview          # Preview production build
+npm run dev              # Start all services (client + server + Python)
+npm run dev:node         # Node.js server only (tsx watch mode)
+npm run dev:python       # Python analytics service only
 
 # Database
-npm run db:push          # Push schema changes
-npm run db:studio        # Open Drizzle Studio (database GUI)
-npm run db:migrate       # Run migrations
+npm run db:push          # Push schema changes to database (Drizzle Kit)
+npm run migrate-storage  # Run data migration scripts
 
-# Testing
-npm test                 # Run all tests
-npm run test:components  # Component tests (Vitest)
-npm run test:e2e         # E2E tests (Playwright)
-npm run test:integration # API integration tests
+# Build & Production
+npm run build            # Build client + server for production
+npm run start            # Start production server
 
 # Code Quality
-npm run lint             # Run ESLint
-npm run type-check       # TypeScript compiler check
+npm run check            # TypeScript type checking (noEmit)
+npm run lint             # ESLint (if configured)
+npm run format           # Prettier (if configured)
+
+# Testing
+npm test                 # Integration tests
+npm run test:unit        # Unit tests (fast)
+npm run test:components  # Component tests (Vitest)
+npm run test:e2e         # End-to-end tests (Playwright)
+npm run test:all         # All tests + TypeScript check
+npm run test:coverage    # Coverage report
 ```
 
-### Development Workflow
+---
 
-1. **Start development server**: `npm run dev`
-2. **Access application**: http://localhost:5000
-3. **Access database UI**: `npm run db:studio`
-4. **Make changes** to code
-5. **Write tests** for new features
-6. **Run tests**: `npm test`
-7. **Check types**: `npm run type-check`
-8. **Lint code**: `npm run lint`
-9. **Commit changes** with clear message
+## 🏗️ Architecture Overview
 
-### Testing
+### **Event-Driven Architecture**
 
-**450+ Tests:**
-- Component tests: 72 tests (Vitest)
-- E2E tests: 65 tests × 5 browsers = 325 (Playwright)
-- API integration tests: 200+ tests
-- Service tests: 100+ tests
+ILS uses a **pub/sub event bus** for domain events:
 
-```bash
-# Run specific test suites
-npm run test:components  # React component tests
-npm run test:e2e         # Browser E2E tests
-npm run test:integration # API integration tests
-npm run test:services    # Service unit tests
+```typescript
+// Publish event
+EventBus.publish('order.created', { orderId: 123, companyId: 1 });
 
-# Run with coverage
-npm test -- --coverage
+// Subscribe to event
+EventBus.subscribe('order.created', async (data) => {
+  await storage.logAnalytics({ event: 'order_created', ...data });
+});
 ```
 
-### Code Standards
+**Event Examples**:
+- `order.created` → Triggers LIMS sync, PDF generation, analytics logging
+- `order.completed` → Send notification, update billing, archive records
+- `user.approved` → Send welcome email, provision resources
 
-- **TypeScript** for type safety (strict mode)
-- **ESLint** for code quality
-- **Consistent naming**: camelCase for variables, PascalCase for components
-- **Comments**: JSDoc for public APIs
-- **Tests required** for new features
-- **Documentation** for public APIs
+### **Background Job Processing**
 
----
+BullMQ + Redis for reliable async tasks:
 
-## 📚 Documentation
+```typescript
+// Enqueue job
+await addEmailJob({
+  to: 'user@example.com',
+  subject: 'Order Confirmation',
+  template: 'orderConfirmation',
+  data: { orderId: 123 }
+});
 
-### Complete Documentation Suite
+// Worker processes job (server/workers/emailWorker.ts)
+```
 
-All detailed documentation has been archived in `docs/archive/` for reference. This README contains all essential information for getting started, deploying, and developing with ILS 2.0.
+**Job Types**:
+- `email` → Send transactional emails (Resend API)
+- `pdf` → Generate PDFs (invoices, reports)
+- `notification` → Push notifications, WebSocket broadcasts
+- `ai` → ML inference, data processing
 
-### Key Topics Covered
+**Graceful Degradation**: If Redis is unavailable, jobs fall back to immediate synchronous execution.
 
-**Getting Started:**
-- Quick start guide (above)
-- Environment setup
-- First run instructions
+### **Multi-Tenancy**
 
-**Deployment:**
-- Production deployment options
-- Database setup
-- External services configuration
-- Security checklist
+All entities are scoped to `companyId` for tenant isolation:
 
-**Features:**
-- NHS/PCSE integration
-- Shopify e-commerce
-- Stripe billing
-- AI-powered features
-- Contact lens management
-- Online booking
-- Core PMS features
+```typescript
+// Always filter by companyId
+const orders = await storage.getOrdersByCompany(companyId);
 
-**Development:**
-- Project structure
-- Technology stack
-- Available scripts
-- Testing guide
-- Code standards
+// Storage layer enforces tenant isolation
+```
 
-**API:**
-- Complete endpoint reference
-- Authentication
-- Request/response formats
+**Legacy Note**: Some tables have `organizationId` field (deprecated) — use `companyId` for new code.
 
-### Support & Resources
+### **Data Access Layer**
 
-- **GitHub Issues**: Report bugs and request features
-- **API Documentation**: http://localhost:5000/api-docs (when running)
-- **Archived Docs**: See `docs/archive/` for detailed technical documentation
-- **Email**: support@ils.com
+All database queries go through the **`storage` singleton** (`server/storage.ts`):
 
----
+```typescript
+import { storage } from './storage.js';
 
-## 🚨 Important Notes
+// Type-safe queries via DbStorage class
+const order = await storage.getOrderById(123);
+await storage.updateOrderStatus(123, 'in-production');
+```
 
-### Production Branch
-
-**Deploy from**: `claude/repo-exploration-011CUwqQAJEnToj2dByi3AK9`
-**Latest commit**: `7560dc0`
-**Status**: ✅ Production Ready
-
-This branch contains ALL features including:
-- Shopify integration with AI prescription OCR and PD measurement
-- Stripe subscription billing (3 tiers)
-- Complete NHS/PCSE integration
-- Contact lens management
-- AI-powered features
-- Online booking portal
-- Modern UI/UX redesign
-
-### Required External Services
-
-**Required:**
-- PostgreSQL 15+ with pgvector extension
-- OpenAI API key (for AI features)
-
-**Optional:**
-- Shopify App credentials (for e-commerce)
-- Stripe account (for billing)
-- SendGrid/AWS SES (for email)
-- Twilio (for SMS)
-- Redis (for caching)
-
-### Cost Estimates
-
-**Infrastructure (monthly):**
-- Server: £20-50 (2GB-4GB VPS)
-- Database: £15-30 (managed PostgreSQL)
-- CDN: £5-10 (CloudFlare)
-- **Total**: £40-90/month
-
-**OpenAI API Usage:**
-- ~£50-200/month for 1000-5000 AI queries
-- Set spending limits in OpenAI dashboard
+**Benefits**:
+- Centralized query logic
+- Easy mocking in tests
+- Tenant isolation enforcement
+- Consistent error handling
 
 ---
 
-## 🏆 What Makes ILS 2.0 Special
+## 🔧 Common Development Tasks
 
-### Unique Selling Points
+### **Adding a New API Endpoint**
 
-1. **Only UK PMS with Full NHS Integration** - Complete GOS claims, vouchers, exemptions, and payments
-2. **AI-Powered PD Measurement** - Revolutionary webcam-based measurement using GPT-4 Vision
-3. **Shopify E-Commerce Ready** - Sell prescription eyewear online with AI verification
-4. **Complete SaaS Platform** - Stripe billing with three subscription tiers
-5. **Expert AI Assistant** - GPT-4 Turbo ophthalmic guidance and recommendations
-6. **Complete CL Workflow** - Industry-leading contact lens management
-7. **Modern NHS-Compliant UI** - Beautiful design that meets NHS standards
-8. **Production-Ready** - Comprehensive documentation and multiple deployment options
+1. **Update Zod schema** in `shared/schema.ts`:
+```typescript
+export const createWidgetSchema = z.object({
+  name: z.string().min(1),
+  type: z.enum(['type_a', 'type_b']),
+  companyId: z.number()
+});
+```
 
-### Business Impact
+2. **Add storage method** in `server/storage.ts`:
+```typescript
+async createWidget(data: z.infer<typeof createWidgetSchema>) {
+  const [widget] = await this.db.insert(widgets).values(data).returning();
+  return widget;
+}
+```
 
-**Revenue Growth:**
-- NHS Claims: Capture 100% of eligible revenue
-- Contact Lenses: 30-50% increase in CL revenue
-- Frame Sales: 25-40% increase with AI recommendations
-- Coatings: 35% increase in coating attachment rate
-- **Estimated**: £15,000 - £35,000 additional annual revenue
+3. **Add route handler** in `server/routes.ts` or modular route file:
+```typescript
+app.post('/api/widgets', authenticateUser, asyncHandler(async (req, res) => {
+  const validated = createWidgetSchema.parse(req.body);
+  const widget = await storage.createWidget(validated);
+  res.json(widget);
+}));
+```
 
-**Efficiency Gains:**
-- 10-15 hours/week saved on admin tasks
-- Frame selection: 75% faster (20 min → 5 min)
-- NHS claims: 83% faster (30 min → 5 min)
-- AI queries: Answer in seconds vs hours
+4. **Add client hook** in `client/src/hooks/useWidgets.ts`:
+```typescript
+export function useCreateWidget() {
+  return useMutation({
+    mutationFn: (data) => fetch('/api/widgets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json())
+  });
+}
+```
 
-**Quality Improvements:**
-- Complete digital clinical records
-- Automated calculations reduce errors 95%
-- NHS validation ensures 100% compliant claims
-- Structured CL aftercare improves patient safety
+### **Database Schema Changes**
+
+1. Update `shared/schema.ts` (Drizzle schema)
+2. Run `npm run db:push` to sync database
+3. Update TypeScript types (auto-inferred from schema)
+4. Update storage methods and route handlers
+
+### **Adding Background Jobs**
+
+```typescript
+// 1. Define job processor (server/workers/myWorker.ts)
+myQueue.process(async (job) => {
+  const { data } = job;
+  // Process job...
+});
+
+// 2. Enqueue jobs (server/queue/myQueue.ts)
+export async function addMyJob(data: MyJobData) {
+  await myQueue.add('process', data);
+}
+
+// 3. Import worker in server/index.ts
+import './workers/myWorker.js';
+```
 
 ---
 
-## 📝 License
+## 🚨 Troubleshooting
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+### **Common Issues**
+
+#### ❌ "Cannot connect to database"
+**Solution**: Check `DATABASE_URL` in `.env`. Verify network access to Postgres instance.
+
+#### ❌ "Redis connection failed"
+**Solution**: Redis is **optional**. Jobs will fall back to immediate execution. To fix, verify `REDIS_HOST` and `REDIS_PORT`.
+
+#### ❌ "TypeScript errors in client/"
+**Solution**: Run `npm run check` to see all errors. Ensure path aliases (`@/*`, `@shared/*`) are configured in `tsconfig.json`.
+
+#### ❌ "Tests failing"
+**Solution**: 
+1. Ensure test database is clean: `npm run db:push`
+2. Check for port conflicts (5000, 8000, 6379)
+3. Run tests individually: `npm run test:unit`, `npm run test:components`
+
+#### ❌ "Python service won't start"
+**Solution**:
+1. Verify Python 3.10+ installed: `python3 --version`
+2. Install dependencies: `pip install -r python-service/requirements.txt`
+3. Check port 8000 availability
+
+---
+
+## 📚 Additional Documentation
+
+- **[API Quick Reference](./API_QUICK_REFERENCE.md)**: Endpoint documentation
+- **[Route Map](./ROUTE_MAP.md)**: Complete route registry
+- **[AI Platform Guide](./AI_PLATFORM_SUBSCRIBER_GUIDE.md)**: AI feature documentation
+- **[BI Platform Guide](./BI_PLATFORM_QUICK_START.md)**: Analytics and reporting
+- **[Systematic Debug Report](./SYSTEMATIC_DEBUG_REPORT.md)**: Codebase health audit
+- **[Copilot Instructions](./.github/copilot-instructions.md)**: AI agent guidance
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please:
+We welcome contributions! Please follow these guidelines:
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Write tests for new functionality
-4. Commit your changes: `git commit -m 'Add amazing feature'`
-5. Push to the branch: `git push origin feature/amazing-feature`
-6. Open a Pull Request
+1. **Fork the repository** and create a feature branch
+2. **Write tests** for new features (aim for 80%+ coverage)
+3. **Run quality checks**: `npm run check` + `npm run test:all`
+4. **Keep changes focused**: One feature/fix per PR
+5. **Follow existing patterns**: Match code style and architecture
+6. **Update documentation**: README, JSDoc comments, etc.
 
----
-
-## 🎯 Roadmap
-
-### Completed ✅
-- Core prescription and order management
-- NHS/PCSE integration (GOS claims, vouchers, exemptions)
-- Contact lens management (assessments, fittings, aftercare)
-- AI integration (GPT-4, GPT-4 Vision, Claude)
-- Smart frame finder with face analysis
-- Ophthalmic AI assistant
-- Shopify e-commerce integration
-- Stripe subscription billing
-- AI-powered PD measurement
-- Online booking portal
-- Business intelligence dashboards
-- Comprehensive testing (450+ tests)
-- Complete documentation
-
-### Planned 📋
-- Mobile application (iOS & Android)
-- Patient portal
-- Advanced ML predictions
-- Real-time collaboration
-- International expansion
-- Additional integrations (Xero, QuickBooks)
+### **Code Review Checklist**
+- [ ] TypeScript compilation passes (`npm run check`)
+- [ ] All tests pass (`npm run test:all`)
+- [ ] No new ESLint/Prettier warnings
+- [ ] Shared schema updated if API changed
+- [ ] Storage layer methods added/updated
+- [ ] Client hooks updated
+- [ ] Documentation updated
 
 ---
 
-**ILS 2.0 - The Future of UK Optical Practice Management**
+## 📄 License
 
-*Made with ❤️ for the optical industry*
+**Proprietary and Confidential**  
+Copyright © 2025 New Vantage Co. All rights reserved.
 
-**Version**: 2.0.0
-**Last Updated**: January 2025
-**Status**: Production Ready ✅
+This software and associated documentation are proprietary to New Vantage Co and protected by copyright law. Unauthorized reproduction or distribution is prohibited.
+
+---
+
+## 🆘 Support & Contact
+
+- **Issues**: [GitHub Issues](https://github.com/newvantageco/ILS2.0/issues)
+- **Email**: support@newvantageco.com
+- **Documentation**: See `/docs` folder for detailed guides
+
+---
+
+## 🎉 Acknowledgments
+
+Built with ❤️ by the New Vantage Co engineering team.
+
+**Special Thanks**:
+- shadcn/ui for beautiful components
+- Drizzle ORM team for type-safe database access
+- TanStack Query for server state management
+- Neon for serverless Postgres infrastructure
+
+---
+
+**Quick Links**:
+- 📖 [Full Documentation](./docs/)
+- 🔌 [API Reference](./API_QUICK_REFERENCE.md)
+- 🧪 [Test Coverage Report](./coverage/)
+- 📊 [Metrics Dashboard](http://localhost:5000/metrics) _(when running)_
+- 🏥 [Health Check](http://localhost:5000/api/health) _(when running)_
+
+---
+
+**Last Updated**: November 2025  
+**Version**: 2.0  
+**Status**: ✅ Production Ready (98.5% health score)
+
+## Development
+
+### Running Tests
+```bash
+npm test
+```
+
+### Database Migrations
+```bash
+npm run db:push
+```
+
+### Building for Production
+```bash
+npm run build
+```
+
+## License
+
+Copyright © 2025. All rights reserved.
+
+## Support
+
+For support and questions, please contact the development team.
+#
+# Further Reading
+- ROUTE_MAP: `./ROUTE_MAP.md`
+- Schema ERD: `./SCHEMA_ERD.md`
+- Development Guide: `./DEVELOPMENT.md`
+- Contributing: `./CONTRIBUTING.md`
+- Security: `./SECURITY.md`
+# NVC-Internal-System-
+# interneal-system-
+# interneal-system-

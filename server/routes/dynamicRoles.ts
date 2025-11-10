@@ -699,4 +699,122 @@ router.get('/users/:userId', requirePermission('users:view'), async (req, res) =
   }
 });
 
+// =====================================================
+// AUDIT LOGS
+// =====================================================
+
+/**
+ * GET /api/roles/audit
+ * Get audit log of all role changes for the company
+ */
+router.get('/audit', requirePermission('users:view'), async (req, res) => {
+  const authReq = req as AuthRequest;
+  try {
+    const companyId = authReq.user?.companyId;
+    const { limit = 100, offset = 0, roleId } = req.query;
+
+    if (!companyId) {
+      return res.status(400).json({ error: 'Company ID not found' });
+    }
+
+    let query = sql`
+      SELECT 
+        rca.id,
+        rca.action_type,
+        rca.role_id,
+        rca.user_id,
+        rca.details,
+        rca.old_value,
+        rca.new_value,
+        rca.changed_at,
+        u.email as changed_by_email,
+        u.full_name as changed_by_name,
+        dr.name as role_name,
+        target_user.email as target_user_email,
+        target_user.full_name as target_user_name
+      FROM role_change_audit rca
+      LEFT JOIN users u ON u.id = rca.changed_by
+      LEFT JOIN dynamic_roles dr ON dr.id = rca.role_id
+      LEFT JOIN users target_user ON target_user.id = rca.user_id
+      WHERE rca.company_id = ${companyId}
+    `;
+
+    // Filter by roleId if provided
+    if (roleId) {
+      query = sql`${query} AND rca.role_id = ${roleId}`;
+    }
+
+    query = sql`${query}
+      ORDER BY rca.changed_at DESC
+      LIMIT ${Number(limit)}
+      OFFSET ${Number(offset)}
+    `;
+
+    const auditResult = await db.execute(query);
+
+    // Get total count
+    let countQuery = sql`
+      SELECT COUNT(*) as total
+      FROM role_change_audit
+      WHERE company_id = ${companyId}
+    `;
+
+    if (roleId) {
+      countQuery = sql`${countQuery} AND role_id = ${roleId}`;
+    }
+
+    const countResult = await db.execute(countQuery);
+    const total = Number(countResult.rows[0].total);
+
+    return res.json({
+      logs: auditResult.rows,
+      total,
+      limit: Number(limit),
+      offset: Number(offset)
+    });
+  } catch (error) {
+    console.error('Error fetching audit logs:', error);
+    return res.status(500).json({ error: 'Failed to fetch audit logs' });
+  }
+});
+
+/**
+ * GET /api/roles/:roleId/audit
+ * Get audit log for a specific role
+ */
+router.get('/:roleId/audit', requirePermission('users:view'), async (req, res) => {
+  const authReq = req as AuthRequest;
+  try {
+    const { roleId } = req.params;
+    const companyId = authReq.user?.companyId;
+    const { limit = 50 } = req.query;
+
+    const auditResult = await db.execute(sql`
+      SELECT 
+        rca.id,
+        rca.action_type,
+        rca.details,
+        rca.old_value,
+        rca.new_value,
+        rca.changed_at,
+        u.email as changed_by_email,
+        u.full_name as changed_by_name,
+        target_user.email as target_user_email,
+        target_user.full_name as target_user_name
+      FROM role_change_audit rca
+      LEFT JOIN users u ON u.id = rca.changed_by
+      LEFT JOIN users target_user ON target_user.id = rca.user_id
+      WHERE rca.role_id = ${roleId} 
+        AND rca.company_id = ${companyId}
+      ORDER BY rca.changed_at DESC
+      LIMIT ${Number(limit)}
+    `);
+
+    return res.json({ logs: auditResult.rows });
+  } catch (error) {
+    console.error('Error fetching role audit logs:', error);
+    return res.status(500).json({ error: 'Failed to fetch audit logs' });
+  }
+});
+
 export default router;

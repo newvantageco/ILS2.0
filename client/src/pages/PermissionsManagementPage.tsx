@@ -36,8 +36,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
 interface Permission {
-  key: string;
-  name: string;
+  id: string;
+  permissionKey: string;
+  permissionName: string;
   description: string;
   category: string;
 }
@@ -285,8 +286,8 @@ export default function PermissionsManagementPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {flatPermissions.map((perm) => (
-                      <SelectItem key={perm.key} value={perm.key}>
-                        {perm.name} - {perm.category}
+                      <SelectItem key={perm.permissionKey} value={perm.permissionKey}>
+                        {perm.permissionName}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -353,17 +354,17 @@ export default function PermissionsManagementPage() {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {permissions.map((perm) => (
-                      <div key={perm.key} className="flex items-start space-x-2">
+                      <div key={perm.permissionKey} className="flex items-start space-x-2">
                         <Checkbox
-                          id={perm.key}
-                          checked={rolePermissions.has(perm.key)}
-                          onCheckedChange={() => togglePermissionForRole(perm.key)}
+                          id={perm.permissionKey}
+                          checked={rolePermissions.has(perm.permissionKey)}
+                          onCheckedChange={() => togglePermissionForRole(perm.permissionKey)}
                         />
                         <Label
-                          htmlFor={perm.key}
+                          htmlFor={perm.permissionKey}
                           className="text-sm font-normal cursor-pointer"
                         >
-                          {perm.name}
+                          {perm.permissionName}
                         </Label>
                       </div>
                     ))}

@@ -4,14 +4,8 @@
  * Optimized for multi-tenant scalability with thousands of companies
  */
 
-// Optional Redis import - gracefully falls back to in-memory cache if not available
-let Redis: any;
-try {
-  Redis = require('ioredis');
-} catch (e) {
-  console.warn('ioredis not installed. Using in-memory cache only.');
-  Redis = null;
-}
+// Import Redis constructor from ioredis (default export for CommonJS compatibility)
+import IORedis from 'ioredis';
 
 interface CacheOptions {
   ttl?: number; // Time to live in seconds (default: 300 = 5 minutes)
@@ -52,7 +46,7 @@ export class CacheService {
     }
 
     try {
-      this.redis = new Redis(redisUrl, {
+      this.redis = new IORedis(redisUrl, {
         maxRetriesPerRequest: 3,
         enableReadyCheck: true,
         retryStrategy: (times: number) => {

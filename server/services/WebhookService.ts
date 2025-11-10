@@ -65,7 +65,7 @@ export class WebhookService {
       }
 
       // Get the order
-      const order = await this.storage.getOrder(payload.orderId);
+      const order = await this.storage.getOrderById_Internal(payload.orderId);
       if (!order) {
         this.logger.warn("Webhook received for non-existent order", {
           orderId: payload.orderId,
@@ -168,7 +168,7 @@ export class WebhookService {
 
     // Get order to determine organization for room-based broadcasting
     try {
-      const order = await this.storage.getOrder(data.orderId);
+      const order = await this.storage.getOrderById_Internal(data.orderId);
       if (order) {
         // Broadcast order status update to organization room
         websocketService.broadcastOrderStatus(

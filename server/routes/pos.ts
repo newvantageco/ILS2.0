@@ -94,7 +94,7 @@ router.get('/products/barcode/:barcode',
       const { barcode } = req.params;
       const companyId = req.user!.companyId;
       if (!companyId) {
-        return res.status(400).json({ error: 'Company ID is required' });
+        return res.status(403).json({ error: 'Company context missing' });
       }
 
       const product = await db.query.products.findFirst({
@@ -149,7 +149,7 @@ router.post('/transactions',
     try {
       const companyId = req.user!.companyId;
       if (!companyId) {
-        return res.status(400).json({ error: 'Company ID is required' });
+        return res.status(403).json({ error: 'Company context missing' });
       }
       const staffId = req.user!.id;
       const { items, paymentMethod, cashReceived, discountAmount, notes, patientId } = req.body;
@@ -291,7 +291,7 @@ router.get('/transactions/:id',
       const { id } = req.params;
       const companyId = req.user!.companyId;
       if (!companyId) {
-        return res.status(400).json({ error: 'Company ID is required' });
+        return res.status(403).json({ error: 'Company context missing' });
       }
 
       const transaction = await db.query.posTransactions.findFirst({
@@ -363,7 +363,7 @@ router.get('/transactions',
       const { startDate, endDate, staffId, paymentMethod, status, limit, offset } = req.query;
       const companyId = req.user!.companyId;
       if (!companyId) {
-        return res.status(400).json({ error: 'Company ID is required' });
+        return res.status(403).json({ error: 'Company context missing' });
       }
 
       const conditions = [eq(posTransactions.companyId, companyId)];
@@ -431,7 +431,7 @@ router.post('/transactions/:id/refund',
       const { reason, restoreStock } = req.body;
       const companyId = req.user!.companyId;
       if (!companyId) {
-        return res.status(400).json({ error: 'Company ID is required' });
+        return res.status(403).json({ error: 'Company context missing' });
       }
 
       const result = await db.transaction(async (tx) => {
@@ -528,7 +528,7 @@ router.get('/reports/daily-summary',
       const { date } = req.query;
       const companyId = req.user!.companyId;
       if (!companyId) {
-        return res.status(400).json({ error: 'Company ID is required' });
+        return res.status(403).json({ error: 'Company context missing' });
       }
       const targetDate = date ? new Date(date as string) : new Date();
       
@@ -576,7 +576,7 @@ router.get('/reports/staff-performance',
       const { startDate, endDate } = req.query;
       const companyId = req.user!.companyId;
       if (!companyId) {
-        return res.status(400).json({ error: 'Company ID is required' });
+        return res.status(403).json({ error: 'Company context missing' });
       }
 
       const performance = await db.select({

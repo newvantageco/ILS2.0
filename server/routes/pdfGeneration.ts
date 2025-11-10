@@ -19,7 +19,7 @@ router.post('/receipt/:transactionId', async (req: Request, res: Response) => {
     const { transactionId } = req.params;
     const companyId = req.user!.companyId;
     if (!companyId) {
-      return res.status(400).json({ error: 'Company ID is required' });
+      return res.status(403).json({ error: 'Company context missing' });
     }
 
     const pdfBuffer = await pdfService.generateReceipt(transactionId);
@@ -41,7 +41,7 @@ router.post('/invoice', async (req: Request, res: Response) => {
   try {
     const companyId = req.user!.companyId;
     if (!companyId) {
-      return res.status(400).json({ error: 'Company ID is required' });
+      return res.status(403).json({ error: 'Company context missing' });
     }
 
     const invoiceSchema = z.object({
@@ -91,6 +91,10 @@ router.post('/invoice', async (req: Request, res: Response) => {
 router.post('/order/:orderId', async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
+    const companyId = req.user!.companyId;
+    if (!companyId) {
+      return res.status(403).json({ error: 'Company context missing' });
+    }
 
     const pdfBuffer = await pdfService.generateOrderConfirmation(orderId);
 
@@ -109,7 +113,7 @@ router.post('/order/:orderId', async (req: Request, res: Response) => {
  */
 router.post('/label', async (req: Request, res: Response) => {
   try {
-    const labelSchema = z.object({
+  const labelSchema = z.object({
       type: z.enum(['product', 'prescription', 'order']),
       title: z.string(),
       subtitle: z.string().optional(),
@@ -145,7 +149,7 @@ router.get('/templates', async (req: Request, res: Response) => {
   try {
     const companyId = req.user!.companyId;
     if (!companyId) {
-      return res.status(400).json({ error: 'Company ID is required' });
+      return res.status(403).json({ error: 'Company context missing' });
     }
 
     const templates = await db
@@ -168,7 +172,7 @@ router.post('/templates', async (req: Request, res: Response) => {
   try {
     const companyId = req.user!.companyId;
     if (!companyId) {
-      return res.status(400).json({ error: 'Company ID is required' });
+      return res.status(403).json({ error: 'Company context missing' });
     }
 
     const templateSchema = z.object({
@@ -215,7 +219,7 @@ router.put('/templates/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const companyId = req.user!.companyId;
     if (!companyId) {
-      return res.status(400).json({ error: 'Company ID is required' });
+      return res.status(403).json({ error: 'Company context missing' });
     }
 
     const templateSchema = z.object({
@@ -271,7 +275,7 @@ router.delete('/templates/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const companyId = req.user!.companyId;
     if (!companyId) {
-      return res.status(400).json({ error: 'Company ID is required' });
+      return res.status(403).json({ error: 'Company context missing' });
     }
 
     const [deletedTemplate] = await db

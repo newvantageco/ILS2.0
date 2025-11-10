@@ -303,7 +303,7 @@ router.put("/users/:userId/subscription", isPlatformAdmin, async (req: any, res:
       return res.status(400).json({ error: "Invalid subscription plan. Must be 'free_ecp' or 'full'" });
     }
 
-    const user = await storage.getUser(userId);
+    const user = await storage.getUserById_Internal(userId);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }

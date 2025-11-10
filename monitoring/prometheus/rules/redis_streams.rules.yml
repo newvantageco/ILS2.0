@@ -1,0 +1,29 @@
+groups:
+  - name: redis-streams.rules
+    rules:
+      - alert: RedisStreamsHighPEL
+        expr: redis_streams_pending_entries > 100
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: "High Redis Streams PEL size ({{ $labels.stream }})"
+          description: "The pending-entry list for stream {{ $labels.stream }} and group {{ $labels.group }} has been >100 for 10 minutes. Investigate consumers and DLQ growth."
+
+      - alert: RedisStreamsDLQSpike
+        expr: increase(redis_streams_dlq_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis Streams DLQ items increased"
+          description: "The DLQ for Redis Streams has seen new entries in the last 5 minutes. Check worker errors and payload validation."
+
+      - alert: RedisStreamsReclaimerError
+        expr: increase(redis_streams_reclaimer_failures_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis Streams reclaimer errors detected"
+          description: "The reclaimer has reported failures in the last 5 minutes. Inspect reclaimer logs and Redis connectivity."

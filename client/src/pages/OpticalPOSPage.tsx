@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import PatientSearchInput, { PatientProfile } from "@/components/shared/PatientSearchInput";
 import { useEmail } from "@/hooks/use-email";
 import {
   CustomerProfile,
@@ -48,7 +49,6 @@ export default function OpticalPOSPage() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerProfile | null>(null);
-  const [customers, setCustomers] = useState<CustomerProfile[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -73,35 +73,10 @@ export default function OpticalPOSPage() {
   const [lensMaterial, setLensMaterial] = useState<string>("polycarbonate");
   const [selectedCoatings, setSelectedCoatings] = useState<string[]>([]);
 
-  // Fetch patients (customers) on mount
+  // Fetch products on mount
   useEffect(() => {
-    fetchPatients();
     fetchProducts();
   }, []);
-
-  const fetchPatients = async () => {
-    try {
-      const response = await fetch('/api/patients');
-      if (!response.ok) throw new Error('Failed to fetch patients');
-      
-      const data = await response.json();
-      const formattedCustomers: CustomerProfile[] = data.map((patient: Patient) => ({
-        id: patient.id,
-        name: patient.name,
-        email: patient.email,
-        phone: patient.phone,
-        customerNumber: `PAT-${patient.id.slice(0, 8).toUpperCase()}`,
-        dateOfBirth: patient.dateOfBirth,
-      }));
-      setCustomers(formattedCustomers);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load patients',
-        variant: 'destructive',
-      });
-    }
-  };
 
   const fetchProducts = async () => {
     try {
@@ -144,20 +119,7 @@ export default function OpticalPOSPage() {
     setFilteredProducts(filtered);
   }, [products, selectedCategory, productSearchQuery]);
 
-  const filteredCustomers = customers.filter((customer) => {
-    if (!searchQuery.trim()) return true; // Show all if search is empty
-    
-    const query = searchQuery.toLowerCase().trim();
-    const name = customer.name?.toLowerCase() || '';
-    const email = customer.email?.toLowerCase() || '';
-    const customerNumber = customer.customerNumber?.toLowerCase() || '';
-    const phone = customer.phone?.toLowerCase() || '';
-    
-    return name.includes(query) || 
-           email.includes(query) || 
-           customerNumber.includes(query) ||
-           phone.includes(query);
-  });
+  // filteredCustomers are handled inside PatientSearchInput
 
   const handleBarcodeSearch = async (barcode: string) => {
     if (!barcode.trim()) return;
@@ -473,37 +435,13 @@ export default function OpticalPOSPage() {
 
         <Separator className="bg-gray-300/50 mb-4" />
 
-        {/* Customer List */}
-        <ScrollArea className="flex-1 -mr-2 pr-2">
-          <div className="space-y-2">
-            {filteredCustomers.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 text-sm">
-                {searchQuery ? 'No customers found' : 'No customers available'}
-              </div>
-            ) : (
-              filteredCustomers.map((customer) => (
-                <button
-                  key={customer.id}
-                  onClick={() => setSelectedCustomer(customer)}
-                  className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
-                    selectedCustomer?.id === customer.id
-                      ? "bg-blue-600 text-white shadow-md scale-[1.02]"
-                      : "bg-white border border-gray-200 text-gray-900 hover:bg-gray-50 hover:shadow-sm"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold truncate text-sm">{customer.name}</div>
-                      <div className="text-xs opacity-80 truncate">{customer.email}</div>
-                      <div className="text-xs opacity-70 mt-0.5">{customer.customerNumber}</div>
-                    </div>
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
-        </ScrollArea>
+        {/* Patient search / selection */}
+        <div className="flex-1 -mr-2 pr-2">
+          <PatientSearchInput
+            selected={selectedCustomer as PatientProfile | null}
+            onSelect={(c) => setSelectedCustomer(c as any)}
+          />
+        </div>
 
         {/* Product Selection */}
         <Separator className="bg-gray-300/50 my-6" />

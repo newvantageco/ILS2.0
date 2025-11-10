@@ -28,6 +28,7 @@ import { startInventoryMonitoringCron } from "./jobs/inventoryMonitoringCron";
 import { startClinicalAnomalyDetectionCron } from "./jobs/clinicalAnomalyDetectionCron";
 import { startUsageReportingCron } from "./jobs/usageReportingCron";
 import { startStorageCalculationCron } from "./jobs/storageCalculationCron";
+import { setupWebSocket } from "./websocket/index";
 
 // Import workers to start background job processing
 import "./workers/emailWorker";
@@ -35,9 +36,18 @@ import "./workers/pdfWorker";
 import "./workers/notificationWorker";
 import "./workers/aiWorker";
 import { initializeRedis, getRedisConnection } from "./queue/config";
+import { storage } from "./storage";
+// Order-created workers (Strangler refactor) - register explicitly below
+import { registerOrderCreatedLimsWorker } from "./workers/OrderCreatedLimsWorker";
+import { registerOrderCreatedPdfWorker } from "./workers/OrderCreatedPdfWorker";
+import { registerOrderCreatedAnalyticsWorker } from "./workers/OrderCreatedAnalyticsWorker";
+
+// LIMS client package (packaged in /packages/lims-client)
+import LimsClient from "../packages/lims-client/src/LimsClient";
 
 // Import event system
 import { initializeEventSystem } from "./events";
+import { metricsHandler } from "./lib/metrics";
 
 // Import Redis session store (Chunk 10)
 import RedisStore from "connect-redis";
@@ -88,27 +98,32 @@ app.use('/api/onboarding', authRateLimiter);
 if (process.env.NODE_ENV === "development") {
   const sessionSecret = process.env.SESSION_SECRET;
   if (!sessionSecret) {
-    log("SESSION_SECRET is not set. Generating temporary secret for development.", "express");
+    throw new Error(
+      "❌ SESSION_SECRET must be set in .env file for security.\n" +
+      "Generate one with: openssl rand -hex 32\n" +
+      "Then add to .env: SESSION_SECRET=<generated-value>"
+    );
   }
 
   // Use Redis for session store (Chunk 10: Infrastructure Scale)
   const redisClient = getRedisConnection();
-  const sessionConfig: any = {
-    secret: sessionSecret || "dev-session-secret",
+  const sessionConfig = {
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true, // XSS protection
-      secure: false, // HTTP OK in development
-      sameSite: 'strict', // CSRF protection
+      secure: process.env.NODE_ENV === 'production', // HTTPS in production
+      sameSite: 'strict' as const, // CSRF protection
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     },
+    store: undefined as any, // Will be set below if Redis available
   };
 
   // Add Redis store if available, otherwise use default memory store
   if (redisClient) {
     sessionConfig.store = new RedisStore({
-      client: redisClient as any,
+      client: redisClient,
       prefix: "session:",
     });
     log("✅ Using Redis for session storage (fast, scalable)", "express");
@@ -116,7 +131,11 @@ if (process.env.NODE_ENV === "development") {
     log("⚠️  Using memory store for sessions (Redis unavailable)", "express");
   }
 
-  app.use(session(sessionConfig));
+  const sessionMiddleware = session(sessionConfig);
+  app.use(sessionMiddleware);
+  
+  // Store session middleware for WebSocket auth
+  app.set('sessionMiddleware', sessionMiddleware);
 
   app.use(passport.initialize());
   app.use(passport.session());
@@ -157,6 +176,12 @@ app.use(requestTimeout(30000));
         environment: app.get("env")
       });
     });
+
+    // Metrics endpoint (optional)
+    if (process.env.METRICS_ENABLED === 'true') {
+      app.get('/metrics', metricsHandler);
+      console.log('✅ Metrics endpoint enabled at /metrics');
+    }
 
     // Let Vite serve the SPA shell in development, otherwise return a basic status message
     app.get('/', (req, res, next) => {
@@ -205,6 +230,124 @@ app.use(requestTimeout(30000));
     
     // Initialize event-driven architecture (Chunk 9)
     initializeEventSystem();
+
+    // === Register opt-in background workers (Order-related) ===
+    // Controlled by WORKERS_ENABLED (defaults to 'true' when Redis is connected)
+    const workersEnabledEnv = process.env.WORKERS_ENABLED;
+    const workersEnabled = typeof workersEnabledEnv === 'string'
+      ? workersEnabledEnv !== 'false'
+      : Boolean(redisConnected);
+
+    if (workersEnabled) {
+      try {
+        // Create LIMS client if configuration is present
+        let limsClient: any = null;
+        if (process.env.LIMS_API_BASE_URL && process.env.LIMS_API_KEY) {
+          limsClient = new LimsClient({
+            baseUrl: process.env.LIMS_API_BASE_URL,
+            apiKey: process.env.LIMS_API_KEY,
+            webhookSecret: process.env.LIMS_WEBHOOK_SECRET || "",
+          });
+          console.log("✅ LIMS client initialized for background workers");
+        } else {
+          console.log("ℹ️  LIMS integration disabled (optional - configure LIMS_API_BASE_URL and LIMS_API_KEY in .env to enable)");
+        }
+
+        // Register order-created workers. Pass storage + limsClient where required.
+        if (limsClient) {
+          registerOrderCreatedLimsWorker(limsClient, storage);
+        }
+
+  registerOrderCreatedPdfWorker(storage);
+
+        // Build optional analytics client. If ANALYTICS_WEBHOOK_URL is provided,
+        // we'll POST events to that URL. Otherwise the worker will use the
+        // placeholder logging behavior.
+        let analyticsClient: any = null;
+        const analyticsWebhook = process.env.ANALYTICS_WEBHOOK_URL;
+        if (analyticsWebhook) {
+          analyticsClient = {
+            sendEvent: async (payload: any) => {
+              try {
+                // Node 18+ has global fetch; keep this lightweight to avoid new deps
+                await fetch(analyticsWebhook, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload),
+                });
+              } catch (err) {
+                console.error('Analytics POST failed', err);
+                throw err;
+              }
+            },
+          };
+          console.log('✅ Analytics webhook client configured');
+        } else {
+          console.log('ℹ️  No analytics webhook configured; analytics will be logged locally');
+        }
+
+        registerOrderCreatedAnalyticsWorker(storage, { analyticsClient });
+
+        // If we're using Redis Streams, schedule a periodic reclaimer to recover
+        // stuck entries left in the Pending Entries List (PEL). The list of streams
+        // to reclaim is configured via REDIS_STREAMS_RECLAIM_STREAMS (csv), defaulting
+        // to 'order.submitted'. The idle threshold and interval are configurable.
+        const backend = process.env.WORKERS_QUEUE_BACKEND || 'in-memory';
+        if (backend === 'redis-streams' && process.env.REDIS_URL) {
+          try {
+            const eventBus = (await import('./lib/eventBus')).default as any;
+            const reclaimStreams = (process.env.REDIS_STREAMS_RECLAIM_STREAMS || 'order.submitted').split(',').map(s => s.trim()).filter(Boolean);
+            const idleMs = Number(process.env.REDIS_STREAMS_RECLAIM_IDLE_MS || '60000');
+            const intervalMs = Number(process.env.REDIS_STREAMS_RECLAIM_INTERVAL_MS || String(5 * 60 * 1000)); // 5m
+
+            if (typeof eventBus.reclaimAndProcess === 'function') {
+              setInterval(() => {
+                for (const s of reclaimStreams) {
+                  eventBus.reclaimAndProcess(s, idleMs).catch((err: any) => console.error('Reclaim error', err));
+                }
+              }, intervalMs);
+              console.log(`✅ Redis Streams reclaimer scheduled for streams: ${reclaimStreams.join(', ')}`);
+            } else {
+              console.log('ℹ️  Redis Streams event bus does not expose reclaimAndProcess; skipping reclaimer scheduling');
+            }
+            // Start periodic PEL sampler if metrics are enabled
+            if (process.env.METRICS_ENABLED === 'true') {
+              try {
+                const { startPelSampler } = await import('./lib/redisPelSampler');
+                const redisClient = getRedisConnection();
+                if (redisClient) {
+                  const pelInterval = Number(process.env.REDIS_STREAMS_PEL_SAMPLER_INTERVAL_MS || '60000');
+                  startPelSampler(redisClient, reclaimStreams, process.env.REDIS_STREAMS_GROUP || 'ils_group', pelInterval);
+                  console.log('✅ Redis Streams PEL sampler started');
+                } else {
+                  console.log('⚠️  Redis client not available for PEL sampler');
+                }
+              } catch (err) {
+                console.error('Failed to start PEL sampler', err);
+              }
+            }
+          } catch (err) {
+            console.error('Failed to schedule Redis Streams reclaimer', err);
+          }
+        }
+
+        console.log("✅ Order-created background workers registered");
+      } catch (err) {
+        console.error("Failed to register order background workers:", err);
+      }
+    } else {
+      console.log("ℹ️  Background workers are disabled via WORKERS_ENABLED=false");
+    }
+    
+    // Initialize WebSocket server for real-time lab dashboard
+    if (process.env.NODE_ENV === "development") {
+      // Get session middleware to use for WebSocket authentication
+      const sessionMiddleware = app.get('sessionMiddleware');
+      if (sessionMiddleware) {
+        setupWebSocket(server, sessionMiddleware);
+        log(`✅ WebSocket server initialized on /ws endpoint`);
+      }
+    }
     
     server.listen(port, host, () => {
       log(`Server successfully started on port ${port}`);

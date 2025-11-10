@@ -1,8 +1,8 @@
 import { db } from "../db";
-import {
-  users,
+import { 
+  users, 
   userRoles,
-  patients,
+  patients, 
   orders,
   consultLogs,
   purchaseOrders,
@@ -37,13 +37,13 @@ import {
   gocComplianceChecks,
   prescriptionTemplates,
   clinicalProtocols,
-  type UpsertUser,
-  type User,
+  type UpsertUser, 
+  type User, 
   type UserWithRoles,
-  type InsertPatient,
-  type Patient,
-  type InsertOrder,
-  type Order,
+  type InsertPatient, 
+  type Patient, 
+  type InsertOrder, 
+  type Order, 
   type OrderWithDetails,
   type InsertConsultLog,
   type ConsultLog,
@@ -89,11 +89,13 @@ import {
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
-import { instrumentQuery, cachedQuery } from "./utils/queryInstrumentation";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserWithRoles(id: string): Promise<UserWithRoles | undefined>;
+  getUser(id: string, companyId: string): Promise<User | undefined>;
+  getUserWithRoles(id: string, companyId: string): Promise<UserWithRoles | undefined>;
+  // Internal methods for authentication - bypass tenant isolation
+  getUserById_Internal(id: string): Promise<User | undefined>;
+  getUserWithRoles_Internal(id: string): Promise<UserWithRoles | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
@@ -108,12 +110,14 @@ export interface IStorage {
   addUserRole(userId: string, role: string): Promise<void>;
   removeUserRole(userId: string, role: string): Promise<void>;
   switchUserRole(userId: string, newRole: string): Promise<User | undefined>;
-  
+
   createPatient(patient: InsertPatient): Promise<Patient>;
-  getPatient(id: string): Promise<Patient | undefined>;
+  getPatient(id: string, companyId: string): Promise<Patient | undefined>;
   
   createOrder(order: InsertOrder): Promise<Order>;
-  getOrder(id: string): Promise<OrderWithDetails | undefined>;
+  getOrder(id: string, companyId: string): Promise<OrderWithDetails | undefined>;
+  // Internal method for workers - bypasses tenant isolation
+  getOrderById_Internal(id: string): Promise<OrderWithDetails | undefined>;
   getOrders(filters?: {
     ecpId?: string;
     status?: string;
@@ -128,6 +132,8 @@ export interface IStorage {
     sentToLabAt: Date;
     jobErrorMessage?: string | null;
   }): Promise<Order | undefined>;
+  // Generic order update helper (used by workers to set PDF URL, error messages, etc.)
+  updateOrder(id: string, updates: Partial<Order>): Promise<Order | undefined>;
   markOrderAsShipped(id: string, trackingNumber: string): Promise<OrderWithDetails | undefined>;
   getOrderStats(ecpId?: string): Promise<{
     total: number;
@@ -184,10 +190,10 @@ export interface IStorage {
   deleteProduct(id: string): Promise<boolean>;
 
   createInvoice(invoice: InsertInvoice & { lineItems: InsertInvoiceLineItem[] }, ecpId: string): Promise<InvoiceWithDetails>;
-  getInvoice(id: string): Promise<InvoiceWithDetails | undefined>;
+  getInvoice(id: string, companyId: string): Promise<InvoiceWithDetails | undefined>;
   getInvoices(ecpId: string): Promise<InvoiceWithDetails[]>;
   updateInvoiceStatus(id: string, status: Invoice["status"]): Promise<Invoice | undefined>;
-  recordPayment(id: string, amount: string): Promise<Invoice | undefined>;
+  recordPayment(id: string, amount: string, companyId: string): Promise<Invoice | undefined>;
 
   // ============== COMPANY & MULTI-TENANT METHODS ==============
   createCompany(company: InsertCompany): Promise<Company>;
@@ -226,7 +232,19 @@ export interface IStorage {
 }
 
 export class DbStorage implements IStorage {
-  async getUser(id: string): Promise<User | undefined> {
+  async getUser(id: string, companyId: string): Promise<User | undefined> {
+    const [user] = await db.select()
+      .from(users)
+      .where(and(
+        eq(users.id, id),
+        eq(users.companyId, companyId)
+      ));
+    return user;
+  }
+
+  // Internal method for authentication - bypasses tenant isolation
+  // ONLY use this for authentication flows where we need to get the user's companyId
+  async getUserById_Internal(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
@@ -347,8 +365,20 @@ export class DbStorage implements IStorage {
     return result.length > 0;
   }
 
-  async getUserWithRoles(id: string): Promise<UserWithRoles | undefined> {
-    const user = await this.getUser(id);
+  async getUserWithRoles(id: string, companyId: string): Promise<UserWithRoles | undefined> {
+    const user = await this.getUser(id, companyId);
+    if (!user) return undefined;
+
+    const roles = await this.getUserAvailableRoles(id);
+    return {
+      ...user,
+      availableRoles: roles
+    };
+  }
+
+  // Internal method for authentication - bypasses tenant isolation
+  async getUserWithRoles_Internal(id: string): Promise<UserWithRoles | undefined> {
+    const user = await this.getUserById_Internal(id);
     if (!user) return undefined;
 
     const roles = await this.getUserAvailableRoles(id);
@@ -363,14 +393,15 @@ export class DbStorage implements IStorage {
       .select()
       .from(userRoles)
       .where(eq(userRoles.userId, userId));
-    
+
     // Return unique roles, including the current active role if not already in the list
-    const user = await this.getUser(userId);
+    // Note: We query user directly here without companyId filter since this is an internal helper
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
     const roleSet = new Set(roles.map(r => r.role));
     if (user?.role) {
       roleSet.add(user.role);
     }
-    
+
     return Array.from(roleSet);
   }
 
@@ -419,19 +450,14 @@ export class DbStorage implements IStorage {
     return patient;
   }
 
-  async getPatient(id: string, companyId?: string): Promise<Patient | undefined> {
-    return instrumentQuery(
-      'getPatient',
-      async () => {
-        const conditions = [eq(patients.id, id)];
-        if (companyId) {
-          conditions.push(eq(patients.companyId, companyId));
-        }
-        const [patient] = await db.select().from(patients).where(and(...conditions));
-        return patient;
-      },
-      '/api/patients/:id'
-    );
+  async getPatient(id: string, companyId: string): Promise<Patient | undefined> {
+    const [patient] = await db.select()
+      .from(patients)
+      .where(and(
+        eq(patients.id, id),
+        eq(patients.companyId, companyId)
+      ));
+    return patient;
   }
 
   async createOrder(insertOrder: InsertOrder): Promise<Order> {
@@ -445,43 +471,62 @@ export class DbStorage implements IStorage {
     return order;
   }
 
-  async getOrder(id: string, companyId?: string): Promise<OrderWithDetails | undefined> {
-    return instrumentQuery(
-      'getOrder',
-      async () => {
-        let conditions = [eq(orders.id, id)];
+  async getOrder(id: string, companyId: string): Promise<OrderWithDetails | undefined> {
+    const result = await db
+      .select({
+        order: orders,
+        patient: patients,
+        ecp: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          organizationName: users.organizationName,
+        },
+      })
+      .from(orders)
+      .innerJoin(patients, eq(orders.patientId, patients.id))
+      .innerJoin(users, eq(orders.ecpId, users.id))
+      .where(and(
+        eq(orders.id, id),
+        eq(orders.companyId, companyId)
+      ))
+      .limit(1);
 
-        if (companyId) {
-          conditions.push(eq(orders.companyId, companyId));
-        }
+    if (!result.length) return undefined;
 
-        const result = await db
-          .select({
-            order: orders,
-            patient: patients,
-            ecp: {
-              id: users.id,
-              firstName: users.firstName,
-              lastName: users.lastName,
-              organizationName: users.organizationName,
-            },
-          })
-          .from(orders)
-          .innerJoin(patients, eq(orders.patientId, patients.id))
-          .innerJoin(users, eq(orders.ecpId, users.id))
-          .where(and(...conditions))
-          .limit(1);
+    return {
+      ...result[0].order,
+      patient: result[0].patient,
+      ecp: result[0].ecp,
+    };
+  }
 
-        if (!result.length) return undefined;
+  // Internal method for workers - bypasses tenant isolation
+  async getOrderById_Internal(id: string): Promise<OrderWithDetails | undefined> {
+    const result = await db
+      .select({
+        order: orders,
+        patient: patients,
+        ecp: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          organizationName: users.organizationName,
+        },
+      })
+      .from(orders)
+      .innerJoin(patients, eq(orders.patientId, patients.id))
+      .innerJoin(users, eq(orders.ecpId, users.id))
+      .where(eq(orders.id, id))
+      .limit(1);
 
-        return {
-          ...result[0].order,
-          patient: result[0].patient,
-          ecp: result[0].ecp,
-        };
-      },
-      '/api/orders/:id'
-    );
+    if (!result.length) return undefined;
+
+    return {
+      ...result[0].order,
+      patient: result[0].patient,
+      ecp: result[0].ecp,
+    };
   }
 
   async getOrders(filters: {
@@ -492,63 +537,57 @@ export class DbStorage implements IStorage {
     limit?: number;
     offset?: number;
   } = {}): Promise<OrderWithDetails[]> {
-    return instrumentQuery(
-      'getOrders',
-      async () => {
-        const { ecpId, companyId, status, search, limit = 50, offset = 0 } = filters;
+    const { ecpId, companyId, status, search, limit = 50, offset = 0 } = filters;
 
-        let conditions = [];
+    let conditions = [];
+    
+    if (companyId) {
+      conditions.push(eq(orders.companyId, companyId));
+    }
+    
+    if (ecpId) {
+      conditions.push(eq(orders.ecpId, ecpId));
+    }
+    
+    if (status && status !== "all") {
+      conditions.push(eq(orders.status, status as Order["status"]));
+    }
+    
+    if (search) {
+      conditions.push(
+        or(
+          like(orders.orderNumber, `%${search}%`),
+          like(patients.name, `%${search}%`)
+        )
+      );
+    }
 
-        if (companyId) {
-          conditions.push(eq(orders.companyId, companyId));
-        }
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-        if (ecpId) {
-          conditions.push(eq(orders.ecpId, ecpId));
-        }
+    const results = await db
+      .select({
+        order: orders,
+        patient: patients,
+        ecp: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          organizationName: users.organizationName,
+        },
+      })
+      .from(orders)
+      .innerJoin(patients, eq(orders.patientId, patients.id))
+      .innerJoin(users, eq(orders.ecpId, users.id))
+      .where(whereClause)
+      .orderBy(desc(orders.orderDate))
+      .limit(limit)
+      .offset(offset);
 
-        if (status && status !== "all") {
-          conditions.push(eq(orders.status, status as Order["status"]));
-        }
-
-        if (search) {
-          conditions.push(
-            or(
-              like(orders.orderNumber, `%${search}%`),
-              like(patients.name, `%${search}%`)
-            )
-          );
-        }
-
-        const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-        const results = await db
-          .select({
-            order: orders,
-            patient: patients,
-            ecp: {
-              id: users.id,
-              firstName: users.firstName,
-              lastName: users.lastName,
-              organizationName: users.organizationName,
-            },
-          })
-          .from(orders)
-          .innerJoin(patients, eq(orders.patientId, patients.id))
-          .innerJoin(users, eq(orders.ecpId, users.id))
-          .where(whereClause)
-          .orderBy(desc(orders.orderDate))
-          .limit(limit)
-          .offset(offset);
-
-        return results.map(r => ({
-          ...r.order,
-          patient: r.patient,
-          ecp: r.ecp,
-        }));
-      },
-      '/api/orders'
-    );
+    return results.map(r => ({
+      ...r.order,
+      patient: r.patient,
+      ecp: r.ecp,
+    }));
   }
 
   async updateOrderStatus(id: string, status: Order["status"]): Promise<Order | undefined> {
@@ -598,17 +637,17 @@ export class DbStorage implements IStorage {
   async markOrderAsShipped(id: string, trackingNumber: string): Promise<OrderWithDetails | undefined> {
     const [order] = await db
       .update(orders)
-      .set({ 
+      .set({
         status: "shipped",
         trackingNumber,
         shippedAt: new Date(),
       })
       .where(eq(orders.id, id))
       .returning();
-    
-    if (!order) return undefined;
 
-    return await this.getOrder(id);
+    if (!order || !order.companyId) return undefined;
+
+    return await this.getOrder(id, order.companyId);
   }
 
   async getOrderStats(ecpId?: string): Promise<{
@@ -617,25 +656,19 @@ export class DbStorage implements IStorage {
     inProduction: number;
     completed: number;
   }> {
-    return instrumentQuery(
-      'getOrderStats',
-      async () => {
-        const whereClause = ecpId ? eq(orders.ecpId, ecpId) : undefined;
+    const whereClause = ecpId ? eq(orders.ecpId, ecpId) : undefined;
 
-        const [stats] = await db
-          .select({
-            total: sql<number>`count(*)::int`,
-            pending: sql<number>`count(*) filter (where status = 'pending')::int`,
-            inProduction: sql<number>`count(*) filter (where status = 'in_production')::int`,
-            completed: sql<number>`count(*) filter (where status = 'completed')::int`,
-          })
-          .from(orders)
-          .where(whereClause);
+    const [stats] = await db
+      .select({
+        total: sql<number>`count(*)::int`,
+        pending: sql<number>`count(*) filter (where status = 'pending')::int`,
+        inProduction: sql<number>`count(*) filter (where status = 'in_production')::int`,
+        completed: sql<number>`count(*) filter (where status = 'completed')::int`,
+      })
+      .from(orders)
+      .where(whereClause);
 
-        return stats || { total: 0, pending: 0, inProduction: 0, completed: 0 };
-      },
-      '/api/analytics'
-    );
+    return stats || { total: 0, pending: 0, inProduction: 0, completed: 0 };
   }
 
   async createConsultLog(insertLog: Omit<InsertConsultLog, 'ecpId'> & { ecpId: string }): Promise<ConsultLog> {
@@ -695,8 +728,9 @@ export class DbStorage implements IStorage {
       }))
     ).returning();
 
-    const supplier = await this.getUser(po.supplierId);
-    const createdBy = await this.getUser(createdById);
+    // Get supplier and createdBy info (they should be in same company as the PO)
+    const supplier = po.companyId ? await this.getUser(po.supplierId, po.companyId) : undefined;
+    const createdBy = po.companyId ? await this.getUser(createdById, po.companyId) : undefined;
 
     return {
       ...po,
@@ -730,8 +764,8 @@ export class DbStorage implements IStorage {
       .from(poLineItems)
       .where(eq(poLineItems.purchaseOrderId, id));
 
-    const supplier = await this.getUser(po.supplierId);
-    const createdBy = await this.getUser(po.createdById);
+    const supplier = po.companyId ? await this.getUser(po.supplierId, po.companyId) : undefined;
+    const createdBy = po.companyId ? await this.getUser(po.createdById, po.companyId) : undefined;
 
     return {
       ...po,
@@ -792,8 +826,8 @@ export class DbStorage implements IStorage {
         .from(poLineItems)
         .where(eq(poLineItems.purchaseOrderId, po.id));
 
-      const supplier = await this.getUser(po.supplierId);
-      const createdBy = await this.getUser(po.createdById);
+      const supplier = po.companyId ? await this.getUser(po.supplierId, po.companyId) : undefined;
+      const createdBy = po.companyId ? await this.getUser(po.createdById, po.companyId) : undefined;
 
       results.push({
         ...po,
@@ -957,23 +991,17 @@ export class DbStorage implements IStorage {
   }
 
   async getPatients(ecpId: string, companyId?: string): Promise<Patient[]> {
-    return instrumentQuery(
-      'getPatients',
-      async () => {
-        const conditions = [eq(patients.ecpId, ecpId)];
-
-        if (companyId) {
-          conditions.push(eq(patients.companyId, companyId));
-        }
-
-        return await db
-          .select()
-          .from(patients)
-          .where(and(...conditions))
-          .orderBy(desc(patients.createdAt));
-      },
-      '/api/patients'
-    );
+    const conditions = [eq(patients.ecpId, ecpId)];
+    
+    if (companyId) {
+      conditions.push(eq(patients.companyId, companyId));
+    }
+    
+    return await db
+      .select()
+      .from(patients)
+      .where(and(...conditions))
+      .orderBy(desc(patients.createdAt));
   }
 
   async updatePatient(id: string, updates: Partial<Patient>): Promise<Patient | undefined> {
@@ -984,6 +1012,56 @@ export class DbStorage implements IStorage {
       .returning();
     
     return patient;
+  }
+
+  // Patient Activity Log methods
+  async createPatientActivity(activity: any): Promise<any> {
+    const { patientActivityLog } = await import("@shared/schema");
+    const [log] = await db.insert(patientActivityLog).values(activity).returning();
+    return log;
+  }
+
+  async getPatientActivityLog(
+    patientId: string,
+    companyId: string,
+    options?: {
+      limit?: number;
+      activityTypes?: string[];
+      startDate?: Date;
+      endDate?: Date;
+    }
+  ): Promise<any[]> {
+    const { patientActivityLog } = await import("@shared/schema");
+    const { and, eq, inArray, gte, lte, desc } = await import("drizzle-orm");
+    
+    const conditions = [
+      eq(patientActivityLog.patientId, patientId),
+      eq(patientActivityLog.companyId, companyId),
+    ];
+    
+    if (options?.activityTypes && options.activityTypes.length > 0) {
+      conditions.push(inArray(patientActivityLog.activityType, options.activityTypes as any));
+    }
+    
+    if (options?.startDate) {
+      conditions.push(gte(patientActivityLog.createdAt, options.startDate));
+    }
+    
+    if (options?.endDate) {
+      conditions.push(lte(patientActivityLog.createdAt, options.endDate));
+    }
+    
+    let query = db
+      .select()
+      .from(patientActivityLog)
+      .where(and(...conditions))
+      .orderBy(desc(patientActivityLog.createdAt));
+    
+    if (options?.limit) {
+      query = query.limit(options.limit) as any;
+    }
+    
+    return await query;
   }
 
   async createEyeExamination(insertExamination: InsertEyeExamination, ecpId: string): Promise<EyeExamination> {
@@ -1224,31 +1302,17 @@ export class DbStorage implements IStorage {
   }
 
   async getProducts(ecpId: string, companyId?: string): Promise<Product[]> {
-    const cacheKey = `products:${companyId || 'all'}:${ecpId}`;
-
-    return cachedQuery(
-      {
-        key: cacheKey,
-        ttl: 300, // 5 minutes - products don't change frequently
-      },
-      () => instrumentQuery(
-        'getProducts',
-        async () => {
-          const conditions = [eq(products.ecpId, ecpId)];
-
-          if (companyId) {
-            conditions.push(eq(products.companyId, companyId));
-          }
-
-          return await db
-            .select()
-            .from(products)
-            .where(and(...conditions))
-            .orderBy(products.productType, products.brand, products.model);
-        },
-        '/api/products'
-      )
-    );
+    const conditions = [eq(products.ecpId, ecpId)];
+    
+    if (companyId) {
+      conditions.push(eq(products.companyId, companyId));
+    }
+    
+    return await db
+      .select()
+      .from(products)
+      .where(and(...conditions))
+      .orderBy(products.productType, products.brand, products.model);
   }
 
   async updateProduct(id: string, updates: Partial<Product>): Promise<Product | undefined> {
@@ -1292,11 +1356,11 @@ export class DbStorage implements IStorage {
     ).returning();
 
     let patient: Patient | undefined = undefined;
-    if (invoice.patientId) {
-      patient = await this.getPatient(invoice.patientId);
+    if (invoice.patientId && invoice.companyId) {
+      patient = await this.getPatient(invoice.patientId, invoice.companyId);
     }
 
-    const ecp = await this.getUser(ecpId);
+    const ecp = invoice.companyId ? await this.getUser(ecpId, invoice.companyId) : undefined;
 
     return {
       ...invoice,
@@ -1310,15 +1374,14 @@ export class DbStorage implements IStorage {
     };
   }
 
-  async getInvoice(id: string, companyId?: string): Promise<InvoiceWithDetails | undefined> {
-    const conditions = [eq(invoices.id, id)];
-    if (companyId) {
-      conditions.push(eq(invoices.companyId, companyId));
-    }
+  async getInvoice(id: string, companyId: string): Promise<InvoiceWithDetails | undefined> {
     const [invoice] = await db
       .select()
       .from(invoices)
-      .where(and(...conditions));
+      .where(and(
+        eq(invoices.id, id),
+        eq(invoices.companyId, companyId)
+      ));
 
     if (!invoice) return undefined;
 
@@ -1329,10 +1392,10 @@ export class DbStorage implements IStorage {
 
     let patient: Patient | undefined = undefined;
     if (invoice.patientId) {
-      patient = await this.getPatient(invoice.patientId);
+      patient = await this.getPatient(invoice.patientId, companyId);
     }
 
-    const ecp = await this.getUser(invoice.ecpId);
+    const ecp = await this.getUser(invoice.ecpId, companyId);
 
     return {
       ...invoice,
@@ -1367,11 +1430,11 @@ export class DbStorage implements IStorage {
           .where(eq(invoiceLineItems.invoiceId, invoice.id));
 
         let patient: Patient | undefined = undefined;
-        if (invoice.patientId) {
-          patient = await this.getPatient(invoice.patientId);
+        if (invoice.patientId && invoice.companyId) {
+          patient = await this.getPatient(invoice.patientId, invoice.companyId);
         }
 
-        const ecp = await this.getUser(ecpId);
+        const ecp = invoice.companyId ? await this.getUser(ecpId, invoice.companyId) : undefined;
 
         return {
           ...invoice,
@@ -1402,8 +1465,8 @@ export class DbStorage implements IStorage {
     return invoice;
   }
 
-  async recordPayment(id: string, amount: string): Promise<Invoice | undefined> {
-    const invoice = await this.getInvoice(id);
+  async recordPayment(id: string, amount: string, companyId: string): Promise<Invoice | undefined> {
+    const invoice = await this.getInvoice(id, companyId);
     if (!invoice) return undefined;
 
     const currentPaid = parseFloat(invoice.amountPaid);

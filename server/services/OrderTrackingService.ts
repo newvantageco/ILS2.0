@@ -29,7 +29,7 @@ class OrderTrackingService {
     req?: Request,
   ): Promise<OrderUpdate> {
     // Get existing order first
-    const existingOrder = await storage.getOrder(orderId);
+    const existingOrder = await storage.getOrderById_Internal(orderId);
     
     if (!existingOrder) {
       throw new Error(`Order ${orderId} not found`);

@@ -61,7 +61,7 @@ router.get("/subscription-plans", asyncHandler(async (req: Request, res: Respons
  */
 router.post("/create-checkout-session", isAuthenticated, asyncHandler(async (req: any, res: Response) => {
   const userId = req.user?.claims?.sub || req.user?.id;
-  const user = await storage.getUser(userId);
+  const user = await storage.getUserById_Internal(userId);
   
   if (!user || !user.companyId) {
     throw new BadRequestError("User must belong to a company");
@@ -148,7 +148,7 @@ router.post("/create-checkout-session", isAuthenticated, asyncHandler(async (req
 router.post("/create-portal-session", isAuthenticated, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub || req.user?.id;
-    const user = await storage.getUser(userId);
+    const user = await storage.getUserById_Internal(userId);
     
     if (!user || !user.companyId) {
       return res.status(400).json({ error: "User must belong to a company" });
@@ -179,7 +179,7 @@ router.post("/create-portal-session", isAuthenticated, async (req: any, res: Res
 router.get("/subscription-status", isAuthenticated, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub || req.user?.id;
-    const user = await storage.getUser(userId);
+    const user = await storage.getUserById_Internal(userId);
     
     if (!user || !user.companyId) {
       return res.status(400).json({ error: "User must belong to a company" });

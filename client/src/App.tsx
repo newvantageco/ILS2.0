@@ -48,8 +48,8 @@ const DispenserDashboard = lazy(() => import("@/pages/DispenserDashboard"));
 
 // ECP Pages
 const PatientsPage = lazy(() => import("@/pages/PatientsPage"));
+const PatientProfile = lazy(() => import("@/pages/PatientProfile"));
 const PrescriptionsPage = lazy(() => import("@/pages/PrescriptionsPage"));
-const InventoryPage = lazy(() => import("@/pages/InventoryPage"));
 const InventoryManagement = lazy(() => import("@/pages/InventoryManagement"));
 const InvoicesPage = lazy(() => import("@/pages/InvoicesPage"));
 const EyeTestPage = lazy(() => import("@/pages/EyeTestPage"));
@@ -95,6 +95,7 @@ const PlatformAIDashboard = lazy(() => import("@/components/bi/PlatformAIDashboa
 const AISettingsPage = lazy(() => import("@/pages/AISettingsPage"));
 const AuditLogsPage = lazy(() => import("@/pages/AuditLogsPage"));
 const PermissionsManagementPage = lazy(() => import("@/pages/PermissionsManagementPage"));
+const RoleManagementPage = lazy(() => import("@/pages/admin/RoleManagement"));
 const ComplianceDashboardPage = lazy(() => import("@/pages/ComplianceDashboardPage"));
 const AIModelManagementPage = lazy(() => import("@/pages/AIModelManagementPage"));
 const MLModelManagementPage = lazy(() => import("@/pages/MLModelManagementPage"));
@@ -401,9 +402,9 @@ function AuthenticatedApp() {
           <>
             <Route path="/ecp/dashboard" component={ECPDashboard} />
             <Route path="/ecp/patients" component={PatientsPage} />
+            <Route path="/ecp/patients/:id" component={PatientProfile} />
             <Route path="/ecp/patient/:id/test" component={EyeTestPage} />
             <Route path="/ecp/prescriptions" component={PrescriptionsPage} />
-            <Route path="/ecp/inventory-old" component={InventoryPage} />
             <Route path="/ecp/inventory" component={InventoryManagement} />
             <Route path="/ecp/examinations" component={ExaminationList} />
             <Route path="/ecp/examination/new" component={EyeExaminationComprehensive} />
@@ -502,6 +503,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/admin/audit-logs" component={AuditLogsPage} />
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
+            <Route path="/admin/roles" component={RoleManagementPage} />
             <Route path="/admin/returns" component={ReturnsManagementPage} />
             <Route path="/admin/non-adapts" component={NonAdaptsPage} />
             <Route path="/admin/compliance" component={ComplianceDashboardPage} />
@@ -549,12 +551,11 @@ function AuthenticatedApp() {
             <Route path="/platform-admin/feature-flags" component={FeatureFlagsPage} />
             <Route path="/platform-admin/api-docs" component={APIDocumentationPage} />
             
-            {/* ECP Routes for Testing */}
+            {/* ECP Routes */}
             <Route path="/ecp/dashboard" component={ECPDashboard} />
             <Route path="/ecp/patients" component={PatientsPage} />
             <Route path="/ecp/patient/:id/test" component={EyeTestPage} />
             <Route path="/ecp/prescriptions" component={PrescriptionsPage} />
-            <Route path="/ecp/inventory-old" component={InventoryPage} />
             <Route path="/ecp/inventory" component={InventoryManagement} />
             <Route path="/ecp/pos" component={OpticalPOSPage} />
             <Route path="/ecp/invoices" component={InvoicesPage} />
@@ -566,7 +567,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/bi-dashboard" component={BIDashboardPage} />
             <Route path="/ecp/analytics" component={AnalyticsDashboard} />
             
-            {/* Lab Routes for Testing */}
+            {/* Lab Routes */}
             <Route path="/lab/dashboard" component={LabDashboard} />
             <Route path="/lab/production" component={ProductionTrackingPage} />
             <Route path="/lab/quality" component={QualityControlPage} />
@@ -583,7 +584,7 @@ function AuthenticatedApp() {
               </div>
             </Route>
             
-            {/* Admin Routes for Testing */}
+            {/* Admin Routes */}
             <Route path="/admin/dashboard" component={AdminDashboard} />
             <Route path="/admin/audit-logs" component={AuditLogsPage} />
             <Route path="/admin/permissions" component={PermissionsManagementPage} />

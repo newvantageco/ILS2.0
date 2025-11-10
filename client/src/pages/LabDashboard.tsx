@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatCardSkeleton } from "@/components/ui/CardSkeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Package, Clock, CheckCircle, TrendingUp, Printer, Mail, ClipboardList } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Package, Clock, CheckCircle, TrendingUp, Printer, Mail, ClipboardList, Wifi, WifiOff } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -19,6 +20,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { createOptimisticHandlers, optimisticArrayUpdate } from "@/lib/optimisticUpdates";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import type { OrderWithDetails, PurchaseOrderWithDetails } from "@shared/schema";
 
@@ -37,6 +40,70 @@ export default function LabDashboard() {
   const [selectedOrderId, setSelectedOrderId] = useState<string>("");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
+  
+  // WebSocket for real-time updates
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws`;
+  const ws = useWebSocket(wsUrl);
+  
+  // Join company room on connection
+  useEffect(() => {
+    if (ws && ws.readyState === WebSocket.OPEN && user?.companyId) {
+      ws.send(JSON.stringify({
+        type: 'join-company',
+        companyId: user.companyId
+      }));
+    }
+  }, [ws, user?.companyId]);
+  
+  // Listen for real-time order events
+  useEffect(() => {
+    if (!ws) return;
+    
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const message = JSON.parse(event.data);
+        
+        switch (message.type) {
+          case 'order:created':
+            toast({
+              title: "New Order Created",
+              description: `Order ${message.data.orderNumber} has been created`,
+            });
+            queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+            break;
+            
+          case 'order:status_changed':
+            toast({
+              title: "Order Status Updated",
+              description: `Order ${message.data.orderNumber} is now ${message.data.newStatus}`,
+            });
+            queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+            break;
+            
+          case 'order:shipped':
+            toast({
+              title: "Order Shipped",
+              description: `Order ${message.data.orderNumber} has been shipped`,
+            });
+            queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+            break;
+        }
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+      }
+    };
+    
+    ws.addEventListener('message', handleMessage);
+    
+    return () => {
+      ws.removeEventListener('message', handleMessage);
+    };
+  }, [ws, toast]);
 
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<OrderStats>({
     queryKey: ["/api/stats"],
@@ -171,11 +238,26 @@ export default function LabDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Lab Dashboard</h1>
-        <p className="text-muted-foreground mt-1">
-          Monitor production status and manage your order queue.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Lab Dashboard</h1>
+          <p className="text-muted-foreground mt-1">
+            Monitor production status and manage your order queue.
+          </p>
+        </div>
+        <Badge variant={ws && ws.readyState === WebSocket.OPEN ? "default" : "secondary"} className="gap-2">
+          {ws && ws.readyState === WebSocket.OPEN ? (
+            <>
+              <Wifi className="h-3 w-3" />
+              Live Updates
+            </>
+          ) : (
+            <>
+              <WifiOff className="h-3 w-3" />
+              Offline
+            </>
+          )}
+        </Badge>
       </div>
 
       <Tabs defaultValue="orders" className="w-full">

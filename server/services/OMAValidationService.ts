@@ -80,7 +80,7 @@ export class OMAValidationService {
    * Validates an order by comparing prescription data with OMA file
    */
   async validateOrder(orderId: string): Promise<ValidationResult> {
-    const order = await this.storage.getOrder(orderId);
+    const order = await this.storage.getOrderById_Internal(orderId);
     if (!order) {
       throw new Error(`Order ${orderId} not found`);
     }

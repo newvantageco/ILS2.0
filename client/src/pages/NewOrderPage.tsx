@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
+import PatientSearchInput, { PatientProfile } from "@/components/shared/PatientSearchInput";
 import { User, Eye, Glasses, FileCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -76,6 +77,8 @@ export default function NewOrderPage() {
     omaFileContent: "",
     omaFilename: "",
   });
+
+  const [showPatientPicker, setShowPatientPicker] = useState(false);
 
   const createOrderMutation = useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
@@ -201,6 +204,29 @@ export default function NewOrderPage() {
                   placeholder="Enter patient full name"
                   data-testid="input-patient-name"
                 />
+
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowPatientPicker(!showPatientPicker)}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    {showPatientPicker ? 'Hide existing patients' : 'Select an existing patient'}
+                  </button>
+                </div>
+
+                {showPatientPicker && (
+                  <div className="mt-4">
+                    <PatientSearchInput
+                      onSelect={(p: PatientProfile) => {
+                        updateFormData('patientName', p.name);
+                        if (p.dateOfBirth) updateFormData('patientDOB', p.dateOfBirth);
+                        setShowPatientPicker(false);
+                      }}
+                      selected={null}
+                    />
+                  </div>
+                )}
               </div>
               <div>
                 <Label htmlFor="patient-dob">Date of Birth</Label>

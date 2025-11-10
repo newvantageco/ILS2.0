@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import type { User } from "@shared/schema";
@@ -14,44 +14,51 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Beaker, ChevronDown, Check, Package, Shield, Loader2 } from "lucide-react";
+import { Users, Beaker, ChevronDown, Check, Package, Shield, Loader2, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const roleConfig: Record<string, { label: string; icon: any; color: string }> = {
+const roleConfig: Record<string, { label: string; icon: any; color: string; description: string }> = {
   ecp: {
     label: "Eye Care Professional",
     icon: Users,
     color: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+    description: "Manage patients, orders, and practice operations"
   },
   lab_tech: {
     label: "Lab Technician",
     icon: Beaker,
     color: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+    description: "Production queue and quality control"
   },
   engineer: {
     label: "Principal Engineer",
     icon: Beaker,
     color: "bg-purple-500/10 text-purple-700 dark:text-purple-400",
+    description: "Analytics, R&D, and equipment management"
   },
   supplier: {
     label: "Supplier",
     icon: Package,
     color: "bg-orange-500/10 text-orange-700 dark:text-orange-400",
+    description: "Purchase orders and technical library"
   },
   admin: {
     label: "Administrator",
     icon: Shield,
     color: "bg-red-500/10 text-red-700 dark:text-red-400",
+    description: "User management and system administration"
   },
   platform_admin: {
     label: "Platform Administrator",
     icon: Shield,
     color: "bg-violet-500/10 text-violet-700 dark:text-violet-400",
+    description: "Full platform control and monitoring"
   },
   company_admin: {
     label: "Company Administrator",
-    icon: Shield,
+    icon: Building2,
     color: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400",
+    description: "Company settings and team management"
   },
 };
 
@@ -115,7 +122,7 @@ export function RoleSwitcherDropdown() {
         <Button 
           variant="outline" 
           size="sm" 
-          className="gap-2"
+          className="gap-2 hover:bg-accent transition-colors"
           data-testid="button-role-switcher"
           disabled={switchRoleMutation.isPending}
         >
@@ -124,40 +131,56 @@ export function RoleSwitcherDropdown() {
           ) : (
             <CurrentIcon className="h-4 w-4" />
           )}
-          <span className="hidden sm:inline">
+          <span className="hidden sm:inline font-medium">
             {config?.label || currentRole}
           </span>
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Switch Role</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-72">
+        <DropdownMenuLabel className="font-semibold">Switch Role</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {availableRoles.map((role: string) => {
-          const roleConf = roleConfig[role];
-          if (!roleConf) return null;
-          
-          const RoleIcon = roleConf.icon;
-          const isActive = role === user.role;
+        <div className="max-h-[400px] overflow-y-auto">
+          {availableRoles.map((role: string) => {
+            const roleConf = roleConfig[role];
+            if (!roleConf) return null;
+            
+            const RoleIcon = roleConf.icon;
+            const isActive = role === user.role;
 
-          return (
-            <DropdownMenuItem
-              key={role}
-              onClick={() => !isActive && switchRoleMutation.mutate(role)}
-              disabled={isActive || switchRoleMutation.isPending}
-              className="gap-2 cursor-pointer"
-              data-testid={`menu-item-switch-${role}`}
-            >
-              {switchRoleMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RoleIcon className="h-4 w-4" />
-              )}
-              <span className="flex-1">{roleConf.label}</span>
-              {isActive && <Check className="h-4 w-4 text-primary" />}
-            </DropdownMenuItem>
-          );
-        })}
+            return (
+              <DropdownMenuItem
+                key={role}
+                onClick={() => !isActive && switchRoleMutation.mutate(role)}
+                disabled={isActive || switchRoleMutation.isPending}
+                className="gap-3 cursor-pointer py-3 px-3 focus:bg-accent"
+                data-testid={`menu-item-switch-${role}`}
+              >
+                <div className={`p-2 rounded-md ${roleConf.color}`}>
+                  {switchRoleMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RoleIcon className="h-4 w-4" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm">{roleConf.label}</span>
+                    {isActive && (
+                      <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                    {roleConf.description}
+                  </p>
+                </div>
+                {isActive && <Check className="h-4 w-4 text-primary flex-shrink-0" />}
+              </DropdownMenuItem>
+            );
+          })}
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

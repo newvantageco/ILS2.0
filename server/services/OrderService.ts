@@ -1,6 +1,7 @@
 import { IStorage } from "../storage";
 import type { InsertOrder, Order } from "@shared/schema";
 import { createLogger, type Logger } from "../utils/logger";
+import eventBus from "../lib/eventBus";
 
 export interface LimsClientInterface {
   createJob(request: CreateJobRequest): Promise<CreateJobResponse>;
@@ -99,32 +100,22 @@ export class OrderService {
 
       this.logger.debug("Order created locally", { orderId: createdOrder.id });
 
-      const limsRequest = this.transformOrderToLimsRequest(createdOrder, orderData);
-      const limsResponse = await this.limsClient.createJob(limsRequest);
-
-      this.logger.info("Order submitted to LIMS", {
+      // Publish an event and return immediately. Background workers will handle LIMS submission,
+      // PDF generation, emails, analytics, etc. This keeps the critical path fast and resilient.
+      eventBus.publish("order.submitted", {
         orderId: createdOrder.id,
-        jobId: limsResponse.jobId,
+        ecpId,
+        order: createdOrder,
+        metadata: {
+          lensType: orderData.lensType,
+          material: orderData.lensMaterial,
+        },
       });
-
-      const updatedOrder = await this.storage.updateOrderWithLimsJob(
-        createdOrder.id,
-        {
-          jobId: limsResponse.jobId,
-          jobStatus: limsResponse.status,
-          sentToLabAt: new Date(limsResponse.createdAt),
-        }
-      );
-
-      if (!updatedOrder) {
-        throw new Error("Failed to update order with LIMS job ID");
-      }
 
       this.emitOrderCreatedEvent({
         type: "order_submitted",
-        orderId: updatedOrder.id,
-        jobId: limsResponse.jobId,
-        status: limsResponse.status,
+        orderId: createdOrder.id,
+        status: "pending",
         ecpId,
         timestamp: new Date(),
         metadata: {
@@ -133,7 +124,7 @@ export class OrderService {
         },
       });
 
-      return updatedOrder;
+      return createdOrder;
     } catch (error) {
       const orderNumber = (orderData as any).orderNumber || "unknown";
       this.logger.error("Order submission failed", error as Error, {
@@ -224,7 +215,7 @@ export class OrderService {
 
   async getOrderStatus(orderId: string): Promise<JobStatusResponse | null> {
     try {
-      const order = await this.storage.getOrder(orderId);
+      const order = await this.storage.getOrderById_Internal(orderId);
 
       if (!order || !order.jobId) {
         return null;

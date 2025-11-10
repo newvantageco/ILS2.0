@@ -10,10 +10,10 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import {
-  Home,
-  Package,
-  ClipboardList,
+import { 
+  Home, 
+  Package, 
+  ClipboardList, 
   TrendingUp,
   Settings,
   HelpCircle,
@@ -24,7 +24,6 @@ import {
   UserCircle,
   FileText,
   ShoppingCart,
-  ShoppingBag,
   Archive,
   Brain,
   Building2,
@@ -44,13 +43,6 @@ import {
   FileType,
   BookOpen,
   Mail,
-  DollarSign,
-  Heart,
-  Award,
-  Smartphone,
-  FlaskConical,
-  Activity,
-  Target,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -60,7 +52,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getUserDisplayName, getUserInitials } from "@/lib/authUtils";
 
 interface AppSidebarProps {
-  userRole?: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin" | "dispenser";
+  userRole?: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin";
 }
 
 const menuItems = {
@@ -96,13 +88,6 @@ const menuItems = {
       { title: "Prescription Templates", url: "/ecp/prescription-templates", icon: FileType },
       { title: "Clinical Protocols", url: "/ecp/clinical-protocols", icon: BookOpen },
       { title: "Company", url: "/ecp/company", icon: Building2 },
-    ],
-    healthcare: [
-      { title: "Revenue Cycle", url: "/rcm/dashboard", icon: DollarSign },
-      { title: "Population Health", url: "/population-health/dashboard", icon: Heart },
-      { title: "Quality & Compliance", url: "/quality/dashboard", icon: Award },
-      { title: "mHealth & RPM", url: "/mhealth/dashboard", icon: Smartphone },
-      { title: "Clinical Research", url: "/research/dashboard", icon: FlaskConical },
     ],
   },
   lab_tech: [
@@ -159,7 +144,6 @@ const menuItems = {
     { title: "AI Forecasting", url: "/admin/ai-forecasting", icon: TrendingUp },
     { title: "Audit Logs", url: "/admin/audit-logs", icon: FileSearch },
     { title: "Platform Settings", url: "/admin/platform", icon: Shield },
-    { title: "Shopify Integration", url: "/admin/shopify", icon: ShoppingBag },
     { title: "AI Assistant", url: "/admin/ai-assistant", icon: Brain },
     { title: "AI Settings", url: "/admin/ai-settings", icon: Settings },
     { title: "Email Analytics", url: "/admin/email-analytics", icon: Mail },
@@ -172,19 +156,6 @@ const menuItems = {
     { title: "All Companies", url: "/platform-admin/companies", icon: Building2 },
     { title: "Diary / Bookings", url: "/ecp/test-rooms/bookings", icon: CalendarDays },
     { title: "Platform Settings", url: "/platform-admin/settings", icon: Shield },
-    { title: "Shopify Integration", url: "/platform-admin/shopify", icon: ShoppingBag },
-    // ECP Testing
-    { title: "ECP: Patients", url: "/ecp/patients", icon: UserCircle },
-    { title: "ECP: Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
-    { title: "ECP: Prescriptions", url: "/ecp/prescriptions", icon: FileText },
-    { title: "ECP: Orders", url: "/ecp/orders", icon: ClipboardList },
-    { title: "ECP: Inventory", url: "/ecp/inventory", icon: Archive },
-    // Lab Testing
-    { title: "Lab: Queue", url: "/lab/queue", icon: ClipboardList },
-    { title: "Lab: Production", url: "/lab/production", icon: Factory },
-    { title: "Lab: Quality Control", url: "/lab/quality", icon: CheckCircle },
-    { title: "Lab: Equipment", url: "/lab/equipment", icon: Settings },
-    // Analytics & AI
     { title: "AI Assistant", url: "/admin/ai-assistant", icon: Brain },
     { title: "BI Dashboard", url: "/admin/bi-dashboard", icon: BarChart3 },
   ],
@@ -197,14 +168,6 @@ const menuItems = {
     { title: "Analytics", url: "/company-admin/analytics", icon: BarChart3 },
     { title: "AI Assistant", url: "/company-admin/ai-assistant", icon: Brain },
   ],
-  dispenser: [
-    { title: "Dashboard", url: "/dispenser/dashboard", icon: Home },
-    { title: "Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
-    { title: "Patients", url: "/ecp/patients", icon: UserCircle },
-    { title: "Inventory", url: "/ecp/inventory", icon: Archive },
-    { title: "Prescriptions", url: "/ecp/prescriptions", icon: FileText },
-    { title: "Invoices", url: "/ecp/invoices", icon: Receipt },
-  ],
 };
 
 const roleLabels = {
@@ -215,7 +178,6 @@ const roleLabels = {
   admin: "Administrator",
   platform_admin: "Master Admin",
   company_admin: "Company Administrator",
-  dispenser: "Dispenser",
 };
 
 export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
@@ -369,34 +331,7 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
                         isActive={location === item.url}
                         data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                       >
-                        <Link
-                          href={item.url}
-                          aria-label={item.title}
-                          aria-current={location === item.url ? "page" : undefined}
-                        >
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            {/* Healthcare Section */}
-            <SidebarGroup>
-              <SidebarGroupLabel>Healthcare Platform</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {items.healthcare.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={location === item.url}
-                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-                      >
-                        <Link
+                        <Link 
                           href={item.url}
                           aria-label={item.title}
                           aria-current={location === item.url ? "page" : undefined}

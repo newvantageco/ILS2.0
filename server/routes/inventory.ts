@@ -44,7 +44,13 @@ router.post('/products',
     try {
       const companyId = req.user!.companyId;
       if (!companyId) {
-        return res.status(400).json({ error: 'Company ID is required' });
+        return res.status(403).json({ error: 'Company context missing' });
+      }
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
       }
       const ecpId = req.user!.id;
       const productData = req.body;
@@ -113,7 +119,7 @@ router.put('/products/:id',
       const { id } = req.params;
       const companyId = req.user!.companyId;
       if (!companyId) {
-        return res.status(400).json({ error: 'Company ID is required' });
+        return res.status(403).json({ error: 'Company context missing' });
       }
       const updates = req.body;
 
@@ -179,7 +185,7 @@ router.delete('/products/:id',
       const { id } = req.params;
       const companyId = req.user!.companyId;
       if (!companyId) {
-        return res.status(400).json({ error: 'Company ID is required' });
+        return res.status(403).json({ error: 'Company context missing' });
       }
 
       // Check if product exists and belongs to company
@@ -239,7 +245,7 @@ router.post('/products/:id/adjust',
       const { quantity, reason } = req.body;
       const companyId = req.user!.companyId;
       if (!companyId) {
-        return res.status(400).json({ error: 'Company ID is required' });
+        return res.status(403).json({ error: 'Company context missing' });
       }
       const userId = req.user!.id;
 
@@ -317,7 +323,7 @@ router.get('/low-stock',
     try {
       const companyId = req.user!.companyId;
       if (!companyId) {
-        return res.status(400).json({ error: 'Company ID is required' });
+        return res.status(403).json({ error: 'Company context missing' });
       }
 
       const lowStockProducts = await db.select()
@@ -350,7 +356,7 @@ router.get('/out-of-stock',
     try {
       const companyId = req.user!.companyId;
       if (!companyId) {
-        return res.status(400).json({ error: 'Company ID is required' });
+        return res.status(403).json({ error: 'Company context missing' });
       }
 
       const outOfStockProducts = await db.select()
@@ -393,7 +399,7 @@ router.post('/bulk-stock-update',
       const { updates } = req.body;
       const companyId = req.user!.companyId;
       if (!companyId) {
-        return res.status(400).json({ error: 'Company ID is required' });
+        return res.status(403).json({ error: 'Company context missing' });
       }
 
       const results = [];
@@ -474,15 +480,12 @@ router.get('/products/:id/movements',
       const { id } = req.params;
       const { limit, offset } = req.query;
       const companyId = req.user!.companyId;
-      if (!companyId) {
-        return res.status(400).json({ error: 'Company ID is required' });
-      }
 
       // Verify product belongs to company
       const product = await db.query.products.findFirst({
         where: and(
           eq(products.id, id),
-          eq(products.companyId, companyId)
+          eq(products.companyId, companyId as string)
         ),
       });
 
@@ -551,7 +554,7 @@ router.get('/movements',
       const { productId, movementType, startDate, endDate, limit, offset } = req.query;
       const companyId = req.user!.companyId;
       if (!companyId) {
-        return res.status(400).json({ error: 'Company ID is required' });
+        return res.status(403).json({ error: 'Company context missing' });
       }
 
       const conditions = [];
@@ -592,7 +595,7 @@ router.get('/movements',
         .from(inventoryMovements)
         .leftJoin(products, eq(inventoryMovements.productId, products.id))
         .where(and(
-          eq(products.companyId, companyId),
+          eq(products.companyId, companyId as string),
           ...conditions
         ))
         .orderBy(sql`${inventoryMovements.createdAt} DESC`)
@@ -604,7 +607,7 @@ router.get('/movements',
         .from(inventoryMovements)
         .leftJoin(products, eq(inventoryMovements.productId, products.id))
         .where(and(
-          eq(products.companyId, companyId),
+          eq(products.companyId, companyId as string),
           ...conditions
         ));
 
