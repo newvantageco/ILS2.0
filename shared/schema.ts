@@ -22,17 +22,6 @@ export const sessions = pgTable(
   ],
 );
 
-export const userRoleEnum = pgEnum("user_role", ["ecp", "lab_tech", "engineer", "supplier", "admin", "platform_admin", "company_admin", "dispenser"]);
-export const userRoleEnhancedEnum = pgEnum("user_role_enhanced", [
-  "owner",
-  "admin", 
-  "optometrist",
-  "dispenser",
-  "retail_assistant",
-  "lab_tech",
-  "engineer",
-  "supplier"
-]);
 export const accountStatusEnum = pgEnum("account_status", ["pending", "active", "suspended"]);
 export const orderStatusEnum = pgEnum("order_status", [
   "pending",
