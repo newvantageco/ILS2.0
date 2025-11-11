@@ -83,7 +83,9 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "public");
+  // Use process.cwd() for reliable path resolution in production (Docker working directory is /app)
+  // Build output is at /app/dist/public when bundled server runs from /app/dist/index.js
+  const distPath = path.resolve(process.cwd(), "dist", "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
