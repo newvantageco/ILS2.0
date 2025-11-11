@@ -53,8 +53,8 @@ WORKDIR /app
 # Copy package files
 COPY --chown=nodejs:nodejs package*.json ./
 
-# Install only production dependencies
-RUN npm ci --omit=dev
+# Install all dependencies (runtime needs some dev dependencies)
+RUN npm ci
 
 # Copy built application from builder
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
