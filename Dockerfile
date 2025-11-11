@@ -59,8 +59,9 @@ COPY --chown=nodejs:nodejs package*.json ./
 # Install all dependencies (runtime needs some dev dependencies)
 RUN npm ci
 
-# Copy built application from builder
-COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+# Copy built application from builder (contains index.js and public/)
+COPY --from=builder --chown=nodejs:nodejs /app/dist/index.js ./dist/index.js
+COPY --from=builder --chown=nodejs:nodejs /app/dist/public ./dist/public
 
 # Copy necessary runtime files
 COPY --chown=nodejs:nodejs server ./server
