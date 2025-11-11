@@ -31,9 +31,6 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Prune dev dependencies
-RUN npm prune --production
-
 # ----------------
 # Stage 2: Production
 # ----------------
@@ -53,10 +50,14 @@ RUN addgroup -g 1001 -S nodejs && \
 
 WORKDIR /app
 
+# Copy package files
+COPY --chown=nodejs:nodejs package*.json ./
+
+# Install only production dependencies
+RUN npm ci --omit=dev
+
 # Copy built application from builder
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 
 # Copy necessary runtime files
 COPY --chown=nodejs:nodejs server ./server
