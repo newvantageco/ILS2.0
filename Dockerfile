@@ -66,6 +66,9 @@ COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --chown=nodejs:nodejs server ./server
 COPY --chown=nodejs:nodejs shared ./shared
 
+# Create uploads directory with correct permissions
+RUN mkdir -p /app/uploads && chown -R nodejs:nodejs /app/uploads
+
 # Switch to non-root user
 USER nodejs
 
