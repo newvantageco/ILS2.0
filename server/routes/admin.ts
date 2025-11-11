@@ -83,7 +83,7 @@ router.post("/companies", isPlatformAdmin, async (req: any, res: Response) => {
     });
 
     // Create admin user for the company
-    const bcrypt = await import("bcrypt");
+    const bcrypt = await import("bcryptjs");
     const hashedPassword = await bcrypt.hash(data.adminUser.password, 10);
 
     const adminUser = await storage.upsertUser({

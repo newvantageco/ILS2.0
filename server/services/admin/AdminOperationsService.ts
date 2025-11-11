@@ -6,7 +6,7 @@
 
 import { loggers } from '../../utils/logger.js';
 import crypto from 'crypto';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 const logger = loggers.api;
 
