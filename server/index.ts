@@ -212,15 +212,9 @@ app.use(requestTimeout(30000));
       console.log('✅ Metrics endpoint enabled at /metrics');
     }
 
-    // Let Vite serve the SPA shell in development, otherwise return a basic status message
-    app.get('/', (req, res, next) => {
-      if (app.get("env") === "development") {
-        return next();
-      }
+    // Routes will be registered, then static files served at the end
+    // Don't intercept root route - let it fall through to static file server
 
-      res.send('ILS Server is running');
-    });
-    
     const server = await registerRoutes(app);
     log("Routes registered successfully");
 
