@@ -56,16 +56,11 @@ WORKDIR /app
 # Copy package files
 COPY --chown=nodejs:nodejs package*.json ./
 
-# Install all dependencies (runtime needs some dev dependencies)
-RUN npm ci
+# Install ALL dependencies (bundled server needs all packages at runtime)
+RUN npm ci --include=dev
 
-# Copy built application from builder (contains index.js and public/)
-COPY --from=builder --chown=nodejs:nodejs /app/dist/index.js ./dist/index.js
-COPY --from=builder --chown=nodejs:nodejs /app/dist/public ./dist/public
-
-# Copy necessary runtime files
-COPY --chown=nodejs:nodejs server ./server
-COPY --chown=nodejs:nodejs shared ./shared
+# Copy built application from builder (contains bundled index.js and public/)
+COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
 # Create uploads directory with correct permissions
 RUN mkdir -p /app/uploads && chown -R nodejs:nodejs /app/uploads
