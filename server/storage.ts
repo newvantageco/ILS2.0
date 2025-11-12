@@ -239,7 +239,25 @@ import {
   type OutcomeTracking,
   type InsertOutcomeTracking,
   type PreventiveCareRecommendation,
-  type InsertPreventiveCareRecommendation
+  type InsertPreventiveCareRecommendation,
+  qualityImprovementProjects,
+  pdsaCycles,
+  careBundles,
+  bundleCompliance,
+  performanceImprovements,
+  bestPractices,
+  type QualityImprovementProject,
+  type InsertQualityImprovementProject,
+  type PDSACycle,
+  type InsertPDSACycle,
+  type CareBundle,
+  type InsertCareBundle,
+  type BundleCompliance,
+  type InsertBundleCompliance,
+  type PerformanceImprovement,
+  type InsertPerformanceImprovement,
+  type BestPractice,
+  type InsertBestPractice
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql, gt, lt, gte, lte, ne, asc } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
@@ -5231,6 +5249,243 @@ export class DbStorage implements IStorage {
       .update(preventiveCareRecommendations)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(preventiveCareRecommendations.id, id), eq(preventiveCareRecommendations.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  // ============================================================================
+  // Quality Improvement Methods
+  // ============================================================================
+
+  // Quality Improvement Projects
+  async createQIProject(data: InsertQualityImprovementProject): Promise<QualityImprovementProject> {
+    const [result] = await db.insert(qualityImprovementProjects).values(data).returning();
+    return result;
+  }
+
+  async getQIProject(companyId: string, id: string): Promise<QualityImprovementProject | undefined> {
+    const result = await db
+      .select()
+      .from(qualityImprovementProjects)
+      .where(and(eq(qualityImprovementProjects.id, id), eq(qualityImprovementProjects.companyId, companyId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getQIProjects(companyId: string, filters?: { status?: string }): Promise<QualityImprovementProject[]> {
+    const conditions = [eq(qualityImprovementProjects.companyId, companyId)];
+    if (filters?.status) {
+      conditions.push(eq(qualityImprovementProjects.status, filters.status as any));
+    }
+    return await db
+      .select()
+      .from(qualityImprovementProjects)
+      .where(and(...conditions))
+      .orderBy(desc(qualityImprovementProjects.createdAt));
+  }
+
+  async updateQIProject(
+    companyId: string,
+    id: string,
+    data: Partial<InsertQualityImprovementProject>
+  ): Promise<QualityImprovementProject | null> {
+    const [result] = await db
+      .update(qualityImprovementProjects)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(qualityImprovementProjects.id, id), eq(qualityImprovementProjects.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  // PDSA Cycles
+  async createPDSACycle(data: InsertPDSACycle): Promise<PDSACycle> {
+    const [result] = await db.insert(pdsaCycles).values(data).returning();
+    return result;
+  }
+
+  async getPDSACycle(companyId: string, id: string): Promise<PDSACycle | undefined> {
+    const result = await db
+      .select()
+      .from(pdsaCycles)
+      .where(and(eq(pdsaCycles.id, id), eq(pdsaCycles.companyId, companyId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getPDSACyclesByProject(companyId: string, projectId: string): Promise<PDSACycle[]> {
+    return await db
+      .select()
+      .from(pdsaCycles)
+      .where(and(eq(pdsaCycles.projectId, projectId), eq(pdsaCycles.companyId, companyId)))
+      .orderBy(asc(pdsaCycles.cycleNumber));
+  }
+
+  async updatePDSACycle(
+    companyId: string,
+    id: string,
+    data: Partial<InsertPDSACycle>
+  ): Promise<PDSACycle | null> {
+    const [result] = await db
+      .update(pdsaCycles)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(pdsaCycles.id, id), eq(pdsaCycles.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  // Care Bundles
+  async createCareBundle(data: InsertCareBundle): Promise<CareBundle> {
+    const [result] = await db.insert(careBundles).values(data).returning();
+    return result;
+  }
+
+  async getCareBundle(companyId: string, id: string): Promise<CareBundle | undefined> {
+    const result = await db
+      .select()
+      .from(careBundles)
+      .where(and(eq(careBundles.id, id), eq(careBundles.companyId, companyId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getCareBundles(companyId: string, filters?: { active?: boolean; category?: string }): Promise<CareBundle[]> {
+    const conditions = [eq(careBundles.companyId, companyId)];
+    if (filters?.active !== undefined) {
+      conditions.push(eq(careBundles.active, filters.active));
+    }
+    if (filters?.category) {
+      conditions.push(eq(careBundles.category, filters.category));
+    }
+    return await db
+      .select()
+      .from(careBundles)
+      .where(and(...conditions))
+      .orderBy(desc(careBundles.createdAt));
+  }
+
+  async updateCareBundle(
+    companyId: string,
+    id: string,
+    data: Partial<InsertCareBundle>
+  ): Promise<CareBundle | null> {
+    const [result] = await db
+      .update(careBundles)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(careBundles.id, id), eq(careBundles.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  // Bundle Compliance
+  async createBundleCompliance(data: InsertBundleCompliance): Promise<BundleCompliance> {
+    const [result] = await db.insert(bundleCompliance).values(data).returning();
+    return result;
+  }
+
+  async getBundleCompliance(companyId: string, id: string): Promise<BundleCompliance | undefined> {
+    const result = await db
+      .select()
+      .from(bundleCompliance)
+      .where(and(eq(bundleCompliance.id, id), eq(bundleCompliance.companyId, companyId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getBundleComplianceByBundle(companyId: string, bundleId: string): Promise<BundleCompliance[]> {
+    return await db
+      .select()
+      .from(bundleCompliance)
+      .where(and(eq(bundleCompliance.bundleId, bundleId), eq(bundleCompliance.companyId, companyId)))
+      .orderBy(desc(bundleCompliance.assessmentDate));
+  }
+
+  async getBundleComplianceByPatient(companyId: string, patientId: string): Promise<BundleCompliance[]> {
+    return await db
+      .select()
+      .from(bundleCompliance)
+      .where(and(eq(bundleCompliance.patientId, patientId), eq(bundleCompliance.companyId, companyId)))
+      .orderBy(desc(bundleCompliance.assessmentDate));
+  }
+
+  // Performance Improvements
+  async createPerformanceImprovement(data: InsertPerformanceImprovement): Promise<PerformanceImprovement> {
+    const [result] = await db.insert(performanceImprovements).values(data).returning();
+    return result;
+  }
+
+  async getPerformanceImprovement(companyId: string, id: string): Promise<PerformanceImprovement | undefined> {
+    const result = await db
+      .select()
+      .from(performanceImprovements)
+      .where(and(eq(performanceImprovements.id, id), eq(performanceImprovements.companyId, companyId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getPerformanceImprovements(companyId: string, filters?: { status?: string }): Promise<PerformanceImprovement[]> {
+    const conditions = [eq(performanceImprovements.companyId, companyId)];
+    if (filters?.status) {
+      conditions.push(eq(performanceImprovements.status, filters.status as any));
+    }
+    return await db
+      .select()
+      .from(performanceImprovements)
+      .where(and(...conditions))
+      .orderBy(desc(performanceImprovements.createdAt));
+  }
+
+  async updatePerformanceImprovement(
+    companyId: string,
+    id: string,
+    data: Partial<InsertPerformanceImprovement>
+  ): Promise<PerformanceImprovement | null> {
+    const [result] = await db
+      .update(performanceImprovements)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(performanceImprovements.id, id), eq(performanceImprovements.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  // Best Practices
+  async createBestPractice(data: InsertBestPractice): Promise<BestPractice> {
+    const [result] = await db.insert(bestPractices).values(data).returning();
+    return result;
+  }
+
+  async getBestPractice(companyId: string, id: string): Promise<BestPractice | undefined> {
+    const result = await db
+      .select()
+      .from(bestPractices)
+      .where(and(eq(bestPractices.id, id), eq(bestPractices.companyId, companyId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getBestPractices(companyId: string, filters?: { active?: boolean; category?: string }): Promise<BestPractice[]> {
+    const conditions = [eq(bestPractices.companyId, companyId)];
+    if (filters?.active !== undefined) {
+      conditions.push(eq(bestPractices.active, filters.active));
+    }
+    if (filters?.category) {
+      conditions.push(eq(bestPractices.category, filters.category));
+    }
+    return await db
+      .select()
+      .from(bestPractices)
+      .where(and(...conditions))
+      .orderBy(desc(bestPractices.createdAt));
+  }
+
+  async updateBestPractice(
+    companyId: string,
+    id: string,
+    data: Partial<InsertBestPractice>
+  ): Promise<BestPractice | null> {
+    const [result] = await db
+      .update(bestPractices)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(bestPractices.id, id), eq(bestPractices.companyId, companyId)))
       .returning();
     return result || null;
   }
