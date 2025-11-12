@@ -158,7 +158,25 @@ import {
   type WorkflowInstance,
   type InsertWorkflowInstance,
   type WorkflowRunCount,
-  type InsertWorkflowRunCount
+  type InsertWorkflowRunCount,
+  mlModels,
+  riskStratifications,
+  readmissionPredictions,
+  noShowPredictions,
+  diseaseProgressionPredictions,
+  treatmentOutcomePredictions,
+  type MlModel,
+  type InsertMlModel,
+  type RiskStratification,
+  type InsertRiskStratification,
+  type ReadmissionPrediction,
+  type InsertReadmissionPrediction,
+  type NoShowPrediction,
+  type InsertNoShowPrediction,
+  type DiseaseProgressionPrediction,
+  type InsertDiseaseProgressionPrediction,
+  type TreatmentOutcomePrediction,
+  type InsertTreatmentOutcomePrediction
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
@@ -3786,6 +3804,297 @@ export class DbStorage implements IStorage {
         eq(workflowRunCounts.patientId, patientId),
         eq(workflowRunCounts.companyId, companyId)
       ));
+  }
+
+  // ========== Predictive Analytics - ML Models ==========
+
+  async createMlModel(model: InsertMlModel): Promise<MlModel> {
+    const [created] = await db.insert(mlModels).values(model).returning();
+    return created;
+  }
+
+  async getMlModel(id: string, companyId: string): Promise<MlModel | undefined> {
+    const [model] = await db
+      .select()
+      .from(mlModels)
+      .where(and(
+        eq(mlModels.id, id),
+        eq(mlModels.companyId, companyId)
+      ));
+    return model;
+  }
+
+  async getMlModels(
+    companyId: string,
+    filters?: { status?: string; type?: string }
+  ): Promise<MlModel[]> {
+    const conditions = [eq(mlModels.companyId, companyId)];
+
+    if (filters?.status) {
+      conditions.push(eq(mlModels.status, filters.status as any));
+    }
+    if (filters?.type) {
+      conditions.push(eq(mlModels.type, filters.type as any));
+    }
+
+    return await db
+      .select()
+      .from(mlModels)
+      .where(and(...conditions))
+      .orderBy(desc(mlModels.trainedAt));
+  }
+
+  async updateMlModel(
+    id: string,
+    companyId: string,
+    updates: Partial<InsertMlModel>
+  ): Promise<MlModel | undefined> {
+    const [updated] = await db
+      .update(mlModels)
+      .set(updates)
+      .where(and(
+        eq(mlModels.id, id),
+        eq(mlModels.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  // ========== Predictive Analytics - Risk Stratifications ==========
+
+  async createRiskStratification(stratification: InsertRiskStratification): Promise<RiskStratification> {
+    const [created] = await db.insert(riskStratifications).values(stratification).returning();
+    return created;
+  }
+
+  async getRiskStratifications(
+    companyId: string,
+    patientId: string,
+    riskType?: string
+  ): Promise<RiskStratification[]> {
+    const conditions = [
+      eq(riskStratifications.companyId, companyId),
+      eq(riskStratifications.patientId, patientId)
+    ];
+
+    if (riskType) {
+      conditions.push(eq(riskStratifications.riskType, riskType as any));
+    }
+
+    return await db
+      .select()
+      .from(riskStratifications)
+      .where(and(...conditions))
+      .orderBy(desc(riskStratifications.createdAt));
+  }
+
+  // ========== Predictive Analytics - Readmission Predictions ==========
+
+  async createReadmissionPrediction(prediction: InsertReadmissionPrediction): Promise<ReadmissionPrediction> {
+    const [created] = await db.insert(readmissionPredictions).values(prediction).returning();
+    return created;
+  }
+
+  async getReadmissionPredictions(
+    companyId: string,
+    filters?: { patientId?: string; admissionId?: string }
+  ): Promise<ReadmissionPrediction[]> {
+    const conditions = [eq(readmissionPredictions.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(readmissionPredictions.patientId, filters.patientId));
+    }
+    if (filters?.admissionId) {
+      conditions.push(eq(readmissionPredictions.admissionId, filters.admissionId));
+    }
+
+    return await db
+      .select()
+      .from(readmissionPredictions)
+      .where(and(...conditions))
+      .orderBy(desc(readmissionPredictions.createdAt));
+  }
+
+  // ========== Predictive Analytics - No-Show Predictions ==========
+
+  async createNoShowPrediction(prediction: InsertNoShowPrediction): Promise<NoShowPrediction> {
+    const [created] = await db.insert(noShowPredictions).values(prediction).returning();
+    return created;
+  }
+
+  async getNoShowPredictions(
+    companyId: string,
+    filters?: { patientId?: string; appointmentId?: string }
+  ): Promise<NoShowPrediction[]> {
+    const conditions = [eq(noShowPredictions.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(noShowPredictions.patientId, filters.patientId));
+    }
+    if (filters?.appointmentId) {
+      conditions.push(eq(noShowPredictions.appointmentId, filters.appointmentId));
+    }
+
+    return await db
+      .select()
+      .from(noShowPredictions)
+      .where(and(...conditions))
+      .orderBy(desc(noShowPredictions.createdAt));
+  }
+
+  // ========== Predictive Analytics - Disease Progression Predictions ==========
+
+  async createDiseaseProgressionPrediction(
+    prediction: InsertDiseaseProgressionPrediction
+  ): Promise<DiseaseProgressionPrediction> {
+    const [created] = await db.insert(diseaseProgressionPredictions).values(prediction).returning();
+    return created;
+  }
+
+  async getDiseaseProgressionPredictions(
+    companyId: string,
+    patientId: string,
+    disease?: string
+  ): Promise<DiseaseProgressionPrediction[]> {
+    const conditions = [
+      eq(diseaseProgressionPredictions.companyId, companyId),
+      eq(diseaseProgressionPredictions.patientId, patientId)
+    ];
+
+    if (disease) {
+      conditions.push(eq(diseaseProgressionPredictions.disease, disease));
+    }
+
+    return await db
+      .select()
+      .from(diseaseProgressionPredictions)
+      .where(and(...conditions))
+      .orderBy(desc(diseaseProgressionPredictions.createdAt));
+  }
+
+  // ========== Predictive Analytics - Treatment Outcome Predictions ==========
+
+  async createTreatmentOutcomePrediction(
+    prediction: InsertTreatmentOutcomePrediction
+  ): Promise<TreatmentOutcomePrediction> {
+    const [created] = await db.insert(treatmentOutcomePredictions).values(prediction).returning();
+    return created;
+  }
+
+  async getTreatmentOutcomePredictions(
+    companyId: string,
+    patientId: string,
+    treatment?: string
+  ): Promise<TreatmentOutcomePrediction[]> {
+    const conditions = [
+      eq(treatmentOutcomePredictions.companyId, companyId),
+      eq(treatmentOutcomePredictions.patientId, patientId)
+    ];
+
+    if (treatment) {
+      conditions.push(eq(treatmentOutcomePredictions.treatment, treatment));
+    }
+
+    return await db
+      .select()
+      .from(treatmentOutcomePredictions)
+      .where(and(...conditions))
+      .orderBy(desc(treatmentOutcomePredictions.createdAt));
+  }
+
+  // ========== Predictive Analytics - Statistics ==========
+
+  async getPredictiveAnalyticsStatistics(companyId: string): Promise<{
+    totalModels: number;
+    activeModels: number;
+    totalRiskStratifications: number;
+    totalReadmissionPredictions: number;
+    totalNoShowPredictions: number;
+    totalDiseaseProgressionPredictions: number;
+    totalTreatmentOutcomePredictions: number;
+    highRiskPredictions: number;
+  }> {
+    const [models] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(mlModels)
+      .where(eq(mlModels.companyId, companyId));
+
+    const [activeModelsResult] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(mlModels)
+      .where(and(
+        eq(mlModels.companyId, companyId),
+        eq(mlModels.status, 'active')
+      ));
+
+    const [riskStrats] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(riskStratifications)
+      .where(eq(riskStratifications.companyId, companyId));
+
+    const [readmissions] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(readmissionPredictions)
+      .where(eq(readmissionPredictions.companyId, companyId));
+
+    const [noShows] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(noShowPredictions)
+      .where(eq(noShowPredictions.companyId, companyId));
+
+    const [diseaseProgressions] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(diseaseProgressionPredictions)
+      .where(eq(diseaseProgressionPredictions.companyId, companyId));
+
+    const [treatmentOutcomes] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(treatmentOutcomePredictions)
+      .where(eq(treatmentOutcomePredictions.companyId, companyId));
+
+    const [highRiskStrats] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(riskStratifications)
+      .where(and(
+        eq(riskStratifications.companyId, companyId),
+        or(
+          eq(riskStratifications.riskLevel, 'high'),
+          eq(riskStratifications.riskLevel, 'very_high')
+        )
+      ));
+
+    const [highRiskReadmissions] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(readmissionPredictions)
+      .where(and(
+        eq(readmissionPredictions.companyId, companyId),
+        or(
+          eq(readmissionPredictions.riskLevel, 'high'),
+          eq(readmissionPredictions.riskLevel, 'very_high')
+        )
+      ));
+
+    const [highRiskNoShows] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(noShowPredictions)
+      .where(and(
+        eq(noShowPredictions.companyId, companyId),
+        or(
+          eq(noShowPredictions.riskLevel, 'high'),
+          eq(noShowPredictions.riskLevel, 'very_high')
+        )
+      ));
+
+    return {
+      totalModels: models?.count || 0,
+      activeModels: activeModelsResult?.count || 0,
+      totalRiskStratifications: riskStrats?.count || 0,
+      totalReadmissionPredictions: readmissions?.count || 0,
+      totalNoShowPredictions: noShows?.count || 0,
+      totalDiseaseProgressionPredictions: diseaseProgressions?.count || 0,
+      totalTreatmentOutcomePredictions: treatmentOutcomes?.count || 0,
+      highRiskPredictions: (highRiskStrats?.count || 0) + (highRiskReadmissions?.count || 0) + (highRiskNoShows?.count || 0),
+    };
   }
 
   // ============================================================================
