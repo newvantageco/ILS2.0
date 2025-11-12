@@ -2,47 +2,22 @@
 
 This document catalogs all remaining TODO/FIXME comments in the codebase for future work.
 
-## ✅ COMPLETED (Critical Security)
+## ✅ COMPLETED (Critical Security & Features)
 
 - [x] **server/websocket.ts:452** - Implement token validation (COMPLETED: Now validates session via Redis)
 - [x] **server/services/NotificationService.ts:140,145** - Implement role/org checks (COMPLETED: Now queries database)
+- [x] **server/workers/aiWorker.ts** - All AI/ML features implemented (COMPLETED: Jan 2025)
+  - [x] Daily briefing with real data and AI (Claude/GPT)
+  - [x] Real database queries for orders/revenue/patients
+  - [x] ML-based demand forecasting with historical analysis
+  - [x] Statistical anomaly detection (Z-score analysis)
+  - [x] AI-powered insight generation
+  - [x] AI chat assistant with Claude 3.5 Sonnet / GPT-4
+  - **See `AI_ML_FEATURES.md` for complete documentation**
 
 ## 🔴 HIGH PRIORITY (Feature Completion)
 
-### AI Worker Placeholders
-**File:** `server/workers/aiWorker.ts`
-
-- [ ] **Line 151**: Implement actual AI briefing generation
-  - Currently returns placeholder data
-  - Should use AI models to generate real insights
-
-- [ ] **Line 168**: Query actual order/revenue/patient data
-  - Currently returns zeros
-  - Needs database queries for real metrics
-
-- [ ] **Line 174**: Store briefing in database
-  - Currently commented out
-  - Should persist AI-generated briefings
-
-- [ ] **Line 204**: Implement actual demand forecasting with AI
-  - Currently uses placeholder logic
-  - Should use ML models for forecasting
-
-- [ ] **Line 223**: Store forecast in database
-  - Currently commented out
-  - Should persist forecasting results
-
-- [ ] **Line 245**: Implement actual anomaly detection with AI
-  - Currently uses placeholder logic
-  - Should use statistical/ML models
-
-- [ ] **Line 278**: Implement actual insight generation with AI
-  - Currently returns placeholder insights
-  - Should generate contextual AI insights
-
-- [ ] **Line 323**: Implement actual AI chat response
-  - Currently returns echo response
-  - Should integrate with AI chat models (Claude, GPT, etc.)
+*All high-priority AI/ML items completed!*
 
 ### AuthService
 **File:** `server/services/AuthService.ts`
