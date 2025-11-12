@@ -32,6 +32,7 @@ import { pdfService, type OrderSheetData } from "./services/PDFService";
 import { labWorkTicketService, type LabWorkTicketData } from "./services/LabWorkTicketService";
 import { examinationFormService, type ExaminationFormData } from "./services/ExaminationFormService";
 import { emailService } from "./services/EmailService";
+import { queueDailyBriefing, queueDemandForecast, queueAnomalyDetection, queueInsightGeneration, queueChatResponse, getQueueStats } from "./queue/helpers";
 import { z } from "zod";
 import { parseOMAFile, isValidOMAFile } from "@shared/omaParser";
 import { normalizeEmail } from "./utils/normalizeEmail";
@@ -4783,6 +4784,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Failed to generate forecast' });
     }
   });
+
+  // ============== NEW AI WORKER ROUTES (Claude/GPT Integration) ==============
+
+  // Generate AI-powered daily briefing
+  app.post('/api/ai/briefing/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const date = req.body.date || new Date().toISOString();
+      await queueDailyBriefing(user.companyId, date);
+
+      res.json({
+        message: 'AI briefing generation queued successfully',
+        companyId: user.companyId,
+        date
+      });
+    } catch (error) {
+      console.error('Error queuing AI briefing:', error);
+      res.status(500).json({ message: 'Failed to queue AI briefing' });
+    }
+  });
+
+  // Generate ML-based demand forecast
+  app.post('/api/ai/forecast/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const { forecastDays = 30, productIds } = req.body;
+      await queueDemandForecast(user.companyId, forecastDays, productIds);
+
+      res.json({
+        message: 'Demand forecast generation queued successfully',
+        companyId: user.companyId,
+        forecastDays,
+        productCount: productIds?.length || 'all'
+      });
+    } catch (error) {
+      console.error('Error queuing demand forecast:', error);
+      res.status(500).json({ message: 'Failed to queue demand forecast' });
+    }
+  });
+
+  // Run anomaly detection
+  app.post('/api/ai/anomaly/detect', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const { metricType = 'revenue', timeRange = 'daily' } = req.body;
+      await queueAnomalyDetection(user.companyId, metricType, timeRange);
+
+      res.json({
+        message: 'Anomaly detection queued successfully',
+        companyId: user.companyId,
+        metricType,
+        timeRange
+      });
+    } catch (error) {
+      console.error('Error queuing anomaly detection:', error);
+      res.status(500).json({ message: 'Failed to queue anomaly detection' });
+    }
+  });
+
+  // Generate AI insights
+  app.post('/api/ai/insights/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const { insightType = 'revenue', periodStart, periodEnd } = req.body;
+
+      if (!periodStart || !periodEnd) {
+        return res.status(400).json({ message: 'periodStart and periodEnd are required' });
+      }
+
+      await queueInsightGeneration(user.companyId, insightType, periodStart, periodEnd);
+
+      res.json({
+        message: 'AI insight generation queued successfully',
+        companyId: user.companyId,
+        insightType,
+        period: { start: periodStart, end: periodEnd }
+      });
+    } catch (error) {
+      console.error('Error queuing insight generation:', error);
+      res.status(500).json({ message: 'Failed to queue insight generation' });
+    }
+  });
+
+  // AI Chat Assistant
+  app.post('/api/ai/chat', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user || !user.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const { message, conversationId } = req.body;
+
+      if (!message) {
+        return res.status(400).json({ message: 'message is required' });
+      }
+
+      const convId = conversationId || `conv-${Date.now()}`;
+      await queueChatResponse(userId, user.companyId, convId, message);
+
+      res.json({
+        message: 'AI chat response queued successfully',
+        conversationId: convId
+      });
+    } catch (error) {
+      console.error('Error queuing chat response:', error);
+      res.status(500).json({ message: 'Failed to queue chat response' });
+    }
+  });
+
+  // Get AI queue statistics
+  app.get('/api/ai/queue/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const stats = await getQueueStats();
+      res.json(stats);
+    } catch (error) {
+      console.error('Error getting queue stats:', error);
+      res.status(500).json({ message: 'Failed to get queue statistics' });
+    }
+  });
+
+  // ============== END AI WORKER ROUTES ==============
 
   // Analyze order risk (for prescription alerts)
   app.post('/api/orders/analyze-risk', isAuthenticated, async (req: any, res) => {
