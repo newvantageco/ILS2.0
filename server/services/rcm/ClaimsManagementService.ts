@@ -737,14 +737,15 @@ export class ClaimsManagementService {
   }
 
   /**
-   * Update claim
+   * Update claim (DATABASE-BACKED)
    */
-  static updateClaim(
+  static async updateClaim(
     claimId: string,
+    companyId: string,
     updates: Partial<Omit<Claim, 'id' | 'claimNumber' | 'createdAt' | 'createdBy'>>,
     updatedBy: string
-  ): Claim | null {
-    const claim = this.claims.get(claimId);
+  ): Promise<Claim | null> {
+    const claim = await this.getClaim(claimId, companyId);
 
     if (!claim) {
       return null;
@@ -756,13 +757,21 @@ export class ClaimsManagementService {
       return null;
     }
 
-    Object.assign(claim, updates, { updatedAt: new Date(), updatedBy });
+    // Prepare database updates
+    const dbUpdates = this.serviceClaimToDbClaim(companyId, { ...claim, ...updates, updatedBy });
+    dbUpdates.updatedAt = new Date();
 
-    this.claims.set(claimId, claim);
+    // Update claim in database
+    const updatedDbClaim = await this.db.updateInsuranceClaim(claimId, companyId, dbUpdates);
+
+    if (!updatedDbClaim) {
+      return null;
+    }
 
     logger.info({ claimId, updates }, 'Claim updated');
 
-    return claim;
+    // Reload with line items
+    return this.getClaim(claimId, companyId);
   }
 
   /**
@@ -792,10 +801,10 @@ export class ClaimsManagementService {
   }
 
   /**
-   * Validate claim for submission
+   * Validate claim for submission (DATABASE-BACKED)
    */
-  static validateClaim(claimId: string): { valid: boolean; errors: string[] } {
-    const claim = this.claims.get(claimId);
+  static async validateClaim(claimId: string, companyId: string): Promise<{ valid: boolean; errors: string[] }> {
+    const claim = await this.getClaim(claimId, companyId);
     const errors: string[] = [];
 
     if (!claim) {
@@ -821,7 +830,7 @@ export class ClaimsManagementService {
     });
 
     // Check timely filing
-    const payer = this.payers.get(claim.primaryPayerId);
+    const payer = await this.getPayer(claim.primaryPayerId, companyId);
     if (payer) {
       const daysSinceService = Math.floor(
         (Date.now() - claim.serviceDate.getTime()) / (1000 * 60 * 60 * 24)
@@ -836,29 +845,34 @@ export class ClaimsManagementService {
   }
 
   /**
-   * Submit claim
+   * Submit claim (DATABASE-BACKED)
    */
-  static submitClaim(claimId: string, submittedBy: string): { success: boolean; error?: string } {
-    const claim = this.claims.get(claimId);
+  static async submitClaim(claimId: string, companyId: string, submittedBy: string): Promise<{ success: boolean; error?: string }> {
+    const claim = await this.getClaim(claimId, companyId);
 
     if (!claim) {
       return { success: false, error: 'Claim not found' };
     }
 
     // Validate
-    const validation = this.validateClaim(claimId);
+    const validation = await this.validateClaim(claimId, companyId);
     if (!validation.valid) {
       return { success: false, error: `Validation failed: ${validation.errors.join(', ')}` };
     }
 
-    // Update status
-    claim.status = 'submitted';
-    claim.submittedAt = new Date();
-    claim.submittedBy = submittedBy;
-    claim.submissionMethod = 'electronic';
-    claim.electronicClaimId = `ICN-${crypto.randomUUID().substring(0, 8)}`;
+    // Update claim status in database
+    const updates = {
+      status: 'submitted' as const,
+      submittedAt: new Date(),
+      metadata: {
+        ...((await this.db.getInsuranceClaim(claimId, companyId))?.metadata || {}),
+        submittedBy,
+        submissionMethod: 'electronic',
+        electronicClaimId: `ICN-${crypto.randomUUID().substring(0, 8)}`,
+      }
+    };
 
-    this.claims.set(claimId, claim);
+    await this.db.updateInsuranceClaim(claimId, companyId, updates);
 
     logger.info({ claimId, claimNumber: claim.claimNumber }, 'Claim submitted');
 
@@ -868,28 +882,32 @@ export class ClaimsManagementService {
   }
 
   /**
-   * Submit batch of claims
+   * Submit batch of claims (DATABASE-BACKED)
    */
-  static submitClaimBatch(claimIds: string[], submittedBy: string): ClaimSubmissionBatch {
+  static async submitClaimBatch(claimIds: string[], companyId: string, submittedBy: string): Promise<ClaimSubmissionBatch> {
     const batchNumber = `BATCH-${Date.now()}`;
     let totalChargeAmount = 0;
     const successfulClaims: string[] = [];
 
-    claimIds.forEach((claimId) => {
-      const result = this.submitClaim(claimId, submittedBy);
+    for (const claimId of claimIds) {
+      const result = await this.submitClaim(claimId, companyId, submittedBy);
       if (result.success) {
-        const claim = this.claims.get(claimId);
+        const claim = await this.getClaim(claimId, companyId);
         if (claim) {
           successfulClaims.push(claimId);
           totalChargeAmount += claim.totalChargeAmount;
         }
       }
-    });
+    }
 
+    // Note: Batch tracking still in-memory for now
+    // Can be migrated to database later if needed
     const batch: ClaimSubmissionBatch = {
       id: crypto.randomUUID(),
       batchNumber,
-      payerId: this.claims.get(claimIds[0])?.primaryPayerId || '',
+      payerId: successfulClaims.length > 0
+        ? (await this.getClaim(successfulClaims[0], companyId))?.primaryPayerId || ''
+        : '',
       claimIds: successfulClaims,
       totalClaims: successfulClaims.length,
       succeeded: successfulClaims.length,

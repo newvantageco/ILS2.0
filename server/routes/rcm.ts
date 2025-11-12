@@ -166,7 +166,15 @@ router.get('/claims/status/:status', async (req: Request, res: Response) => {
  */
 router.put('/claims/:id/validate', async (req: Request, res: Response) => {
   try {
-    const result = ClaimsManagementService.validateClaim(req.params.id);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required - no companyId found'
+      });
+    }
+
+    const result = await ClaimsManagementService.validateClaim(req.params.id, companyId);
     res.json({
       success: true,
       data: result
@@ -186,11 +194,19 @@ router.put('/claims/:id/validate', async (req: Request, res: Response) => {
  */
 router.put('/claims/:id/submit', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required - no companyId found'
+      });
+    }
+
     const { submittedBy } = req.body;
-    const claim = ClaimsManagementService.submitClaim(req.params.id, submittedBy);
+    const result = await ClaimsManagementService.submitClaim(req.params.id, companyId, submittedBy);
     res.json({
       success: true,
-      data: claim,
+      data: result,
       message: 'Claim submitted successfully'
     });
   } catch (error) {
@@ -208,8 +224,16 @@ router.put('/claims/:id/submit', async (req: Request, res: Response) => {
  */
 router.post('/claims/batch', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required - no companyId found'
+      });
+    }
+
     const { claimIds, submittedBy } = req.body;
-    const result = ClaimsManagementService.submitClaimBatch(claimIds, submittedBy);
+    const result = await ClaimsManagementService.submitClaimBatch(claimIds, companyId, submittedBy);
     res.json({
       success: true,
       data: result,
