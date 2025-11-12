@@ -5,6 +5,15 @@ import { ChronicDiseaseManagementService } from '../services/population-health/C
 
 const router = express.Router();
 
+// Helper to extract companyId from authenticated request
+function getCompanyId(req: Request): string {
+  const companyId = (req as any).user?.companyId;
+  if (!companyId) {
+    throw new Error('Authentication required - no companyId found');
+  }
+  return companyId;
+}
+
 // ============================================================================
 // Risk Stratification Routes
 // ============================================================================
@@ -449,7 +458,8 @@ router.get('/risk-stratification/statistics', async (req: Request, res: Response
  */
 router.post('/care-plans', async (req: Request, res: Response) => {
   try {
-    const carePlan = CareCoordinationService.createCarePlan(req.body);
+    const companyId = getCompanyId(req);
+    const carePlan = await CareCoordinationService.createCarePlan(companyId, req.body);
     res.status(201).json({
       success: true,
       data: carePlan,
@@ -470,7 +480,8 @@ router.post('/care-plans', async (req: Request, res: Response) => {
  */
 router.get('/care-plans/:id', async (req: Request, res: Response) => {
   try {
-    const carePlan = CareCoordinationService.getCarePlanById(req.params.id);
+    const companyId = getCompanyId(req);
+    const carePlan = await CareCoordinationService.getCarePlanById(companyId, req.params.id);
     if (!carePlan) {
       return res.status(404).json({
         success: false,
@@ -496,7 +507,8 @@ router.get('/care-plans/:id', async (req: Request, res: Response) => {
  */
 router.get('/care-plans/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const carePlans = CareCoordinationService.getCarePlansByPatient(req.params.patientId);
+    const companyId = getCompanyId(req);
+    const carePlans = await CareCoordinationService.getCarePlansByPatient(companyId, req.params.patientId);
     res.json({
       success: true,
       data: carePlans,
@@ -517,7 +529,8 @@ router.get('/care-plans/patient/:patientId', async (req: Request, res: Response)
  */
 router.post('/care-plans/:id/goals', async (req: Request, res: Response) => {
   try {
-    const carePlan = CareCoordinationService.addCareGoal(req.params.id, req.body);
+    const companyId = getCompanyId(req);
+    const carePlan = await CareCoordinationService.addCareGoal(companyId, req.params.id, req.body);
     res.status(201).json({
       success: true,
       data: carePlan,
@@ -538,7 +551,8 @@ router.post('/care-plans/:id/goals', async (req: Request, res: Response) => {
  */
 router.put('/care-plans/:planId/goals/:goalId', async (req: Request, res: Response) => {
   try {
-    const carePlan = CareCoordinationService.updateCareGoal(
+    const companyId = getCompanyId(req);
+    const carePlan = await CareCoordinationService.updateCareGoal(companyId,
       req.params.planId,
       req.params.goalId,
       req.body
