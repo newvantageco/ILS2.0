@@ -69,17 +69,18 @@ RUN mkdir -p /app/uploads && chown -R nodejs:nodejs /app/uploads
 # Switch to non-root user
 USER nodejs
 
-# Expose application port
+# Expose application port (Railway will override with $PORT)
 EXPOSE 5000
 
 # Set environment variables
+# Note: Railway will override PORT automatically
 ENV NODE_ENV=production \
     PORT=5000 \
     HOST=0.0.0.0
 
-# Health check
+# Health check (uses PORT environment variable for Railway compatibility)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:5000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+    CMD node -e "const port = process.env.PORT || 5000; require('http').get(\`http://localhost:\${port}/api/health\`, (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]

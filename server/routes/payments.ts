@@ -19,10 +19,27 @@ import { withTransaction } from "../utils/transaction";
 
 const router = Router();
 
-// Initialize Stripe (use environment variable in production)
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_placeholder", {
+// Initialize Stripe
+// CRITICAL: STRIPE_SECRET_KEY must be set in production
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error(
+    "STRIPE_SECRET_KEY environment variable is required. " +
+    "Payment processing cannot function without it. " +
+    "Set this in your .env file or environment configuration."
+  );
+}
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2025-10-29.clover",
 });
+
+if (!process.env.STRIPE_WEBHOOK_SECRET) {
+  console.warn(
+    "WARNING: STRIPE_WEBHOOK_SECRET is not set. " +
+    "Webhook signature verification will fail. " +
+    "This is required for production deployments."
+  );
+}
 
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
 

@@ -86,6 +86,80 @@ export const qualityIssueTypeEnum = pgEnum("quality_issue_type", [
 ]);
 
 // Tables for Analytics and Quality Control
+// ========== RCM (Revenue Cycle Management) Enums ==========
+
+/**
+ * Insurance claim status
+ * Tracks the lifecycle of insurance claims from draft to payment
+ */
+export const claimStatusEnum = pgEnum("claim_status", [
+  "draft",
+  "ready_to_submit",
+  "submitted",
+  "pending",
+  "accepted",
+  "rejected",
+  "partially_paid",
+  "paid",
+  "denied",
+  "appealed",
+  "voided"
+]);
+
+/**
+ * Insurance claim type
+ * Different types of healthcare claims
+ */
+export const claimTypeEnum = pgEnum("claim_type", [
+  "professional",
+  "institutional",
+  "pharmacy",
+  "dental",
+  "vision"
+]);
+
+/**
+ * Service place of service
+ * Where the service was rendered
+ */
+export const servicePlaceEnum = pgEnum("service_place", [
+  "office",
+  "hospital_outpatient",
+  "hospital_inpatient",
+  "emergency",
+  "telehealth",
+  "home",
+  "nursing_facility",
+  "assisted_living"
+]);
+
+/**
+ * Insurance payer type
+ * Different types of insurance payers
+ */
+export const payerTypeEnum = pgEnum("payer_type", [
+  "commercial",
+  "medicare",
+  "medicaid",
+  "tricare",
+  "workers_comp",
+  "self_pay",
+  "other"
+]);
+
+/**
+ * Claim submission method
+ * How claims are submitted to payers
+ */
+export const claimSubmissionMethodEnum = pgEnum("claim_submission_method", [
+  "electronic",
+  "paper",
+  "clearinghouse",
+  "portal"
+]);
+
+// ========== End RCM Enums ==========
+
 export const analyticsEvents = pgTable("analytics_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   eventType: analyticsEventTypeEnum("event_type").notNull(),
@@ -5186,3 +5260,1837 @@ export type InsertContactLensInventoryItem = typeof contactLensInventory.$inferI
 export type ContactLensOrder = typeof contactLensOrders.$inferSelect;
 export type InsertContactLensOrder = typeof contactLensOrders.$inferInsert;
 
+
+// ========== RCM (Revenue Cycle Management) Tables ==========
+
+/**
+ * Insurance Payers
+ * Stores information about insurance companies and payers
+ */
+export const insurancePayers = pgTable("insurance_payers", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+
+  // Payer Information
+  name: varchar("name", { length: 255 }).notNull(),
+  payerId: varchar("payer_id", { length: 100 }).notNull(), // Electronic payer ID
+  type: payerTypeEnum("type").notNull(),
+
+  // Contact Information
+  contactInfo: jsonb("contact_info"), // { phone, fax, email, address }
+
+  // Configuration
+  claimSubmissionMethod: claimSubmissionMethodEnum("claim_submission_method").default("electronic"),
+  timelyFilingLimitDays: integer("timely_filing_limit_days").default(365),
+
+  // Status
+  active: boolean("active").default(true),
+
+  // Metadata
+  metadata: jsonb("metadata"),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("insurance_payers_company_idx").on(table.companyId),
+  uniqueIndex("insurance_payers_company_payer_id").on(table.companyId, table.payerId),
+]);
+
+/**
+ * Insurance Claims
+ * Generic insurance claims for US-style RCM
+ */
+export const insuranceClaims = pgTable("insurance_claims", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  patientId: varchar("patient_id", { length: 255 }).references(() => patients.id),
+  payerId: varchar("payer_id", { length: 255 }).references(() => insurancePayers.id),
+
+  // Claim Details
+  claimNumber: varchar("claim_number", { length: 50 }).notNull().unique(),
+  claimType: claimTypeEnum("claim_type").notNull(),
+  status: claimStatusEnum("status").notNull().default("draft"),
+
+  // Dates
+  serviceDate: date("service_date").notNull(),
+  submittedAt: timestamp("submitted_at"),
+  processedAt: timestamp("processed_at"),
+
+  // Financial (in cents)
+  totalCharges: decimal("total_charges", { precision: 10, scale: 2 }).notNull(),
+  allowedAmount: decimal("allowed_amount", { precision: 10, scale: 2 }),
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }),
+  patientResponsibility: decimal("patient_responsibility", { precision: 10, scale: 2 }),
+  adjustments: decimal("adjustments", { precision: 10, scale: 2 }).default("0"),
+
+  // Provider Information
+  renderingProviderId: varchar("rendering_provider_id", { length: 255 }),
+  billingProviderId: varchar("billing_provider_id", { length: 255 }),
+
+  // Place of Service
+  placeOfService: servicePlaceEnum("place_of_service"),
+
+  // Diagnosis Codes
+  diagnosisCodes: jsonb("diagnosis_codes"), // Array of ICD-10 codes
+
+  // Payer Response
+  payerResponse: jsonb("payer_response"),
+  rejectionReason: text("rejection_reason"),
+  remittanceAdviceNumber: varchar("remittance_advice_number", { length: 100 }),
+
+  // Notes
+  notes: text("notes"),
+
+  // Metadata
+  metadata: jsonb("metadata"),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("insurance_claims_company_idx").on(table.companyId),
+  index("insurance_claims_patient_idx").on(table.patientId),
+  index("insurance_claims_payer_idx").on(table.payerId),
+  index("insurance_claims_status_idx").on(table.status),
+  index("insurance_claims_service_date_idx").on(table.serviceDate),
+]);
+
+/**
+ * Claim Line Items
+ * Individual procedure/service lines within a claim
+ */
+export const claimLineItems = pgTable("claim_line_items", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  claimId: varchar("claim_id", { length: 255 }).notNull().references(() => insuranceClaims.id, { onDelete: "cascade" }),
+
+  // Line Item Details
+  lineNumber: integer("line_number").notNull(),
+  serviceDate: date("service_date").notNull(),
+
+  // Procedure
+  procedureCode: varchar("procedure_code", { length: 20 }).notNull(), // CPT/HCPCS code
+  modifiers: jsonb("modifiers"), // Array of modifiers
+  description: text("description"),
+
+  // Diagnosis
+  diagnosisCodePointers: jsonb("diagnosis_code_pointers"),
+
+  // Quantities and Amounts (in cents)
+  units: integer("units").notNull().default(1),
+  chargeAmount: decimal("charge_amount", { precision: 10, scale: 2 }).notNull(),
+  allowedAmount: decimal("allowed_amount", { precision: 10, scale: 2 }),
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }),
+  adjustmentAmount: decimal("adjustment_amount", { precision: 10, scale: 2 }).default("0"),
+  patientResponsibility: decimal("patient_responsibility", { precision: 10, scale: 2 }),
+
+  // Place of Service
+  placeOfService: servicePlaceEnum("place_of_service"),
+
+  // Provider
+  renderingProviderId: varchar("rendering_provider_id", { length: 255 }),
+
+  // Status
+  status: claimStatusEnum("status"),
+
+  // Metadata
+  metadata: jsonb("metadata"),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("claim_line_items_claim_idx").on(table.claimId),
+  index("claim_line_items_service_date_idx").on(table.serviceDate),
+]);
+
+// ========== End RCM Tables ==========
+
+// Zod Schemas for RCM
+export const insertPayerSchema = createInsertSchema(insurancePayers);
+export const updatePayerSchema = insertPayerSchema.partial();
+
+export const insertClaimSchema = createInsertSchema(insuranceClaims);
+export const updateClaimSchema = insertClaimSchema.partial();
+
+export const insertClaimLineItemSchema = createInsertSchema(claimLineItems);
+export const updateClaimLineItemSchema = insertClaimLineItemSchema.partial();
+
+// Export RCM Types
+export type InsurancePayer = typeof insurancePayers.$inferSelect;
+export type InsertInsurancePayer = typeof insurancePayers.$inferInsert;
+export type InsuranceClaim = typeof insuranceClaims.$inferSelect;
+export type InsertInsuranceClaim = typeof insuranceClaims.$inferInsert;
+export type ClaimLineItem = typeof claimLineItems.$inferSelect;
+export type InsertClaimLineItem = typeof claimLineItems.$inferInsert;
+
+// ========== Population Health Enums ==========
+
+export const riskLevelEnum = pgEnum("risk_level", [
+  "low",
+  "moderate",
+  "high",
+  "very_high"
+]);
+
+export const riskCategoryEnum = pgEnum("risk_category", [
+  "clinical",
+  "financial",
+  "utilization",
+  "social",
+  "behavioral",
+  "functional"
+]);
+
+export const assessmentStatusEnum = pgEnum("assessment_status", [
+  "pending",
+  "in_progress",
+  "completed",
+  "expired"
+]);
+
+export const socialDeterminantCategoryEnum = pgEnum("social_determinant_category", [
+  "economic_stability",
+  "education",
+  "social_community",
+  "healthcare_access",
+  "neighborhood_environment"
+]);
+
+export const socialDeterminantStatusEnum = pgEnum("social_determinant_status", [
+  "identified",
+  "intervention_planned",
+  "intervention_active",
+  "resolved"
+]);
+
+export const severityEnum = pgEnum("severity", [
+  "low",
+  "moderate",
+  "high"
+]);
+
+// ========== End Population Health Enums ==========
+
+// ========== Population Health Tables ==========
+
+/**
+ * Risk Scores Table
+ * Stores calculated risk scores for patients with contributing factors
+ */
+export const riskScores = pgTable(
+  "risk_scores",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    scoreType: text("score_type").notNull(), // e.g., "HCC", "LACE", "CHF_Readmission"
+    score: numeric("score", { precision: 10, scale: 2 }).notNull(),
+    riskLevel: riskLevelEnum("risk_level").notNull(),
+    category: riskCategoryEnum("category").notNull(),
+    factors: jsonb("factors").notNull().$type<Array<{
+      factor: string;
+      category: string;
+      weight: number;
+      value: any;
+      impact: number;
+      description: string;
+    }>>(), // Array of RiskFactor objects
+    calculatedDate: timestamp("calculated_date", { withTimezone: true }).notNull().defaultNow(),
+    validUntil: timestamp("valid_until", { withTimezone: true }).notNull(),
+    calculatedBy: text("calculated_by").notNull(), // User ID who triggered calculation
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("risk_scores_company_idx").on(table.companyId),
+    patientIdx: index("risk_scores_patient_idx").on(table.patientId),
+    riskLevelIdx: index("risk_scores_risk_level_idx").on(table.riskLevel),
+    categoryIdx: index("risk_scores_category_idx").on(table.category),
+    calculatedDateIdx: index("risk_scores_calculated_date_idx").on(table.calculatedDate),
+  })
+);
+
+/**
+ * Health Risk Assessments Table
+ * Stores structured health risk assessment questionnaires and responses
+ */
+export const healthRiskAssessments = pgTable(
+  "health_risk_assessments",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    assessmentType: text("assessment_type").notNull(), // e.g., "HRA", "PHQ-9", "GAD-7"
+    status: assessmentStatusEnum("status").notNull().default("pending"),
+    responses: jsonb("responses").notNull().$type<Array<{
+      questionId: string;
+      question: string;
+      response: any;
+      score: number;
+      category: string;
+    }>>(), // Array of AssessmentResponse objects
+    totalScore: numeric("total_score", { precision: 10, scale: 2 }).notNull().default("0"),
+    riskLevel: riskLevelEnum("risk_level").notNull(),
+    recommendations: jsonb("recommendations").notNull().$type<string[]>().default([]), // Array of recommendation strings
+    completedDate: timestamp("completed_date", { withTimezone: true }),
+    expirationDate: timestamp("expiration_date", { withTimezone: true }).notNull(),
+    administeredBy: text("administered_by"), // User ID who administered assessment
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("health_risk_assessments_company_idx").on(table.companyId),
+    patientIdx: index("health_risk_assessments_patient_idx").on(table.patientId),
+    statusIdx: index("health_risk_assessments_status_idx").on(table.status),
+    riskLevelIdx: index("health_risk_assessments_risk_level_idx").on(table.riskLevel),
+  })
+);
+
+/**
+ * Predictive Models Table
+ * Stores ML/statistical models for predicting patient outcomes
+ */
+export const predictiveModels = pgTable(
+  "predictive_models",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    version: text("version").notNull(),
+    modelType: text("model_type").notNull(), // e.g., "readmission", "mortality", "cost"
+    description: text("description").notNull(),
+    inputFeatures: jsonb("input_features").notNull().$type<string[]>(), // Array of feature names
+    outputMetric: text("output_metric").notNull(), // e.g., "probability", "risk_score", "cost"
+    accuracy: numeric("accuracy", { precision: 5, scale: 4 }).notNull(), // Model accuracy (0-1)
+    validFrom: timestamp("valid_from", { withTimezone: true }).notNull().defaultNow(),
+    validUntil: timestamp("valid_until", { withTimezone: true }),
+    isActive: boolean("is_active").notNull().default(true),
+    createdBy: text("created_by").notNull(), // User ID
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("predictive_models_company_idx").on(table.companyId),
+    activeIdx: index("predictive_models_active_idx").on(table.isActive),
+    modelTypeIdx: index("predictive_models_model_type_idx").on(table.modelType),
+  })
+);
+
+/**
+ * Predictive Analyses Table
+ * Stores results of running predictive models on patient data
+ */
+export const predictiveAnalyses = pgTable(
+  "predictive_analyses",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    modelId: text("model_id").notNull().references(() => predictiveModels.id, { onDelete: "cascade" }),
+    modelName: text("model_name").notNull(),
+    predictedOutcome: text("predicted_outcome").notNull(), // e.g., "High risk of readmission"
+    probability: numeric("probability", { precision: 5, scale: 4 }).notNull(), // 0-1
+    confidence: numeric("confidence", { precision: 5, scale: 4 }).notNull(), // 0-1
+    riskLevel: riskLevelEnum("risk_level").notNull(),
+    contributingFactors: jsonb("contributing_factors").notNull().$type<Array<{
+      factor: string;
+      contribution: number;
+    }>>(), // Array of contributing factors with weights
+    recommendations: jsonb("recommendations").notNull().$type<string[]>(), // Array of action recommendations
+    analyzedDate: timestamp("analyzed_date", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("predictive_analyses_company_idx").on(table.companyId),
+    patientIdx: index("predictive_analyses_patient_idx").on(table.patientId),
+    modelIdx: index("predictive_analyses_model_idx").on(table.modelId),
+    riskLevelIdx: index("predictive_analyses_risk_level_idx").on(table.riskLevel),
+    analyzedDateIdx: index("predictive_analyses_analyzed_date_idx").on(table.analyzedDate),
+  })
+);
+
+/**
+ * Social Determinants Table
+ * Tracks social determinants of health (SDOH) and interventions
+ */
+export const socialDeterminants = pgTable(
+  "social_determinants",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    category: socialDeterminantCategoryEnum("category").notNull(),
+    factor: text("factor").notNull(), // Specific SDOH factor identified
+    status: socialDeterminantStatusEnum("status").notNull().default("identified"),
+    severity: severityEnum("severity").notNull(),
+    description: text("description").notNull(),
+    impact: text("impact").notNull(), // Description of health impact
+    interventions: jsonb("interventions").notNull().$type<string[]>().default([]), // Array of intervention descriptions
+    identifiedDate: timestamp("identified_date", { withTimezone: true }).notNull().defaultNow(),
+    resolvedDate: timestamp("resolved_date", { withTimezone: true }),
+    identifiedBy: text("identified_by").notNull(), // User ID
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("social_determinants_company_idx").on(table.companyId),
+    patientIdx: index("social_determinants_patient_idx").on(table.patientId),
+    categoryIdx: index("social_determinants_category_idx").on(table.category),
+    statusIdx: index("social_determinants_status_idx").on(table.status),
+    severityIdx: index("social_determinants_severity_idx").on(table.severity),
+  })
+);
+
+/**
+ * Risk Stratification Cohorts Table
+ * Defines patient cohorts based on risk criteria for population management
+ */
+export const riskStratificationCohorts = pgTable(
+  "risk_stratification_cohorts",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    criteria: jsonb("criteria").notNull().$type<Array<{
+      field: string;
+      operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'in_range';
+      value: any;
+    }>>(), // Array of CohortCriteria objects
+    riskLevels: jsonb("risk_levels").notNull().$type<Array<'low' | 'moderate' | 'high' | 'very_high'>>(), // Array of target risk levels
+    patientCount: integer("patient_count").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdBy: text("created_by").notNull(), // User ID
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("risk_stratification_cohorts_company_idx").on(table.companyId),
+    activeIdx: index("risk_stratification_cohorts_active_idx").on(table.active),
+    nameIdx: index("risk_stratification_cohorts_name_idx").on(table.name),
+  })
+);
+
+// Zod validation schemas for Population Health tables
+export const insertRiskScoreSchema = createInsertSchema(riskScores);
+export const insertHealthRiskAssessmentSchema = createInsertSchema(healthRiskAssessments);
+export const insertPredictiveModelSchema = createInsertSchema(predictiveModels);
+export const insertPredictiveAnalysisSchema = createInsertSchema(predictiveAnalyses);
+export const insertSocialDeterminantSchema = createInsertSchema(socialDeterminants);
+export const insertRiskStratificationCohortSchema = createInsertSchema(riskStratificationCohorts);
+
+// TypeScript types
+export type RiskScore = typeof riskScores.$inferSelect;
+export type InsertRiskScore = typeof riskScores.$inferInsert;
+export type HealthRiskAssessment = typeof healthRiskAssessments.$inferSelect;
+export type InsertHealthRiskAssessment = typeof healthRiskAssessments.$inferInsert;
+export type PredictiveModel = typeof predictiveModels.$inferSelect;
+export type InsertPredictiveModel = typeof predictiveModels.$inferInsert;
+export type PredictiveAnalysis = typeof predictiveAnalyses.$inferSelect;
+export type InsertPredictiveAnalysis = typeof predictiveAnalyses.$inferInsert;
+export type SocialDeterminant = typeof socialDeterminants.$inferSelect;
+export type InsertSocialDeterminant = typeof socialDeterminants.$inferInsert;
+export type RiskStratificationCohort = typeof riskStratificationCohorts.$inferSelect;
+export type InsertRiskStratificationCohort = typeof riskStratificationCohorts.$inferInsert;
+
+// ========== End Population Health Tables ==========
+
+// ========== Communications Enums ==========
+
+export const communicationChannelEnum = pgEnum("communication_channel", [
+  "email",
+  "sms",
+  "push",
+  "in_app"
+]);
+
+export const messageStatusEnum = pgEnum("message_status", [
+  "draft",
+  "queued",
+  "sending",
+  "sent",
+  "delivered",
+  "opened",
+  "clicked",
+  "bounced",
+  "failed",
+  "unsubscribed"
+]);
+
+export const messagePriorityEnum = pgEnum("message_priority", [
+  "low",
+  "normal",
+  "high",
+  "urgent"
+]);
+
+export const messageCategoryEnum = pgEnum("message_category", [
+  "transactional",
+  "marketing",
+  "appointment",
+  "clinical",
+  "billing"
+]);
+
+export const recipientTypeEnum = pgEnum("recipient_type", [
+  "patient",
+  "user",
+  "provider"
+]);
+
+// ========== End Communications Enums ==========
+
+// ========== Communications Tables ==========
+
+/**
+ * Message Templates Table
+ * Stores reusable message templates for email, SMS, push notifications
+ */
+export const messageTemplates = pgTable(
+  "message_templates",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    channel: communicationChannelEnum("channel").notNull(),
+    subject: text("subject"), // For email
+    body: text("body").notNull(), // Supports template variables like {{firstName}}
+    variables: jsonb("variables").notNull().$type<string[]>(), // List of required variables
+    category: messageCategoryEnum("category").notNull(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("message_templates_company_idx").on(table.companyId),
+    channelIdx: index("message_templates_channel_idx").on(table.channel),
+    categoryIdx: index("message_templates_category_idx").on(table.category),
+    activeIdx: index("message_templates_active_idx").on(table.active),
+  })
+);
+
+/**
+ * Messages Table
+ * Stores all sent messages with delivery tracking
+ */
+export const messages = pgTable(
+  "messages",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    channel: communicationChannelEnum("channel").notNull(),
+    templateId: text("template_id").references(() => messageTemplates.id, { onDelete: "set null" }),
+
+    // Recipients
+    recipientId: text("recipient_id").notNull(), // Patient/User ID
+    recipientType: recipientTypeEnum("recipient_type").notNull(),
+    to: text("to").notNull(), // Email address, phone number, or device token
+
+    // Content
+    subject: text("subject"),
+    body: text("body").notNull(),
+    metadata: jsonb("metadata").$type<Record<string, any>>(),
+
+    // Status
+    status: messageStatusEnum("status").notNull().default("draft"),
+    priority: messagePriorityEnum("priority").notNull().default("normal"),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    openedAt: timestamp("opened_at", { withTimezone: true }),
+    clickedAt: timestamp("clicked_at", { withTimezone: true }),
+    failedAt: timestamp("failed_at", { withTimezone: true }),
+
+    // Error handling
+    errorMessage: text("error_message"),
+    retryCount: integer("retry_count").notNull().default(0),
+    maxRetries: integer("max_retries").notNull().default(3),
+
+    // Tracking
+    trackingId: text("tracking_id"),
+    campaignId: text("campaign_id"),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("messages_company_idx").on(table.companyId),
+    recipientIdx: index("messages_recipient_idx").on(table.recipientId),
+    statusIdx: index("messages_status_idx").on(table.status),
+    channelIdx: index("messages_channel_idx").on(table.channel),
+    templateIdx: index("messages_template_idx").on(table.templateId),
+    campaignIdx: index("messages_campaign_idx").on(table.campaignId),
+    scheduledForIdx: index("messages_scheduled_for_idx").on(table.scheduledFor),
+    sentAtIdx: index("messages_sent_at_idx").on(table.sentAt),
+  })
+);
+
+/**
+ * Unsubscribes Table
+ * Tracks user opt-outs from communications
+ */
+export const unsubscribes = pgTable(
+  "unsubscribes",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    recipientId: text("recipient_id").notNull(),
+    channel: communicationChannelEnum("channel").notNull(),
+    category: messageCategoryEnum("category"),
+    unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }).notNull().defaultNow(),
+    reason: text("reason"),
+  },
+  (table) => ({
+    companyIdx: index("unsubscribes_company_idx").on(table.companyId),
+    recipientIdx: index("unsubscribes_recipient_idx").on(table.recipientId),
+    channelIdx: index("unsubscribes_channel_idx").on(table.channel),
+    categoryIdx: index("unsubscribes_category_idx").on(table.category),
+    // Unique constraint: one unsubscribe per recipient+channel+category
+    uniqueUnsubscribe: index("unsubscribes_unique_idx").on(
+      table.recipientId,
+      table.channel,
+      table.category
+    ),
+  })
+);
+
+// Zod validation schemas for Communications tables
+export const insertMessageTemplateSchema = createInsertSchema(messageTemplates);
+export const insertMessageSchema = createInsertSchema(messages);
+export const insertUnsubscribeSchema = createInsertSchema(unsubscribes);
+
+// TypeScript types
+export type MessageTemplate = typeof messageTemplates.$inferSelect;
+export type InsertMessageTemplate = typeof messageTemplates.$inferInsert;
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;
+export type Unsubscribe = typeof unsubscribes.$inferSelect;
+export type InsertUnsubscribe = typeof unsubscribes.$inferInsert;
+
+// ========== End Communications Tables ==========
+
+// ========== Campaign Management Enums ==========
+
+/**
+ * Campaign status lifecycle
+ */
+export const campaignStatusEnum = pgEnum("campaign_status", [
+  "draft",
+  "scheduled",
+  "running",
+  "paused",
+  "completed",
+  "cancelled"
+]);
+
+/**
+ * Campaign type
+ */
+export const campaignTypeEnum = pgEnum("campaign_type", [
+  "one_time",
+  "recurring",
+  "triggered",
+  "drip"
+]);
+
+/**
+ * Campaign frequency for recurring campaigns
+ */
+export const campaignFrequencyEnum = pgEnum("campaign_frequency", [
+  "daily",
+  "weekly",
+  "monthly"
+]);
+
+/**
+ * A/B test variant
+ */
+export const abTestVariantEnum = pgEnum("ab_test_variant", ["A", "B"]);
+
+/**
+ * Audience segment criteria operators
+ */
+export const segmentOperatorEnum = pgEnum("segment_operator", [
+  "eq",
+  "ne",
+  "gt",
+  "gte",
+  "lt",
+  "lte",
+  "in",
+  "contains"
+]);
+
+// ========== End Campaign Management Enums ==========
+
+// ========== Campaign Management Tables ==========
+
+/**
+ * Audience Segments Table
+ * Stores audience segmentation criteria for targeted campaigns
+ */
+export const audienceSegments = pgTable(
+  "audience_segments",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    criteria: jsonb("criteria").notNull().$type<Array<{
+      field: string;
+      operator: 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'contains';
+      value: any;
+    }>>(), // Array of filtering criteria
+    size: integer("size"), // Estimated segment size
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("audience_segments_company_idx").on(table.companyId),
+    nameIdx: index("audience_segments_name_idx").on(table.name),
+  })
+);
+
+/**
+ * Campaigns Table
+ * Stores marketing campaign configuration and tracking metrics
+ */
+export const campaigns = pgTable(
+  "campaigns",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    type: campaignTypeEnum("type").notNull(),
+    status: campaignStatusEnum("status").notNull().default("draft"),
+
+    // Audience
+    segmentIds: jsonb("segment_ids").notNull().$type<string[]>(), // Array of audience segment IDs
+    estimatedReach: integer("estimated_reach").notNull().default(0),
+
+    // Content
+    channel: communicationChannelEnum("channel").notNull(),
+    templateId: text("template_id").references(() => messageTemplates.id, { onDelete: "set null" }),
+    variables: jsonb("variables").$type<Record<string, string>>(), // Default variable values
+
+    // Scheduling
+    startDate: timestamp("start_date", { withTimezone: true }),
+    endDate: timestamp("end_date", { withTimezone: true }),
+    frequency: campaignFrequencyEnum("frequency"), // For recurring campaigns
+    sendTime: text("send_time"), // HH:MM format
+
+    // Tracking metrics
+    sentCount: integer("sent_count").notNull().default(0),
+    deliveredCount: integer("delivered_count").notNull().default(0),
+    openedCount: integer("opened_count").notNull().default(0),
+    clickedCount: integer("clicked_count").notNull().default(0),
+    unsubscribedCount: integer("unsubscribed_count").notNull().default(0),
+
+    // Settings
+    throttle: integer("throttle"), // Messages per hour
+    abTestEnabled: boolean("ab_test_enabled").notNull().default(false),
+    abTestVariant: abTestVariantEnum("ab_test_variant"),
+
+    // Timestamps
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    launchedAt: timestamp("launched_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => ({
+    companyIdx: index("campaigns_company_idx").on(table.companyId),
+    statusIdx: index("campaigns_status_idx").on(table.status),
+    typeIdx: index("campaigns_type_idx").on(table.type),
+    channelIdx: index("campaigns_channel_idx").on(table.channel),
+    startDateIdx: index("campaigns_start_date_idx").on(table.startDate),
+  })
+);
+
+/**
+ * Campaign Recipients Table
+ * Junction table tracking which recipients received each campaign
+ */
+export const campaignRecipients = pgTable(
+  "campaign_recipients",
+  {
+    id: text("id").primaryKey(),
+    campaignId: text("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+    recipientId: text("recipient_id").notNull(), // Patient/User ID
+    messageId: text("message_id").references(() => messages.id, { onDelete: "set null" }), // Link to sent message
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    campaignIdx: index("campaign_recipients_campaign_idx").on(table.campaignId),
+    recipientIdx: index("campaign_recipients_recipient_idx").on(table.recipientId),
+    // Unique constraint to prevent duplicate sends
+    uniqueCampaignRecipient: uniqueIndex("campaign_recipient_unique").on(table.campaignId, table.recipientId),
+  })
+);
+
+// Zod validation schemas for Campaign tables
+export const insertAudienceSegmentSchema = createInsertSchema(audienceSegments);
+export const insertCampaignSchema = createInsertSchema(campaigns);
+export const insertCampaignRecipientSchema = createInsertSchema(campaignRecipients);
+
+// TypeScript types
+export type AudienceSegment = typeof audienceSegments.$inferSelect;
+export type InsertAudienceSegment = typeof audienceSegments.$inferInsert;
+export type Campaign = typeof campaigns.$inferSelect;
+export type InsertCampaign = typeof campaigns.$inferInsert;
+export type CampaignRecipient = typeof campaignRecipients.$inferSelect;
+export type InsertCampaignRecipient = typeof campaignRecipients.$inferInsert;
+
+// ========== End Campaign Management Tables ==========
+
+// ========== Clinical Decision Support Enums ==========
+
+/**
+ * Alert severity levels
+ */
+export const alertSeverityEnum = pgEnum("alert_severity", [
+  "info",
+  "warning",
+  "critical"
+]);
+
+/**
+ * Drug interaction severity
+ */
+export const interactionSeverityEnum = pgEnum("interaction_severity", [
+  "minor",
+  "moderate",
+  "major",
+  "contraindicated"
+]);
+
+/**
+ * Recommendation confidence level
+ */
+export const confidenceLevelEnum = pgEnum("confidence_level", [
+  "low",
+  "medium",
+  "high",
+  "very_high"
+]);
+
+/**
+ * Clinical alert types
+ */
+export const clinicalAlertTypeEnum = pgEnum("clinical_alert_type", [
+  "drug_interaction",
+  "allergy",
+  "lab_critical",
+  "guideline_deviation",
+  "risk_factor"
+]);
+
+/**
+ * Guideline strength of recommendation
+ */
+export const recommendationStrengthEnum = pgEnum("recommendation_strength", [
+  "A", // Strong
+  "B", // Moderate
+  "C", // Weak
+  "D"  // Very weak
+]);
+
+/**
+ * Quality of evidence
+ */
+export const evidenceQualityEnum = pgEnum("evidence_quality", [
+  "high",
+  "moderate",
+  "low",
+  "very_low"
+]);
+
+/**
+ * Lab result status
+ */
+export const labStatusEnum = pgEnum("lab_status", [
+  "normal",
+  "low",
+  "high",
+  "critical"
+]);
+
+/**
+ * Diagnostic urgency
+ */
+export const diagnosticUrgencyEnum = pgEnum("diagnostic_urgency", [
+  "routine",
+  "urgent",
+  "emergency"
+]);
+
+// ========== End Clinical Decision Support Enums ==========
+
+// ========== Clinical Decision Support Tables ==========
+
+/**
+ * Drugs Table
+ * Stores drug database for clinical decision support
+ */
+export const drugs = pgTable(
+  "drugs",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    genericName: text("generic_name").notNull(),
+    brandNames: jsonb("brand_names").notNull().$type<string[]>(),
+    drugClass: text("drug_class").notNull(),
+    interactions: jsonb("interactions").notNull().$type<string[]>(), // Drug IDs
+    contraindications: jsonb("contraindications").notNull().$type<string[]>(),
+    sideEffects: jsonb("side_effects").notNull().$type<string[]>(),
+    dosageRange: jsonb("dosage_range").$type<{
+      min: number;
+      max: number;
+      unit: string;
+    }>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("drugs_company_idx").on(table.companyId),
+    nameIdx: index("drugs_name_idx").on(table.name),
+    genericNameIdx: index("drugs_generic_name_idx").on(table.genericName),
+  })
+);
+
+/**
+ * Drug Interactions Table
+ * Stores known drug-drug interactions
+ */
+export const drugInteractions = pgTable(
+  "drug_interactions",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    drug1Id: text("drug1_id").notNull().references(() => drugs.id, { onDelete: "cascade" }),
+    drug2Id: text("drug2_id").notNull().references(() => drugs.id, { onDelete: "cascade" }),
+    severity: interactionSeverityEnum("severity").notNull(),
+    description: text("description").notNull(),
+    clinicalEffects: jsonb("clinical_effects").notNull().$type<string[]>(),
+    management: text("management").notNull(),
+    references: jsonb("references").notNull().$type<string[]>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("drug_interactions_company_idx").on(table.companyId),
+    drug1Idx: index("drug_interactions_drug1_idx").on(table.drug1Id),
+    drug2Idx: index("drug_interactions_drug2_idx").on(table.drug2Id),
+    severityIdx: index("drug_interactions_severity_idx").on(table.severity),
+  })
+);
+
+/**
+ * Clinical Guidelines Table
+ * Stores clinical practice guidelines
+ */
+export const clinicalGuidelines = pgTable(
+  "clinical_guidelines",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    condition: text("condition").notNull(),
+    organization: text("organization").notNull(), // AAO, AHA, CDC, etc.
+    version: text("version").notNull(),
+    lastUpdated: timestamp("last_updated", { withTimezone: true }).notNull(),
+    recommendations: jsonb("recommendations").notNull().$type<Array<{
+      id: string;
+      title: string;
+      description: string;
+      strengthOfRecommendation: 'A' | 'B' | 'C' | 'D';
+      qualityOfEvidence: 'high' | 'moderate' | 'low' | 'very_low';
+      applicableCriteria?: string[];
+      contraindications?: string[];
+    }>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("clinical_guidelines_company_idx").on(table.companyId),
+    conditionIdx: index("clinical_guidelines_condition_idx").on(table.condition),
+    organizationIdx: index("clinical_guidelines_organization_idx").on(table.organization),
+  })
+);
+
+/**
+ * Clinical Alerts Table
+ * Stores clinical alerts for patient safety
+ */
+export const clinicalAlerts = pgTable(
+  "clinical_alerts",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    type: clinicalAlertTypeEnum("type").notNull(),
+    severity: alertSeverityEnum("severity").notNull(),
+    message: text("message").notNull(),
+    details: text("details").notNull(),
+    recommendations: jsonb("recommendations").notNull().$type<string[]>(),
+    requiresAcknowledgment: boolean("requires_acknowledgment").notNull().default(false),
+    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
+    acknowledgedBy: text("acknowledged_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("clinical_alerts_company_idx").on(table.companyId),
+    patientIdx: index("clinical_alerts_patient_idx").on(table.patientId),
+    typeIdx: index("clinical_alerts_type_idx").on(table.type),
+    severityIdx: index("clinical_alerts_severity_idx").on(table.severity),
+    createdAtIdx: index("clinical_alerts_created_at_idx").on(table.createdAt),
+  })
+);
+
+/**
+ * Treatment Recommendations Table
+ * Stores AI-generated treatment recommendations
+ */
+export const treatmentRecommendations = pgTable(
+  "treatment_recommendations",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    condition: text("condition").notNull(),
+    diagnosis: text("diagnosis").notNull(),
+    recommendations: jsonb("recommendations").notNull().$type<Array<{
+      treatment: string;
+      rationale: string;
+      confidence: string;
+      evidenceLevel: string;
+      alternatives?: string[];
+      contraindications?: string[];
+      expectedOutcome?: string;
+      monitoringRequired?: string[];
+    }>>(),
+    guidelineReferences: jsonb("guideline_references").notNull().$type<string[]>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("treatment_recommendations_company_idx").on(table.companyId),
+    patientIdx: index("treatment_recommendations_patient_idx").on(table.patientId),
+    conditionIdx: index("treatment_recommendations_condition_idx").on(table.condition),
+    createdAtIdx: index("treatment_recommendations_created_at_idx").on(table.createdAt),
+  })
+);
+
+/**
+ * Diagnostic Suggestions Table
+ * Stores AI-generated diagnostic suggestions
+ */
+export const diagnosticSuggestions = pgTable(
+  "diagnostic_suggestions",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    symptoms: jsonb("symptoms").notNull().$type<string[]>(),
+    labResults: jsonb("lab_results").$type<Record<string, any>>(),
+    vitalSigns: jsonb("vital_signs").$type<Record<string, number>>(),
+    possibleDiagnoses: jsonb("possible_diagnoses").notNull().$type<Array<{
+      condition: string;
+      icd10Code: string;
+      probability: number;
+      supportingFactors: string[];
+      differentialDiagnoses: string[];
+      recommendedTests?: string[];
+      urgency: 'routine' | 'urgent' | 'emergency';
+    }>>(),
+    confidence: confidenceLevelEnum("confidence").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("diagnostic_suggestions_company_idx").on(table.companyId),
+    patientIdx: index("diagnostic_suggestions_patient_idx").on(table.patientId),
+    confidenceIdx: index("diagnostic_suggestions_confidence_idx").on(table.confidence),
+    createdAtIdx: index("diagnostic_suggestions_created_at_idx").on(table.createdAt),
+  })
+);
+
+// Zod validation schemas for Clinical Decision Support tables
+export const insertDrugSchema = createInsertSchema(drugs);
+export const insertDrugInteractionSchema = createInsertSchema(drugInteractions);
+export const insertClinicalGuidelineSchema = createInsertSchema(clinicalGuidelines);
+export const insertClinicalAlertSchema = createInsertSchema(clinicalAlerts);
+export const insertTreatmentRecommendationSchema = createInsertSchema(treatmentRecommendations);
+export const insertDiagnosticSuggestionSchema = createInsertSchema(diagnosticSuggestions);
+
+// TypeScript types
+export type Drug = typeof drugs.$inferSelect;
+export type InsertDrug = typeof drugs.$inferInsert;
+export type DrugInteraction = typeof drugInteractions.$inferSelect;
+export type InsertDrugInteraction = typeof drugInteractions.$inferInsert;
+export type ClinicalGuideline = typeof clinicalGuidelines.$inferSelect;
+export type InsertClinicalGuideline = typeof clinicalGuidelines.$inferInsert;
+export type ClinicalAlert = typeof clinicalAlerts.$inferSelect;
+export type InsertClinicalAlert = typeof clinicalAlerts.$inferInsert;
+export type TreatmentRecommendation = typeof treatmentRecommendations.$inferSelect;
+export type InsertTreatmentRecommendation = typeof treatmentRecommendations.$inferInsert;
+export type DiagnosticSuggestion = typeof diagnosticSuggestions.$inferSelect;
+export type InsertDiagnosticSuggestion = typeof diagnosticSuggestions.$inferInsert;
+
+// ========== End Clinical Decision Support Tables ==========
+
+// ========== Engagement Workflows Enums ==========
+
+/**
+ * Workflow trigger types
+ */
+export const workflowTriggerEnum = pgEnum("workflow_trigger", [
+  "patient_registered",
+  "appointment_scheduled",
+  "appointment_reminder",
+  "appointment_completed",
+  "test_results_available",
+  "prescription_expiring",
+  "no_show",
+  "missed_appointment",
+  "payment_due",
+  "payment_overdue",
+  "birthday",
+  "annual_checkup_due",
+  "custom"
+]);
+
+/**
+ * Workflow action types
+ */
+export const workflowActionTypeEnum = pgEnum("workflow_action_type", [
+  "send_message",
+  "wait",
+  "add_tag",
+  "remove_tag",
+  "create_task",
+  "branch"
+]);
+
+/**
+ * Workflow status
+ */
+export const workflowStatusEnum = pgEnum("workflow_status", [
+  "active",
+  "paused",
+  "archived"
+]);
+
+/**
+ * Workflow instance status
+ */
+export const workflowInstanceStatusEnum = pgEnum("workflow_instance_status", [
+  "pending",
+  "running",
+  "completed",
+  "failed",
+  "cancelled"
+]);
+
+// ========== End Engagement Workflows Enums ==========
+
+// ========== Engagement Workflows Tables ==========
+
+/**
+ * Workflows Table
+ * Stores workflow definitions for automated patient engagement
+ */
+export const workflows = pgTable(
+  "workflows",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    trigger: workflowTriggerEnum("trigger").notNull(),
+    status: workflowStatusEnum("status").notNull().default("active"),
+
+    // Conditions for workflow execution
+    conditions: jsonb("conditions").$type<Array<{
+      field: string;
+      operator: 'eq' | 'ne' | 'gt' | 'lt' | 'contains';
+      value: any;
+    }>>(),
+
+    // Workflow actions
+    actions: jsonb("actions").notNull().$type<Array<{
+      id: string;
+      type: string;
+      order: number;
+      channel?: string;
+      templateId?: string;
+      variables?: Record<string, string>;
+      delayDays?: number;
+      delayHours?: number;
+      tags?: string[];
+      taskTitle?: string;
+      taskAssigneeId?: string;
+      condition?: {
+        field: string;
+        operator: 'eq' | 'ne' | 'gt' | 'lt' | 'contains';
+        value: any;
+      };
+      trueActions?: any[];
+      falseActions?: any[];
+    }>>(),
+
+    // Settings
+    runOnce: boolean("run_once").notNull().default(false),
+    maxRuns: integer("max_runs"),
+
+    // Statistics
+    totalRuns: integer("total_runs").notNull().default(0),
+    totalCompleted: integer("total_completed").notNull().default(0),
+    totalFailed: integer("total_failed").notNull().default(0),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("workflows_company_idx").on(table.companyId),
+    triggerIdx: index("workflows_trigger_idx").on(table.trigger),
+    statusIdx: index("workflows_status_idx").on(table.status),
+  })
+);
+
+/**
+ * Workflow Instances Table
+ * Stores individual workflow executions for patients
+ */
+export const workflowInstances = pgTable(
+  "workflow_instances",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    workflowId: text("workflow_id").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+
+    triggerData: jsonb("trigger_data").notNull().$type<Record<string, any>>(),
+
+    status: workflowInstanceStatusEnum("status").notNull().default("pending"),
+    currentActionIndex: integer("current_action_index").notNull().default(0),
+
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    failedAt: timestamp("failed_at", { withTimezone: true }),
+    error: text("error"),
+
+    executionLog: jsonb("execution_log").notNull().$type<Array<{
+      actionId: string;
+      actionType: string;
+      executedAt: Date;
+      success: boolean;
+      error?: string;
+      result?: any;
+    }>>().default([]),
+  },
+  (table) => ({
+    companyIdx: index("workflow_instances_company_idx").on(table.companyId),
+    workflowIdx: index("workflow_instances_workflow_idx").on(table.workflowId),
+    patientIdx: index("workflow_instances_patient_idx").on(table.patientId),
+    statusIdx: index("workflow_instances_status_idx").on(table.status),
+    startedAtIdx: index("workflow_instances_started_at_idx").on(table.startedAt),
+  })
+);
+
+/**
+ * Workflow Run Counts Table
+ * Tracks how many times each workflow has run for each patient
+ */
+export const workflowRunCounts = pgTable(
+  "workflow_run_counts",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    workflowId: text("workflow_id").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    runCount: integer("run_count").notNull().default(0),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+  },
+  (table) => ({
+    companyIdx: index("workflow_run_counts_company_idx").on(table.companyId),
+    workflowPatientIdx: uniqueIndex("workflow_run_counts_workflow_patient_unique").on(
+      table.workflowId,
+      table.patientId
+    ),
+  })
+);
+
+// Zod validation schemas for Engagement Workflows tables
+export const insertWorkflowSchema = createInsertSchema(workflows);
+export const insertWorkflowInstanceSchema = createInsertSchema(workflowInstances);
+export const insertWorkflowRunCountSchema = createInsertSchema(workflowRunCounts);
+
+// TypeScript types
+export type Workflow = typeof workflows.$inferSelect;
+export type InsertWorkflow = typeof workflows.$inferInsert;
+export type WorkflowInstance = typeof workflowInstances.$inferSelect;
+export type InsertWorkflowInstance = typeof workflowInstances.$inferInsert;
+export type WorkflowRunCount = typeof workflowRunCounts.$inferSelect;
+export type InsertWorkflowRunCount = typeof workflowRunCounts.$inferInsert;
+
+// ========== End Engagement Workflows Tables ==========
+
+// ========== Predictive Analytics Tables ==========
+
+/**
+ * Predictive Analytics Enums
+ * Note: Reusing riskLevelEnum from Population Health section
+ */
+export const predictionConfidenceEnum = pgEnum("prediction_confidence", ["low", "medium", "high"]);
+export const mlModelTypeEnum = pgEnum("ml_model_type", ["classification", "regression", "clustering"]);
+export const mlModelStatusEnum = pgEnum("ml_model_status", ["active", "testing", "deprecated"]);
+export const riskTypeEnum = pgEnum("risk_type", ["readmission", "disease_progression", "complication", "mortality"]);
+export const readmissionTimeframeEnum = pgEnum("readmission_timeframe", ["7_days", "30_days", "90_days"]);
+
+/**
+ * ML Models Table
+ * Stores machine learning models for predictions
+ */
+export const mlModels = pgTable(
+  "ml_models",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    type: mlModelTypeEnum("type").notNull(),
+    version: text("version").notNull(),
+    trainedAt: timestamp("trained_at", { withTimezone: true }).notNull(),
+
+    // Features and performance
+    features: jsonb("features").notNull().$type<string[]>(),
+    performance: jsonb("performance").notNull().$type<{
+      accuracy?: number;
+      precision?: number;
+      recall?: number;
+      f1Score?: number;
+      auc?: number;
+      rmse?: number;
+    }>(),
+
+    status: mlModelStatusEnum("status").notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("ml_models_company_idx").on(table.companyId),
+    statusIdx: index("ml_models_status_idx").on(table.status),
+    typeIdx: index("ml_models_type_idx").on(table.type),
+  })
+);
+
+/**
+ * Risk Stratifications Table
+ * Stores risk assessments for patients
+ */
+export const riskStratifications = pgTable(
+  "risk_stratifications",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+
+    riskType: riskTypeEnum("risk_type").notNull(),
+    riskLevel: riskLevelEnum("risk_level").notNull(),
+    riskScore: integer("risk_score").notNull(), // 0-100
+    confidence: predictionConfidenceEnum("confidence").notNull(),
+
+    // Complex data stored as JSONB
+    riskFactors: jsonb("risk_factors").notNull().$type<Array<{
+      factor: string;
+      weight: number;
+      value: any;
+      impact: 'positive' | 'negative' | 'neutral';
+      description: string;
+    }>>(),
+    interventions: jsonb("interventions").notNull().$type<string[]>(),
+
+    predictedTimeframe: text("predicted_timeframe"),
+    modelVersion: text("model_version").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("risk_stratifications_company_idx").on(table.companyId),
+    patientIdx: index("risk_stratifications_patient_idx").on(table.patientId),
+    riskTypeIdx: index("risk_stratifications_risk_type_idx").on(table.riskType),
+    riskLevelIdx: index("risk_stratifications_risk_level_idx").on(table.riskLevel),
+    createdAtIdx: index("risk_stratifications_created_at_idx").on(table.createdAt),
+  })
+);
+
+/**
+ * Readmission Predictions Table
+ * Stores hospital readmission risk predictions
+ */
+export const readmissionPredictions = pgTable(
+  "readmission_predictions",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    admissionId: text("admission_id").notNull(),
+
+    probability: integer("probability").notNull(), // 0-100
+    riskLevel: riskLevelEnum("risk_level").notNull(),
+    timeframe: readmissionTimeframeEnum("timeframe").notNull(),
+
+    contributingFactors: jsonb("contributing_factors").notNull().$type<Array<{
+      factor: string;
+      weight: number;
+      value: any;
+      impact: 'positive' | 'negative' | 'neutral';
+      description: string;
+    }>>(),
+    preventiveActions: jsonb("preventive_actions").notNull().$type<string[]>(),
+
+    confidence: predictionConfidenceEnum("confidence").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("readmission_predictions_company_idx").on(table.companyId),
+    patientIdx: index("readmission_predictions_patient_idx").on(table.patientId),
+    admissionIdx: index("readmission_predictions_admission_idx").on(table.admissionId),
+    riskLevelIdx: index("readmission_predictions_risk_level_idx").on(table.riskLevel),
+    createdAtIdx: index("readmission_predictions_created_at_idx").on(table.createdAt),
+  })
+);
+
+/**
+ * No-Show Predictions Table
+ * Stores appointment no-show risk predictions
+ */
+export const noShowPredictions = pgTable(
+  "no_show_predictions",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    appointmentId: text("appointment_id").notNull(),
+
+    probability: integer("probability").notNull(), // 0-100
+    riskLevel: riskLevelEnum("risk_level").notNull(),
+
+    contributingFactors: jsonb("contributing_factors").notNull().$type<Array<{
+      factor: string;
+      weight: number;
+      value: any;
+      impact: 'positive' | 'negative' | 'neutral';
+      description: string;
+    }>>(),
+    recommendedActions: jsonb("recommended_actions").notNull().$type<string[]>(),
+
+    confidence: predictionConfidenceEnum("confidence").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("no_show_predictions_company_idx").on(table.companyId),
+    patientIdx: index("no_show_predictions_patient_idx").on(table.patientId),
+    appointmentIdx: index("no_show_predictions_appointment_idx").on(table.appointmentId),
+    riskLevelIdx: index("no_show_predictions_risk_level_idx").on(table.riskLevel),
+    createdAtIdx: index("no_show_predictions_created_at_idx").on(table.createdAt),
+  })
+);
+
+/**
+ * Disease Progression Predictions Table
+ * Stores predictions for disease progression over time
+ */
+export const diseaseProgressionPredictions = pgTable(
+  "disease_progression_predictions",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+
+    disease: text("disease").notNull(),
+    currentStage: text("current_stage").notNull(),
+
+    predictedStages: jsonb("predicted_stages").notNull().$type<Array<{
+      stage: string;
+      timeframe: string;
+      probability: number;
+      interventions?: string[];
+    }>>(),
+    riskFactors: jsonb("risk_factors").notNull().$type<Array<{
+      factor: string;
+      weight: number;
+      value: any;
+      impact: 'positive' | 'negative' | 'neutral';
+      description: string;
+    }>>(),
+
+    confidence: predictionConfidenceEnum("confidence").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("disease_progression_predictions_company_idx").on(table.companyId),
+    patientIdx: index("disease_progression_predictions_patient_idx").on(table.patientId),
+    diseaseIdx: index("disease_progression_predictions_disease_idx").on(table.disease),
+    createdAtIdx: index("disease_progression_predictions_created_at_idx").on(table.createdAt),
+  })
+);
+
+/**
+ * Treatment Outcome Predictions Table
+ * Stores predictions for treatment outcomes
+ */
+export const treatmentOutcomePredictions = pgTable(
+  "treatment_outcome_predictions",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+
+    treatment: text("treatment").notNull(),
+    condition: text("condition").notNull(),
+
+    predictedOutcomes: jsonb("predicted_outcomes").notNull().$type<Array<{
+      outcome: string;
+      probability: number;
+      timeframe: string;
+      confidenceInterval?: {
+        lower: number;
+        upper: number;
+      };
+    }>>(),
+    successProbability: integer("success_probability").notNull(), // 0-100
+    alternativeTreatments: jsonb("alternative_treatments").$type<Array<{
+      treatment: string;
+      successProbability: number;
+      rationale: string;
+    }>>(),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("treatment_outcome_predictions_company_idx").on(table.companyId),
+    patientIdx: index("treatment_outcome_predictions_patient_idx").on(table.patientId),
+    treatmentIdx: index("treatment_outcome_predictions_treatment_idx").on(table.treatment),
+    createdAtIdx: index("treatment_outcome_predictions_created_at_idx").on(table.createdAt),
+  })
+);
+
+// Zod validation schemas for Predictive Analytics tables
+export const insertMlModelSchema = createInsertSchema(mlModels);
+export const insertRiskStratificationSchema = createInsertSchema(riskStratifications);
+export const insertReadmissionPredictionSchema = createInsertSchema(readmissionPredictions);
+export const insertNoShowPredictionSchema = createInsertSchema(noShowPredictions);
+export const insertDiseaseProgressionPredictionSchema = createInsertSchema(diseaseProgressionPredictions);
+export const insertTreatmentOutcomePredictionSchema = createInsertSchema(treatmentOutcomePredictions);
+
+// TypeScript types
+export type MlModel = typeof mlModels.$inferSelect;
+export type InsertMlModel = typeof mlModels.$inferInsert;
+export type RiskStratification = typeof riskStratifications.$inferSelect;
+export type InsertRiskStratification = typeof riskStratifications.$inferInsert;
+export type ReadmissionPrediction = typeof readmissionPredictions.$inferSelect;
+export type InsertReadmissionPrediction = typeof readmissionPredictions.$inferInsert;
+export type NoShowPrediction = typeof noShowPredictions.$inferSelect;
+export type InsertNoShowPrediction = typeof noShowPredictions.$inferInsert;
+export type DiseaseProgressionPrediction = typeof diseaseProgressionPredictions.$inferSelect;
+export type InsertDiseaseProgressionPrediction = typeof diseaseProgressionPredictions.$inferInsert;
+export type TreatmentOutcomePrediction = typeof treatmentOutcomePredictions.$inferSelect;
+export type InsertTreatmentOutcomePrediction = typeof treatmentOutcomePredictions.$inferInsert;
+
+// ========== Appointment Booking Tables ==========
+/**
+ * Appointment Booking Enums
+ */
+export const appointmentStatusEnum = pgEnum("appointment_status", [
+  "pending",
+  "confirmed",
+  "cancelled",
+  "completed",
+  "no_show",
+]);
+
+export const cancelledByEnum = pgEnum("cancelled_by", ["patient", "provider", "system"]);
+
+/**
+ * Appointment Types Table
+ * Defines types of appointments that can be booked
+ */
+export const appointmentTypes = pgTable(
+  "appointment_types",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    duration: integer("duration").notNull(), // minutes
+    price: integer("price"), // in cents
+    allowOnlineBooking: boolean("allow_online_booking").notNull().default(true),
+    requiresApproval: boolean("requires_approval").notNull().default(false),
+    color: text("color"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("appointment_types_company_idx").on(table.companyId),
+    nameIdx: index("appointment_types_name_idx").on(table.name),
+  })
+);
+
+/**
+ * Provider Availability Table
+ * Stores provider schedules and available time slots
+ */
+export const providerAvailability = pgTable(
+  "provider_availability",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    providerId: text("provider_id").notNull(),
+    providerName: text("provider_name").notNull(),
+    dayOfWeek: integer("day_of_week").notNull(), // 0-6 (Sunday-Saturday)
+    startTime: text("start_time").notNull(), // HH:MM
+    endTime: text("end_time").notNull(), // HH:MM
+    slotDuration: integer("slot_duration").notNull(), // minutes
+    breakTimes: jsonb("break_times").$type<Array<{
+      start: string;
+      end: string;
+    }>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("provider_availability_company_idx").on(table.companyId),
+    providerIdx: index("provider_availability_provider_idx").on(table.providerId),
+    dayOfWeekIdx: index("provider_availability_day_of_week_idx").on(table.dayOfWeek),
+  })
+);
+
+/**
+ * Appointment Bookings Table
+ * Stores patient appointment bookings
+ */
+export const appointmentBookings = pgTable(
+  "appointment_bookings",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    providerId: text("provider_id").notNull(),
+    providerName: text("provider_name").notNull(),
+    appointmentTypeId: text("appointment_type_id").notNull().references(() => appointmentTypes.id, { onDelete: "restrict" }),
+    appointmentType: text("appointment_type").notNull(),
+
+    date: timestamp("date", { withTimezone: true }).notNull(),
+    startTime: text("start_time").notNull(), // HH:MM
+    endTime: text("end_time").notNull(), // HH:MM
+    duration: integer("duration").notNull(), // minutes
+
+    status: appointmentStatusEnum("status").notNull().default("pending"),
+
+    reason: text("reason"),
+    notes: text("notes"),
+
+    // Confirmation
+    confirmationCode: text("confirmation_code").notNull(),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+
+    // Reminders
+    reminderSent: boolean("reminder_sent").notNull().default(false),
+    reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
+
+    // Cancellation
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    cancelledBy: cancelledByEnum("cancelled_by"),
+    cancellationReason: text("cancellation_reason"),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("appointment_bookings_company_idx").on(table.companyId),
+    patientIdx: index("appointment_bookings_patient_idx").on(table.patientId),
+    providerIdx: index("appointment_bookings_provider_idx").on(table.providerId),
+    dateIdx: index("appointment_bookings_date_idx").on(table.date),
+    statusIdx: index("appointment_bookings_status_idx").on(table.status),
+    confirmationCodeIdx: index("appointment_bookings_confirmation_code_idx").on(table.confirmationCode),
+    createdAtIdx: index("appointment_bookings_created_at_idx").on(table.createdAt),
+  })
+);
+
+// Zod validation schemas for Appointment Booking tables
+export const insertAppointmentTypeSchema = createInsertSchema(appointmentTypes);
+export const insertProviderAvailabilitySchema = createInsertSchema(providerAvailability);
+export const insertAppointmentBookingSchema = createInsertSchema(appointmentBookings);
+
+// TypeScript types
+export type AppointmentType = typeof appointmentTypes.$inferSelect;
+export type InsertAppointmentType = typeof appointmentTypes.$inferInsert;
+export type ProviderAvailability = typeof providerAvailability.$inferSelect;
+export type InsertProviderAvailability = typeof providerAvailability.$inferInsert;
+export type AppointmentBooking = typeof appointmentBookings.$inferSelect;
+export type InsertAppointmentBooking = typeof appointmentBookings.$inferInsert;
+
+// ========== Patient Portal Tables ==========
+/**
+ * Patient Portal Enums
+ */
+export const medicalRecordTypeEnum = pgEnum("medical_record_type", [
+  "exam",
+  "prescription",
+  "lab_result",
+  "document",
+  "image",
+]);
+
+export const conversationStatusEnum = pgEnum("conversation_status", ["open", "closed"]);
+
+export const messageSenderTypeEnum = pgEnum("message_sender_type", ["patient", "provider"]);
+
+// NOTE: Reusing existing paymentMethodEnum from line 378
+
+export const portalPaymentStatusEnum = pgEnum("portal_payment_status", [
+  "pending",
+  "completed",
+  "failed",
+  "refunded",
+]);
+
+/**
+ * Medical Records Table
+ * Patient portal medical records (exams, prescriptions, lab results, documents)
+ */
+export const medicalRecords = pgTable(
+  "medical_records",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    type: medicalRecordTypeEnum("type").notNull(),
+    title: text("title").notNull(),
+    date: timestamp("date", { withTimezone: true }).notNull(),
+    provider: text("provider").notNull(),
+    summary: text("summary"),
+    details: jsonb("details").$type<Record<string, any>>(),
+    attachments: jsonb("attachments").$type<Array<{
+      id: string;
+      filename: string;
+      fileType: string;
+      fileSize: number;
+      url: string;
+    }>>(),
+    viewable: boolean("viewable").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("medical_records_company_idx").on(table.companyId),
+    patientIdx: index("medical_records_patient_idx").on(table.patientId),
+    typeIdx: index("medical_records_type_idx").on(table.type),
+    dateIdx: index("medical_records_date_idx").on(table.date),
+    createdAtIdx: index("medical_records_created_at_idx").on(table.createdAt),
+  })
+);
+
+/**
+ * Portal Conversations Table
+ * Patient-provider messaging conversations
+ */
+export const portalConversations = pgTable(
+  "portal_conversations",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    providerId: text("provider_id").notNull(),
+    providerName: text("provider_name").notNull(),
+    subject: text("subject").notNull(),
+    status: conversationStatusEnum("status").notNull().default("open"),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull(),
+    unreadCount: integer("unread_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("portal_conversations_company_idx").on(table.companyId),
+    patientIdx: index("portal_conversations_patient_idx").on(table.patientId),
+    providerIdx: index("portal_conversations_provider_idx").on(table.providerId),
+    statusIdx: index("portal_conversations_status_idx").on(table.status),
+    lastMessageAtIdx: index("portal_conversations_last_message_at_idx").on(table.lastMessageAt),
+  })
+);
+
+/**
+ * Portal Messages Table
+ * Individual messages within conversations
+ */
+export const portalMessages = pgTable(
+  "portal_messages",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id").notNull().references(() => portalConversations.id, { onDelete: "cascade" }),
+    from: messageSenderTypeEnum("from").notNull(),
+    senderId: text("sender_id").notNull(),
+    senderName: text("sender_name").notNull(),
+    recipientId: text("recipient_id").notNull(),
+    subject: text("subject"),
+    body: text("body").notNull(),
+    attachments: jsonb("attachments").$type<Array<{
+      filename: string;
+      url: string;
+    }>>(),
+    read: boolean("read").notNull().default(false),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("portal_messages_company_idx").on(table.companyId),
+    conversationIdx: index("portal_messages_conversation_idx").on(table.conversationId),
+    senderIdx: index("portal_messages_sender_idx").on(table.senderId),
+    recipientIdx: index("portal_messages_recipient_idx").on(table.recipientId),
+    sentAtIdx: index("portal_messages_sent_at_idx").on(table.sentAt),
+  })
+);
+
+/**
+ * Portal Payments Table
+ * Patient bill payments through portal
+ */
+export const portalPayments = pgTable(
+  "portal_payments",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    billId: text("bill_id").notNull().references(() => invoices.id, { onDelete: "restrict" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    amount: integer("amount").notNull(), // in cents
+    method: paymentMethodEnum("method").notNull(),
+    status: portalPaymentStatusEnum("status").notNull().default("pending"),
+    transactionId: text("transaction_id"),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("portal_payments_company_idx").on(table.companyId),
+    billIdx: index("portal_payments_bill_idx").on(table.billId),
+    patientIdx: index("portal_payments_patient_idx").on(table.patientId),
+    statusIdx: index("portal_payments_status_idx").on(table.status),
+    createdAtIdx: index("portal_payments_created_at_idx").on(table.createdAt),
+  })
+);
+
+// Zod validation schemas for Patient Portal tables
+export const insertMedicalRecordSchema = createInsertSchema(medicalRecords);
+export const insertPortalConversationSchema = createInsertSchema(portalConversations);
+export const insertPortalMessageSchema = createInsertSchema(portalMessages);
+export const insertPortalPaymentSchema = createInsertSchema(portalPayments);
+
+// TypeScript types
+export type MedicalRecord = typeof medicalRecords.$inferSelect;
+export type InsertMedicalRecord = typeof medicalRecords.$inferInsert;
+export type PortalConversation = typeof portalConversations.$inferSelect;
+export type InsertPortalConversation = typeof portalConversations.$inferInsert;
+export type PortalMessage = typeof portalMessages.$inferSelect;
+export type InsertPortalMessage = typeof portalMessages.$inferInsert;
+export type PortalPayment = typeof portalPayments.$inferSelect;
+export type InsertPortalPayment = typeof portalPayments.$inferInsert;
+
+// ========== End Predictive Analytics Tables ==========

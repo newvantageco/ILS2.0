@@ -1,4 +1,5 @@
 import { db } from "../db";
+import crypto from 'crypto';
 import { 
   users, 
   userRoles,
@@ -37,6 +38,30 @@ import {
   gocComplianceChecks,
   prescriptionTemplates,
   clinicalProtocols,
+  insurancePayers,
+  insuranceClaims,
+  claimLineItems,
+  riskScores,
+  healthRiskAssessments,
+  predictiveModels,
+  predictiveAnalyses,
+  socialDeterminants,
+  riskStratificationCohorts,
+  messageTemplates,
+  messages,
+  unsubscribes,
+  audienceSegments,
+  campaigns,
+  campaignRecipients,
+  drugs,
+  drugInteractions,
+  clinicalGuidelines,
+  clinicalAlerts,
+  treatmentRecommendations,
+  diagnosticSuggestions,
+  workflows,
+  workflowInstances,
+  workflowRunCounts,
   type UpsertUser, 
   type User, 
   type UserWithRoles,
@@ -85,9 +110,96 @@ import {
   type AiLearningData,
   type InsertAiLearningData,
   type AiFeedback,
-  type InsertAiFeedback
+  type InsertAiFeedback,
+  type InsurancePayer,
+  type InsertInsurancePayer,
+  type InsuranceClaim,
+  type InsertInsuranceClaim,
+  type ClaimLineItem,
+  type InsertClaimLineItem,
+  type RiskScore,
+  type InsertRiskScore,
+  type HealthRiskAssessment,
+  type InsertHealthRiskAssessment,
+  type PredictiveModel,
+  type InsertPredictiveModel,
+  type PredictiveAnalysis,
+  type InsertPredictiveAnalysis,
+  type SocialDeterminant,
+  type InsertSocialDeterminant,
+  type RiskStratificationCohort,
+  type InsertRiskStratificationCohort,
+  type MessageTemplate,
+  type InsertMessageTemplate,
+  type Message,
+  type InsertMessage,
+  type Unsubscribe,
+  type InsertUnsubscribe,
+  type AudienceSegment,
+  type InsertAudienceSegment,
+  type Campaign,
+  type InsertCampaign,
+  type CampaignRecipient,
+  type InsertCampaignRecipient,
+  type Drug,
+  type InsertDrug,
+  type DrugInteraction,
+  type InsertDrugInteraction,
+  type ClinicalGuideline,
+  type InsertClinicalGuideline,
+  type ClinicalAlert,
+  type InsertClinicalAlert,
+  type TreatmentRecommendation,
+  type InsertTreatmentRecommendation,
+  type DiagnosticSuggestion,
+  type InsertDiagnosticSuggestion,
+  type Workflow,
+  type InsertWorkflow,
+  type WorkflowInstance,
+  type InsertWorkflowInstance,
+  type WorkflowRunCount,
+  type InsertWorkflowRunCount,
+  mlModels,
+  riskStratifications,
+  readmissionPredictions,
+  noShowPredictions,
+  diseaseProgressionPredictions,
+  treatmentOutcomePredictions,
+  type MlModel,
+  type InsertMlModel,
+  type RiskStratification,
+  type InsertRiskStratification,
+  type ReadmissionPrediction,
+  type InsertReadmissionPrediction,
+  type NoShowPrediction,
+  type InsertNoShowPrediction,
+  type DiseaseProgressionPrediction,
+  type InsertDiseaseProgressionPrediction,
+  type TreatmentOutcomePrediction,
+  type InsertTreatmentOutcomePrediction,
+  appointmentTypes,
+  providerAvailability,
+  appointmentBookings,
+  type AppointmentType,
+  type InsertAppointmentType,
+  type ProviderAvailability,
+  type InsertProviderAvailability,
+  type AppointmentBooking,
+  type InsertAppointmentBooking,
+  medicalRecords,
+  portalConversations,
+  portalMessages,
+  portalPayments,
+  type MedicalRecord,
+  type InsertMedicalRecord,
+  type PortalConversation,
+  type InsertPortalConversation,
+  type PortalMessage,
+  type InsertPortalMessage,
+  type PortalPayment,
+  type InsertPortalPayment
 } from "@shared/schema";
-import { eq, desc, and, or, like, sql } from "drizzle-orm";
+import { eq, desc, and, or, like, sql, gt, lt, gte, lte, ne, asc } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
 
 export interface IStorage {
@@ -229,6 +341,28 @@ export interface IStorage {
   createAiFeedback(feedback: InsertAiFeedback): Promise<AiFeedback>;
   getAiFeedbackByMessage(messageId: string): Promise<AiFeedback[]>;
   getAiFeedbackByCompany(companyId: string): Promise<AiFeedback[]>;
+
+  // ============== RCM (REVENUE CYCLE MANAGEMENT) METHODS ==============
+  // Insurance Payers
+  createInsurancePayer(payer: InsertInsurancePayer): Promise<InsurancePayer>;
+  getInsurancePayer(id: string, companyId: string): Promise<InsurancePayer | undefined>;
+  getInsurancePayers(companyId: string, filters?: { active?: boolean; type?: string }): Promise<InsurancePayer[]>;
+  updateInsurancePayer(id: string, companyId: string, updates: Partial<InsurancePayer>): Promise<InsurancePayer | undefined>;
+  deleteInsurancePayer(id: string, companyId: string): Promise<boolean>;
+
+  // Insurance Claims
+  createInsuranceClaim(claim: InsertInsuranceClaim): Promise<InsuranceClaim>;
+  getInsuranceClaim(id: string, companyId: string): Promise<InsuranceClaim | undefined>;
+  getInsuranceClaims(companyId: string, filters?: { status?: string; patientId?: string; payerId?: string }): Promise<InsuranceClaim[]>;
+  updateInsuranceClaim(id: string, companyId: string, updates: Partial<InsuranceClaim>): Promise<InsuranceClaim | undefined>;
+  deleteInsuranceClaim(id: string, companyId: string): Promise<boolean>;
+
+  // Claim Line Items
+  createClaimLineItem(lineItem: InsertClaimLineItem): Promise<ClaimLineItem>;
+  getClaimLineItem(id: string): Promise<ClaimLineItem | undefined>;
+  getClaimLineItems(claimId: string): Promise<ClaimLineItem[]>;
+  updateClaimLineItem(id: string, updates: Partial<ClaimLineItem>): Promise<ClaimLineItem | undefined>;
+  deleteClaimLineItem(id: string): Promise<boolean>;
 }
 
 export class DbStorage implements IStorage {
@@ -1971,6 +2105,2361 @@ export class DbStorage implements IStorage {
       .select()
       .from(trainingDataAnalytics)
       .orderBy(desc(trainingDataAnalytics.recordedAt));
+  }
+
+  // ============================================================================
+  // RCM (REVENUE CYCLE MANAGEMENT) METHODS
+  // ============================================================================
+
+  // ========== Insurance Payers ==========
+
+  async createInsurancePayer(payer: InsertInsurancePayer): Promise<InsurancePayer> {
+    const [created] = await db
+      .insert(insurancePayers)
+      .values(payer)
+      .returning();
+    return created;
+  }
+
+  async getInsurancePayer(id: string, companyId: string): Promise<InsurancePayer | undefined> {
+    const [payer] = await db
+      .select()
+      .from(insurancePayers)
+      .where(and(
+        eq(insurancePayers.id, id),
+        eq(insurancePayers.companyId, companyId)
+      ));
+    return payer;
+  }
+
+  async getInsurancePayers(
+    companyId: string,
+    filters?: { active?: boolean; type?: string }
+  ): Promise<InsurancePayer[]> {
+    let query = db
+      .select()
+      .from(insurancePayers)
+      .where(eq(insurancePayers.companyId, companyId));
+
+    if (filters?.active !== undefined) {
+      query = query.where(
+        and(
+          eq(insurancePayers.companyId, companyId),
+          eq(insurancePayers.active, filters.active)
+        )
+      ) as any;
+    }
+
+    if (filters?.type) {
+      query = query.where(
+        and(
+          eq(insurancePayers.companyId, companyId),
+          eq(insurancePayers.type, filters.type as any)
+        )
+      ) as any;
+    }
+
+    return await query.orderBy(insurancePayers.name);
+  }
+
+  async updateInsurancePayer(
+    id: string,
+    companyId: string,
+    updates: Partial<InsurancePayer>
+  ): Promise<InsurancePayer | undefined> {
+    const [updated] = await db
+      .update(insurancePayers)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(insurancePayers.id, id),
+        eq(insurancePayers.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteInsurancePayer(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(insurancePayers)
+      .where(and(
+        eq(insurancePayers.id, id),
+        eq(insurancePayers.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Insurance Claims ==========
+
+  async createInsuranceClaim(claim: InsertInsuranceClaim): Promise<InsuranceClaim> {
+    const [created] = await db
+      .insert(insuranceClaims)
+      .values(claim)
+      .returning();
+    return created;
+  }
+
+  async getInsuranceClaim(id: string, companyId: string): Promise<InsuranceClaim | undefined> {
+    const [claim] = await db
+      .select()
+      .from(insuranceClaims)
+      .where(and(
+        eq(insuranceClaims.id, id),
+        eq(insuranceClaims.companyId, companyId)
+      ));
+    return claim;
+  }
+
+  async getInsuranceClaims(
+    companyId: string,
+    filters?: { status?: string; patientId?: string; payerId?: string }
+  ): Promise<InsuranceClaim[]> {
+    const conditions = [eq(insuranceClaims.companyId, companyId)];
+
+    if (filters?.status) {
+      conditions.push(eq(insuranceClaims.status, filters.status as any));
+    }
+    if (filters?.patientId) {
+      conditions.push(eq(insuranceClaims.patientId, filters.patientId));
+    }
+    if (filters?.payerId) {
+      conditions.push(eq(insuranceClaims.payerId, filters.payerId));
+    }
+
+    return await db
+      .select()
+      .from(insuranceClaims)
+      .where(and(...conditions))
+      .orderBy(desc(insuranceClaims.serviceDate));
+  }
+
+  async updateInsuranceClaim(
+    id: string,
+    companyId: string,
+    updates: Partial<InsuranceClaim>
+  ): Promise<InsuranceClaim | undefined> {
+    const [updated] = await db
+      .update(insuranceClaims)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(insuranceClaims.id, id),
+        eq(insuranceClaims.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteInsuranceClaim(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(insuranceClaims)
+      .where(and(
+        eq(insuranceClaims.id, id),
+        eq(insuranceClaims.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Claim Line Items ==========
+
+  async createClaimLineItem(lineItem: InsertClaimLineItem): Promise<ClaimLineItem> {
+    const [created] = await db
+      .insert(claimLineItems)
+      .values(lineItem)
+      .returning();
+    return created;
+  }
+
+  async getClaimLineItem(id: string): Promise<ClaimLineItem | undefined> {
+    const [lineItem] = await db
+      .select()
+      .from(claimLineItems)
+      .where(eq(claimLineItems.id, id));
+    return lineItem;
+  }
+
+  async getClaimLineItems(claimId: string): Promise<ClaimLineItem[]> {
+    return await db
+      .select()
+      .from(claimLineItems)
+      .where(eq(claimLineItems.claimId, claimId))
+      .orderBy(claimLineItems.lineNumber);
+  }
+
+  async updateClaimLineItem(
+    id: string,
+    updates: Partial<ClaimLineItem>
+  ): Promise<ClaimLineItem | undefined> {
+    const [updated] = await db
+      .update(claimLineItems)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(claimLineItems.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteClaimLineItem(id: string): Promise<boolean> {
+    const result = await db
+      .delete(claimLineItems)
+      .where(eq(claimLineItems.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Population Health - Risk Scores ==========
+
+  async createRiskScore(riskScore: InsertRiskScore): Promise<RiskScore> {
+    const [created] = await db
+      .insert(riskScores)
+      .values(riskScore)
+      .returning();
+    return created;
+  }
+
+  async getRiskScore(id: string, companyId: string): Promise<RiskScore | undefined> {
+    const [score] = await db
+      .select()
+      .from(riskScores)
+      .where(and(
+        eq(riskScores.id, id),
+        eq(riskScores.companyId, companyId)
+      ));
+    return score;
+  }
+
+  async getRiskScores(
+    companyId: string,
+    filters?: {
+      patientId?: string;
+      riskLevel?: string;
+      category?: string;
+    }
+  ): Promise<RiskScore[]> {
+    const conditions = [eq(riskScores.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(riskScores.patientId, filters.patientId));
+    }
+    if (filters?.riskLevel) {
+      conditions.push(eq(riskScores.riskLevel, filters.riskLevel as any));
+    }
+    if (filters?.category) {
+      conditions.push(eq(riskScores.category, filters.category as any));
+    }
+
+    return await db
+      .select()
+      .from(riskScores)
+      .where(and(...conditions))
+      .orderBy(desc(riskScores.calculatedDate));
+  }
+
+  async updateRiskScore(
+    id: string,
+    companyId: string,
+    updates: Partial<RiskScore>
+  ): Promise<RiskScore | undefined> {
+    const [updated] = await db
+      .update(riskScores)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(riskScores.id, id),
+        eq(riskScores.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteRiskScore(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(riskScores)
+      .where(and(
+        eq(riskScores.id, id),
+        eq(riskScores.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Population Health - Health Risk Assessments ==========
+
+  async createHealthRiskAssessment(assessment: InsertHealthRiskAssessment): Promise<HealthRiskAssessment> {
+    const [created] = await db
+      .insert(healthRiskAssessments)
+      .values(assessment)
+      .returning();
+    return created;
+  }
+
+  async getHealthRiskAssessment(id: string, companyId: string): Promise<HealthRiskAssessment | undefined> {
+    const [assessment] = await db
+      .select()
+      .from(healthRiskAssessments)
+      .where(and(
+        eq(healthRiskAssessments.id, id),
+        eq(healthRiskAssessments.companyId, companyId)
+      ));
+    return assessment;
+  }
+
+  async getHealthRiskAssessments(
+    companyId: string,
+    filters?: {
+      patientId?: string;
+      status?: string;
+      assessmentType?: string;
+    }
+  ): Promise<HealthRiskAssessment[]> {
+    const conditions = [eq(healthRiskAssessments.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(healthRiskAssessments.patientId, filters.patientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(healthRiskAssessments.status, filters.status as any));
+    }
+    if (filters?.assessmentType) {
+      conditions.push(eq(healthRiskAssessments.assessmentType, filters.assessmentType));
+    }
+
+    return await db
+      .select()
+      .from(healthRiskAssessments)
+      .where(and(...conditions))
+      .orderBy(desc(healthRiskAssessments.createdAt));
+  }
+
+  async updateHealthRiskAssessment(
+    id: string,
+    companyId: string,
+    updates: Partial<HealthRiskAssessment>
+  ): Promise<HealthRiskAssessment | undefined> {
+    const [updated] = await db
+      .update(healthRiskAssessments)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(healthRiskAssessments.id, id),
+        eq(healthRiskAssessments.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteHealthRiskAssessment(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(healthRiskAssessments)
+      .where(and(
+        eq(healthRiskAssessments.id, id),
+        eq(healthRiskAssessments.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Population Health - Predictive Models ==========
+
+  async createPredictiveModel(model: InsertPredictiveModel): Promise<PredictiveModel> {
+    const [created] = await db
+      .insert(predictiveModels)
+      .values(model)
+      .returning();
+    return created;
+  }
+
+  async getPredictiveModel(id: string, companyId: string): Promise<PredictiveModel | undefined> {
+    const [model] = await db
+      .select()
+      .from(predictiveModels)
+      .where(and(
+        eq(predictiveModels.id, id),
+        eq(predictiveModels.companyId, companyId)
+      ));
+    return model;
+  }
+
+  async getPredictiveModels(
+    companyId: string,
+    filters?: {
+      isActive?: boolean;
+      modelType?: string;
+    }
+  ): Promise<PredictiveModel[]> {
+    const conditions = [eq(predictiveModels.companyId, companyId)];
+
+    if (filters?.isActive !== undefined) {
+      conditions.push(eq(predictiveModels.isActive, filters.isActive));
+    }
+    if (filters?.modelType) {
+      conditions.push(eq(predictiveModels.modelType, filters.modelType));
+    }
+
+    return await db
+      .select()
+      .from(predictiveModels)
+      .where(and(...conditions))
+      .orderBy(desc(predictiveModels.createdAt));
+  }
+
+  async updatePredictiveModel(
+    id: string,
+    companyId: string,
+    updates: Partial<PredictiveModel>
+  ): Promise<PredictiveModel | undefined> {
+    const [updated] = await db
+      .update(predictiveModels)
+      .set(updates)
+      .where(and(
+        eq(predictiveModels.id, id),
+        eq(predictiveModels.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deletePredictiveModel(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(predictiveModels)
+      .where(and(
+        eq(predictiveModels.id, id),
+        eq(predictiveModels.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Population Health - Predictive Analyses ==========
+
+  async createPredictiveAnalysis(analysis: InsertPredictiveAnalysis): Promise<PredictiveAnalysis> {
+    const [created] = await db
+      .insert(predictiveAnalyses)
+      .values(analysis)
+      .returning();
+    return created;
+  }
+
+  async getPredictiveAnalysis(id: string, companyId: string): Promise<PredictiveAnalysis | undefined> {
+    const [analysis] = await db
+      .select()
+      .from(predictiveAnalyses)
+      .where(and(
+        eq(predictiveAnalyses.id, id),
+        eq(predictiveAnalyses.companyId, companyId)
+      ));
+    return analysis;
+  }
+
+  async getPredictiveAnalyses(
+    companyId: string,
+    filters?: {
+      patientId?: string;
+      modelId?: string;
+      riskLevel?: string;
+    }
+  ): Promise<PredictiveAnalysis[]> {
+    const conditions = [eq(predictiveAnalyses.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(predictiveAnalyses.patientId, filters.patientId));
+    }
+    if (filters?.modelId) {
+      conditions.push(eq(predictiveAnalyses.modelId, filters.modelId));
+    }
+    if (filters?.riskLevel) {
+      conditions.push(eq(predictiveAnalyses.riskLevel, filters.riskLevel as any));
+    }
+
+    return await db
+      .select()
+      .from(predictiveAnalyses)
+      .where(and(...conditions))
+      .orderBy(desc(predictiveAnalyses.analyzedDate));
+  }
+
+  async updatePredictiveAnalysis(
+    id: string,
+    companyId: string,
+    updates: Partial<PredictiveAnalysis>
+  ): Promise<PredictiveAnalysis | undefined> {
+    const [updated] = await db
+      .update(predictiveAnalyses)
+      .set(updates)
+      .where(and(
+        eq(predictiveAnalyses.id, id),
+        eq(predictiveAnalyses.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deletePredictiveAnalysis(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(predictiveAnalyses)
+      .where(and(
+        eq(predictiveAnalyses.id, id),
+        eq(predictiveAnalyses.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Population Health - Social Determinants ==========
+
+  async createSocialDeterminant(determinant: InsertSocialDeterminant): Promise<SocialDeterminant> {
+    const [created] = await db
+      .insert(socialDeterminants)
+      .values(determinant)
+      .returning();
+    return created;
+  }
+
+  async getSocialDeterminant(id: string, companyId: string): Promise<SocialDeterminant | undefined> {
+    const [determinant] = await db
+      .select()
+      .from(socialDeterminants)
+      .where(and(
+        eq(socialDeterminants.id, id),
+        eq(socialDeterminants.companyId, companyId)
+      ));
+    return determinant;
+  }
+
+  async getSocialDeterminants(
+    companyId: string,
+    filters?: {
+      patientId?: string;
+      category?: string;
+      status?: string;
+      severity?: string;
+    }
+  ): Promise<SocialDeterminant[]> {
+    const conditions = [eq(socialDeterminants.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(socialDeterminants.patientId, filters.patientId));
+    }
+    if (filters?.category) {
+      conditions.push(eq(socialDeterminants.category, filters.category as any));
+    }
+    if (filters?.status) {
+      conditions.push(eq(socialDeterminants.status, filters.status as any));
+    }
+    if (filters?.severity) {
+      conditions.push(eq(socialDeterminants.severity, filters.severity as any));
+    }
+
+    return await db
+      .select()
+      .from(socialDeterminants)
+      .where(and(...conditions))
+      .orderBy(desc(socialDeterminants.identifiedDate));
+  }
+
+  async updateSocialDeterminant(
+    id: string,
+    companyId: string,
+    updates: Partial<SocialDeterminant>
+  ): Promise<SocialDeterminant | undefined> {
+    const [updated] = await db
+      .update(socialDeterminants)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(socialDeterminants.id, id),
+        eq(socialDeterminants.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteSocialDeterminant(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(socialDeterminants)
+      .where(and(
+        eq(socialDeterminants.id, id),
+        eq(socialDeterminants.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Population Health - Risk Stratification Cohorts ==========
+
+  async createRiskStratificationCohort(cohort: InsertRiskStratificationCohort): Promise<RiskStratificationCohort> {
+    const [created] = await db
+      .insert(riskStratificationCohorts)
+      .values(cohort)
+      .returning();
+    return created;
+  }
+
+  async getRiskStratificationCohort(id: string, companyId: string): Promise<RiskStratificationCohort | undefined> {
+    const [cohort] = await db
+      .select()
+      .from(riskStratificationCohorts)
+      .where(and(
+        eq(riskStratificationCohorts.id, id),
+        eq(riskStratificationCohorts.companyId, companyId)
+      ));
+    return cohort;
+  }
+
+  async getRiskStratificationCohorts(
+    companyId: string,
+    filters?: {
+      active?: boolean;
+    }
+  ): Promise<RiskStratificationCohort[]> {
+    const conditions = [eq(riskStratificationCohorts.companyId, companyId)];
+
+    if (filters?.active !== undefined) {
+      conditions.push(eq(riskStratificationCohorts.active, filters.active));
+    }
+
+    return await db
+      .select()
+      .from(riskStratificationCohorts)
+      .where(and(...conditions))
+      .orderBy(desc(riskStratificationCohorts.createdAt));
+  }
+
+  async updateRiskStratificationCohort(
+    id: string,
+    companyId: string,
+    updates: Partial<RiskStratificationCohort>
+  ): Promise<RiskStratificationCohort | undefined> {
+    const [updated] = await db
+      .update(riskStratificationCohorts)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(riskStratificationCohorts.id, id),
+        eq(riskStratificationCohorts.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteRiskStratificationCohort(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(riskStratificationCohorts)
+      .where(and(
+        eq(riskStratificationCohorts.id, id),
+        eq(riskStratificationCohorts.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Communications - Message Templates ==========
+
+  async createMessageTemplate(template: InsertMessageTemplate): Promise<MessageTemplate> {
+    const [created] = await db
+      .insert(messageTemplates)
+      .values(template)
+      .returning();
+    return created;
+  }
+
+  async getMessageTemplate(id: string, companyId: string): Promise<MessageTemplate | undefined> {
+    const [template] = await db
+      .select()
+      .from(messageTemplates)
+      .where(and(
+        eq(messageTemplates.id, id),
+        eq(messageTemplates.companyId, companyId)
+      ));
+    return template;
+  }
+
+  async getMessageTemplates(
+    companyId: string,
+    filters?: {
+      channel?: string;
+      category?: string;
+      active?: boolean;
+    }
+  ): Promise<MessageTemplate[]> {
+    const conditions = [eq(messageTemplates.companyId, companyId)];
+
+    if (filters?.channel) {
+      conditions.push(eq(messageTemplates.channel, filters.channel as any));
+    }
+    if (filters?.category) {
+      conditions.push(eq(messageTemplates.category, filters.category as any));
+    }
+    if (filters?.active !== undefined) {
+      conditions.push(eq(messageTemplates.active, filters.active));
+    }
+
+    return await db
+      .select()
+      .from(messageTemplates)
+      .where(and(...conditions))
+      .orderBy(desc(messageTemplates.createdAt));
+  }
+
+  async updateMessageTemplate(
+    id: string,
+    companyId: string,
+    updates: Partial<MessageTemplate>
+  ): Promise<MessageTemplate | undefined> {
+    const [updated] = await db
+      .update(messageTemplates)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(messageTemplates.id, id),
+        eq(messageTemplates.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteMessageTemplate(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(messageTemplates)
+      .where(and(
+        eq(messageTemplates.id, id),
+        eq(messageTemplates.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Communications - Messages ==========
+
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const [created] = await db
+      .insert(messages)
+      .values(message)
+      .returning();
+    return created;
+  }
+
+  async getMessage(id: string, companyId: string): Promise<Message | undefined> {
+    const [message] = await db
+      .select()
+      .from(messages)
+      .where(and(
+        eq(messages.id, id),
+        eq(messages.companyId, companyId)
+      ));
+    return message;
+  }
+
+  async getMessages(
+    companyId: string,
+    filters?: {
+      recipientId?: string;
+      status?: string;
+      channel?: string;
+      campaignId?: string;
+      templateId?: string;
+    }
+  ): Promise<Message[]> {
+    const conditions = [eq(messages.companyId, companyId)];
+
+    if (filters?.recipientId) {
+      conditions.push(eq(messages.recipientId, filters.recipientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(messages.status, filters.status as any));
+    }
+    if (filters?.channel) {
+      conditions.push(eq(messages.channel, filters.channel as any));
+    }
+    if (filters?.campaignId) {
+      conditions.push(eq(messages.campaignId, filters.campaignId));
+    }
+    if (filters?.templateId) {
+      conditions.push(eq(messages.templateId, filters.templateId));
+    }
+
+    return await db
+      .select()
+      .from(messages)
+      .where(and(...conditions))
+      .orderBy(desc(messages.createdAt));
+  }
+
+  async updateMessage(
+    id: string,
+    companyId: string,
+    updates: Partial<Message>
+  ): Promise<Message | undefined> {
+    const [updated] = await db
+      .update(messages)
+      .set(updates)
+      .where(and(
+        eq(messages.id, id),
+        eq(messages.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteMessage(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(messages)
+      .where(and(
+        eq(messages.id, id),
+        eq(messages.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Communications - Unsubscribes ==========
+
+  async createUnsubscribe(unsubscribe: InsertUnsubscribe): Promise<Unsubscribe> {
+    const [created] = await db
+      .insert(unsubscribes)
+      .values(unsubscribe)
+      .returning();
+    return created;
+  }
+
+  async getUnsubscribe(id: string, companyId: string): Promise<Unsubscribe | undefined> {
+    const [unsubscribe] = await db
+      .select()
+      .from(unsubscribes)
+      .where(and(
+        eq(unsubscribes.id, id),
+        eq(unsubscribes.companyId, companyId)
+      ));
+    return unsubscribe;
+  }
+
+  async getUnsubscribes(
+    companyId: string,
+    filters?: {
+      recipientId?: string;
+      channel?: string;
+      category?: string;
+    }
+  ): Promise<Unsubscribe[]> {
+    const conditions = [eq(unsubscribes.companyId, companyId)];
+
+    if (filters?.recipientId) {
+      conditions.push(eq(unsubscribes.recipientId, filters.recipientId));
+    }
+    if (filters?.channel) {
+      conditions.push(eq(unsubscribes.channel, filters.channel as any));
+    }
+    if (filters?.category) {
+      conditions.push(eq(unsubscribes.category, filters.category as any));
+    }
+
+    return await db
+      .select()
+      .from(unsubscribes)
+      .where(and(...conditions))
+      .orderBy(desc(unsubscribes.unsubscribedAt));
+  }
+
+  async deleteUnsubscribe(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(unsubscribes)
+      .where(and(
+        eq(unsubscribes.id, id),
+        eq(unsubscribes.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Helper: Check if recipient is unsubscribed
+  async isUnsubscribed(
+    companyId: string,
+    recipientId: string,
+    channel: string,
+    category?: string
+  ): Promise<boolean> {
+    const conditions = [
+      eq(unsubscribes.companyId, companyId),
+      eq(unsubscribes.recipientId, recipientId),
+      eq(unsubscribes.channel, channel as any)
+    ];
+
+    if (category) {
+      conditions.push(eq(unsubscribes.category, category as any));
+    }
+
+    const [result] = await db
+      .select()
+      .from(unsubscribes)
+      .where(and(...conditions))
+      .limit(1);
+
+    return !!result;
+  }
+
+  // ========== Campaign Management - Audience Segments ==========
+
+  async createAudienceSegment(segment: InsertAudienceSegment): Promise<AudienceSegment> {
+    const [created] = await db
+      .insert(audienceSegments)
+      .values(segment)
+      .returning();
+    return created;
+  }
+
+  async getAudienceSegment(id: string, companyId: string): Promise<AudienceSegment | undefined> {
+    const [segment] = await db
+      .select()
+      .from(audienceSegments)
+      .where(and(
+        eq(audienceSegments.id, id),
+        eq(audienceSegments.companyId, companyId)
+      ));
+    return segment;
+  }
+
+  async getAudienceSegments(
+    companyId: string,
+    filters?: {
+      name?: string;
+    }
+  ): Promise<AudienceSegment[]> {
+    const conditions = [eq(audienceSegments.companyId, companyId)];
+
+    if (filters?.name) {
+      conditions.push(like(audienceSegments.name, `%${filters.name}%`));
+    }
+
+    return await db
+      .select()
+      .from(audienceSegments)
+      .where(and(...conditions))
+      .orderBy(audienceSegments.name);
+  }
+
+  async updateAudienceSegment(
+    id: string,
+    companyId: string,
+    updates: Partial<AudienceSegment>
+  ): Promise<AudienceSegment | undefined> {
+    const [updated] = await db
+      .update(audienceSegments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(
+        eq(audienceSegments.id, id),
+        eq(audienceSegments.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteAudienceSegment(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(audienceSegments)
+      .where(and(
+        eq(audienceSegments.id, id),
+        eq(audienceSegments.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Campaign Management - Campaigns ==========
+
+  async createCampaign(campaign: InsertCampaign): Promise<Campaign> {
+    const [created] = await db
+      .insert(campaigns)
+      .values(campaign)
+      .returning();
+    return created;
+  }
+
+  async getCampaign(id: string, companyId: string): Promise<Campaign | undefined> {
+    const [campaign] = await db
+      .select()
+      .from(campaigns)
+      .where(and(
+        eq(campaigns.id, id),
+        eq(campaigns.companyId, companyId)
+      ));
+    return campaign;
+  }
+
+  async getCampaigns(
+    companyId: string,
+    filters?: {
+      status?: string;
+      type?: string;
+      channel?: string;
+    }
+  ): Promise<Campaign[]> {
+    const conditions = [eq(campaigns.companyId, companyId)];
+
+    if (filters?.status) {
+      conditions.push(eq(campaigns.status, filters.status as any));
+    }
+    if (filters?.type) {
+      conditions.push(eq(campaigns.type, filters.type as any));
+    }
+    if (filters?.channel) {
+      conditions.push(eq(campaigns.channel, filters.channel as any));
+    }
+
+    return await db
+      .select()
+      .from(campaigns)
+      .where(and(...conditions))
+      .orderBy(desc(campaigns.createdAt));
+  }
+
+  async updateCampaign(
+    id: string,
+    companyId: string,
+    updates: Partial<Campaign>
+  ): Promise<Campaign | undefined> {
+    const [updated] = await db
+      .update(campaigns)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(
+        eq(campaigns.id, id),
+        eq(campaigns.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteCampaign(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(campaigns)
+      .where(and(
+        eq(campaigns.id, id),
+        eq(campaigns.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Campaign Management - Campaign Recipients ==========
+
+  async createCampaignRecipient(recipient: InsertCampaignRecipient): Promise<CampaignRecipient> {
+    const [created] = await db
+      .insert(campaignRecipients)
+      .values(recipient)
+      .returning();
+    return created;
+  }
+
+  async getCampaignRecipient(id: string): Promise<CampaignRecipient | undefined> {
+    const [recipient] = await db
+      .select()
+      .from(campaignRecipients)
+      .where(eq(campaignRecipients.id, id));
+    return recipient;
+  }
+
+  async getCampaignRecipients(
+    campaignId: string
+  ): Promise<CampaignRecipient[]> {
+    return await db
+      .select()
+      .from(campaignRecipients)
+      .where(eq(campaignRecipients.campaignId, campaignId))
+      .orderBy(campaignRecipients.sentAt);
+  }
+
+  async getCampaignRecipientsByRecipient(
+    recipientId: string
+  ): Promise<CampaignRecipient[]> {
+    return await db
+      .select()
+      .from(campaignRecipients)
+      .where(eq(campaignRecipients.recipientId, recipientId))
+      .orderBy(desc(campaignRecipients.sentAt));
+  }
+
+  async deleteCampaignRecipient(id: string): Promise<boolean> {
+    const result = await db
+      .delete(campaignRecipients)
+      .where(eq(campaignRecipients.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Clinical Decision Support - Drugs ==========
+
+  async createDrug(drug: InsertDrug): Promise<Drug> {
+    const [created] = await db
+      .insert(drugs)
+      .values(drug)
+      .returning();
+    return created;
+  }
+
+  async getDrug(id: string, companyId: string): Promise<Drug | undefined> {
+    const [drug] = await db
+      .select()
+      .from(drugs)
+      .where(and(
+        eq(drugs.id, id),
+        eq(drugs.companyId, companyId)
+      ));
+    return drug;
+  }
+
+  async getDrugs(
+    companyId: string,
+    filters?: {
+      name?: string;
+      genericName?: string;
+      drugClass?: string;
+    }
+  ): Promise<Drug[]> {
+    const conditions = [eq(drugs.companyId, companyId)];
+
+    if (filters?.name) {
+      conditions.push(like(drugs.name, `%${filters.name}%`));
+    }
+    if (filters?.genericName) {
+      conditions.push(like(drugs.genericName, `%${filters.genericName}%`));
+    }
+    if (filters?.drugClass) {
+      conditions.push(eq(drugs.drugClass, filters.drugClass));
+    }
+
+    return await db
+      .select()
+      .from(drugs)
+      .where(and(...conditions))
+      .orderBy(drugs.name);
+  }
+
+  async updateDrug(
+    id: string,
+    companyId: string,
+    updates: Partial<Drug>
+  ): Promise<Drug | undefined> {
+    const [updated] = await db
+      .update(drugs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(
+        eq(drugs.id, id),
+        eq(drugs.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteDrug(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(drugs)
+      .where(and(
+        eq(drugs.id, id),
+        eq(drugs.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Clinical Decision Support - Drug Interactions ==========
+
+  async createDrugInteraction(interaction: InsertDrugInteraction): Promise<DrugInteraction> {
+    const [created] = await db
+      .insert(drugInteractions)
+      .values(interaction)
+      .returning();
+    return created;
+  }
+
+  async getDrugInteraction(id: string, companyId: string): Promise<DrugInteraction | undefined> {
+    const [interaction] = await db
+      .select()
+      .from(drugInteractions)
+      .where(and(
+        eq(drugInteractions.id, id),
+        eq(drugInteractions.companyId, companyId)
+      ));
+    return interaction;
+  }
+
+  async getDrugInteractions(
+    companyId: string,
+    filters?: {
+      drug1Id?: string;
+      drug2Id?: string;
+      severity?: string;
+    }
+  ): Promise<DrugInteraction[]> {
+    const conditions = [eq(drugInteractions.companyId, companyId)];
+
+    if (filters?.drug1Id) {
+      conditions.push(
+        or(
+          eq(drugInteractions.drug1Id, filters.drug1Id),
+          eq(drugInteractions.drug2Id, filters.drug1Id)
+        )!
+      );
+    }
+    if (filters?.drug2Id) {
+      conditions.push(
+        or(
+          eq(drugInteractions.drug1Id, filters.drug2Id),
+          eq(drugInteractions.drug2Id, filters.drug2Id)
+        )!
+      );
+    }
+    if (filters?.severity) {
+      conditions.push(eq(drugInteractions.severity, filters.severity as any));
+    }
+
+    return await db
+      .select()
+      .from(drugInteractions)
+      .where(and(...conditions))
+      .orderBy(desc(drugInteractions.severity));
+  }
+
+  async deleteDrugInteraction(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(drugInteractions)
+      .where(and(
+        eq(drugInteractions.id, id),
+        eq(drugInteractions.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Clinical Decision Support - Clinical Guidelines ==========
+
+  async createClinicalGuideline(guideline: InsertClinicalGuideline): Promise<ClinicalGuideline> {
+    const [created] = await db
+      .insert(clinicalGuidelines)
+      .values(guideline)
+      .returning();
+    return created;
+  }
+
+  async getClinicalGuideline(id: string, companyId: string): Promise<ClinicalGuideline | undefined> {
+    const [guideline] = await db
+      .select()
+      .from(clinicalGuidelines)
+      .where(and(
+        eq(clinicalGuidelines.id, id),
+        eq(clinicalGuidelines.companyId, companyId)
+      ));
+    return guideline;
+  }
+
+  async getClinicalGuidelines(
+    companyId: string,
+    filters?: {
+      condition?: string;
+      organization?: string;
+    }
+  ): Promise<ClinicalGuideline[]> {
+    const conditions = [eq(clinicalGuidelines.companyId, companyId)];
+
+    if (filters?.condition) {
+      conditions.push(like(clinicalGuidelines.condition, `%${filters.condition}%`));
+    }
+    if (filters?.organization) {
+      conditions.push(eq(clinicalGuidelines.organization, filters.organization));
+    }
+
+    return await db
+      .select()
+      .from(clinicalGuidelines)
+      .where(and(...conditions))
+      .orderBy(clinicalGuidelines.condition);
+  }
+
+  async updateClinicalGuideline(
+    id: string,
+    companyId: string,
+    updates: Partial<ClinicalGuideline>
+  ): Promise<ClinicalGuideline | undefined> {
+    const [updated] = await db
+      .update(clinicalGuidelines)
+      .set(updates)
+      .where(and(
+        eq(clinicalGuidelines.id, id),
+        eq(clinicalGuidelines.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteClinicalGuideline(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(clinicalGuidelines)
+      .where(and(
+        eq(clinicalGuidelines.id, id),
+        eq(clinicalGuidelines.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Clinical Decision Support - Clinical Alerts ==========
+
+  async createClinicalAlert(alert: InsertClinicalAlert): Promise<ClinicalAlert> {
+    const [created] = await db
+      .insert(clinicalAlerts)
+      .values(alert)
+      .returning();
+    return created;
+  }
+
+  async getClinicalAlert(id: string, companyId: string): Promise<ClinicalAlert | undefined> {
+    const [alert] = await db
+      .select()
+      .from(clinicalAlerts)
+      .where(and(
+        eq(clinicalAlerts.id, id),
+        eq(clinicalAlerts.companyId, companyId)
+      ));
+    return alert;
+  }
+
+  async getClinicalAlerts(
+    companyId: string,
+    filters?: {
+      patientId?: string;
+      type?: string;
+      severity?: string;
+      acknowledged?: boolean;
+    }
+  ): Promise<ClinicalAlert[]> {
+    const conditions = [eq(clinicalAlerts.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(clinicalAlerts.patientId, filters.patientId));
+    }
+    if (filters?.type) {
+      conditions.push(eq(clinicalAlerts.type, filters.type as any));
+    }
+    if (filters?.severity) {
+      conditions.push(eq(clinicalAlerts.severity, filters.severity as any));
+    }
+    if (filters?.acknowledged !== undefined) {
+      if (filters.acknowledged) {
+        conditions.push(sql`${clinicalAlerts.acknowledgedAt} IS NOT NULL`);
+      } else {
+        conditions.push(sql`${clinicalAlerts.acknowledgedAt} IS NULL`);
+      }
+    }
+
+    return await db
+      .select()
+      .from(clinicalAlerts)
+      .where(and(...conditions))
+      .orderBy(desc(clinicalAlerts.createdAt));
+  }
+
+  async updateClinicalAlert(
+    id: string,
+    companyId: string,
+    updates: Partial<ClinicalAlert>
+  ): Promise<ClinicalAlert | undefined> {
+    const [updated] = await db
+      .update(clinicalAlerts)
+      .set(updates)
+      .where(and(
+        eq(clinicalAlerts.id, id),
+        eq(clinicalAlerts.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteClinicalAlert(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(clinicalAlerts)
+      .where(and(
+        eq(clinicalAlerts.id, id),
+        eq(clinicalAlerts.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Clinical Decision Support - Treatment Recommendations ==========
+
+  async createTreatmentRecommendation(recommendation: InsertTreatmentRecommendation): Promise<TreatmentRecommendation> {
+    const [created] = await db
+      .insert(treatmentRecommendations)
+      .values(recommendation)
+      .returning();
+    return created;
+  }
+
+  async getTreatmentRecommendation(id: string, companyId: string): Promise<TreatmentRecommendation | undefined> {
+    const [recommendation] = await db
+      .select()
+      .from(treatmentRecommendations)
+      .where(and(
+        eq(treatmentRecommendations.id, id),
+        eq(treatmentRecommendations.companyId, companyId)
+      ));
+    return recommendation;
+  }
+
+  async getTreatmentRecommendations(
+    companyId: string,
+    filters?: {
+      patientId?: string;
+      condition?: string;
+    }
+  ): Promise<TreatmentRecommendation[]> {
+    const conditions = [eq(treatmentRecommendations.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(treatmentRecommendations.patientId, filters.patientId));
+    }
+    if (filters?.condition) {
+      conditions.push(like(treatmentRecommendations.condition, `%${filters.condition}%`));
+    }
+
+    return await db
+      .select()
+      .from(treatmentRecommendations)
+      .where(and(...conditions))
+      .orderBy(desc(treatmentRecommendations.createdAt));
+  }
+
+  async deleteTreatmentRecommendation(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(treatmentRecommendations)
+      .where(and(
+        eq(treatmentRecommendations.id, id),
+        eq(treatmentRecommendations.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Clinical Decision Support - Diagnostic Suggestions ==========
+
+  async createDiagnosticSuggestion(suggestion: InsertDiagnosticSuggestion): Promise<DiagnosticSuggestion> {
+    const [created] = await db
+      .insert(diagnosticSuggestions)
+      .values(suggestion)
+      .returning();
+    return created;
+  }
+
+  async getDiagnosticSuggestion(id: string, companyId: string): Promise<DiagnosticSuggestion | undefined> {
+    const [suggestion] = await db
+      .select()
+      .from(diagnosticSuggestions)
+      .where(and(
+        eq(diagnosticSuggestions.id, id),
+        eq(diagnosticSuggestions.companyId, companyId)
+      ));
+    return suggestion;
+  }
+
+  async getDiagnosticSuggestions(
+    companyId: string,
+    filters?: {
+      patientId?: string;
+      confidence?: string;
+    }
+  ): Promise<DiagnosticSuggestion[]> {
+    const conditions = [eq(diagnosticSuggestions.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(diagnosticSuggestions.patientId, filters.patientId));
+    }
+    if (filters?.confidence) {
+      conditions.push(eq(diagnosticSuggestions.confidence, filters.confidence as any));
+    }
+
+    return await db
+      .select()
+      .from(diagnosticSuggestions)
+      .where(and(...conditions))
+      .orderBy(desc(diagnosticSuggestions.createdAt));
+  }
+
+  async deleteDiagnosticSuggestion(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(diagnosticSuggestions)
+      .where(and(
+        eq(diagnosticSuggestions.id, id),
+        eq(diagnosticSuggestions.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Engagement Workflows - Workflows ==========
+
+  async createWorkflow(workflow: InsertWorkflow): Promise<Workflow> {
+    const [created] = await db
+      .insert(workflows)
+      .values(workflow)
+      .returning();
+    return created;
+  }
+
+  async getWorkflow(id: string, companyId: string): Promise<Workflow | undefined> {
+    const [workflow] = await db
+      .select()
+      .from(workflows)
+      .where(and(
+        eq(workflows.id, id),
+        eq(workflows.companyId, companyId)
+      ));
+    return workflow;
+  }
+
+  async getWorkflows(
+    companyId: string,
+    filters?: {
+      trigger?: string;
+      status?: string;
+    }
+  ): Promise<Workflow[]> {
+    const conditions = [eq(workflows.companyId, companyId)];
+
+    if (filters?.trigger) {
+      conditions.push(eq(workflows.trigger, filters.trigger as any));
+    }
+    if (filters?.status) {
+      conditions.push(eq(workflows.status, filters.status as any));
+    }
+
+    return await db
+      .select()
+      .from(workflows)
+      .where(and(...conditions))
+      .orderBy(workflows.name);
+  }
+
+  async updateWorkflow(
+    id: string,
+    companyId: string,
+    updates: Partial<Workflow>
+  ): Promise<Workflow | undefined> {
+    const [updated] = await db
+      .update(workflows)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(
+        eq(workflows.id, id),
+        eq(workflows.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteWorkflow(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(workflows)
+      .where(and(
+        eq(workflows.id, id),
+        eq(workflows.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Engagement Workflows - Workflow Instances ==========
+
+  async createWorkflowInstance(instance: InsertWorkflowInstance): Promise<WorkflowInstance> {
+    const [created] = await db
+      .insert(workflowInstances)
+      .values(instance)
+      .returning();
+    return created;
+  }
+
+  async getWorkflowInstance(id: string, companyId: string): Promise<WorkflowInstance | undefined> {
+    const [instance] = await db
+      .select()
+      .from(workflowInstances)
+      .where(and(
+        eq(workflowInstances.id, id),
+        eq(workflowInstances.companyId, companyId)
+      ));
+    return instance;
+  }
+
+  async getWorkflowInstances(
+    companyId: string,
+    filters?: {
+      workflowId?: string;
+      patientId?: string;
+      status?: string;
+    }
+  ): Promise<WorkflowInstance[]> {
+    const conditions = [eq(workflowInstances.companyId, companyId)];
+
+    if (filters?.workflowId) {
+      conditions.push(eq(workflowInstances.workflowId, filters.workflowId));
+    }
+    if (filters?.patientId) {
+      conditions.push(eq(workflowInstances.patientId, filters.patientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(workflowInstances.status, filters.status as any));
+    }
+
+    return await db
+      .select()
+      .from(workflowInstances)
+      .where(and(...conditions))
+      .orderBy(desc(workflowInstances.startedAt));
+  }
+
+  async updateWorkflowInstance(
+    id: string,
+    companyId: string,
+    updates: Partial<WorkflowInstance>
+  ): Promise<WorkflowInstance | undefined> {
+    const [updated] = await db
+      .update(workflowInstances)
+      .set(updates)
+      .where(and(
+        eq(workflowInstances.id, id),
+        eq(workflowInstances.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteWorkflowInstance(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(workflowInstances)
+      .where(and(
+        eq(workflowInstances.id, id),
+        eq(workflowInstances.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Engagement Workflows - Workflow Run Counts ==========
+
+  async getWorkflowRunCount(
+    workflowId: string,
+    patientId: string,
+    companyId: string
+  ): Promise<WorkflowRunCount | undefined> {
+    const [count] = await db
+      .select()
+      .from(workflowRunCounts)
+      .where(and(
+        eq(workflowRunCounts.workflowId, workflowId),
+        eq(workflowRunCounts.patientId, patientId),
+        eq(workflowRunCounts.companyId, companyId)
+      ));
+    return count;
+  }
+
+  async incrementWorkflowRunCount(
+    workflowId: string,
+    patientId: string,
+    companyId: string
+  ): Promise<WorkflowRunCount> {
+    // Try to get existing count
+    const existing = await this.getWorkflowRunCount(workflowId, patientId, companyId);
+
+    if (existing) {
+      // Increment existing
+      const [updated] = await db
+        .update(workflowRunCounts)
+        .set({
+          runCount: existing.runCount + 1,
+          lastRunAt: new Date(),
+        })
+        .where(and(
+          eq(workflowRunCounts.id, existing.id),
+          eq(workflowRunCounts.companyId, companyId)
+        ))
+        .returning();
+      return updated;
+    } else {
+      // Create new
+      const [created] = await db
+        .insert(workflowRunCounts)
+        .values({
+          id: crypto.randomUUID(),
+          companyId,
+          workflowId,
+          patientId,
+          runCount: 1,
+          lastRunAt: new Date(),
+        })
+        .returning();
+      return created;
+    }
+  }
+
+  async getPatientWorkflowRunCounts(
+    patientId: string,
+    companyId: string
+  ): Promise<WorkflowRunCount[]> {
+    return await db
+      .select()
+      .from(workflowRunCounts)
+      .where(and(
+        eq(workflowRunCounts.patientId, patientId),
+        eq(workflowRunCounts.companyId, companyId)
+      ));
+  }
+
+  // ========== Predictive Analytics - ML Models ==========
+
+  async createMlModel(model: InsertMlModel): Promise<MlModel> {
+    const [created] = await db.insert(mlModels).values(model).returning();
+    return created;
+  }
+
+  async getMlModel(id: string, companyId: string): Promise<MlModel | undefined> {
+    const [model] = await db
+      .select()
+      .from(mlModels)
+      .where(and(
+        eq(mlModels.id, id),
+        eq(mlModels.companyId, companyId)
+      ));
+    return model;
+  }
+
+  async getMlModels(
+    companyId: string,
+    filters?: { status?: string; type?: string }
+  ): Promise<MlModel[]> {
+    const conditions = [eq(mlModels.companyId, companyId)];
+
+    if (filters?.status) {
+      conditions.push(eq(mlModels.status, filters.status as any));
+    }
+    if (filters?.type) {
+      conditions.push(eq(mlModels.type, filters.type as any));
+    }
+
+    return await db
+      .select()
+      .from(mlModels)
+      .where(and(...conditions))
+      .orderBy(desc(mlModels.trainedAt));
+  }
+
+  async updateMlModel(
+    id: string,
+    companyId: string,
+    updates: Partial<InsertMlModel>
+  ): Promise<MlModel | undefined> {
+    const [updated] = await db
+      .update(mlModels)
+      .set(updates)
+      .where(and(
+        eq(mlModels.id, id),
+        eq(mlModels.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  // ========== Predictive Analytics - Risk Stratifications ==========
+
+  async createRiskStratification(stratification: InsertRiskStratification): Promise<RiskStratification> {
+    const [created] = await db.insert(riskStratifications).values(stratification).returning();
+    return created;
+  }
+
+  async getRiskStratifications(
+    companyId: string,
+    patientId: string,
+    riskType?: string
+  ): Promise<RiskStratification[]> {
+    const conditions = [
+      eq(riskStratifications.companyId, companyId),
+      eq(riskStratifications.patientId, patientId)
+    ];
+
+    if (riskType) {
+      conditions.push(eq(riskStratifications.riskType, riskType as any));
+    }
+
+    return await db
+      .select()
+      .from(riskStratifications)
+      .where(and(...conditions))
+      .orderBy(desc(riskStratifications.createdAt));
+  }
+
+  // ========== Predictive Analytics - Readmission Predictions ==========
+
+  async createReadmissionPrediction(prediction: InsertReadmissionPrediction): Promise<ReadmissionPrediction> {
+    const [created] = await db.insert(readmissionPredictions).values(prediction).returning();
+    return created;
+  }
+
+  async getReadmissionPredictions(
+    companyId: string,
+    filters?: { patientId?: string; admissionId?: string }
+  ): Promise<ReadmissionPrediction[]> {
+    const conditions = [eq(readmissionPredictions.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(readmissionPredictions.patientId, filters.patientId));
+    }
+    if (filters?.admissionId) {
+      conditions.push(eq(readmissionPredictions.admissionId, filters.admissionId));
+    }
+
+    return await db
+      .select()
+      .from(readmissionPredictions)
+      .where(and(...conditions))
+      .orderBy(desc(readmissionPredictions.createdAt));
+  }
+
+  // ========== Predictive Analytics - No-Show Predictions ==========
+
+  async createNoShowPrediction(prediction: InsertNoShowPrediction): Promise<NoShowPrediction> {
+    const [created] = await db.insert(noShowPredictions).values(prediction).returning();
+    return created;
+  }
+
+  async getNoShowPredictions(
+    companyId: string,
+    filters?: { patientId?: string; appointmentId?: string }
+  ): Promise<NoShowPrediction[]> {
+    const conditions = [eq(noShowPredictions.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(noShowPredictions.patientId, filters.patientId));
+    }
+    if (filters?.appointmentId) {
+      conditions.push(eq(noShowPredictions.appointmentId, filters.appointmentId));
+    }
+
+    return await db
+      .select()
+      .from(noShowPredictions)
+      .where(and(...conditions))
+      .orderBy(desc(noShowPredictions.createdAt));
+  }
+
+  // ========== Predictive Analytics - Disease Progression Predictions ==========
+
+  async createDiseaseProgressionPrediction(
+    prediction: InsertDiseaseProgressionPrediction
+  ): Promise<DiseaseProgressionPrediction> {
+    const [created] = await db.insert(diseaseProgressionPredictions).values(prediction).returning();
+    return created;
+  }
+
+  async getDiseaseProgressionPredictions(
+    companyId: string,
+    patientId: string,
+    disease?: string
+  ): Promise<DiseaseProgressionPrediction[]> {
+    const conditions = [
+      eq(diseaseProgressionPredictions.companyId, companyId),
+      eq(diseaseProgressionPredictions.patientId, patientId)
+    ];
+
+    if (disease) {
+      conditions.push(eq(diseaseProgressionPredictions.disease, disease));
+    }
+
+    return await db
+      .select()
+      .from(diseaseProgressionPredictions)
+      .where(and(...conditions))
+      .orderBy(desc(diseaseProgressionPredictions.createdAt));
+  }
+
+  // ========== Predictive Analytics - Treatment Outcome Predictions ==========
+
+  async createTreatmentOutcomePrediction(
+    prediction: InsertTreatmentOutcomePrediction
+  ): Promise<TreatmentOutcomePrediction> {
+    const [created] = await db.insert(treatmentOutcomePredictions).values(prediction).returning();
+    return created;
+  }
+
+  async getTreatmentOutcomePredictions(
+    companyId: string,
+    patientId: string,
+    treatment?: string
+  ): Promise<TreatmentOutcomePrediction[]> {
+    const conditions = [
+      eq(treatmentOutcomePredictions.companyId, companyId),
+      eq(treatmentOutcomePredictions.patientId, patientId)
+    ];
+
+    if (treatment) {
+      conditions.push(eq(treatmentOutcomePredictions.treatment, treatment));
+    }
+
+    return await db
+      .select()
+      .from(treatmentOutcomePredictions)
+      .where(and(...conditions))
+      .orderBy(desc(treatmentOutcomePredictions.createdAt));
+  }
+
+  // ========== Predictive Analytics - Statistics ==========
+
+  async getPredictiveAnalyticsStatistics(companyId: string): Promise<{
+    totalModels: number;
+    activeModels: number;
+    totalRiskStratifications: number;
+    totalReadmissionPredictions: number;
+    totalNoShowPredictions: number;
+    totalDiseaseProgressionPredictions: number;
+    totalTreatmentOutcomePredictions: number;
+    highRiskPredictions: number;
+  }> {
+    const [models] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(mlModels)
+      .where(eq(mlModels.companyId, companyId));
+
+    const [activeModelsResult] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(mlModels)
+      .where(and(
+        eq(mlModels.companyId, companyId),
+        eq(mlModels.status, 'active')
+      ));
+
+    const [riskStrats] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(riskStratifications)
+      .where(eq(riskStratifications.companyId, companyId));
+
+    const [readmissions] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(readmissionPredictions)
+      .where(eq(readmissionPredictions.companyId, companyId));
+
+    const [noShows] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(noShowPredictions)
+      .where(eq(noShowPredictions.companyId, companyId));
+
+    const [diseaseProgressions] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(diseaseProgressionPredictions)
+      .where(eq(diseaseProgressionPredictions.companyId, companyId));
+
+    const [treatmentOutcomes] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(treatmentOutcomePredictions)
+      .where(eq(treatmentOutcomePredictions.companyId, companyId));
+
+    const [highRiskStrats] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(riskStratifications)
+      .where(and(
+        eq(riskStratifications.companyId, companyId),
+        or(
+          eq(riskStratifications.riskLevel, 'high'),
+          eq(riskStratifications.riskLevel, 'very_high')
+        )
+      ));
+
+    const [highRiskReadmissions] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(readmissionPredictions)
+      .where(and(
+        eq(readmissionPredictions.companyId, companyId),
+        or(
+          eq(readmissionPredictions.riskLevel, 'high'),
+          eq(readmissionPredictions.riskLevel, 'very_high')
+        )
+      ));
+
+    const [highRiskNoShows] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(noShowPredictions)
+      .where(and(
+        eq(noShowPredictions.companyId, companyId),
+        or(
+          eq(noShowPredictions.riskLevel, 'high'),
+          eq(noShowPredictions.riskLevel, 'very_high')
+        )
+      ));
+
+    return {
+      totalModels: models?.count || 0,
+      activeModels: activeModelsResult?.count || 0,
+      totalRiskStratifications: riskStrats?.count || 0,
+      totalReadmissionPredictions: readmissions?.count || 0,
+      totalNoShowPredictions: noShows?.count || 0,
+      totalDiseaseProgressionPredictions: diseaseProgressions?.count || 0,
+      totalTreatmentOutcomePredictions: treatmentOutcomes?.count || 0,
+      highRiskPredictions: (highRiskStrats?.count || 0) + (highRiskReadmissions?.count || 0) + (highRiskNoShows?.count || 0),
+    };
+  }
+
+  // ========== Appointment Booking Storage Methods ==========
+
+  async createAppointmentType(data: InsertAppointmentType): Promise<AppointmentType> {
+    const [result] = await db.insert(appointmentTypes).values(data).returning();
+    return result;
+  }
+
+  async getAppointmentType(id: string, companyId: string): Promise<AppointmentType | null> {
+    const [result] = await db
+      .select()
+      .from(appointmentTypes)
+      .where(and(eq(appointmentTypes.id, id), eq(appointmentTypes.companyId, companyId)));
+    return result || null;
+  }
+
+  async getAppointmentTypes(
+    companyId: string,
+    options?: { onlineBookingOnly?: boolean }
+  ): Promise<AppointmentType[]> {
+    const conditions = [eq(appointmentTypes.companyId, companyId)];
+
+    if (options?.onlineBookingOnly) {
+      conditions.push(eq(appointmentTypes.allowOnlineBooking, true));
+    }
+
+    return await db
+      .select()
+      .from(appointmentTypes)
+      .where(and(...conditions))
+      .orderBy(appointmentTypes.name);
+  }
+
+  async updateAppointmentType(
+    id: string,
+    companyId: string,
+    data: Partial<InsertAppointmentType>
+  ): Promise<AppointmentType | null> {
+    const [result] = await db
+      .update(appointmentTypes)
+      .set(data)
+      .where(and(eq(appointmentTypes.id, id), eq(appointmentTypes.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  async createProviderAvailability(data: InsertProviderAvailability): Promise<ProviderAvailability> {
+    const [result] = await db.insert(providerAvailability).values(data).returning();
+    return result;
+  }
+
+  async getProviderAvailability(
+    companyId: string,
+    providerId: string
+  ): Promise<ProviderAvailability[]> {
+    return await db
+      .select()
+      .from(providerAvailability)
+      .where(and(
+        eq(providerAvailability.companyId, companyId),
+        eq(providerAvailability.providerId, providerId)
+      ))
+      .orderBy(providerAvailability.dayOfWeek);
+  }
+
+  async getAllProviderAvailability(companyId: string): Promise<ProviderAvailability[]> {
+    return await db
+      .select()
+      .from(providerAvailability)
+      .where(eq(providerAvailability.companyId, companyId))
+      .orderBy(providerAvailability.providerId, providerAvailability.dayOfWeek);
+  }
+
+  async createAppointmentBooking(data: InsertAppointmentBooking): Promise<AppointmentBooking> {
+    const [result] = await db.insert(appointmentBookings).values(data).returning();
+    return result;
+  }
+
+  async getAppointmentBooking(id: string, companyId: string): Promise<AppointmentBooking | null> {
+    const [result] = await db
+      .select()
+      .from(appointmentBookings)
+      .where(and(eq(appointmentBookings.id, id), eq(appointmentBookings.companyId, companyId)));
+    return result || null;
+  }
+
+  async getPatientAppointments(
+    companyId: string,
+    patientId: string,
+    options?: {
+      status?: string;
+      upcoming?: boolean;
+    }
+  ): Promise<AppointmentBooking[]> {
+    const conditions = [
+      eq(appointmentBookings.companyId, companyId),
+      eq(appointmentBookings.patientId, patientId),
+    ];
+
+    if (options?.status) {
+      conditions.push(eq(appointmentBookings.status, options.status as any));
+    }
+
+    if (options?.upcoming) {
+      conditions.push(gt(appointmentBookings.date, new Date()));
+      conditions.push(ne(appointmentBookings.status, 'cancelled'));
+    }
+
+    return await db
+      .select()
+      .from(appointmentBookings)
+      .where(and(...conditions))
+      .orderBy(desc(appointmentBookings.date), desc(appointmentBookings.startTime));
+  }
+
+  async getProviderAppointments(
+    companyId: string,
+    providerId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<AppointmentBooking[]> {
+    return await db
+      .select()
+      .from(appointmentBookings)
+      .where(and(
+        eq(appointmentBookings.companyId, companyId),
+        eq(appointmentBookings.providerId, providerId),
+        gte(appointmentBookings.date, startDate),
+        lte(appointmentBookings.date, endDate),
+        ne(appointmentBookings.status, 'cancelled')
+      ))
+      .orderBy(appointmentBookings.date, appointmentBookings.startTime);
+  }
+
+  async updateAppointmentBooking(
+    id: string,
+    companyId: string,
+    data: Partial<InsertAppointmentBooking>
+  ): Promise<AppointmentBooking | null> {
+    const [result] = await db
+      .update(appointmentBookings)
+      .set(data)
+      .where(and(eq(appointmentBookings.id, id), eq(appointmentBookings.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  async getAppointmentsForReminders(
+    companyId: string,
+    hoursAhead: number
+  ): Promise<AppointmentBooking[]> {
+    const now = new Date();
+    const reminderTime = new Date();
+    reminderTime.setHours(reminderTime.getHours() + hoursAhead);
+
+    return await db
+      .select()
+      .from(appointmentBookings)
+      .where(and(
+        eq(appointmentBookings.companyId, companyId),
+        eq(appointmentBookings.status, 'confirmed'),
+        eq(appointmentBookings.reminderSent, false),
+        gt(appointmentBookings.date, now),
+        lte(appointmentBookings.date, reminderTime)
+      ));
+  }
+
+  async getAppointmentByConfirmationCode(
+    confirmationCode: string,
+    companyId: string
+  ): Promise<AppointmentBooking | null> {
+    const [result] = await db
+      .select()
+      .from(appointmentBookings)
+      .where(and(
+        eq(appointmentBookings.confirmationCode, confirmationCode),
+        eq(appointmentBookings.companyId, companyId)
+      ));
+    return result || null;
+  }
+
+  // ========== Patient Portal Storage Methods ==========
+
+  async createMedicalRecord(data: InsertMedicalRecord): Promise<MedicalRecord> {
+    const [result] = await db.insert(medicalRecords).values(data).returning();
+    return result;
+  }
+
+  async getMedicalRecord(id: string, companyId: string): Promise<MedicalRecord | null> {
+    const [result] = await db
+      .select()
+      .from(medicalRecords)
+      .where(and(eq(medicalRecords.id, id), eq(medicalRecords.companyId, companyId)));
+    return result || null;
+  }
+
+  async getMedicalRecords(
+    companyId: string,
+    patientId: string,
+    options?: {
+      type?: string;
+      startDate?: Date;
+      endDate?: Date;
+    }
+  ): Promise<MedicalRecord[]> {
+    const conditions = [
+      eq(medicalRecords.companyId, companyId),
+      eq(medicalRecords.patientId, patientId),
+      eq(medicalRecords.viewable, true),
+    ];
+
+    if (options?.type) {
+      conditions.push(eq(medicalRecords.type, options.type as any));
+    }
+
+    if (options?.startDate) {
+      conditions.push(gte(medicalRecords.date, options.startDate));
+    }
+
+    if (options?.endDate) {
+      conditions.push(lte(medicalRecords.date, options.endDate));
+    }
+
+    return await db
+      .select()
+      .from(medicalRecords)
+      .where(and(...conditions))
+      .orderBy(desc(medicalRecords.date));
+  }
+
+  async createPortalConversation(data: InsertPortalConversation): Promise<PortalConversation> {
+    const [result] = await db.insert(portalConversations).values(data).returning();
+    return result;
+  }
+
+  async getPortalConversation(id: string, companyId: string): Promise<PortalConversation | null> {
+    const [result] = await db
+      .select()
+      .from(portalConversations)
+      .where(and(eq(portalConversations.id, id), eq(portalConversations.companyId, companyId)));
+    return result || null;
+  }
+
+  async getPortalConversations(companyId: string, patientId: string): Promise<PortalConversation[]> {
+    return await db
+      .select()
+      .from(portalConversations)
+      .where(and(
+        eq(portalConversations.companyId, companyId),
+        eq(portalConversations.patientId, patientId)
+      ))
+      .orderBy(desc(portalConversations.lastMessageAt));
+  }
+
+  async updatePortalConversation(
+    id: string,
+    companyId: string,
+    data: Partial<InsertPortalConversation>
+  ): Promise<PortalConversation | null> {
+    const [result] = await db
+      .update(portalConversations)
+      .set(data)
+      .where(and(eq(portalConversations.id, id), eq(portalConversations.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  async createPortalMessage(data: InsertPortalMessage): Promise<PortalMessage> {
+    const [result] = await db.insert(portalMessages).values(data).returning();
+    return result;
+  }
+
+  async getPortalMessages(companyId: string, conversationId: string): Promise<PortalMessage[]> {
+    return await db
+      .select()
+      .from(portalMessages)
+      .where(and(
+        eq(portalMessages.companyId, companyId),
+        eq(portalMessages.conversationId, conversationId)
+      ))
+      .orderBy(asc(portalMessages.sentAt));
+  }
+
+  async updatePortalMessage(
+    id: string,
+    companyId: string,
+    data: Partial<InsertPortalMessage>
+  ): Promise<PortalMessage | null> {
+    const [result] = await db
+      .update(portalMessages)
+      .set(data)
+      .where(and(eq(portalMessages.id, id), eq(portalMessages.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  async markMessagesAsRead(companyId: string, conversationId: string, recipientId: string): Promise<void> {
+    await db
+      .update(portalMessages)
+      .set({ read: true, readAt: new Date() })
+      .where(and(
+        eq(portalMessages.companyId, companyId),
+        eq(portalMessages.conversationId, conversationId),
+        eq(portalMessages.recipientId, recipientId),
+        eq(portalMessages.read, false)
+      ));
+  }
+
+  async createPortalPayment(data: InsertPortalPayment): Promise<PortalPayment> {
+    const [result] = await db.insert(portalPayments).values(data).returning();
+    return result;
+  }
+
+  async getPortalPayment(id: string, companyId: string): Promise<PortalPayment | null> {
+    const [result] = await db
+      .select()
+      .from(portalPayments)
+      .where(and(eq(portalPayments.id, id), eq(portalPayments.companyId, companyId)));
+    return result || null;
+  }
+
+  async getPatientPaymentHistory(companyId: string, patientId: string): Promise<PortalPayment[]> {
+    return await db
+      .select()
+      .from(portalPayments)
+      .where(and(
+        eq(portalPayments.companyId, companyId),
+        eq(portalPayments.patientId, patientId)
+      ))
+      .orderBy(desc(portalPayments.createdAt));
+  }
+
+  async updatePortalPayment(
+    id: string,
+    companyId: string,
+    data: Partial<InsertPortalPayment>
+  ): Promise<PortalPayment | null> {
+    const [result] = await db
+      .update(portalPayments)
+      .set(data)
+      .where(and(eq(portalPayments.id, id), eq(portalPayments.companyId, companyId)))
+      .returning();
+    return result || null;
   }
 
   // ============================================================================
