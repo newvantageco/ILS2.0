@@ -615,24 +615,28 @@ export class CareCoordinationService {
   // Transitions of Care
   // ============================================================================
 
-  static createTransitionOfCare(data: {
-    patientId: string;
-    transitionType: TransitionOfCare['transitionType'];
-    fromLocation: string;
-    toLocation: string;
-    dischargeDate?: Date;
-    admissionDate?: Date;
-    followUpRequired: boolean;
-    followUpDate?: Date;
-    careInstructions: string[];
-    riskFactors: string[];
-    responsibleProvider?: string;
-    coordinatedBy: string;
-  }): TransitionOfCare {
+  static async createTransitionOfCare(
+    companyId: string,
+    data: {
+      patientId: string;
+      transitionType: TransitionOfCare['transitionType'];
+      fromLocation: string;
+      toLocation: string;
+      dischargeDate?: Date;
+      admissionDate?: Date;
+      followUpRequired: boolean;
+      followUpDate?: Date;
+      careInstructions: string[];
+      riskFactors: string[];
+      responsibleProvider?: string;
+      coordinatedBy: string;
+    }
+  ): Promise<TransitionOfCare> {
     const id = uuidv4();
 
-    const transition: TransitionOfCare = {
+    const transition = await this.db.createTransitionOfCare({
       id,
+      companyId,
       patientId: data.patientId,
       transitionType: data.transitionType,
       fromLocation: data.fromLocation,
@@ -648,16 +652,13 @@ export class CareCoordinationService {
       riskFactors: data.riskFactors,
       responsibleProvider: data.responsibleProvider,
       coordinatedBy: data.coordinatedBy,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    this.transitions.set(id, transition);
     logger.info(`Transition of care created for patient ${data.patientId}`);
 
     // Create follow-up task if required
     if (data.followUpRequired && data.followUpDate) {
-      this.createCareCoordinationTask({
+      await this.createCareCoordinationTask(companyId, {
         patientId: data.patientId,
         transitionId: id,
         title: `Follow-up after ${data.transitionType}`,
@@ -665,6 +666,7 @@ export class CareCoordinationService {
         type: 'follow_up',
         priority: 'high',
         dueDate: data.followUpDate,
+        notes: '',
         createdBy: data.coordinatedBy,
       });
     }
@@ -672,73 +674,78 @@ export class CareCoordinationService {
     return transition;
   }
 
-  static addMedicationReconciliation(
+  static async addMedicationReconciliation(
+    companyId: string,
     transitionId: string,
     reconciliation: MedicationReconciliation
-  ): TransitionOfCare {
-    const transition = this.transitions.get(transitionId);
+  ): Promise<TransitionOfCare> {
+    const transition = await this.db.getTransitionOfCare(transitionId, companyId);
     if (!transition) {
       throw new Error('Transition of care not found');
     }
 
-    transition.medications.push(reconciliation);
-    transition.updatedAt = new Date();
+    const medications = [...(transition.medications || [])];
+    const medRec: any = {
+      ...reconciliation,
+      reconciledDate: typeof reconciliation.reconciledDate === 'string'
+        ? reconciliation.reconciledDate
+        : reconciliation.reconciledDate.toISOString(),
+    };
+    medications.push(medRec);
 
-    this.transitions.set(transitionId, transition);
+    const updated = await this.db.updateTransitionOfCare(transitionId, companyId, { medications });
     logger.info(`Medication reconciliation added to transition ${transitionId}`);
-
-    return transition;
+    return updated!;
   }
 
-  static updateTransitionStatus(
+  static async updateTransitionStatus(
+    companyId: string,
     transitionId: string,
-    status: TransitionOfCare['status']
-  ): TransitionOfCare {
-    const transition = this.transitions.get(transitionId);
+    status: 'planned' | 'in_progress' | 'completed' | 'failed'
+  ): Promise<TransitionOfCare> {
+    const transition = await this.db.getTransitionOfCare(transitionId, companyId);
     if (!transition) {
       throw new Error('Transition of care not found');
     }
 
-    transition.status = status;
-    transition.updatedAt = new Date();
-
-    this.transitions.set(transitionId, transition);
+    const updated = await this.db.updateTransitionOfCare(transitionId, companyId, { status });
     logger.info(`Transition status updated: ${transitionId} -> ${status}`);
-
-    return transition;
+    return updated!;
   }
 
-  static completeFollowUp(transitionId: string): TransitionOfCare {
-    const transition = this.transitions.get(transitionId);
+  static async completeFollowUp(companyId: string, transitionId: string): Promise<TransitionOfCare> {
+    const transition = await this.db.getTransitionOfCare(transitionId, companyId);
     if (!transition) {
       throw new Error('Transition of care not found');
     }
 
-    transition.followUpCompleted = true;
-    transition.updatedAt = new Date();
-
-    this.transitions.set(transitionId, transition);
+    const updated = await this.db.updateTransitionOfCare(transitionId, companyId, {
+      followUpCompleted: true,
+    });
     logger.info(`Follow-up completed for transition ${transitionId}`);
-
-    return transition;
+    return updated!;
   }
 
-  static getTransitionById(id: string): TransitionOfCare | undefined {
-    return this.transitions.get(id);
+  static async getTransitionById(companyId: string, id: string): Promise<TransitionOfCare | null> {
+    return await this.db.getTransitionOfCare(id, companyId);
   }
 
-  static getTransitionsByPatient(patientId: string): TransitionOfCare[] {
-    return Array.from(this.transitions.values()).filter((t) => t.patientId === patientId);
+  static async getTransitionsByPatient(
+    companyId: string,
+    patientId: string
+  ): Promise<TransitionOfCare[]> {
+    return await this.db.getTransitionsOfCare(companyId, { patientId });
   }
 
-  static getPendingFollowUps(): TransitionOfCare[] {
+  static async getPendingFollowUps(companyId: string): Promise<TransitionOfCare[]> {
+    const all = await this.db.getTransitionsOfCare(companyId, {});
     const now = new Date();
-    return Array.from(this.transitions.values()).filter(
+    return all.filter(
       (t) =>
         t.followUpRequired &&
         !t.followUpCompleted &&
         t.followUpDate &&
-        t.followUpDate <= now
+        new Date(t.followUpDate) <= now
     );
   }
 
@@ -746,23 +753,28 @@ export class CareCoordinationService {
   // Care Coordination Tasks
   // ============================================================================
 
-  static createCareCoordinationTask(data: {
-    patientId: string;
-    carePlanId?: string;
-    transitionId?: string;
-    gapId?: string;
-    title: string;
-    description: string;
-    type: CareCoordinationTask['type'];
-    priority: CareCoordinationTask['priority'];
-    dueDate: Date;
-    assignedTo?: string;
-    createdBy: string;
-  }): CareCoordinationTask {
+  static async createCareCoordinationTask(
+    companyId: string,
+    data: {
+      patientId: string;
+      carePlanId?: string;
+      transitionId?: string;
+      gapId?: string;
+      title: string;
+      description: string;
+      type: CareCoordinationTask['type'];
+      priority: CareCoordinationTask['priority'];
+      dueDate: Date;
+      assignedTo?: string;
+      notes: string;
+      createdBy: string;
+    }
+  ): Promise<CareCoordinationTask> {
     const id = uuidv4();
 
-    const task: CareCoordinationTask = {
+    const task = await this.db.createCareCoordinationTask({
       id,
+      companyId,
       patientId: data.patientId,
       carePlanId: data.carePlanId,
       transitionId: data.transitionId,
@@ -774,76 +786,81 @@ export class CareCoordinationService {
       status: 'pending',
       assignedTo: data.assignedTo,
       dueDate: data.dueDate,
-      notes: '',
+      notes: data.notes,
       createdBy: data.createdBy,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    this.tasks.set(id, task);
     logger.info(`Care coordination task created: ${data.title}`);
-
     return task;
   }
 
-  static updateTaskStatus(
+  static async updateTaskStatus(
+    companyId: string,
     taskId: string,
-    status: CareCoordinationTask['status'],
+    status: 'pending' | 'in_progress' | 'completed' | 'cancelled',
     completedBy?: string,
     notes?: string
-  ): CareCoordinationTask {
-    const task = this.tasks.get(taskId);
+  ): Promise<CareCoordinationTask> {
+    const task = await this.db.getCareCoordinationTask(taskId, companyId);
     if (!task) {
       throw new Error('Task not found');
     }
 
-    task.status = status;
+    const updates: any = { status };
     if (status === 'completed') {
-      task.completedDate = new Date();
-      task.completedBy = completedBy;
+      updates.completedDate = new Date();
+      updates.completedBy = completedBy;
     }
     if (notes) {
-      task.notes = notes;
+      updates.notes = notes;
     }
-    task.updatedAt = new Date();
 
-    this.tasks.set(taskId, task);
+    const updated = await this.db.updateCareCoordinationTask(taskId, companyId, updates);
     logger.info(`Task status updated: ${taskId} -> ${status}`);
-
-    return task;
+    return updated!;
   }
 
-  static assignTask(taskId: string, assignedTo: string): CareCoordinationTask {
-    const task = this.tasks.get(taskId);
+  static async assignTask(
+    companyId: string,
+    taskId: string,
+    assignedTo: string
+  ): Promise<CareCoordinationTask> {
+    const task = await this.db.getCareCoordinationTask(taskId, companyId);
     if (!task) {
       throw new Error('Task not found');
     }
 
-    task.assignedTo = assignedTo;
-    task.updatedAt = new Date();
-
-    this.tasks.set(taskId, task);
+    const updated = await this.db.updateCareCoordinationTask(taskId, companyId, { assignedTo });
     logger.info(`Task assigned: ${taskId} -> ${assignedTo}`);
-
-    return task;
+    return updated!;
   }
 
-  static getTaskById(id: string): CareCoordinationTask | undefined {
-    return this.tasks.get(id);
+  static async getTaskById(companyId: string, id: string): Promise<CareCoordinationTask | null> {
+    return await this.db.getCareCoordinationTask(id, companyId);
   }
 
-  static getTasksByPatient(patientId: string): CareCoordinationTask[] {
-    return Array.from(this.tasks.values()).filter((task) => task.patientId === patientId);
+  static async getTasksByPatient(
+    companyId: string,
+    patientId: string
+  ): Promise<CareCoordinationTask[]> {
+    return await this.db.getCareCoordinationTasks(companyId, { patientId });
   }
 
-  static getTasksByAssignee(userId: string): CareCoordinationTask[] {
-    return Array.from(this.tasks.values()).filter((task) => task.assignedTo === userId);
+  static async getTasksByAssignee(
+    companyId: string,
+    userId: string
+  ): Promise<CareCoordinationTask[]> {
+    return await this.db.getCareCoordinationTasks(companyId, { assignedTo: userId });
   }
 
-  static getOverdueTasks(): CareCoordinationTask[] {
+  static async getOverdueTasks(companyId: string): Promise<CareCoordinationTask[]> {
+    const allTasks = await this.db.getCareCoordinationTasks(companyId, {});
     const now = new Date();
-    return Array.from(this.tasks.values()).filter(
-      (task) => task.status !== 'completed' && task.status !== 'cancelled' && task.dueDate < now
+    return allTasks.filter(
+      (task) =>
+        task.status !== 'completed' &&
+        task.status !== 'cancelled' &&
+        new Date(task.dueDate) < now
     );
   }
 
@@ -851,18 +868,22 @@ export class CareCoordinationService {
   // Patient Outreach
   // ============================================================================
 
-  static createPatientOutreach(data: {
-    patientId: string;
-    taskId?: string;
-    outreachType: PatientOutreach['outreachType'];
-    purpose: string;
-    scheduledDate?: Date;
-    createdBy: string;
-  }): PatientOutreach {
+  static async createPatientOutreach(
+    companyId: string,
+    data: {
+      patientId: string;
+      taskId?: string;
+      outreachType: PatientOutreach['outreachType'];
+      purpose: string;
+      scheduledDate?: Date;
+      createdBy: string;
+    }
+  ): Promise<PatientOutreach> {
     const id = uuidv4();
 
-    const outreach: PatientOutreach = {
+    const outreach = await this.db.createPatientOutreach({
       id,
+      companyId,
       patientId: data.patientId,
       taskId: data.taskId,
       outreachType: data.outreachType,
@@ -872,17 +893,14 @@ export class CareCoordinationService {
       notes: '',
       nextSteps: [],
       createdBy: data.createdBy,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    this.outreach.set(id, outreach);
     logger.info(`Patient outreach created for patient ${data.patientId}`);
-
     return outreach;
   }
 
-  static recordOutreachAttempt(
+  static async recordOutreachAttempt(
+    companyId: string,
     outreachId: string,
     data: {
       contactResult: PatientOutreach['contactResult'];
@@ -890,48 +908,51 @@ export class CareCoordinationService {
       nextSteps: string[];
       performedBy: string;
     }
-  ): PatientOutreach {
-    const outreach = this.outreach.get(outreachId);
+  ): Promise<PatientOutreach> {
+    const outreach = await this.db.getPatientOutreach(outreachId, companyId);
     if (!outreach) {
       throw new Error('Outreach not found');
     }
 
-    outreach.status = data.contactResult === 'successful' ? 'completed' : 'attempted';
-    outreach.attemptedDate = new Date();
-    outreach.contactResult = data.contactResult;
-    outreach.notes = data.notes;
-    outreach.nextSteps = data.nextSteps;
-    outreach.performedBy = data.performedBy;
+    const updates: any = {
+      status: data.contactResult === 'successful' ? 'completed' : 'attempted',
+      attemptedDate: new Date(),
+      contactResult: data.contactResult,
+      notes: data.notes,
+      nextSteps: data.nextSteps,
+      performedBy: data.performedBy,
+    };
 
     if (data.contactResult === 'successful') {
-      outreach.completedDate = new Date();
+      updates.completedDate = new Date();
     }
 
-    outreach.updatedAt = new Date();
-
-    this.outreach.set(outreachId, outreach);
+    const updated = await this.db.updatePatientOutreach(outreachId, companyId, updates);
     logger.info(`Outreach attempt recorded: ${outreachId}`);
-
-    return outreach;
+    return updated!;
   }
 
-  static getOutreachById(id: string): PatientOutreach | undefined {
-    return this.outreach.get(id);
+  static async getOutreachById(companyId: string, id: string): Promise<PatientOutreach | null> {
+    return await this.db.getPatientOutreach(id, companyId);
   }
 
-  static getOutreachByPatient(patientId: string): PatientOutreach[] {
-    return Array.from(this.outreach.values()).filter((o) => o.patientId === patientId);
+  static async getOutreachByPatient(
+    companyId: string,
+    patientId: string
+  ): Promise<PatientOutreach[]> {
+    return await this.db.getPatientOutreaches(companyId, { patientId });
   }
 
-  static getScheduledOutreach(daysAhead: number = 7): PatientOutreach[] {
+  static async getScheduledOutreach(
+    companyId: string,
+    daysAhead: number = 7
+  ): Promise<PatientOutreach[]> {
+    const allScheduled = await this.db.getPatientOutreaches(companyId, { status: 'scheduled' });
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + daysAhead);
 
-    return Array.from(this.outreach.values()).filter(
-      (o) =>
-        o.status === 'scheduled' &&
-        o.scheduledDate &&
-        o.scheduledDate <= futureDate
+    return allScheduled.filter(
+      (o) => o.scheduledDate && new Date(o.scheduledDate) <= futureDate
     );
   }
 
