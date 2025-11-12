@@ -7,6 +7,7 @@
 
 import { loggers } from '../../utils/logger.js';
 import crypto from 'crypto';
+import { storage, type IStorage } from '../../storage';
 
 const logger = loggers.api;
 
@@ -126,8 +127,10 @@ export interface MessageStats {
  * Communications Service
  */
 export class CommunicationsService {
+  private static db: IStorage = storage;
+
   /**
-   * In-memory stores (use database in production)
+   * Legacy in-memory stores (to be removed after migration)
    */
   private static templates = new Map<string, MessageTemplate>();
   private static messages: Message[] = [];
@@ -140,18 +143,17 @@ export class CommunicationsService {
   private static readonly RETRY_DELAY_MS = 60000; // 1 minute
 
   /**
-   * Default templates
+   * NOTE: Default templates should be seeded via database migration
+   * instead of static initialization (now requires companyId and async)
    */
-  static {
-    this.initializeDefaultTemplates();
-  }
 
   // ========== Template Management ==========
 
   /**
-   * Initialize default templates
+   * @deprecated This method is no longer called. Default templates should be seeded
+   * via database migration. Kept as reference for template definitions.
    */
-  private static initializeDefaultTemplates(): void {
+  private static async initializeDefaultTemplates(companyId: string): Promise<void> {
     // Appointment reminder email
     this.createTemplate({
       name: 'Appointment Reminder',
@@ -272,16 +274,17 @@ Thank you,
   /**
    * Create template
    */
-  static createTemplate(
-    template: Omit<MessageTemplate, 'id' | 'createdAt'>
-  ): MessageTemplate {
-    const newTemplate: MessageTemplate = {
+  static async createTemplate(
+    companyId: string,
+    template: Omit<MessageTemplate, 'id' | 'createdAt' | 'companyId'>
+  ): Promise<MessageTemplate> {
+    const newTemplate = await this.db.createMessageTemplate({
       id: crypto.randomUUID(),
+      companyId,
       ...template,
       createdAt: new Date(),
-    };
-
-    this.templates.set(newTemplate.id, newTemplate);
+      updatedAt: new Date(),
+    });
 
     logger.info({ templateId: newTemplate.id, name: template.name }, 'Message template created');
 
@@ -291,27 +294,26 @@ Thank you,
   /**
    * Get template
    */
-  static getTemplate(templateId: string): MessageTemplate | null {
-    return this.templates.get(templateId) || null;
+  static async getTemplate(templateId: string, companyId: string): Promise<MessageTemplate | null> {
+    const template = await this.db.getMessageTemplate(templateId, companyId);
+    return template || null;
   }
 
   /**
    * List templates
    */
-  static listTemplates(
+  static async listTemplates(
+    companyId: string,
     channel?: CommunicationChannel,
     category?: MessageTemplate['category']
-  ): MessageTemplate[] {
-    let templates = Array.from(this.templates.values()).filter((t) => t.active);
+  ): Promise<MessageTemplate[]> {
+    const templates = await this.db.getMessageTemplates(companyId, {
+      channel,
+      category,
+      active: true,
+    });
 
-    if (channel) {
-      templates = templates.filter((t) => t.channel === channel);
-    }
-
-    if (category) {
-      templates = templates.filter((t) => t.category === category);
-    }
-
+    // Templates are already sorted by createdAt desc from DB, but we'll sort by name for consistency
     return templates.sort((a, b) => a.name.localeCompare(b.name));
   }
 
