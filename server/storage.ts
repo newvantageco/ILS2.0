@@ -40,6 +40,12 @@ import {
   insurancePayers,
   insuranceClaims,
   claimLineItems,
+  riskScores,
+  healthRiskAssessments,
+  predictiveModels,
+  predictiveAnalyses,
+  socialDeterminants,
+  riskStratificationCohorts,
   type UpsertUser, 
   type User, 
   type UserWithRoles,
@@ -94,7 +100,19 @@ import {
   type InsuranceClaim,
   type InsertInsuranceClaim,
   type ClaimLineItem,
-  type InsertClaimLineItem
+  type InsertClaimLineItem,
+  type RiskScore,
+  type InsertRiskScore,
+  type HealthRiskAssessment,
+  type InsertHealthRiskAssessment,
+  type PredictiveModel,
+  type InsertPredictiveModel,
+  type PredictiveAnalysis,
+  type InsertPredictiveAnalysis,
+  type SocialDeterminant,
+  type InsertSocialDeterminant,
+  type RiskStratificationCohort,
+  type InsertRiskStratificationCohort
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
@@ -2208,6 +2226,460 @@ export class DbStorage implements IStorage {
     const result = await db
       .delete(claimLineItems)
       .where(eq(claimLineItems.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Population Health - Risk Scores ==========
+
+  async createRiskScore(riskScore: InsertRiskScore): Promise<RiskScore> {
+    const [created] = await db
+      .insert(riskScores)
+      .values(riskScore)
+      .returning();
+    return created;
+  }
+
+  async getRiskScore(id: string, companyId: string): Promise<RiskScore | undefined> {
+    const [score] = await db
+      .select()
+      .from(riskScores)
+      .where(and(
+        eq(riskScores.id, id),
+        eq(riskScores.companyId, companyId)
+      ));
+    return score;
+  }
+
+  async getRiskScores(
+    companyId: string,
+    filters?: {
+      patientId?: string;
+      riskLevel?: string;
+      category?: string;
+    }
+  ): Promise<RiskScore[]> {
+    const conditions = [eq(riskScores.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(riskScores.patientId, filters.patientId));
+    }
+    if (filters?.riskLevel) {
+      conditions.push(eq(riskScores.riskLevel, filters.riskLevel as any));
+    }
+    if (filters?.category) {
+      conditions.push(eq(riskScores.category, filters.category as any));
+    }
+
+    return await db
+      .select()
+      .from(riskScores)
+      .where(and(...conditions))
+      .orderBy(desc(riskScores.calculatedDate));
+  }
+
+  async updateRiskScore(
+    id: string,
+    companyId: string,
+    updates: Partial<RiskScore>
+  ): Promise<RiskScore | undefined> {
+    const [updated] = await db
+      .update(riskScores)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(riskScores.id, id),
+        eq(riskScores.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteRiskScore(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(riskScores)
+      .where(and(
+        eq(riskScores.id, id),
+        eq(riskScores.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Population Health - Health Risk Assessments ==========
+
+  async createHealthRiskAssessment(assessment: InsertHealthRiskAssessment): Promise<HealthRiskAssessment> {
+    const [created] = await db
+      .insert(healthRiskAssessments)
+      .values(assessment)
+      .returning();
+    return created;
+  }
+
+  async getHealthRiskAssessment(id: string, companyId: string): Promise<HealthRiskAssessment | undefined> {
+    const [assessment] = await db
+      .select()
+      .from(healthRiskAssessments)
+      .where(and(
+        eq(healthRiskAssessments.id, id),
+        eq(healthRiskAssessments.companyId, companyId)
+      ));
+    return assessment;
+  }
+
+  async getHealthRiskAssessments(
+    companyId: string,
+    filters?: {
+      patientId?: string;
+      status?: string;
+      assessmentType?: string;
+    }
+  ): Promise<HealthRiskAssessment[]> {
+    const conditions = [eq(healthRiskAssessments.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(healthRiskAssessments.patientId, filters.patientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(healthRiskAssessments.status, filters.status as any));
+    }
+    if (filters?.assessmentType) {
+      conditions.push(eq(healthRiskAssessments.assessmentType, filters.assessmentType));
+    }
+
+    return await db
+      .select()
+      .from(healthRiskAssessments)
+      .where(and(...conditions))
+      .orderBy(desc(healthRiskAssessments.createdAt));
+  }
+
+  async updateHealthRiskAssessment(
+    id: string,
+    companyId: string,
+    updates: Partial<HealthRiskAssessment>
+  ): Promise<HealthRiskAssessment | undefined> {
+    const [updated] = await db
+      .update(healthRiskAssessments)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(healthRiskAssessments.id, id),
+        eq(healthRiskAssessments.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteHealthRiskAssessment(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(healthRiskAssessments)
+      .where(and(
+        eq(healthRiskAssessments.id, id),
+        eq(healthRiskAssessments.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Population Health - Predictive Models ==========
+
+  async createPredictiveModel(model: InsertPredictiveModel): Promise<PredictiveModel> {
+    const [created] = await db
+      .insert(predictiveModels)
+      .values(model)
+      .returning();
+    return created;
+  }
+
+  async getPredictiveModel(id: string, companyId: string): Promise<PredictiveModel | undefined> {
+    const [model] = await db
+      .select()
+      .from(predictiveModels)
+      .where(and(
+        eq(predictiveModels.id, id),
+        eq(predictiveModels.companyId, companyId)
+      ));
+    return model;
+  }
+
+  async getPredictiveModels(
+    companyId: string,
+    filters?: {
+      isActive?: boolean;
+      modelType?: string;
+    }
+  ): Promise<PredictiveModel[]> {
+    const conditions = [eq(predictiveModels.companyId, companyId)];
+
+    if (filters?.isActive !== undefined) {
+      conditions.push(eq(predictiveModels.isActive, filters.isActive));
+    }
+    if (filters?.modelType) {
+      conditions.push(eq(predictiveModels.modelType, filters.modelType));
+    }
+
+    return await db
+      .select()
+      .from(predictiveModels)
+      .where(and(...conditions))
+      .orderBy(desc(predictiveModels.createdAt));
+  }
+
+  async updatePredictiveModel(
+    id: string,
+    companyId: string,
+    updates: Partial<PredictiveModel>
+  ): Promise<PredictiveModel | undefined> {
+    const [updated] = await db
+      .update(predictiveModels)
+      .set(updates)
+      .where(and(
+        eq(predictiveModels.id, id),
+        eq(predictiveModels.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deletePredictiveModel(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(predictiveModels)
+      .where(and(
+        eq(predictiveModels.id, id),
+        eq(predictiveModels.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Population Health - Predictive Analyses ==========
+
+  async createPredictiveAnalysis(analysis: InsertPredictiveAnalysis): Promise<PredictiveAnalysis> {
+    const [created] = await db
+      .insert(predictiveAnalyses)
+      .values(analysis)
+      .returning();
+    return created;
+  }
+
+  async getPredictiveAnalysis(id: string, companyId: string): Promise<PredictiveAnalysis | undefined> {
+    const [analysis] = await db
+      .select()
+      .from(predictiveAnalyses)
+      .where(and(
+        eq(predictiveAnalyses.id, id),
+        eq(predictiveAnalyses.companyId, companyId)
+      ));
+    return analysis;
+  }
+
+  async getPredictiveAnalyses(
+    companyId: string,
+    filters?: {
+      patientId?: string;
+      modelId?: string;
+      riskLevel?: string;
+    }
+  ): Promise<PredictiveAnalysis[]> {
+    const conditions = [eq(predictiveAnalyses.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(predictiveAnalyses.patientId, filters.patientId));
+    }
+    if (filters?.modelId) {
+      conditions.push(eq(predictiveAnalyses.modelId, filters.modelId));
+    }
+    if (filters?.riskLevel) {
+      conditions.push(eq(predictiveAnalyses.riskLevel, filters.riskLevel as any));
+    }
+
+    return await db
+      .select()
+      .from(predictiveAnalyses)
+      .where(and(...conditions))
+      .orderBy(desc(predictiveAnalyses.analyzedDate));
+  }
+
+  async updatePredictiveAnalysis(
+    id: string,
+    companyId: string,
+    updates: Partial<PredictiveAnalysis>
+  ): Promise<PredictiveAnalysis | undefined> {
+    const [updated] = await db
+      .update(predictiveAnalyses)
+      .set(updates)
+      .where(and(
+        eq(predictiveAnalyses.id, id),
+        eq(predictiveAnalyses.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deletePredictiveAnalysis(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(predictiveAnalyses)
+      .where(and(
+        eq(predictiveAnalyses.id, id),
+        eq(predictiveAnalyses.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Population Health - Social Determinants ==========
+
+  async createSocialDeterminant(determinant: InsertSocialDeterminant): Promise<SocialDeterminant> {
+    const [created] = await db
+      .insert(socialDeterminants)
+      .values(determinant)
+      .returning();
+    return created;
+  }
+
+  async getSocialDeterminant(id: string, companyId: string): Promise<SocialDeterminant | undefined> {
+    const [determinant] = await db
+      .select()
+      .from(socialDeterminants)
+      .where(and(
+        eq(socialDeterminants.id, id),
+        eq(socialDeterminants.companyId, companyId)
+      ));
+    return determinant;
+  }
+
+  async getSocialDeterminants(
+    companyId: string,
+    filters?: {
+      patientId?: string;
+      category?: string;
+      status?: string;
+      severity?: string;
+    }
+  ): Promise<SocialDeterminant[]> {
+    const conditions = [eq(socialDeterminants.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(socialDeterminants.patientId, filters.patientId));
+    }
+    if (filters?.category) {
+      conditions.push(eq(socialDeterminants.category, filters.category as any));
+    }
+    if (filters?.status) {
+      conditions.push(eq(socialDeterminants.status, filters.status as any));
+    }
+    if (filters?.severity) {
+      conditions.push(eq(socialDeterminants.severity, filters.severity as any));
+    }
+
+    return await db
+      .select()
+      .from(socialDeterminants)
+      .where(and(...conditions))
+      .orderBy(desc(socialDeterminants.identifiedDate));
+  }
+
+  async updateSocialDeterminant(
+    id: string,
+    companyId: string,
+    updates: Partial<SocialDeterminant>
+  ): Promise<SocialDeterminant | undefined> {
+    const [updated] = await db
+      .update(socialDeterminants)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(socialDeterminants.id, id),
+        eq(socialDeterminants.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteSocialDeterminant(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(socialDeterminants)
+      .where(and(
+        eq(socialDeterminants.id, id),
+        eq(socialDeterminants.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Population Health - Risk Stratification Cohorts ==========
+
+  async createRiskStratificationCohort(cohort: InsertRiskStratificationCohort): Promise<RiskStratificationCohort> {
+    const [created] = await db
+      .insert(riskStratificationCohorts)
+      .values(cohort)
+      .returning();
+    return created;
+  }
+
+  async getRiskStratificationCohort(id: string, companyId: string): Promise<RiskStratificationCohort | undefined> {
+    const [cohort] = await db
+      .select()
+      .from(riskStratificationCohorts)
+      .where(and(
+        eq(riskStratificationCohorts.id, id),
+        eq(riskStratificationCohorts.companyId, companyId)
+      ));
+    return cohort;
+  }
+
+  async getRiskStratificationCohorts(
+    companyId: string,
+    filters?: {
+      active?: boolean;
+    }
+  ): Promise<RiskStratificationCohort[]> {
+    const conditions = [eq(riskStratificationCohorts.companyId, companyId)];
+
+    if (filters?.active !== undefined) {
+      conditions.push(eq(riskStratificationCohorts.active, filters.active));
+    }
+
+    return await db
+      .select()
+      .from(riskStratificationCohorts)
+      .where(and(...conditions))
+      .orderBy(desc(riskStratificationCohorts.createdAt));
+  }
+
+  async updateRiskStratificationCohort(
+    id: string,
+    companyId: string,
+    updates: Partial<RiskStratificationCohort>
+  ): Promise<RiskStratificationCohort | undefined> {
+    const [updated] = await db
+      .update(riskStratificationCohorts)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(riskStratificationCohorts.id, id),
+        eq(riskStratificationCohorts.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteRiskStratificationCohort(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(riskStratificationCohorts)
+      .where(and(
+        eq(riskStratificationCohorts.id, id),
+        eq(riskStratificationCohorts.companyId, companyId)
+      ))
       .returning();
     return result.length > 0;
   }
