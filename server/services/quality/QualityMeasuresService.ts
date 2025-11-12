@@ -1,67 +1,41 @@
 /**
  * Quality Measures Service
+ * ✅ PRODUCTION-READY - FULLY DATABASE-BACKED ✅
+ * MIGRATED: November 12, 2025
  *
- * STATUS: Database infrastructure ready, service migration in progress
+ * Manages quality measures including HEDIS, MIPS, CQM, and Star Ratings.
+ * All data is persisted to PostgreSQL database with multi-tenant isolation.
  *
- * ✅ COMPLETED:
- * - Database tables created (quality_measures, measure_calculations, star_ratings, etc.)
- * - Storage CRUD methods implemented
- *
- * ⏳ TODO: Migrate service methods from in-memory Maps to database
- * - Update createQualityMeasure to use db.createQualityMeasure
- * - Update getQualityMeasures to use db.getQualityMeasures
- * - Update all other methods to use database
- *
- * TEMPORARY: Service still uses in-memory Maps (data loss risk remains)
+ * Database Tables:
+ * - quality_measures: Measure definitions (HEDIS, MIPS, CQM, etc.)
+ * - measure_calculations: Calculation results and patient lists
+ * - star_ratings: Medicare Star Ratings tracking
+ * - quality_gap_analyses: Gap analysis and improvement opportunities
+ * - quality_dashboards: Dashboard configurations
  */
 
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../utils/logger';
 import { storage, type IStorage } from '../../storage';
+import type {
+  QualityMeasure,
+  InsertQualityMeasure,
+  MeasureCalculation,
+  InsertMeasureCalculation,
+  StarRating,
+  InsertStarRating,
+  QualityGapAnalysis,
+  InsertQualityGapAnalysis,
+  QualityDashboard,
+  InsertQualityDashboard,
+} from '../../../shared/schema';
 
 // ============================================================================
-// Quality Measures Types
+// Additional Types (not in schema)
 // ============================================================================
 
 export type MeasureType = 'HEDIS' | 'MIPS' | 'CQM' | 'Star_Rating' | 'Core_Measure' | 'Custom';
 export type MeasureDomain = 'effectiveness' | 'access' | 'experience' | 'utilization' | 'safety' | 'care_coordination';
-
-export interface QualityMeasure {
-  id: string;
-  measureId: string;
-  name: string;
-  type: MeasureType;
-  domain: MeasureDomain;
-  description: string;
-  numeratorCriteria: string;
-  denominatorCriteria: string;
-  exclusionCriteria?: string;
-  targetRate: number;
-  reportingYear: number;
-  active: boolean;
-  evidenceSource: string;
-  steward: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface MeasureCalculation {
-  id: string;
-  measureId: string;
-  calculationDate: Date;
-  reportingPeriodStart: Date;
-  reportingPeriodEnd: Date;
-  numerator: number;
-  denominator: number;
-  exclusions: number;
-  rate: number;
-  targetRate: number;
-  performanceGap: number;
-  meetingTarget: boolean;
-  patientList: MeasurePatient[];
-  calculatedBy: string;
-  createdAt: Date;
-}
 
 export interface MeasurePatient {
   patientId: string;
@@ -92,20 +66,6 @@ export interface MIPSMeasure extends QualityMeasure {
   points: number;
 }
 
-export interface StarRating {
-  id: string;
-  contractId: string;
-  measurementYear: number;
-  partCRating: number;
-  partDRating: number;
-  overallRating: number;
-  measures: StarRatingMeasure[];
-  calculatedDate: Date;
-  published: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface StarRatingMeasure {
   measureId: string;
   measureName: string;
@@ -133,47 +93,6 @@ export interface ClinicalQualityMeasure {
   createdAt: Date;
 }
 
-export interface QualityGapAnalysis {
-  id: string;
-  measureId: string;
-  analysisDate: Date;
-  totalGaps: number;
-  closableGaps: number;
-  potentialRateImprovement: number;
-  gapsByReason: {
-    reason: string;
-    count: number;
-    percentage: number;
-  }[];
-  recommendedActions: string[];
-  projectedImpact: {
-    currentRate: number;
-    projectedRate: number;
-    rateImprovement: number;
-  };
-  createdBy: string;
-  createdAt: Date;
-}
-
-export interface QualityDashboard {
-  id: string;
-  name: string;
-  description: string;
-  measures: string[];
-  filters: {
-    provider?: string;
-    location?: string;
-    payerType?: string;
-    dateRange?: {
-      start: Date;
-      end: Date;
-    };
-  };
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 // ============================================================================
 // Quality Measures Service
 // ============================================================================
@@ -182,104 +101,112 @@ export class QualityMeasuresService {
   private static db: IStorage = storage;
 
   /**
-   * Legacy in-memory storage - TO BE REMOVED
-   * @deprecated Database tables and storage methods are ready. Service methods need migration.
-   * WARNING: Data stored in these Maps will be lost on server restart.
+   * Legacy in-memory storage - REMOVED (November 12, 2025)
+   * @deprecated No longer used - service is 100% database-backed
    */
-  private static qualityMeasures: Map<string, QualityMeasure> = new Map();
-  private static measureCalculations: Map<string, MeasureCalculation> = new Map();
-  private static starRatings: Map<string, StarRating> = new Map();
-  private static gapAnalyses: Map<string, QualityGapAnalysis> = new Map();
-  private static dashboards: Map<string, QualityDashboard> = new Map();
-
-  // Initialize with default measures
-  static {
-    this.initializeDefaultMeasures();
-  }
+  // All Maps removed - service now fully database-backed
 
   // ============================================================================
   // Quality Measure Management
   // ============================================================================
 
-  static createQualityMeasure(data: {
-    measureId: string;
-    name: string;
-    type: MeasureType;
-    domain: MeasureDomain;
-    description: string;
-    numeratorCriteria: string;
-    denominatorCriteria: string;
-    exclusionCriteria?: string;
-    targetRate: number;
-    reportingYear: number;
-    evidenceSource: string;
-    steward: string;
-  }): QualityMeasure {
-    const id = uuidv4();
-
-    const measure: QualityMeasure = {
-      id,
+  static async createQualityMeasure(
+    companyId: string,
+    data: {
+      measureId: string;
+      name: string;
+      type: MeasureType;
+      domain: MeasureDomain;
+      description: string;
+      numeratorCriteria: string;
+      denominatorCriteria: string;
+      exclusionCriteria?: string;
+      targetRate: number;
+      reportingYear: number;
+      evidenceSource: string;
+      steward: string;
+    }
+  ): Promise<QualityMeasure> {
+    const measure = await this.db.createQualityMeasure({
+      companyId,
       measureId: data.measureId,
       name: data.name,
-      type: data.type,
-      domain: data.domain,
+      type: data.type as any,
+      domain: data.domain as any,
       description: data.description,
       numeratorCriteria: data.numeratorCriteria,
       denominatorCriteria: data.denominatorCriteria,
-      exclusionCriteria: data.exclusionCriteria,
-      targetRate: data.targetRate,
+      exclusionCriteria: data.exclusionCriteria || null,
+      targetRate: data.targetRate.toString(),
       reportingYear: data.reportingYear,
       active: true,
       evidenceSource: data.evidenceSource,
       steward: data.steward,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    this.qualityMeasures.set(id, measure);
-    logger.info(`Quality measure created: ${data.measureId} - ${data.name}`);
-
+    logger.info(`Quality measure created: ${data.measureId} - ${data.name} (Company: ${companyId})`);
     return measure;
   }
 
-  static getQualityMeasureById(id: string): QualityMeasure | undefined {
-    return this.qualityMeasures.get(id);
+  static async getQualityMeasureById(id: string, companyId: string): Promise<QualityMeasure | undefined> {
+    return this.db.getQualityMeasure(id, companyId);
   }
 
-  static getQualityMeasureByMeasureId(measureId: string): QualityMeasure | undefined {
-    return Array.from(this.qualityMeasures.values()).find((m) => m.measureId === measureId);
+  static async getQualityMeasureByMeasureId(
+    measureId: string,
+    companyId: string
+  ): Promise<QualityMeasure | undefined> {
+    const measures = await this.db.getQualityMeasures(companyId, {});
+    return measures.find((m) => m.measureId === measureId);
   }
 
-  static getQualityMeasures(
+  static async getQualityMeasures(
+    companyId: string,
     type?: MeasureType,
     activeOnly: boolean = true
-  ): QualityMeasure[] {
-    let measures = Array.from(this.qualityMeasures.values());
+  ): Promise<QualityMeasure[]> {
+    const filters: { type?: string; active?: boolean } = {};
 
     if (type) {
-      measures = measures.filter((m) => m.type === type);
+      filters.type = type;
     }
 
     if (activeOnly) {
-      measures = measures.filter((m) => m.active);
+      filters.active = true;
     }
 
-    return measures;
+    return this.db.getQualityMeasures(companyId, filters);
+  }
+
+  static async updateQualityMeasure(
+    id: string,
+    companyId: string,
+    updates: Partial<QualityMeasure>
+  ): Promise<QualityMeasure | undefined> {
+    const updated = await this.db.updateQualityMeasure(id, companyId, updates);
+
+    if (updated) {
+      logger.info(`Quality measure updated: ${id} (Company: ${companyId})`);
+    }
+
+    return updated;
   }
 
   // ============================================================================
   // Measure Calculation
   // ============================================================================
 
-  static calculateMeasure(data: {
-    measureId: string;
-    reportingPeriodStart: Date;
-    reportingPeriodEnd: Date;
-    patientList: MeasurePatient[];
-    calculatedBy: string;
-  }): MeasureCalculation {
-    const id = uuidv4();
-    const measure = this.getQualityMeasureByMeasureId(data.measureId);
+  static async calculateMeasure(
+    companyId: string,
+    data: {
+      measureId: string;
+      reportingPeriodStart: Date;
+      reportingPeriodEnd: Date;
+      patientList: MeasurePatient[];
+      calculatedBy: string;
+    }
+  ): Promise<MeasureCalculation> {
+    const measure = await this.getQualityMeasureByMeasureId(data.measureId, companyId);
 
     if (!measure) {
       throw new Error(`Quality measure not found: ${data.measureId}`);
@@ -292,12 +219,13 @@ export class QualityMeasuresService {
 
     // Calculate rate
     const rate = denominator > 0 ? (numerator / denominator) * 100 : 0;
+    const targetRate = parseFloat(measure.targetRate);
 
     // Calculate performance gap
-    const performanceGap = measure.targetRate - rate;
+    const performanceGap = targetRate - rate;
 
-    const calculation: MeasureCalculation = {
-      id,
+    const calculation = await this.db.createMeasureCalculation({
+      companyId,
       measureId: data.measureId,
       calculationDate: new Date(),
       reportingPeriodStart: data.reportingPeriodStart,
@@ -305,84 +233,106 @@ export class QualityMeasuresService {
       numerator,
       denominator,
       exclusions,
-      rate: Math.round(rate * 100) / 100,
+      rate: (Math.round(rate * 100) / 100).toString(),
       targetRate: measure.targetRate,
-      performanceGap: Math.round(performanceGap * 100) / 100,
-      meetingTarget: rate >= measure.targetRate,
-      patientList: data.patientList,
+      performanceGap: (Math.round(performanceGap * 100) / 100).toString(),
+      meetingTarget: rate >= targetRate,
+      patientList: data.patientList as any,
       calculatedBy: data.calculatedBy,
-      createdAt: new Date(),
-    };
+    });
 
-    this.measureCalculations.set(id, calculation);
     logger.info(
-      `Measure calculated: ${data.measureId} - Rate: ${calculation.rate}% (Target: ${measure.targetRate}%)`
+      `Measure calculated: ${data.measureId} - Rate: ${calculation.rate}% (Target: ${measure.targetRate}%) (Company: ${companyId})`
     );
 
     return calculation;
   }
 
-  static getMeasureCalculationById(id: string): MeasureCalculation | undefined {
-    return this.measureCalculations.get(id);
+  static async getMeasureCalculationById(
+    id: string,
+    companyId: string
+  ): Promise<MeasureCalculation | undefined> {
+    return this.db.getMeasureCalculation(id, companyId);
   }
 
-  static getMeasureCalculations(
+  static async getMeasureCalculations(
+    companyId: string,
     measureId?: string,
     startDate?: Date,
     endDate?: Date
-  ): MeasureCalculation[] {
-    let calculations = Array.from(this.measureCalculations.values());
+  ): Promise<MeasureCalculation[]> {
+    const filters: { measureId?: string; startDate?: Date; endDate?: Date } = {};
 
     if (measureId) {
-      calculations = calculations.filter((c) => c.measureId === measureId);
+      filters.measureId = measureId;
     }
-
     if (startDate) {
-      calculations = calculations.filter((c) => c.calculationDate >= startDate);
+      filters.startDate = startDate;
     }
-
     if (endDate) {
-      calculations = calculations.filter((c) => c.calculationDate <= endDate);
+      filters.endDate = endDate;
     }
 
-    return calculations.sort((a, b) => b.calculationDate.getTime() - a.calculationDate.getTime());
+    return this.db.getMeasureCalculations(companyId, filters);
   }
 
-  static getLatestCalculation(measureId: string): MeasureCalculation | undefined {
-    const calculations = this.getMeasureCalculations(measureId);
-    return calculations[0];
+  static async getLatestCalculation(
+    measureId: string,
+    companyId: string
+  ): Promise<MeasureCalculation | undefined> {
+    const calculations = await this.getMeasureCalculations(companyId, measureId);
+
+    if (calculations.length === 0) {
+      return undefined;
+    }
+
+    // Sort by calculation date descending and return first
+    return calculations.sort(
+      (a, b) => new Date(b.calculationDate).getTime() - new Date(a.calculationDate).getTime()
+    )[0];
+  }
+
+  static async updateMeasureCalculation(
+    id: string,
+    companyId: string,
+    updates: Partial<MeasureCalculation>
+  ): Promise<MeasureCalculation | undefined> {
+    return this.db.updateMeasureCalculation(id, companyId, updates);
   }
 
   // ============================================================================
   // Gap Analysis
   // ============================================================================
 
-  static performGapAnalysis(data: {
-    measureId: string;
-    calculationId?: string;
-    createdBy: string;
-  }): QualityGapAnalysis {
-    const id = uuidv4();
-
+  static async performGapAnalysis(
+    companyId: string,
+    data: {
+      measureId: string;
+      calculationId?: string;
+      createdBy: string;
+    }
+  ): Promise<QualityGapAnalysis> {
     // Get latest calculation if not provided
     let calculation: MeasureCalculation | undefined;
     if (data.calculationId) {
-      calculation = this.measureCalculations.get(data.calculationId);
+      calculation = await this.getMeasureCalculationById(data.calculationId, companyId);
     } else {
-      calculation = this.getLatestCalculation(data.measureId);
+      calculation = await this.getLatestCalculation(data.measureId, companyId);
     }
 
     if (!calculation) {
       throw new Error(`No calculation found for measure: ${data.measureId}`);
     }
 
-    const measure = this.getQualityMeasureByMeasureId(data.measureId);
+    const measure = await this.getQualityMeasureByMeasureId(data.measureId, companyId);
     if (!measure) {
       throw new Error(`Measure not found: ${data.measureId}`);
     }
 
+    const patientList = calculation.patientList as unknown as MeasurePatient[];
+
     // Analyze gaps
-    const gaps = calculation.patientList.filter(
+    const gaps = patientList.filter(
       (p) => p.inDenominator && !p.inNumerator && !p.excluded
     );
     const totalGaps = gaps.length;
@@ -393,7 +343,8 @@ export class QualityMeasuresService {
     // Calculate potential rate improvement if all closable gaps are closed
     const potentialNumerator = calculation.numerator + closableGaps;
     const potentialRate = (potentialNumerator / calculation.denominator) * 100;
-    const potentialImprovement = potentialRate - calculation.rate;
+    const currentRate = parseFloat(calculation.rate);
+    const potentialImprovement = potentialRate - currentRate;
 
     // Analyze gaps by reason
     const gapReasons = new Map<string, number>();
@@ -422,40 +373,50 @@ export class QualityMeasuresService {
       gapsByReason
     );
 
-    const analysis: QualityGapAnalysis = {
-      id,
+    const analysis = await this.db.createQualityGapAnalysis({
+      companyId,
       measureId: data.measureId,
       analysisDate: new Date(),
       totalGaps,
       closableGaps,
-      potentialRateImprovement: Math.round(potentialImprovement * 100) / 100,
-      gapsByReason,
-      recommendedActions,
+      potentialRateImprovement: (Math.round(potentialImprovement * 100) / 100).toString(),
+      gapsByReason: gapsByReason as any,
+      recommendedActions: recommendedActions as any,
       projectedImpact: {
-        currentRate: calculation.rate,
+        currentRate: currentRate,
         projectedRate: Math.round(potentialRate * 100) / 100,
         rateImprovement: Math.round(potentialImprovement * 100) / 100,
-      },
+      } as any,
       createdBy: data.createdBy,
-      createdAt: new Date(),
-    };
+    });
 
-    this.gapAnalyses.set(id, analysis);
     logger.info(
-      `Gap analysis completed for ${data.measureId}: ${totalGaps} total gaps, ${closableGaps} closable`
+      `Gap analysis completed for ${data.measureId}: ${totalGaps} total gaps, ${closableGaps} closable (Company: ${companyId})`
     );
 
     return analysis;
   }
 
-  static getGapAnalysisById(id: string): QualityGapAnalysis | undefined {
-    return this.gapAnalyses.get(id);
+  static async getGapAnalysisById(
+    id: string,
+    companyId: string
+  ): Promise<QualityGapAnalysis | undefined> {
+    return this.db.getQualityGapAnalysis(id, companyId);
   }
 
-  static getGapAnalysesByMeasure(measureId: string): QualityGapAnalysis[] {
-    return Array.from(this.gapAnalyses.values())
-      .filter((a) => a.measureId === measureId)
-      .sort((a, b) => b.analysisDate.getTime() - a.analysisDate.getTime());
+  static async getGapAnalysesByMeasure(
+    measureId: string,
+    companyId: string
+  ): Promise<QualityGapAnalysis[]> {
+    return this.db.getQualityGapAnalyses(companyId, { measureId });
+  }
+
+  static async updateGapAnalysis(
+    id: string,
+    companyId: string,
+    updates: Partial<QualityGapAnalysis>
+  ): Promise<QualityGapAnalysis | undefined> {
+    return this.db.updateQualityGapAnalysis(id, companyId, updates);
   }
 
   private static generateRecommendedActions(
@@ -464,12 +425,15 @@ export class QualityMeasuresService {
     gapsByReason: { reason: string; count: number; percentage: number }[]
   ): string[] {
     const actions: string[] = [];
+    const performanceGap = parseFloat(calculation.performanceGap);
+    const rate = parseFloat(calculation.rate);
+    const targetRate = parseFloat(measure.targetRate);
 
     // Generic recommendations based on performance gap
-    if (calculation.performanceGap > 20) {
+    if (performanceGap > 20) {
       actions.push('Implement systematic outreach program for all patients in denominator');
       actions.push('Review and update clinical workflows to improve measure compliance');
-    } else if (calculation.performanceGap > 10) {
+    } else if (performanceGap > 10) {
       actions.push('Target outreach to patients with identified gaps');
       actions.push('Provide point-of-care reminders for measure compliance');
     }
@@ -487,7 +451,7 @@ export class QualityMeasuresService {
       actions.push('Review HEDIS technical specifications for compliance opportunities');
     }
 
-    if (calculation.rate < measure.targetRate * 0.8) {
+    if (rate < targetRate * 0.8) {
       actions.push('Consider implementing quality improvement initiative for this measure');
     }
 
@@ -498,13 +462,14 @@ export class QualityMeasuresService {
   // Star Ratings
   // ============================================================================
 
-  static calculateStarRating(data: {
-    contractId: string;
-    measurementYear: number;
-    measures: StarRatingMeasure[];
-  }): StarRating {
-    const id = uuidv4();
-
+  static async calculateStarRating(
+    companyId: string,
+    data: {
+      contractId: string;
+      measurementYear: number;
+      measures: StarRatingMeasure[];
+    }
+  ): Promise<StarRating> {
     // Calculate weighted scores for Part C and Part D
     let partCWeightedScore = 0;
     let partCTotalWeight = 0;
@@ -537,116 +502,147 @@ export class QualityMeasuresService {
     // Overall rating is weighted average of Part C and Part D
     const overallRating = Math.round(((partCRating + partDRating) / 2) * 10) / 10;
 
-    const starRating: StarRating = {
-      id,
+    const starRating = await this.db.createStarRating({
+      companyId,
       contractId: data.contractId,
       measurementYear: data.measurementYear,
-      partCRating,
-      partDRating,
-      overallRating,
-      measures: data.measures,
+      partCRating: partCRating.toString(),
+      partDRating: partDRating.toString(),
+      overallRating: overallRating.toString(),
+      measures: data.measures as any,
       calculatedDate: new Date(),
       published: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    this.starRatings.set(id, starRating);
     logger.info(
-      `Star rating calculated for contract ${data.contractId}: ${overallRating} stars`
+      `Star rating calculated for contract ${data.contractId}: ${overallRating} stars (Company: ${companyId})`
     );
 
     return starRating;
   }
 
-  static getStarRatingById(id: string): StarRating | undefined {
-    return this.starRatings.get(id);
+  static async getStarRatingById(
+    id: string,
+    companyId: string
+  ): Promise<StarRating | undefined> {
+    return this.db.getStarRating(id, companyId);
   }
 
-  static getStarRatingsByContract(contractId: string): StarRating[] {
-    return Array.from(this.starRatings.values())
-      .filter((r) => r.contractId === contractId)
-      .sort((a, b) => b.measurementYear - a.measurementYear);
+  static async getStarRatingsByContract(
+    contractId: string,
+    companyId: string
+  ): Promise<StarRating[]> {
+    return this.db.getStarRatings(companyId, { contractId });
   }
 
-  static publishStarRating(id: string): StarRating {
-    const rating = this.starRatings.get(id);
+  static async publishStarRating(
+    id: string,
+    companyId: string
+  ): Promise<StarRating> {
+    const rating = await this.getStarRatingById(id, companyId);
     if (!rating) {
       throw new Error('Star rating not found');
     }
 
-    rating.published = true;
-    rating.updatedAt = new Date();
+    const updated = await this.db.updateStarRating(id, companyId, {
+      published: true,
+    });
 
-    this.starRatings.set(id, rating);
-    logger.info(`Star rating published for contract ${rating.contractId}`);
+    if (!updated) {
+      throw new Error('Failed to publish star rating');
+    }
 
-    return rating;
+    logger.info(`Star rating published for contract ${rating.contractId} (Company: ${companyId})`);
+    return updated;
+  }
+
+  static async updateStarRating(
+    id: string,
+    companyId: string,
+    updates: Partial<StarRating>
+  ): Promise<StarRating | undefined> {
+    return this.db.updateStarRating(id, companyId, updates);
   }
 
   // ============================================================================
   // Quality Dashboards
   // ============================================================================
 
-  static createQualityDashboard(data: {
-    name: string;
-    description: string;
-    measures: string[];
-    filters?: QualityDashboard['filters'];
-    createdBy: string;
-  }): QualityDashboard {
-    const id = uuidv4();
-
-    const dashboard: QualityDashboard = {
-      id,
+  static async createQualityDashboard(
+    companyId: string,
+    data: {
+      name: string;
+      description: string;
+      measures: string[];
+      filters?: any;
+      createdBy: string;
+    }
+  ): Promise<QualityDashboard> {
+    const dashboard = await this.db.createQualityDashboard({
+      companyId,
       name: data.name,
       description: data.description,
-      measures: data.measures,
+      measures: data.measures as any,
       filters: data.filters || {},
       createdBy: data.createdBy,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    this.dashboards.set(id, dashboard);
-    logger.info(`Quality dashboard created: ${data.name}`);
-
+    logger.info(`Quality dashboard created: ${data.name} (Company: ${companyId})`);
     return dashboard;
   }
 
-  static getQualityDashboardById(id: string): QualityDashboard | undefined {
-    return this.dashboards.get(id);
-  }
-
-  static getQualityDashboards(): QualityDashboard[] {
-    return Array.from(this.dashboards.values());
-  }
-
-  static updateQualityDashboard(
+  static async getQualityDashboardById(
     id: string,
-    updates: Partial<Omit<QualityDashboard, 'id' | 'createdBy' | 'createdAt'>>
-  ): QualityDashboard {
-    const dashboard = this.dashboards.get(id);
+    companyId: string
+  ): Promise<QualityDashboard | undefined> {
+    return this.db.getQualityDashboard(id, companyId);
+  }
+
+  static async getQualityDashboards(companyId: string): Promise<QualityDashboard[]> {
+    return this.db.getQualityDashboards(companyId);
+  }
+
+  static async updateQualityDashboard(
+    id: string,
+    companyId: string,
+    updates: Partial<QualityDashboard>
+  ): Promise<QualityDashboard> {
+    const dashboard = await this.getQualityDashboardById(id, companyId);
     if (!dashboard) {
       throw new Error('Quality dashboard not found');
     }
 
-    Object.assign(dashboard, updates);
-    dashboard.updatedAt = new Date();
+    const updated = await this.db.updateQualityDashboard(id, companyId, updates);
+    if (!updated) {
+      throw new Error('Failed to update quality dashboard');
+    }
 
-    this.dashboards.set(id, dashboard);
-    logger.info(`Quality dashboard updated: ${id}`);
-
-    return dashboard;
+    logger.info(`Quality dashboard updated: ${id} (Company: ${companyId})`);
+    return updated;
   }
 
   // ============================================================================
   // Default Data Initialization
   // ============================================================================
 
-  private static initializeDefaultMeasures(): void {
+  /**
+   * Initialize default quality measures for a company.
+   * This should be called explicitly when a new company is onboarded.
+   *
+   * @param companyId - The company ID to initialize measures for
+   */
+  static async initializeDefaultMeasures(companyId: string): Promise<void> {
+    logger.info(`Initializing default quality measures for company: ${companyId}`);
+
+    // Check if measures already exist
+    const existing = await this.getQualityMeasures(companyId, undefined, false);
+    if (existing.length > 0) {
+      logger.info(`Company ${companyId} already has ${existing.length} measures, skipping initialization`);
+      return;
+    }
+
     // HEDIS Measures
-    this.createQualityMeasure({
+    await this.createQualityMeasure(companyId, {
       measureId: 'CDC',
       name: 'Comprehensive Diabetes Care - HbA1c Control (<8%)',
       type: 'HEDIS',
@@ -661,7 +657,7 @@ export class QualityMeasuresService {
       steward: 'NCQA',
     });
 
-    this.createQualityMeasure({
+    await this.createQualityMeasure(companyId, {
       measureId: 'CDC-BP',
       name: 'Comprehensive Diabetes Care - Blood Pressure Control (<140/90)',
       type: 'HEDIS',
@@ -675,7 +671,7 @@ export class QualityMeasuresService {
       steward: 'NCQA',
     });
 
-    this.createQualityMeasure({
+    await this.createQualityMeasure(companyId, {
       measureId: 'CDC-EYE',
       name: 'Comprehensive Diabetes Care - Eye Exam',
       type: 'HEDIS',
@@ -689,7 +685,7 @@ export class QualityMeasuresService {
       steward: 'NCQA',
     });
 
-    this.createQualityMeasure({
+    await this.createQualityMeasure(companyId, {
       measureId: 'CBP',
       name: 'Controlling High Blood Pressure',
       type: 'HEDIS',
@@ -703,7 +699,7 @@ export class QualityMeasuresService {
       steward: 'NCQA',
     });
 
-    this.createQualityMeasure({
+    await this.createQualityMeasure(companyId, {
       measureId: 'BCS',
       name: 'Breast Cancer Screening',
       type: 'HEDIS',
@@ -718,7 +714,7 @@ export class QualityMeasuresService {
       steward: 'NCQA',
     });
 
-    this.createQualityMeasure({
+    await this.createQualityMeasure(companyId, {
       measureId: 'COL',
       name: 'Colorectal Cancer Screening',
       type: 'HEDIS',
@@ -734,7 +730,7 @@ export class QualityMeasuresService {
     });
 
     // MIPS Measures
-    this.createQualityMeasure({
+    await this.createQualityMeasure(companyId, {
       measureId: 'MIPS001',
       name: 'Diabetes: Hemoglobin A1c (HbA1c) Poor Control (>9%)',
       type: 'MIPS',
@@ -748,7 +744,7 @@ export class QualityMeasuresService {
       steward: 'CMS',
     });
 
-    this.createQualityMeasure({
+    await this.createQualityMeasure(companyId, {
       measureId: 'MIPS236',
       name: 'Controlling High Blood Pressure',
       type: 'MIPS',
@@ -762,7 +758,7 @@ export class QualityMeasuresService {
       steward: 'CMS',
     });
 
-    this.createQualityMeasure({
+    await this.createQualityMeasure(companyId, {
       measureId: 'MIPS130',
       name: 'Documentation of Current Medications',
       type: 'MIPS',
@@ -777,7 +773,7 @@ export class QualityMeasuresService {
     });
 
     // CQM Measures
-    this.createQualityMeasure({
+    await this.createQualityMeasure(companyId, {
       measureId: 'CMS122',
       name: 'Diabetes: Hemoglobin A1c (HbA1c) Poor Control (>9%)',
       type: 'CQM',
@@ -791,7 +787,7 @@ export class QualityMeasuresService {
       steward: 'CMS',
     });
 
-    this.createQualityMeasure({
+    await this.createQualityMeasure(companyId, {
       measureId: 'CMS165',
       name: 'Controlling High Blood Pressure',
       type: 'CQM',
@@ -805,22 +801,23 @@ export class QualityMeasuresService {
       steward: 'CMS',
     });
 
-    logger.info('Default quality measures initialized');
+    logger.info(`Default quality measures initialized for company: ${companyId}`);
   }
 
   // ============================================================================
   // Statistics and Reporting
   // ============================================================================
 
-  static getStatistics(
+  static async getStatistics(
+    companyId: string,
     startDate?: Date,
     endDate?: Date,
     measureType?: MeasureType
-  ): {
+  ): Promise<{
     totalMeasures: number;
     activeMeasures: number;
-    byType: { type: MeasureType; count: number }[];
-    byDomain: { domain: MeasureDomain; count: number }[];
+    byType: { type: string; count: number }[];
+    byDomain: { domain: string; count: number }[];
     calculations: {
       total: number;
       meetingTarget: number;
@@ -839,64 +836,66 @@ export class QualityMeasuresService {
       published: number;
       averageRating: number;
     };
-  } {
-    // Filter measures
-    let measures = Array.from(this.qualityMeasures.values());
+  }> {
+    // Get measures from database
+    const filters: { type?: string; active?: boolean } = {};
     if (measureType) {
-      measures = measures.filter((m) => m.type === measureType);
+      filters.type = measureType;
     }
+    const measures = await this.db.getQualityMeasures(companyId, filters);
 
     // Group by type
-    const byType = new Map<MeasureType, number>();
+    const byType = new Map<string, number>();
     for (const measure of measures) {
       const count = byType.get(measure.type) || 0;
       byType.set(measure.type, count + 1);
     }
 
     // Group by domain
-    const byDomain = new Map<MeasureDomain, number>();
+    const byDomain = new Map<string, number>();
     for (const measure of measures) {
       const count = byDomain.get(measure.domain) || 0;
       byDomain.set(measure.domain, count + 1);
     }
 
-    // Filter calculations
-    let calculations = Array.from(this.measureCalculations.values());
+    // Get calculations from database
+    const calculationFilters: { measureId?: string; startDate?: Date; endDate?: Date } = {};
     if (startDate) {
-      calculations = calculations.filter((c) => c.calculationDate >= startDate);
+      calculationFilters.startDate = startDate;
     }
     if (endDate) {
-      calculations = calculations.filter((c) => c.calculationDate <= endDate);
+      calculationFilters.endDate = endDate;
     }
+    const calculations = await this.db.getMeasureCalculations(companyId, calculationFilters);
 
     const meetingTarget = calculations.filter((c) => c.meetingTarget).length;
     const belowTarget = calculations.length - meetingTarget;
     const averageRate =
       calculations.length > 0
-        ? calculations.reduce((sum, c) => sum + c.rate, 0) / calculations.length
+        ? calculations.reduce((sum, c) => sum + parseFloat(c.rate), 0) / calculations.length
         : 0;
     const averageGap =
       calculations.length > 0
-        ? calculations.reduce((sum, c) => sum + Math.abs(c.performanceGap), 0) /
+        ? calculations.reduce((sum, c) => sum + Math.abs(parseFloat(c.performanceGap)), 0) /
           calculations.length
         : 0;
 
-    // Gap analyses
-    const gapAnalyses = Array.from(this.gapAnalyses.values());
+    // Get gap analyses from database
+    const gapAnalyses = await this.db.getQualityGapAnalyses(companyId, {});
     const totalGaps = gapAnalyses.reduce((sum, a) => sum + a.totalGaps, 0);
     const closableGaps = gapAnalyses.reduce((sum, a) => sum + a.closableGaps, 0);
     const averagePotentialImprovement =
       gapAnalyses.length > 0
-        ? gapAnalyses.reduce((sum, a) => sum + a.potentialRateImprovement, 0) /
+        ? gapAnalyses.reduce((sum, a) => sum + parseFloat(a.potentialRateImprovement), 0) /
           gapAnalyses.length
         : 0;
 
-    // Star ratings
-    const starRatings = Array.from(this.starRatings.values());
+    // Get star ratings from database
+    const starRatings = await this.db.getStarRatings(companyId, {});
     const publishedRatings = starRatings.filter((r) => r.published).length;
     const averageRating =
       starRatings.length > 0
-        ? starRatings.reduce((sum, r) => sum + r.overallRating, 0) / starRatings.length
+        ? starRatings.reduce((sum, r) => sum + parseFloat(r.overallRating), 0) / starRatings.length
         : 0;
 
     return {
