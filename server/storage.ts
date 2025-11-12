@@ -495,6 +495,43 @@ export interface IStorage {
   getQualityDashboard(id: string, companyId: string): Promise<QualityDashboard | undefined>;
   getQualityDashboards(companyId: string): Promise<QualityDashboard[]>;
   updateQualityDashboard(id: string, companyId: string, updates: Partial<QualityDashboard>): Promise<QualityDashboard | undefined>;
+
+  // ============== CARE COORDINATION METHODS ==============
+  // Care Plans
+  createCarePlan(plan: InsertCarePlan): Promise<CarePlan>;
+  getCarePlan(id: string, companyId: string): Promise<CarePlan | null>;
+  getCarePlans(companyId: string, filters?: { patientId?: string; status?: string }): Promise<CarePlan[]>;
+  updateCarePlan(id: string, companyId: string, updates: Partial<CarePlan>): Promise<CarePlan | null>;
+
+  // Care Teams
+  createCareTeam(team: InsertCareTeam): Promise<CareTeam>;
+  getCareTeam(id: string, companyId: string): Promise<CareTeam | null>;
+  getCareTeams(companyId: string, filters?: { patientId?: string }): Promise<CareTeam[]>;
+  updateCareTeam(id: string, companyId: string, updates: Partial<CareTeam>): Promise<CareTeam | null>;
+
+  // Care Gaps
+  createCareGap(gap: InsertCareGap): Promise<CareGap>;
+  getCareGap(id: string, companyId: string): Promise<CareGap | null>;
+  getCareGaps(companyId: string, filters?: { patientId?: string; status?: string }): Promise<CareGap[]>;
+  updateCareGap(id: string, companyId: string, updates: Partial<CareGap>): Promise<CareGap | null>;
+
+  // Care Coordination Tasks
+  createCareCoordinationTask(task: InsertCareCoordinationTask): Promise<CareCoordinationTask>;
+  getCareCoordinationTask(id: string, companyId: string): Promise<CareCoordinationTask | null>;
+  getCareCoordinationTasks(companyId: string, filters?: { patientId?: string; status?: string }): Promise<CareCoordinationTask[]>;
+  updateCareCoordinationTask(id: string, companyId: string, updates: Partial<CareCoordinationTask>): Promise<CareCoordinationTask | null>;
+
+  // Transitions of Care
+  createTransitionOfCare(transition: InsertTransitionOfCare): Promise<TransitionOfCare>;
+  getTransitionOfCare(id: string, companyId: string): Promise<TransitionOfCare | null>;
+  getTransitionsOfCare(companyId: string, filters?: { patientId?: string; status?: string }): Promise<TransitionOfCare[]>;
+  updateTransitionOfCare(id: string, companyId: string, updates: Partial<TransitionOfCare>): Promise<TransitionOfCare | null>;
+
+  // Patient Outreach
+  createPatientOutreach(outreach: InsertPatientOutreach): Promise<PatientOutreach>;
+  getPatientOutreach(id: string, companyId: string): Promise<PatientOutreach | null>;
+  getPatientOutreaches(companyId: string, filters?: { patientId?: string; status?: string }): Promise<PatientOutreach[]>;
+  updatePatientOutreach(id: string, companyId: string, updates: Partial<PatientOutreach>): Promise<PatientOutreach | null>;
 }
 
 export class DbStorage implements IStorage {
