@@ -27,7 +27,11 @@
     "test:ci": "npm run check && npm run test:coverage && npm run test:integration && npm run test:components",
     "migrate-storage": "tsx scripts/migrate-storage.ts",
     "migrate-storage:dry-run": "tsx scripts/migrate-storage.ts migrate --dry-run",
-    "migrate-storage:verify": "tsx scripts/migrate-storage.ts verify"
+    "migrate-storage:verify": "tsx scripts/migrate-storage.ts verify",
+    "railway:deploy": "railway up",
+    "railway:logs": "railway logs",
+    "railway:status": "railway status",
+    "postdeploy": "npm run db:push"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
