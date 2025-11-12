@@ -1,20 +1,26 @@
 /**
  * Risk Stratification Service
  *
- * ✅ DATABASE-BACKED - Production Ready
+ * ✅ 100% DATABASE-BACKED - Production Ready ✅
  *
- * MIGRATED FEATURES:
- * - Risk scores stored in PostgreSQL (multi-tenant)
- * - Health risk assessments with JSONB responses
- * - Predictive models and analyses persisted
- * - Social determinants tracking with interventions
- * - Risk stratification cohorts
- * - All data survives server restarts
+ * MIGRATED: November 12, 2025
  *
- * STATUS: Core functionality migrated (~840 lines)
- * NOTE: Predictive models use simplified simulation (real ML models pending)
+ * FEATURES:
+ * - ✅ Risk scores stored in PostgreSQL (multi-tenant)
+ * - ✅ Health risk assessments with JSONB responses
+ * - ✅ Predictive models and analyses persisted
+ * - ✅ Social determinants tracking with interventions
+ * - ✅ Risk stratification cohorts
+ * - ✅ Statistics and reporting (database-backed)
+ * - ✅ All data survives server restarts
  *
- * REMAINING: getStatistics() can be optimized with database aggregation queries
+ * DATA SAFETY:
+ * - All data persisted to PostgreSQL
+ * - No data loss on server restart
+ * - Complete multi-tenant isolation
+ *
+ * STATUS: Fully migrated (~920 lines)
+ * NOTE: Predictive models use simplified simulation (real ML models pending Phase 2)
  */
 
 import { v4 as uuidv4 } from 'uuid';
@@ -164,13 +170,11 @@ export interface CohortCriteria {
 export class RiskStratificationService {
   private static db: IStorage = storage;
 
-  // Legacy in-memory storage (to be removed after migration)
-  private static riskScores: Map<string, RiskScore> = new Map();
-  private static healthRiskAssessments: Map<string, HealthRiskAssessment> = new Map();
-  private static predictiveModels: Map<string, PredictiveModel> = new Map();
-  private static predictiveAnalyses: Map<string, PredictiveAnalysis> = new Map();
-  private static socialDeterminants: Map<string, SocialDeterminant> = new Map();
-  private static cohorts: Map<string, RiskStratificationCohort> = new Map();
+  /**
+   * Legacy in-memory storage - REMOVED (November 12, 2025)
+   * All data now persisted to PostgreSQL database
+   * @deprecated No longer used - service is 100% database-backed
+   */
 
   // NOTE: Default predictive models should be seeded via database migration
   // instead of static initialization (now requires companyId and async)
@@ -840,10 +844,11 @@ export class RiskStratificationService {
   // Statistics and Reporting
   // ============================================================================
 
-  static getStatistics(
+  static async getStatistics(
+    companyId: string,
     startDate?: Date,
     endDate?: Date
-  ): {
+  ): Promise<{
     riskDistribution: { riskLevel: RiskLevel; count: number; percentage: number }[];
     totalPatients: number;
     assessmentsCompleted: number;
@@ -852,19 +857,24 @@ export class RiskStratificationService {
     highRiskPatients: number;
     activeCohorts: number;
     averageRiskScore: number;
-  } {
+  }> {
+    // Get all risk scores from database
+    const allScores = await this.db.getRiskScores(companyId, {});
+
     // Filter data by date range
-    const filteredScores = Array.from(this.riskScores.values()).filter((score) => {
-      if (startDate && score.calculatedDate < startDate) return false;
-      if (endDate && score.calculatedDate > endDate) return false;
+    const filteredScores = allScores.filter((score) => {
+      const calculatedDate = new Date(score.calculatedDate);
+      if (startDate && calculatedDate < startDate) return false;
+      if (endDate && calculatedDate > endDate) return false;
       return true;
     });
 
     // Get latest score per patient
-    const latestScores = new Map<string, RiskScore>();
+    const latestScores = new Map<string, any>();
     for (const score of filteredScores) {
       const existing = latestScores.get(score.patientId);
-      if (!existing || score.calculatedDate > existing.calculatedDate) {
+      const scoreDate = new Date(score.calculatedDate);
+      if (!existing || scoreDate > new Date(existing.calculatedDate)) {
         latestScores.set(score.patientId, score);
       }
     }
@@ -879,9 +889,9 @@ export class RiskStratificationService {
 
     let totalScore = 0;
     for (const score of latestScores.values()) {
-      const current = riskCounts.get(score.riskLevel) || 0;
-      riskCounts.set(score.riskLevel, current + 1);
-      totalScore += score.score;
+      const current = riskCounts.get(score.riskLevel as RiskLevel) || 0;
+      riskCounts.set(score.riskLevel as RiskLevel, current + 1);
+      totalScore += parseFloat(score.score);
     }
 
     const totalPatients = latestScores.size;
@@ -891,26 +901,36 @@ export class RiskStratificationService {
       percentage: totalPatients > 0 ? Math.round((count / totalPatients) * 100) : 0,
     }));
 
-    const assessmentsCompleted = Array.from(this.healthRiskAssessments.values()).filter(
+    // Get assessments from database
+    const allAssessments = await this.db.getHealthRiskAssessments(companyId, {});
+    const assessmentsCompleted = allAssessments.filter(
       (a) => a.status === 'completed'
     ).length;
 
-    const socialDeterminantsIdentified = Array.from(this.socialDeterminants.values()).filter(
-      (d) => {
-        if (startDate && d.identifiedDate < startDate) return false;
-        if (endDate && d.identifiedDate > endDate) return false;
-        return true;
-      }
-    ).length;
+    // Get social determinants from database
+    const allDeterminants = await this.db.getSocialDeterminants(companyId, {});
+    const socialDeterminantsIdentified = allDeterminants.filter((d) => {
+      const identifiedDate = new Date(d.identifiedDate);
+      if (startDate && identifiedDate < startDate) return false;
+      if (endDate && identifiedDate > endDate) return false;
+      return true;
+    }).length;
+
+    // Get predictive analyses from database
+    const allAnalyses = await this.db.getPredictiveAnalyses(companyId, {});
+
+    // Get cohorts from database
+    const allCohorts = await this.db.getRiskStratificationCohorts(companyId);
+    const activeCohorts = allCohorts.filter((c) => c.active).length;
 
     return {
       riskDistribution,
       totalPatients,
       assessmentsCompleted,
-      predictiveAnalysesRun: this.predictiveAnalyses.size,
+      predictiveAnalysesRun: allAnalyses.length,
       socialDeterminantsIdentified,
       highRiskPatients: (riskCounts.get('high') || 0) + (riskCounts.get('very_high') || 0),
-      activeCohorts: Array.from(this.cohorts.values()).filter((c) => c.active).length,
+      activeCohorts,
       averageRiskScore: totalPatients > 0 ? Math.round((totalScore / totalPatients) * 100) / 100 : 0,
     };
   }
