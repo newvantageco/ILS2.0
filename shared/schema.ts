@@ -86,6 +86,80 @@ export const qualityIssueTypeEnum = pgEnum("quality_issue_type", [
 ]);
 
 // Tables for Analytics and Quality Control
+// ========== RCM (Revenue Cycle Management) Enums ==========
+
+/**
+ * Insurance claim status
+ * Tracks the lifecycle of insurance claims from draft to payment
+ */
+export const claimStatusEnum = pgEnum("claim_status", [
+  "draft",
+  "ready_to_submit",
+  "submitted",
+  "pending",
+  "accepted",
+  "rejected",
+  "partially_paid",
+  "paid",
+  "denied",
+  "appealed",
+  "voided"
+]);
+
+/**
+ * Insurance claim type
+ * Different types of healthcare claims
+ */
+export const claimTypeEnum = pgEnum("claim_type", [
+  "professional",
+  "institutional",
+  "pharmacy",
+  "dental",
+  "vision"
+]);
+
+/**
+ * Service place of service
+ * Where the service was rendered
+ */
+export const servicePlaceEnum = pgEnum("service_place", [
+  "office",
+  "hospital_outpatient",
+  "hospital_inpatient",
+  "emergency",
+  "telehealth",
+  "home",
+  "nursing_facility",
+  "assisted_living"
+]);
+
+/**
+ * Insurance payer type
+ * Different types of insurance payers
+ */
+export const payerTypeEnum = pgEnum("payer_type", [
+  "commercial",
+  "medicare",
+  "medicaid",
+  "tricare",
+  "workers_comp",
+  "self_pay",
+  "other"
+]);
+
+/**
+ * Claim submission method
+ * How claims are submitted to payers
+ */
+export const claimSubmissionMethodEnum = pgEnum("claim_submission_method", [
+  "electronic",
+  "paper",
+  "clearinghouse",
+  "portal"
+]);
+
+// ========== End RCM Enums ==========
+
 export const analyticsEvents = pgTable("analytics_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   eventType: analyticsEventTypeEnum("event_type").notNull(),
@@ -5186,3 +5260,170 @@ export type InsertContactLensInventoryItem = typeof contactLensInventory.$inferI
 export type ContactLensOrder = typeof contactLensOrders.$inferSelect;
 export type InsertContactLensOrder = typeof contactLensOrders.$inferInsert;
 
+
+// ========== RCM (Revenue Cycle Management) Tables ==========
+
+/**
+ * Insurance Payers
+ * Stores information about insurance companies and payers
+ */
+export const insurancePayers = pgTable("insurance_payers", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+
+  // Payer Information
+  name: varchar("name", { length: 255 }).notNull(),
+  payerId: varchar("payer_id", { length: 100 }).notNull(), // Electronic payer ID
+  type: payerTypeEnum("type").notNull(),
+
+  // Contact Information
+  contactInfo: jsonb("contact_info"), // { phone, fax, email, address }
+
+  // Configuration
+  claimSubmissionMethod: claimSubmissionMethodEnum("claim_submission_method").default("electronic"),
+  timelyFilingLimitDays: integer("timely_filing_limit_days").default(365),
+
+  // Status
+  active: boolean("active").default(true),
+
+  // Metadata
+  metadata: jsonb("metadata"),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("insurance_payers_company_idx").on(table.companyId),
+  uniqueIndex("insurance_payers_company_payer_id").on(table.companyId, table.payerId),
+]);
+
+/**
+ * Insurance Claims
+ * Generic insurance claims for US-style RCM
+ */
+export const insuranceClaims = pgTable("insurance_claims", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+  patientId: varchar("patient_id", { length: 255 }).references(() => patients.id),
+  payerId: varchar("payer_id", { length: 255 }).references(() => insurancePayers.id),
+
+  // Claim Details
+  claimNumber: varchar("claim_number", { length: 50 }).notNull().unique(),
+  claimType: claimTypeEnum("claim_type").notNull(),
+  status: claimStatusEnum("status").notNull().default("draft"),
+
+  // Dates
+  serviceDate: date("service_date").notNull(),
+  submittedAt: timestamp("submitted_at"),
+  processedAt: timestamp("processed_at"),
+
+  // Financial (in cents)
+  totalCharges: decimal("total_charges", { precision: 10, scale: 2 }).notNull(),
+  allowedAmount: decimal("allowed_amount", { precision: 10, scale: 2 }),
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }),
+  patientResponsibility: decimal("patient_responsibility", { precision: 10, scale: 2 }),
+  adjustments: decimal("adjustments", { precision: 10, scale: 2 }).default("0"),
+
+  // Provider Information
+  renderingProviderId: varchar("rendering_provider_id", { length: 255 }),
+  billingProviderId: varchar("billing_provider_id", { length: 255 }),
+
+  // Place of Service
+  placeOfService: servicePlaceEnum("place_of_service"),
+
+  // Diagnosis Codes
+  diagnosisCodes: jsonb("diagnosis_codes"), // Array of ICD-10 codes
+
+  // Payer Response
+  payerResponse: jsonb("payer_response"),
+  rejectionReason: text("rejection_reason"),
+  remittanceAdviceNumber: varchar("remittance_advice_number", { length: 100 }),
+
+  // Notes
+  notes: text("notes"),
+
+  // Metadata
+  metadata: jsonb("metadata"),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("insurance_claims_company_idx").on(table.companyId),
+  index("insurance_claims_patient_idx").on(table.patientId),
+  index("insurance_claims_payer_idx").on(table.payerId),
+  index("insurance_claims_status_idx").on(table.status),
+  index("insurance_claims_service_date_idx").on(table.serviceDate),
+]);
+
+/**
+ * Claim Line Items
+ * Individual procedure/service lines within a claim
+ */
+export const claimLineItems = pgTable("claim_line_items", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  claimId: varchar("claim_id", { length: 255 }).notNull().references(() => insuranceClaims.id, { onDelete: "cascade" }),
+
+  // Line Item Details
+  lineNumber: integer("line_number").notNull(),
+  serviceDate: date("service_date").notNull(),
+
+  // Procedure
+  procedureCode: varchar("procedure_code", { length: 20 }).notNull(), // CPT/HCPCS code
+  modifiers: jsonb("modifiers"), // Array of modifiers
+  description: text("description"),
+
+  // Diagnosis
+  diagnosisCodePointers: jsonb("diagnosis_code_pointers"),
+
+  // Quantities and Amounts (in cents)
+  units: integer("units").notNull().default(1),
+  chargeAmount: decimal("charge_amount", { precision: 10, scale: 2 }).notNull(),
+  allowedAmount: decimal("allowed_amount", { precision: 10, scale: 2 }),
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }),
+  adjustmentAmount: decimal("adjustment_amount", { precision: 10, scale: 2 }).default("0"),
+  patientResponsibility: decimal("patient_responsibility", { precision: 10, scale: 2 }),
+
+  // Place of Service
+  placeOfService: servicePlaceEnum("place_of_service"),
+
+  // Provider
+  renderingProviderId: varchar("rendering_provider_id", { length: 255 }),
+
+  // Status
+  status: claimStatusEnum("status"),
+
+  // Metadata
+  metadata: jsonb("metadata"),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("claim_line_items_claim_idx").on(table.claimId),
+  index("claim_line_items_service_date_idx").on(table.serviceDate),
+]);
+
+// ========== End RCM Tables ==========
+
+// Zod Schemas for RCM
+export const insertPayerSchema = createInsertSchema(insurancePayers);
+export const updatePayerSchema = insertPayerSchema.partial();
+
+export const insertClaimSchema = createInsertSchema(insuranceClaims);
+export const updateClaimSchema = insertClaimSchema.partial();
+
+export const insertClaimLineItemSchema = createInsertSchema(claimLineItems);
+export const updateClaimLineItemSchema = insertClaimLineItemSchema.partial();
+
+// Export RCM Types
+export type InsurancePayer = typeof insurancePayers.$inferSelect;
+export type InsertInsurancePayer = typeof insurancePayers.$inferInsert;
+export type InsuranceClaim = typeof insuranceClaims.$inferSelect;
+export type InsertInsuranceClaim = typeof insuranceClaims.$inferInsert;
+export type ClaimLineItem = typeof claimLineItems.$inferSelect;
+export type InsertClaimLineItem = typeof claimLineItems.$inferInsert;
