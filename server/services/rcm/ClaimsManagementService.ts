@@ -296,6 +296,136 @@ export class ClaimsManagementService {
   }
 
   /**
+   * Convert database InsuranceClaim to service Claim type
+   * Note: lineItems must be loaded separately
+   */
+  private static dbClaimToServiceClaim(dbClaim: any, lineItems: ClaimLineItem[] = []): Claim {
+    const metadata = dbClaim.metadata || {};
+    return {
+      id: dbClaim.id,
+      claimNumber: dbClaim.claimNumber,
+      type: dbClaim.claimType,
+      status: dbClaim.status,
+
+      // Patient info (from metadata if not in main fields)
+      patientId: dbClaim.patientId,
+      patientName: metadata.patientName || '',
+      patientDOB: metadata.patientDOB ? new Date(metadata.patientDOB) : new Date(),
+      subscriberId: metadata.subscriberId || '',
+
+      // Provider info
+      renderingProviderId: dbClaim.renderingProviderId || '',
+      billingProviderId: dbClaim.billingProviderId || '',
+      facilityId: metadata.facilityId,
+
+      // Payer info
+      primaryPayerId: dbClaim.payerId || '',
+      secondaryPayerId: metadata.secondaryPayerId,
+      tertiaryPayerId: metadata.tertiaryPayerId,
+
+      // Service details
+      serviceDate: new Date(dbClaim.serviceDate),
+      admissionDate: metadata.admissionDate ? new Date(metadata.admissionDate) : undefined,
+      dischargeDate: metadata.dischargeDate ? new Date(metadata.dischargeDate) : undefined,
+      lineItems,
+
+      // Financial (convert from decimal strings to cents)
+      totalChargeAmount: parseFloat(dbClaim.totalCharges) * 100 || 0,
+      totalAllowedAmount: dbClaim.allowedAmount ? parseFloat(dbClaim.allowedAmount) * 100 : undefined,
+      totalPaidAmount: dbClaim.paidAmount ? parseFloat(dbClaim.paidAmount) * 100 : undefined,
+      totalAdjustmentAmount: dbClaim.adjustments ? parseFloat(dbClaim.adjustments) * 100 : undefined,
+      patientResponsibility: dbClaim.patientResponsibility ? parseFloat(dbClaim.patientResponsibility) * 100 : undefined,
+
+      // Submission
+      submittedAt: dbClaim.submittedAt ? new Date(dbClaim.submittedAt) : undefined,
+      submittedBy: metadata.submittedBy,
+      submissionMethod: metadata.submissionMethod,
+      clearinghouseId: metadata.clearinghouseId,
+      electronicClaimId: metadata.electronicClaimId,
+
+      // Adjudication
+      adjudicatedAt: dbClaim.processedAt ? new Date(dbClaim.processedAt) : undefined,
+      paymentDate: metadata.paymentDate ? new Date(metadata.paymentDate) : undefined,
+      checkNumber: metadata.checkNumber,
+      eobReceived: metadata.eobReceived || false,
+      eobDate: metadata.eobDate ? new Date(metadata.eobDate) : undefined,
+
+      // Denial
+      denialReason: dbClaim.rejectionReason,
+      denialCode: metadata.denialCode,
+      denialDate: metadata.denialDate ? new Date(metadata.denialDate) : undefined,
+
+      // Appeals
+      appealCount: metadata.appealCount || 0,
+      lastAppealDate: metadata.lastAppealDate ? new Date(metadata.lastAppealDate) : undefined,
+      appealStatus: metadata.appealStatus,
+
+      // Metadata
+      createdAt: new Date(dbClaim.createdAt),
+      createdBy: metadata.createdBy || 'system',
+      updatedAt: dbClaim.updatedAt ? new Date(dbClaim.updatedAt) : undefined,
+      updatedBy: metadata.updatedBy,
+      notes: dbClaim.notes,
+    };
+  }
+
+  /**
+   * Convert service Claim type to database InsertInsuranceClaim
+   * Note: lineItems must be created separately
+   */
+  private static serviceClaimToDbClaim(companyId: string, claim: Partial<Claim>): any {
+    return {
+      companyId,
+      patientId: claim.patientId,
+      payerId: claim.primaryPayerId,
+      claimNumber: claim.claimNumber,
+      claimType: claim.type,
+      status: claim.status || 'draft',
+      serviceDate: claim.serviceDate,
+      submittedAt: claim.submittedAt,
+      processedAt: claim.adjudicatedAt,
+      totalCharges: claim.totalChargeAmount ? (claim.totalChargeAmount / 100).toFixed(2) : '0',
+      allowedAmount: claim.totalAllowedAmount ? (claim.totalAllowedAmount / 100).toFixed(2) : null,
+      paidAmount: claim.totalPaidAmount ? (claim.totalPaidAmount / 100).toFixed(2) : null,
+      patientResponsibility: claim.patientResponsibility ? (claim.patientResponsibility / 100).toFixed(2) : null,
+      adjustments: claim.totalAdjustmentAmount ? (claim.totalAdjustmentAmount / 100).toFixed(2) : '0',
+      renderingProviderId: claim.renderingProviderId,
+      billingProviderId: claim.billingProviderId,
+      placeOfService: null, // Set from first line item typically
+      diagnosisCodes: claim.lineItems?.[0]?.diagnosisCodes || [],
+      payerResponse: null,
+      rejectionReason: claim.denialReason,
+      remittanceAdviceNumber: null,
+      notes: claim.notes,
+      metadata: {
+        patientName: claim.patientName,
+        patientDOB: claim.patientDOB,
+        subscriberId: claim.subscriberId,
+        facilityId: claim.facilityId,
+        secondaryPayerId: claim.secondaryPayerId,
+        tertiaryPayerId: claim.tertiaryPayerId,
+        admissionDate: claim.admissionDate,
+        dischargeDate: claim.dischargeDate,
+        submittedBy: claim.submittedBy,
+        submissionMethod: claim.submissionMethod,
+        clearinghouseId: claim.clearinghouseId,
+        electronicClaimId: claim.electronicClaimId,
+        paymentDate: claim.paymentDate,
+        checkNumber: claim.checkNumber,
+        eobReceived: claim.eobReceived,
+        eobDate: claim.eobDate,
+        denialCode: claim.denialCode,
+        denialDate: claim.denialDate,
+        appealCount: claim.appealCount,
+        lastAppealDate: claim.lastAppealDate,
+        appealStatus: claim.appealStatus,
+        createdBy: claim.createdBy,
+        updatedBy: claim.updatedBy,
+      },
+    };
+  }
+
+  /**
    * Denial reasons database
    */
   private static readonly DENIAL_REASONS: Record<string, DenialReason> = {
@@ -504,15 +634,15 @@ export class ClaimsManagementService {
   // ========== Claim Management ==========
 
   /**
-   * Create claim
+   * Create claim (DATABASE-BACKED)
    */
-  static createClaim(
+  static async createClaim(
+    companyId: string,
     claimData: Omit<Claim, 'id' | 'claimNumber' | 'status' | 'appealCount' | 'eobReceived' | 'createdAt'>
-  ): Claim {
-    const claimNumber = `CLM-${this.claimCounter++}`;
+  ): Promise<Claim> {
+    const claimNumber = `CLM-${this.claimCounter++}-${Date.now()}`;
 
-    const claim: Claim = {
-      id: crypto.randomUUID(),
+    const claim: Partial<Claim> = {
       claimNumber,
       status: 'draft',
       appealCount: 0,
@@ -521,18 +651,89 @@ export class ClaimsManagementService {
       createdAt: new Date(),
     };
 
-    this.claims.set(claim.id, claim);
+    // Create claim in database
+    const dbClaimData = this.serviceClaimToDbClaim(companyId, claim);
+    const dbClaim = await this.db.createInsuranceClaim(dbClaimData);
 
-    logger.info({ claimId: claim.id, claimNumber, patientId: claim.patientId }, 'Claim created');
+    // Create line items in database
+    const lineItems = claimData.lineItems || [];
+    const dbLineItems = [];
+    for (let i = 0; i < lineItems.length; i++) {
+      const lineItem = lineItems[i];
+      const dbLineItem = await this.db.createClaimLineItem({
+        claimId: dbClaim.id,
+        lineNumber: i + 1,
+        serviceDate: lineItem.serviceDate,
+        procedureCode: lineItem.procedureCode,
+        modifiers: lineItem.modifiers,
+        description: lineItem.description,
+        diagnosisCodePointers: lineItem.diagnosisCodes,
+        units: lineItem.units,
+        chargeAmount: (lineItem.chargeAmount / 100).toFixed(2),
+        allowedAmount: lineItem.allowedAmount ? (lineItem.allowedAmount / 100).toFixed(2) : null,
+        paidAmount: lineItem.paidAmount ? (lineItem.paidAmount / 100).toFixed(2) : null,
+        adjustmentAmount: lineItem.adjustmentAmount ? (lineItem.adjustmentAmount / 100).toFixed(2) : '0',
+        patientResponsibility: lineItem.patientResponsibility ? (lineItem.patientResponsibility / 100).toFixed(2) : null,
+        placeOfService: lineItem.placeOfService,
+        renderingProviderId: lineItem.renderingProviderId,
+        status: dbClaim.status,
+        metadata: {},
+      });
+      dbLineItems.push(dbLineItem);
+    }
 
-    return claim;
+    logger.info({ claimId: dbClaim.id, claimNumber, patientId: claim.patientId, companyId }, 'Claim created');
+
+    // Convert DB line items back to service format
+    const serviceLineItems: ClaimLineItem[] = dbLineItems.map(dbItem => ({
+      id: dbItem.id,
+      lineNumber: dbItem.lineNumber,
+      serviceDate: new Date(dbItem.serviceDate),
+      procedureCode: dbItem.procedureCode,
+      modifiers: (dbItem.modifiers as string[]) || [],
+      diagnosisCodes: (dbItem.diagnosisCodePointers as string[]) || [],
+      units: dbItem.units,
+      chargeAmount: parseFloat(dbItem.chargeAmount) * 100,
+      allowedAmount: dbItem.allowedAmount ? parseFloat(dbItem.allowedAmount) * 100 : undefined,
+      paidAmount: dbItem.paidAmount ? parseFloat(dbItem.paidAmount) * 100 : undefined,
+      adjustmentAmount: dbItem.adjustmentAmount ? parseFloat(dbItem.adjustmentAmount) * 100 : undefined,
+      patientResponsibility: dbItem.patientResponsibility ? parseFloat(dbItem.patientResponsibility) * 100 : undefined,
+      placeOfService: dbItem.placeOfService as any,
+      renderingProviderId: dbItem.renderingProviderId || undefined,
+      description: dbItem.description || undefined,
+    }));
+
+    return this.dbClaimToServiceClaim(dbClaim, serviceLineItems);
   }
 
   /**
-   * Get claim
+   * Get claim (DATABASE-BACKED)
    */
-  static getClaim(claimId: string): Claim | null {
-    return this.claims.get(claimId) || null;
+  static async getClaim(claimId: string, companyId: string): Promise<Claim | null> {
+    const dbClaim = await this.db.getInsuranceClaim(claimId, companyId);
+    if (!dbClaim) return null;
+
+    // Load line items
+    const dbLineItems = await this.db.getClaimLineItems(claimId);
+    const serviceLineItems: ClaimLineItem[] = dbLineItems.map(dbItem => ({
+      id: dbItem.id,
+      lineNumber: dbItem.lineNumber,
+      serviceDate: new Date(dbItem.serviceDate),
+      procedureCode: dbItem.procedureCode,
+      modifiers: (dbItem.modifiers as string[]) || [],
+      diagnosisCodes: (dbItem.diagnosisCodePointers as string[]) || [],
+      units: dbItem.units,
+      chargeAmount: parseFloat(dbItem.chargeAmount) * 100,
+      allowedAmount: dbItem.allowedAmount ? parseFloat(dbItem.allowedAmount) * 100 : undefined,
+      paidAmount: dbItem.paidAmount ? parseFloat(dbItem.paidAmount) * 100 : undefined,
+      adjustmentAmount: dbItem.adjustmentAmount ? parseFloat(dbItem.adjustmentAmount) * 100 : undefined,
+      patientResponsibility: dbItem.patientResponsibility ? parseFloat(dbItem.patientResponsibility) * 100 : undefined,
+      placeOfService: dbItem.placeOfService as any,
+      renderingProviderId: dbItem.renderingProviderId || undefined,
+      description: dbItem.description || undefined,
+    }));
+
+    return this.dbClaimToServiceClaim(dbClaim, serviceLineItems);
   }
 
   /**
@@ -742,33 +943,111 @@ export class ClaimsManagementService {
   }
 
   /**
-   * Get claim by ID (alias for getClaim)
+   * Get claim by ID (alias for getClaim) (DATABASE-BACKED)
    */
-  static getClaimById(claimId: string): Claim | null {
-    return this.getClaim(claimId);
+  static async getClaimById(claimId: string, companyId: string): Promise<Claim | null> {
+    return this.getClaim(claimId, companyId);
   }
 
   /**
-   * Get claims by patient
+   * Get claims by patient (DATABASE-BACKED)
    */
-  static getClaimsByPatient(patientId: string): Claim[] {
-    return this.listClaims({ patientId });
+  static async getClaimsByPatient(patientId: string, companyId: string): Promise<Claim[]> {
+    const dbClaims = await this.db.getInsuranceClaims(companyId, { patientId });
+
+    // Load line items for each claim
+    const claims: Claim[] = [];
+    for (const dbClaim of dbClaims) {
+      const dbLineItems = await this.db.getClaimLineItems(dbClaim.id);
+      const serviceLineItems: ClaimLineItem[] = dbLineItems.map(dbItem => ({
+        id: dbItem.id,
+        lineNumber: dbItem.lineNumber,
+        serviceDate: new Date(dbItem.serviceDate),
+        procedureCode: dbItem.procedureCode,
+        modifiers: (dbItem.modifiers as string[]) || [],
+        diagnosisCodes: (dbItem.diagnosisCodePointers as string[]) || [],
+        units: dbItem.units,
+        chargeAmount: parseFloat(dbItem.chargeAmount) * 100,
+        allowedAmount: dbItem.allowedAmount ? parseFloat(dbItem.allowedAmount) * 100 : undefined,
+        paidAmount: dbItem.paidAmount ? parseFloat(dbItem.paidAmount) * 100 : undefined,
+        adjustmentAmount: dbItem.adjustmentAmount ? parseFloat(dbItem.adjustmentAmount) * 100 : undefined,
+        patientResponsibility: dbItem.patientResponsibility ? parseFloat(dbItem.patientResponsibility) * 100 : undefined,
+        placeOfService: dbItem.placeOfService as any,
+        renderingProviderId: dbItem.renderingProviderId || undefined,
+        description: dbItem.description || undefined,
+      }));
+      claims.push(this.dbClaimToServiceClaim(dbClaim, serviceLineItems));
+    }
+    return claims;
   }
 
   /**
-   * Get claims by provider
+   * Get claims by provider (DATABASE-BACKED)
    */
-  static getClaimsByProvider(providerId: string): Claim[] {
-    return Array.from(this.claims.values())
-      .filter((c) => c.renderingProviderId === providerId || c.billingProviderId === providerId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  static async getClaimsByProvider(providerId: string, companyId: string): Promise<Claim[]> {
+    // Note: This requires filtering by renderingProviderId OR billingProviderId
+    // We'll get all claims and filter in memory for now
+    const dbClaims = await this.db.getInsuranceClaims(companyId);
+    const filteredClaims = dbClaims.filter(
+      c => c.renderingProviderId === providerId || c.billingProviderId === providerId
+    );
+
+    // Load line items for each claim
+    const claims: Claim[] = [];
+    for (const dbClaim of filteredClaims) {
+      const dbLineItems = await this.db.getClaimLineItems(dbClaim.id);
+      const serviceLineItems: ClaimLineItem[] = dbLineItems.map(dbItem => ({
+        id: dbItem.id,
+        lineNumber: dbItem.lineNumber,
+        serviceDate: new Date(dbItem.serviceDate),
+        procedureCode: dbItem.procedureCode,
+        modifiers: (dbItem.modifiers as string[]) || [],
+        diagnosisCodes: (dbItem.diagnosisCodePointers as string[]) || [],
+        units: dbItem.units,
+        chargeAmount: parseFloat(dbItem.chargeAmount) * 100,
+        allowedAmount: dbItem.allowedAmount ? parseFloat(dbItem.allowedAmount) * 100 : undefined,
+        paidAmount: dbItem.paidAmount ? parseFloat(dbItem.paidAmount) * 100 : undefined,
+        adjustmentAmount: dbItem.adjustmentAmount ? parseFloat(dbItem.adjustmentAmount) * 100 : undefined,
+        patientResponsibility: dbItem.patientResponsibility ? parseFloat(dbItem.patientResponsibility) * 100 : undefined,
+        placeOfService: dbItem.placeOfService as any,
+        renderingProviderId: dbItem.renderingProviderId || undefined,
+        description: dbItem.description || undefined,
+      }));
+      claims.push(this.dbClaimToServiceClaim(dbClaim, serviceLineItems));
+    }
+    return claims;
   }
 
   /**
-   * Get claims by status
+   * Get claims by status (DATABASE-BACKED)
    */
-  static getClaimsByStatus(status: ClaimStatus): Claim[] {
-    return this.listClaims({ status });
+  static async getClaimsByStatus(status: ClaimStatus, companyId: string): Promise<Claim[]> {
+    const dbClaims = await this.db.getInsuranceClaims(companyId, { status });
+
+    // Load line items for each claim
+    const claims: Claim[] = [];
+    for (const dbClaim of dbClaims) {
+      const dbLineItems = await this.db.getClaimLineItems(dbClaim.id);
+      const serviceLineItems: ClaimLineItem[] = dbLineItems.map(dbItem => ({
+        id: dbItem.id,
+        lineNumber: dbItem.lineNumber,
+        serviceDate: new Date(dbItem.serviceDate),
+        procedureCode: dbItem.procedureCode,
+        modifiers: (dbItem.modifiers as string[]) || [],
+        diagnosisCodes: (dbItem.diagnosisCodePointers as string[]) || [],
+        units: dbItem.units,
+        chargeAmount: parseFloat(dbItem.chargeAmount) * 100,
+        allowedAmount: dbItem.allowedAmount ? parseFloat(dbItem.allowedAmount) * 100 : undefined,
+        paidAmount: dbItem.paidAmount ? parseFloat(dbItem.paidAmount) * 100 : undefined,
+        adjustmentAmount: dbItem.adjustmentAmount ? parseFloat(dbItem.adjustmentAmount) * 100 : undefined,
+        patientResponsibility: dbItem.patientResponsibility ? parseFloat(dbItem.patientResponsibility) * 100 : undefined,
+        placeOfService: dbItem.placeOfService as any,
+        renderingProviderId: dbItem.renderingProviderId || undefined,
+        description: dbItem.description || undefined,
+      }));
+      claims.push(this.dbClaimToServiceClaim(dbClaim, serviceLineItems));
+    }
+    return claims;
   }
 
   // ========== Adjudication ==========

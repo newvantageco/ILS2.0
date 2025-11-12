@@ -16,7 +16,15 @@ const router = express.Router();
  */
 router.post('/claims', async (req: Request, res: Response) => {
   try {
-    const claim = ClaimsManagementService.createClaim(req.body);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required - no companyId found'
+      });
+    }
+
+    const claim = await ClaimsManagementService.createClaim(companyId, req.body);
     res.status(201).json({
       success: true,
       data: claim,
@@ -37,7 +45,15 @@ router.post('/claims', async (req: Request, res: Response) => {
  */
 router.get('/claims/:id', async (req: Request, res: Response) => {
   try {
-    const claim = ClaimsManagementService.getClaimById(req.params.id);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required - no companyId found'
+      });
+    }
+
+    const claim = await ClaimsManagementService.getClaimById(req.params.id, companyId);
     if (!claim) {
       return res.status(404).json({
         success: false,
@@ -63,7 +79,15 @@ router.get('/claims/:id', async (req: Request, res: Response) => {
  */
 router.get('/claims/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const claims = ClaimsManagementService.getClaimsByPatient(req.params.patientId);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required - no companyId found'
+      });
+    }
+
+    const claims = await ClaimsManagementService.getClaimsByPatient(req.params.patientId, companyId);
     res.json({
       success: true,
       data: claims,
@@ -84,7 +108,15 @@ router.get('/claims/patient/:patientId', async (req: Request, res: Response) => 
  */
 router.get('/claims/provider/:providerId', async (req: Request, res: Response) => {
   try {
-    const claims = ClaimsManagementService.getClaimsByProvider(req.params.providerId);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required - no companyId found'
+      });
+    }
+
+    const claims = await ClaimsManagementService.getClaimsByProvider(req.params.providerId, companyId);
     res.json({
       success: true,
       data: claims,
@@ -105,7 +137,15 @@ router.get('/claims/provider/:providerId', async (req: Request, res: Response) =
  */
 router.get('/claims/status/:status', async (req: Request, res: Response) => {
   try {
-    const claims = ClaimsManagementService.getClaimsByStatus(req.params.status as any);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required - no companyId found'
+      });
+    }
+
+    const claims = await ClaimsManagementService.getClaimsByStatus(req.params.status as any, companyId);
     res.json({
       success: true,
       data: claims,
