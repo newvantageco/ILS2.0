@@ -176,9 +176,18 @@ import {
   type DiseaseProgressionPrediction,
   type InsertDiseaseProgressionPrediction,
   type TreatmentOutcomePrediction,
-  type InsertTreatmentOutcomePrediction
+  type InsertTreatmentOutcomePrediction,
+  appointmentTypes,
+  providerAvailability,
+  appointmentBookings,
+  type AppointmentType,
+  type InsertAppointmentType,
+  type ProviderAvailability,
+  type InsertProviderAvailability,
+  type AppointmentBooking,
+  type InsertAppointmentBooking
 } from "@shared/schema";
-import { eq, desc, and, or, like, sql } from "drizzle-orm";
+import { eq, desc, and, or, like, sql, gt, lt, gte, lte, ne } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
 
 export interface IStorage {
@@ -4095,6 +4104,186 @@ export class DbStorage implements IStorage {
       totalTreatmentOutcomePredictions: treatmentOutcomes?.count || 0,
       highRiskPredictions: (highRiskStrats?.count || 0) + (highRiskReadmissions?.count || 0) + (highRiskNoShows?.count || 0),
     };
+  }
+
+  // ========== Appointment Booking Storage Methods ==========
+
+  async createAppointmentType(data: InsertAppointmentType): Promise<AppointmentType> {
+    const [result] = await db.insert(appointmentTypes).values(data).returning();
+    return result;
+  }
+
+  async getAppointmentType(id: string, companyId: string): Promise<AppointmentType | null> {
+    const [result] = await db
+      .select()
+      .from(appointmentTypes)
+      .where(and(eq(appointmentTypes.id, id), eq(appointmentTypes.companyId, companyId)));
+    return result || null;
+  }
+
+  async getAppointmentTypes(
+    companyId: string,
+    options?: { onlineBookingOnly?: boolean }
+  ): Promise<AppointmentType[]> {
+    const conditions = [eq(appointmentTypes.companyId, companyId)];
+
+    if (options?.onlineBookingOnly) {
+      conditions.push(eq(appointmentTypes.allowOnlineBooking, true));
+    }
+
+    return await db
+      .select()
+      .from(appointmentTypes)
+      .where(and(...conditions))
+      .orderBy(appointmentTypes.name);
+  }
+
+  async updateAppointmentType(
+    id: string,
+    companyId: string,
+    data: Partial<InsertAppointmentType>
+  ): Promise<AppointmentType | null> {
+    const [result] = await db
+      .update(appointmentTypes)
+      .set(data)
+      .where(and(eq(appointmentTypes.id, id), eq(appointmentTypes.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  async createProviderAvailability(data: InsertProviderAvailability): Promise<ProviderAvailability> {
+    const [result] = await db.insert(providerAvailability).values(data).returning();
+    return result;
+  }
+
+  async getProviderAvailability(
+    companyId: string,
+    providerId: string
+  ): Promise<ProviderAvailability[]> {
+    return await db
+      .select()
+      .from(providerAvailability)
+      .where(and(
+        eq(providerAvailability.companyId, companyId),
+        eq(providerAvailability.providerId, providerId)
+      ))
+      .orderBy(providerAvailability.dayOfWeek);
+  }
+
+  async getAllProviderAvailability(companyId: string): Promise<ProviderAvailability[]> {
+    return await db
+      .select()
+      .from(providerAvailability)
+      .where(eq(providerAvailability.companyId, companyId))
+      .orderBy(providerAvailability.providerId, providerAvailability.dayOfWeek);
+  }
+
+  async createAppointmentBooking(data: InsertAppointmentBooking): Promise<AppointmentBooking> {
+    const [result] = await db.insert(appointmentBookings).values(data).returning();
+    return result;
+  }
+
+  async getAppointmentBooking(id: string, companyId: string): Promise<AppointmentBooking | null> {
+    const [result] = await db
+      .select()
+      .from(appointmentBookings)
+      .where(and(eq(appointmentBookings.id, id), eq(appointmentBookings.companyId, companyId)));
+    return result || null;
+  }
+
+  async getPatientAppointments(
+    companyId: string,
+    patientId: string,
+    options?: {
+      status?: string;
+      upcoming?: boolean;
+    }
+  ): Promise<AppointmentBooking[]> {
+    const conditions = [
+      eq(appointmentBookings.companyId, companyId),
+      eq(appointmentBookings.patientId, patientId),
+    ];
+
+    if (options?.status) {
+      conditions.push(eq(appointmentBookings.status, options.status as any));
+    }
+
+    if (options?.upcoming) {
+      conditions.push(gt(appointmentBookings.date, new Date()));
+      conditions.push(ne(appointmentBookings.status, 'cancelled'));
+    }
+
+    return await db
+      .select()
+      .from(appointmentBookings)
+      .where(and(...conditions))
+      .orderBy(desc(appointmentBookings.date), desc(appointmentBookings.startTime));
+  }
+
+  async getProviderAppointments(
+    companyId: string,
+    providerId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<AppointmentBooking[]> {
+    return await db
+      .select()
+      .from(appointmentBookings)
+      .where(and(
+        eq(appointmentBookings.companyId, companyId),
+        eq(appointmentBookings.providerId, providerId),
+        gte(appointmentBookings.date, startDate),
+        lte(appointmentBookings.date, endDate),
+        ne(appointmentBookings.status, 'cancelled')
+      ))
+      .orderBy(appointmentBookings.date, appointmentBookings.startTime);
+  }
+
+  async updateAppointmentBooking(
+    id: string,
+    companyId: string,
+    data: Partial<InsertAppointmentBooking>
+  ): Promise<AppointmentBooking | null> {
+    const [result] = await db
+      .update(appointmentBookings)
+      .set(data)
+      .where(and(eq(appointmentBookings.id, id), eq(appointmentBookings.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  async getAppointmentsForReminders(
+    companyId: string,
+    hoursAhead: number
+  ): Promise<AppointmentBooking[]> {
+    const now = new Date();
+    const reminderTime = new Date();
+    reminderTime.setHours(reminderTime.getHours() + hoursAhead);
+
+    return await db
+      .select()
+      .from(appointmentBookings)
+      .where(and(
+        eq(appointmentBookings.companyId, companyId),
+        eq(appointmentBookings.status, 'confirmed'),
+        eq(appointmentBookings.reminderSent, false),
+        gt(appointmentBookings.date, now),
+        lte(appointmentBookings.date, reminderTime)
+      ));
+  }
+
+  async getAppointmentByConfirmationCode(
+    confirmationCode: string,
+    companyId: string
+  ): Promise<AppointmentBooking | null> {
+    const [result] = await db
+      .select()
+      .from(appointmentBookings)
+      .where(and(
+        eq(appointmentBookings.confirmationCode, confirmationCode),
+        eq(appointmentBookings.companyId, companyId)
+      ));
+    return result || null;
   }
 
   // ============================================================================

@@ -6797,4 +6797,137 @@ export type InsertDiseaseProgressionPrediction = typeof diseaseProgressionPredic
 export type TreatmentOutcomePrediction = typeof treatmentOutcomePredictions.$inferSelect;
 export type InsertTreatmentOutcomePrediction = typeof treatmentOutcomePredictions.$inferInsert;
 
+// ========== Appointment Booking Tables ==========
+/**
+ * Appointment Booking Enums
+ */
+export const appointmentStatusEnum = pgEnum("appointment_status", [
+  "pending",
+  "confirmed",
+  "cancelled",
+  "completed",
+  "no_show",
+]);
+
+export const cancelledByEnum = pgEnum("cancelled_by", ["patient", "provider", "system"]);
+
+/**
+ * Appointment Types Table
+ * Defines types of appointments that can be booked
+ */
+export const appointmentTypes = pgTable(
+  "appointment_types",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    duration: integer("duration").notNull(), // minutes
+    price: integer("price"), // in cents
+    allowOnlineBooking: boolean("allow_online_booking").notNull().default(true),
+    requiresApproval: boolean("requires_approval").notNull().default(false),
+    color: text("color"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("appointment_types_company_idx").on(table.companyId),
+    nameIdx: index("appointment_types_name_idx").on(table.name),
+  })
+);
+
+/**
+ * Provider Availability Table
+ * Stores provider schedules and available time slots
+ */
+export const providerAvailability = pgTable(
+  "provider_availability",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    providerId: text("provider_id").notNull(),
+    providerName: text("provider_name").notNull(),
+    dayOfWeek: integer("day_of_week").notNull(), // 0-6 (Sunday-Saturday)
+    startTime: text("start_time").notNull(), // HH:MM
+    endTime: text("end_time").notNull(), // HH:MM
+    slotDuration: integer("slot_duration").notNull(), // minutes
+    breakTimes: jsonb("break_times").$type<Array<{
+      start: string;
+      end: string;
+    }>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("provider_availability_company_idx").on(table.companyId),
+    providerIdx: index("provider_availability_provider_idx").on(table.providerId),
+    dayOfWeekIdx: index("provider_availability_day_of_week_idx").on(table.dayOfWeek),
+  })
+);
+
+/**
+ * Appointment Bookings Table
+ * Stores patient appointment bookings
+ */
+export const appointmentBookings = pgTable(
+  "appointment_bookings",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    providerId: text("provider_id").notNull(),
+    providerName: text("provider_name").notNull(),
+    appointmentTypeId: text("appointment_type_id").notNull().references(() => appointmentTypes.id, { onDelete: "restrict" }),
+    appointmentType: text("appointment_type").notNull(),
+
+    date: timestamp("date", { withTimezone: true }).notNull(),
+    startTime: text("start_time").notNull(), // HH:MM
+    endTime: text("end_time").notNull(), // HH:MM
+    duration: integer("duration").notNull(), // minutes
+
+    status: appointmentStatusEnum("status").notNull().default("pending"),
+
+    reason: text("reason"),
+    notes: text("notes"),
+
+    // Confirmation
+    confirmationCode: text("confirmation_code").notNull(),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+
+    // Reminders
+    reminderSent: boolean("reminder_sent").notNull().default(false),
+    reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
+
+    // Cancellation
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    cancelledBy: cancelledByEnum("cancelled_by"),
+    cancellationReason: text("cancellation_reason"),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("appointment_bookings_company_idx").on(table.companyId),
+    patientIdx: index("appointment_bookings_patient_idx").on(table.patientId),
+    providerIdx: index("appointment_bookings_provider_idx").on(table.providerId),
+    dateIdx: index("appointment_bookings_date_idx").on(table.date),
+    statusIdx: index("appointment_bookings_status_idx").on(table.status),
+    confirmationCodeIdx: index("appointment_bookings_confirmation_code_idx").on(table.confirmationCode),
+    createdAtIdx: index("appointment_bookings_created_at_idx").on(table.createdAt),
+  })
+);
+
+// Zod validation schemas for Appointment Booking tables
+export const insertAppointmentTypeSchema = createInsertSchema(appointmentTypes);
+export const insertProviderAvailabilitySchema = createInsertSchema(providerAvailability);
+export const insertAppointmentBookingSchema = createInsertSchema(appointmentBookings);
+
+// TypeScript types
+export type AppointmentType = typeof appointmentTypes.$inferSelect;
+export type InsertAppointmentType = typeof appointmentTypes.$inferInsert;
+export type ProviderAvailability = typeof providerAvailability.$inferSelect;
+export type InsertProviderAvailability = typeof providerAvailability.$inferInsert;
+export type AppointmentBooking = typeof appointmentBookings.$inferSelect;
+export type InsertAppointmentBooking = typeof appointmentBookings.$inferInsert;
+
 // ========== End Predictive Analytics Tables ==========
