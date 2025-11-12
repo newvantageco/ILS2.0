@@ -46,6 +46,9 @@ import {
   predictiveAnalyses,
   socialDeterminants,
   riskStratificationCohorts,
+  messageTemplates,
+  messages,
+  unsubscribes,
   type UpsertUser, 
   type User, 
   type UserWithRoles,
@@ -112,7 +115,13 @@ import {
   type SocialDeterminant,
   type InsertSocialDeterminant,
   type RiskStratificationCohort,
-  type InsertRiskStratificationCohort
+  type InsertRiskStratificationCohort,
+  type MessageTemplate,
+  type InsertMessageTemplate,
+  type Message,
+  type InsertMessage,
+  type Unsubscribe,
+  type InsertUnsubscribe
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
@@ -2682,6 +2691,252 @@ export class DbStorage implements IStorage {
       ))
       .returning();
     return result.length > 0;
+  }
+
+  // ========== Communications - Message Templates ==========
+
+  async createMessageTemplate(template: InsertMessageTemplate): Promise<MessageTemplate> {
+    const [created] = await db
+      .insert(messageTemplates)
+      .values(template)
+      .returning();
+    return created;
+  }
+
+  async getMessageTemplate(id: string, companyId: string): Promise<MessageTemplate | undefined> {
+    const [template] = await db
+      .select()
+      .from(messageTemplates)
+      .where(and(
+        eq(messageTemplates.id, id),
+        eq(messageTemplates.companyId, companyId)
+      ));
+    return template;
+  }
+
+  async getMessageTemplates(
+    companyId: string,
+    filters?: {
+      channel?: string;
+      category?: string;
+      active?: boolean;
+    }
+  ): Promise<MessageTemplate[]> {
+    const conditions = [eq(messageTemplates.companyId, companyId)];
+
+    if (filters?.channel) {
+      conditions.push(eq(messageTemplates.channel, filters.channel as any));
+    }
+    if (filters?.category) {
+      conditions.push(eq(messageTemplates.category, filters.category as any));
+    }
+    if (filters?.active !== undefined) {
+      conditions.push(eq(messageTemplates.active, filters.active));
+    }
+
+    return await db
+      .select()
+      .from(messageTemplates)
+      .where(and(...conditions))
+      .orderBy(desc(messageTemplates.createdAt));
+  }
+
+  async updateMessageTemplate(
+    id: string,
+    companyId: string,
+    updates: Partial<MessageTemplate>
+  ): Promise<MessageTemplate | undefined> {
+    const [updated] = await db
+      .update(messageTemplates)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(messageTemplates.id, id),
+        eq(messageTemplates.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteMessageTemplate(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(messageTemplates)
+      .where(and(
+        eq(messageTemplates.id, id),
+        eq(messageTemplates.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Communications - Messages ==========
+
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const [created] = await db
+      .insert(messages)
+      .values(message)
+      .returning();
+    return created;
+  }
+
+  async getMessage(id: string, companyId: string): Promise<Message | undefined> {
+    const [message] = await db
+      .select()
+      .from(messages)
+      .where(and(
+        eq(messages.id, id),
+        eq(messages.companyId, companyId)
+      ));
+    return message;
+  }
+
+  async getMessages(
+    companyId: string,
+    filters?: {
+      recipientId?: string;
+      status?: string;
+      channel?: string;
+      campaignId?: string;
+      templateId?: string;
+    }
+  ): Promise<Message[]> {
+    const conditions = [eq(messages.companyId, companyId)];
+
+    if (filters?.recipientId) {
+      conditions.push(eq(messages.recipientId, filters.recipientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(messages.status, filters.status as any));
+    }
+    if (filters?.channel) {
+      conditions.push(eq(messages.channel, filters.channel as any));
+    }
+    if (filters?.campaignId) {
+      conditions.push(eq(messages.campaignId, filters.campaignId));
+    }
+    if (filters?.templateId) {
+      conditions.push(eq(messages.templateId, filters.templateId));
+    }
+
+    return await db
+      .select()
+      .from(messages)
+      .where(and(...conditions))
+      .orderBy(desc(messages.createdAt));
+  }
+
+  async updateMessage(
+    id: string,
+    companyId: string,
+    updates: Partial<Message>
+  ): Promise<Message | undefined> {
+    const [updated] = await db
+      .update(messages)
+      .set(updates)
+      .where(and(
+        eq(messages.id, id),
+        eq(messages.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteMessage(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(messages)
+      .where(and(
+        eq(messages.id, id),
+        eq(messages.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Communications - Unsubscribes ==========
+
+  async createUnsubscribe(unsubscribe: InsertUnsubscribe): Promise<Unsubscribe> {
+    const [created] = await db
+      .insert(unsubscribes)
+      .values(unsubscribe)
+      .returning();
+    return created;
+  }
+
+  async getUnsubscribe(id: string, companyId: string): Promise<Unsubscribe | undefined> {
+    const [unsubscribe] = await db
+      .select()
+      .from(unsubscribes)
+      .where(and(
+        eq(unsubscribes.id, id),
+        eq(unsubscribes.companyId, companyId)
+      ));
+    return unsubscribe;
+  }
+
+  async getUnsubscribes(
+    companyId: string,
+    filters?: {
+      recipientId?: string;
+      channel?: string;
+      category?: string;
+    }
+  ): Promise<Unsubscribe[]> {
+    const conditions = [eq(unsubscribes.companyId, companyId)];
+
+    if (filters?.recipientId) {
+      conditions.push(eq(unsubscribes.recipientId, filters.recipientId));
+    }
+    if (filters?.channel) {
+      conditions.push(eq(unsubscribes.channel, filters.channel as any));
+    }
+    if (filters?.category) {
+      conditions.push(eq(unsubscribes.category, filters.category as any));
+    }
+
+    return await db
+      .select()
+      .from(unsubscribes)
+      .where(and(...conditions))
+      .orderBy(desc(unsubscribes.unsubscribedAt));
+  }
+
+  async deleteUnsubscribe(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(unsubscribes)
+      .where(and(
+        eq(unsubscribes.id, id),
+        eq(unsubscribes.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Helper: Check if recipient is unsubscribed
+  async isUnsubscribed(
+    companyId: string,
+    recipientId: string,
+    channel: string,
+    category?: string
+  ): Promise<boolean> {
+    const conditions = [
+      eq(unsubscribes.companyId, companyId),
+      eq(unsubscribes.recipientId, recipientId),
+      eq(unsubscribes.channel, channel as any)
+    ];
+
+    if (category) {
+      conditions.push(eq(unsubscribes.category, category as any));
+    }
+
+    const [result] = await db
+      .select()
+      .from(unsubscribes)
+      .where(and(...conditions))
+      .limit(1);
+
+    return !!result;
   }
 
   // ============================================================================
