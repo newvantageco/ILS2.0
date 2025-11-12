@@ -197,7 +197,25 @@ import {
   type PortalMessage,
   type InsertPortalMessage,
   type PortalPayment,
-  type InsertPortalPayment
+  type InsertPortalPayment,
+  carePlans,
+  careTeams,
+  careGaps,
+  transitionsOfCare,
+  careCoordinationTasks,
+  patientOutreach,
+  type CarePlan,
+  type InsertCarePlan,
+  type CareTeam,
+  type InsertCareTeam,
+  type CareGap,
+  type InsertCareGap,
+  type TransitionOfCare,
+  type InsertTransitionOfCare,
+  type CareCoordinationTask,
+  type InsertCareCoordinationTask,
+  type PatientOutreach,
+  type InsertPatientOutreach
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql, gt, lt, gte, lte, ne, asc } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
@@ -4460,6 +4478,378 @@ export class DbStorage implements IStorage {
       .where(and(eq(portalPayments.id, id), eq(portalPayments.companyId, companyId)))
       .returning();
     return result || null;
+  }
+
+  // ============================================================================
+  // Care Coordination Methods
+  // ============================================================================
+
+  // Care Plans
+  async createCarePlan(data: InsertCarePlan): Promise<CarePlan> {
+    const [result] = await db.insert(carePlans).values(data).returning();
+    return result;
+  }
+
+  async getCarePlan(id: string, companyId: string): Promise<CarePlan | null> {
+    const [result] = await db
+      .select()
+      .from(carePlans)
+      .where(and(eq(carePlans.id, id), eq(carePlans.companyId, companyId)));
+    return result || null;
+  }
+
+  async getCarePlans(
+    companyId: string,
+    filters?: { patientId?: string; status?: string; category?: string }
+  ): Promise<CarePlan[]> {
+    const conditions = [eq(carePlans.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(carePlans.patientId, filters.patientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(carePlans.status, filters.status as any));
+    }
+    if (filters?.category) {
+      conditions.push(eq(carePlans.category, filters.category as any));
+    }
+
+    return await db
+      .select()
+      .from(carePlans)
+      .where(and(...conditions))
+      .orderBy(desc(carePlans.nextReviewDate));
+  }
+
+  async updateCarePlan(
+    id: string,
+    companyId: string,
+    data: Partial<InsertCarePlan>
+  ): Promise<CarePlan | null> {
+    const [result] = await db
+      .update(carePlans)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(carePlans.id, id), eq(carePlans.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  async deleteCarePlan(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(carePlans)
+      .where(and(eq(carePlans.id, id), eq(carePlans.companyId, companyId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Care Teams
+  async createCareTeam(data: InsertCareTeam): Promise<CareTeam> {
+    const [result] = await db.insert(careTeams).values(data).returning();
+    return result;
+  }
+
+  async getCareTeam(id: string, companyId: string): Promise<CareTeam | null> {
+    const [result] = await db
+      .select()
+      .from(careTeams)
+      .where(and(eq(careTeams.id, id), eq(careTeams.companyId, companyId)));
+    return result || null;
+  }
+
+  async getCareTeams(
+    companyId: string,
+    filters?: { patientId?: string; status?: string }
+  ): Promise<CareTeam[]> {
+    const conditions = [eq(careTeams.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(careTeams.patientId, filters.patientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(careTeams.status, filters.status as any));
+    }
+
+    return await db
+      .select()
+      .from(careTeams)
+      .where(and(...conditions))
+      .orderBy(desc(careTeams.createdAt));
+  }
+
+  async updateCareTeam(
+    id: string,
+    companyId: string,
+    data: Partial<InsertCareTeam>
+  ): Promise<CareTeam | null> {
+    const [result] = await db
+      .update(careTeams)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(careTeams.id, id), eq(careTeams.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  async deleteCareTeam(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(careTeams)
+      .where(and(eq(careTeams.id, id), eq(careTeams.companyId, companyId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Care Gaps
+  async createCareGap(data: InsertCareGap): Promise<CareGap> {
+    const [result] = await db.insert(careGaps).values(data).returning();
+    return result;
+  }
+
+  async getCareGap(id: string, companyId: string): Promise<CareGap | null> {
+    const [result] = await db
+      .select()
+      .from(careGaps)
+      .where(and(eq(careGaps.id, id), eq(careGaps.companyId, companyId)));
+    return result || null;
+  }
+
+  async getCareGaps(
+    companyId: string,
+    filters?: { patientId?: string; status?: string; category?: string; severity?: string }
+  ): Promise<CareGap[]> {
+    const conditions = [eq(careGaps.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(careGaps.patientId, filters.patientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(careGaps.status, filters.status as any));
+    }
+    if (filters?.category) {
+      conditions.push(eq(careGaps.category, filters.category as any));
+    }
+    if (filters?.severity) {
+      conditions.push(eq(careGaps.severity, filters.severity as any));
+    }
+
+    return await db
+      .select()
+      .from(careGaps)
+      .where(and(...conditions))
+      .orderBy(desc(careGaps.dueDate));
+  }
+
+  async updateCareGap(
+    id: string,
+    companyId: string,
+    data: Partial<InsertCareGap>
+  ): Promise<CareGap | null> {
+    const [result] = await db
+      .update(careGaps)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(careGaps.id, id), eq(careGaps.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  async deleteCareGap(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(careGaps)
+      .where(and(eq(careGaps.id, id), eq(careGaps.companyId, companyId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Transitions of Care
+  async createTransitionOfCare(data: InsertTransitionOfCare): Promise<TransitionOfCare> {
+    const [result] = await db.insert(transitionsOfCare).values(data).returning();
+    return result;
+  }
+
+  async getTransitionOfCare(id: string, companyId: string): Promise<TransitionOfCare | null> {
+    const [result] = await db
+      .select()
+      .from(transitionsOfCare)
+      .where(and(eq(transitionsOfCare.id, id), eq(transitionsOfCare.companyId, companyId)));
+    return result || null;
+  }
+
+  async getTransitionsOfCare(
+    companyId: string,
+    filters?: { patientId?: string; status?: string; transitionType?: string }
+  ): Promise<TransitionOfCare[]> {
+    const conditions = [eq(transitionsOfCare.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(transitionsOfCare.patientId, filters.patientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(transitionsOfCare.status, filters.status as any));
+    }
+    if (filters?.transitionType) {
+      conditions.push(eq(transitionsOfCare.transitionType, filters.transitionType as any));
+    }
+
+    return await db
+      .select()
+      .from(transitionsOfCare)
+      .where(and(...conditions))
+      .orderBy(desc(transitionsOfCare.createdAt));
+  }
+
+  async updateTransitionOfCare(
+    id: string,
+    companyId: string,
+    data: Partial<InsertTransitionOfCare>
+  ): Promise<TransitionOfCare | null> {
+    const [result] = await db
+      .update(transitionsOfCare)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(transitionsOfCare.id, id), eq(transitionsOfCare.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  async deleteTransitionOfCare(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(transitionsOfCare)
+      .where(and(eq(transitionsOfCare.id, id), eq(transitionsOfCare.companyId, companyId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Care Coordination Tasks
+  async createCareCoordinationTask(data: InsertCareCoordinationTask): Promise<CareCoordinationTask> {
+    const [result] = await db.insert(careCoordinationTasks).values(data).returning();
+    return result;
+  }
+
+  async getCareCoordinationTask(id: string, companyId: string): Promise<CareCoordinationTask | null> {
+    const [result] = await db
+      .select()
+      .from(careCoordinationTasks)
+      .where(and(eq(careCoordinationTasks.id, id), eq(careCoordinationTasks.companyId, companyId)));
+    return result || null;
+  }
+
+  async getCareCoordinationTasks(
+    companyId: string,
+    filters?: {
+      patientId?: string;
+      status?: string;
+      priority?: string;
+      assignedTo?: string;
+      carePlanId?: string;
+    }
+  ): Promise<CareCoordinationTask[]> {
+    const conditions = [eq(careCoordinationTasks.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(careCoordinationTasks.patientId, filters.patientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(careCoordinationTasks.status, filters.status as any));
+    }
+    if (filters?.priority) {
+      conditions.push(eq(careCoordinationTasks.priority, filters.priority as any));
+    }
+    if (filters?.assignedTo) {
+      conditions.push(eq(careCoordinationTasks.assignedTo, filters.assignedTo));
+    }
+    if (filters?.carePlanId) {
+      conditions.push(eq(careCoordinationTasks.carePlanId, filters.carePlanId));
+    }
+
+    return await db
+      .select()
+      .from(careCoordinationTasks)
+      .where(and(...conditions))
+      .orderBy(desc(careCoordinationTasks.dueDate));
+  }
+
+  async updateCareCoordinationTask(
+    id: string,
+    companyId: string,
+    data: Partial<InsertCareCoordinationTask>
+  ): Promise<CareCoordinationTask | null> {
+    const [result] = await db
+      .update(careCoordinationTasks)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(careCoordinationTasks.id, id), eq(careCoordinationTasks.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  async deleteCareCoordinationTask(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(careCoordinationTasks)
+      .where(and(eq(careCoordinationTasks.id, id), eq(careCoordinationTasks.companyId, companyId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Patient Outreach
+  async createPatientOutreach(data: InsertPatientOutreach): Promise<PatientOutreach> {
+    const [result] = await db.insert(patientOutreach).values(data).returning();
+    return result;
+  }
+
+  async getPatientOutreach(id: string, companyId: string): Promise<PatientOutreach | null> {
+    const [result] = await db
+      .select()
+      .from(patientOutreach)
+      .where(and(eq(patientOutreach.id, id), eq(patientOutreach.companyId, companyId)));
+    return result || null;
+  }
+
+  async getPatientOutreaches(
+    companyId: string,
+    filters?: {
+      patientId?: string;
+      status?: string;
+      outreachType?: string;
+      taskId?: string;
+    }
+  ): Promise<PatientOutreach[]> {
+    const conditions = [eq(patientOutreach.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(patientOutreach.patientId, filters.patientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(patientOutreach.status, filters.status as any));
+    }
+    if (filters?.outreachType) {
+      conditions.push(eq(patientOutreach.outreachType, filters.outreachType as any));
+    }
+    if (filters?.taskId) {
+      conditions.push(eq(patientOutreach.taskId, filters.taskId));
+    }
+
+    return await db
+      .select()
+      .from(patientOutreach)
+      .where(and(...conditions))
+      .orderBy(desc(patientOutreach.scheduledDate));
+  }
+
+  async updatePatientOutreach(
+    id: string,
+    companyId: string,
+    data: Partial<InsertPatientOutreach>
+  ): Promise<PatientOutreach | null> {
+    const [result] = await db
+      .update(patientOutreach)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(patientOutreach.id, id), eq(patientOutreach.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  async deletePatientOutreach(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(patientOutreach)
+      .where(and(eq(patientOutreach.id, id), eq(patientOutreach.companyId, companyId)))
+      .returning();
+    return result.length > 0;
   }
 
   // ============================================================================

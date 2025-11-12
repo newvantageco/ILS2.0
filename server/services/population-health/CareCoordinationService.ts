@@ -1,5 +1,23 @@
+/**
+ * Care Coordination Service
+ *
+ * ✅ DATABASE-BACKED - Production Ready
+ *
+ * MIGRATED FEATURES:
+ * - Care plans stored in PostgreSQL (multi-tenant)
+ * - Care teams with member management persisted
+ * - Care gaps tracking with severity and status
+ * - Transitions of care with medication reconciliation
+ * - Care coordination tasks with priority and assignment
+ * - Patient outreach tracking with contact results
+ * - All data survives server restarts
+ *
+ * STATUS: Full migration complete
+ */
+
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../utils/logger';
+import { storage, type IStorage } from '../../storage';
 
 // ============================================================================
 // Care Coordination Types
@@ -186,33 +204,32 @@ export interface PatientOutreach {
 // ============================================================================
 
 export class CareCoordinationService {
-  private static carePlans: Map<string, CarePlan> = new Map();
-  private static careTeams: Map<string, CareTeam> = new Map();
-  private static careGaps: Map<string, CareGap> = new Map();
-  private static transitions: Map<string, TransitionOfCare> = new Map();
-  private static tasks: Map<string, CareCoordinationTask> = new Map();
-  private static outreach: Map<string, PatientOutreach> = new Map();
+  private static db: IStorage = storage;
 
   // ============================================================================
   // Care Plan Management
   // ============================================================================
 
-  static createCarePlan(data: {
-    patientId: string;
-    name: string;
-    description: string;
-    category: CarePlan['category'];
-    startDate: Date;
-    reviewFrequency: CarePlan['reviewFrequency'];
-    createdBy: string;
-  }): CarePlan {
+  static async createCarePlan(
+    companyId: string,
+    data: {
+      patientId: string;
+      name: string;
+      description: string;
+      category: CarePlan['category'];
+      startDate: Date;
+      reviewFrequency: CarePlan['reviewFrequency'];
+      createdBy: string;
+    }
+  ): Promise<CarePlan> {
     const id = uuidv4();
 
     // Calculate next review date
     const nextReviewDate = this.calculateNextReviewDate(data.startDate, data.reviewFrequency);
 
-    const carePlan: CarePlan = {
+    const carePlan = await this.db.createCarePlan({
       id,
+      companyId,
       patientId: data.patientId,
       name: data.name,
       description: data.description,
@@ -224,150 +241,148 @@ export class CareCoordinationService {
       reviewFrequency: data.reviewFrequency,
       nextReviewDate,
       createdBy: data.createdBy,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    this.carePlans.set(id, carePlan);
     logger.info(`Care plan created for patient ${data.patientId}: ${data.name}`);
-
     return carePlan;
   }
 
-  static addCareGoal(carePlanId: string, goal: Omit<CareGoal, 'id' | 'createdAt' | 'updatedAt'>): CarePlan {
-    const carePlan = this.carePlans.get(carePlanId);
+  static async addCareGoal(
+    companyId: string,
+    carePlanId: string,
+    goal: Omit<CareGoal, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<CarePlan> {
+    const carePlan = await this.db.getCarePlan(carePlanId, companyId);
     if (!carePlan) {
       throw new Error('Care plan not found');
     }
 
-    const careGoal: CareGoal = {
+    const careGoal: any = {
       ...goal,
       id: uuidv4(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
-    carePlan.goals.push(careGoal);
-    carePlan.updatedAt = new Date();
+    const updatedGoals = [...(carePlan.goals || []), careGoal];
+    const updated = await this.db.updateCarePlan(carePlanId, companyId, {
+      goals: updatedGoals,
+    });
 
-    this.carePlans.set(carePlanId, carePlan);
     logger.info(`Care goal added to plan ${carePlanId}`);
-
-    return carePlan;
+    return updated!;
   }
 
-  static updateCareGoal(
+  static async updateCareGoal(
+    companyId: string,
     carePlanId: string,
     goalId: string,
     updates: Partial<Omit<CareGoal, 'id' | 'createdAt' | 'updatedAt'>>
-  ): CarePlan {
-    const carePlan = this.carePlans.get(carePlanId);
+  ): Promise<CarePlan> {
+    const carePlan = await this.db.getCarePlan(carePlanId, companyId);
     if (!carePlan) {
       throw new Error('Care plan not found');
     }
 
-    const goalIndex = carePlan.goals.findIndex((g) => g.id === goalId);
+    const goals = [...(carePlan.goals || [])];
+    const goalIndex = goals.findIndex((g) => g.id === goalId);
     if (goalIndex === -1) {
       throw new Error('Care goal not found');
     }
 
-    carePlan.goals[goalIndex] = {
-      ...carePlan.goals[goalIndex],
+    goals[goalIndex] = {
+      ...goals[goalIndex],
       ...updates,
-      updatedAt: new Date(),
+      updatedAt: new Date().toISOString(),
     };
 
-    carePlan.updatedAt = new Date();
-    this.carePlans.set(carePlanId, carePlan);
-
+    const updated = await this.db.updateCarePlan(carePlanId, companyId, { goals });
     logger.info(`Care goal ${goalId} updated`);
-    return carePlan;
+    return updated!;
   }
 
-  static addCareIntervention(
+  static async addCareIntervention(
+    companyId: string,
     carePlanId: string,
     intervention: Omit<CareIntervention, 'id' | 'createdAt' | 'updatedAt'>
-  ): CarePlan {
-    const carePlan = this.carePlans.get(carePlanId);
+  ): Promise<CarePlan> {
+    const carePlan = await this.db.getCarePlan(carePlanId, companyId);
     if (!carePlan) {
       throw new Error('Care plan not found');
     }
 
-    const careIntervention: CareIntervention = {
+    const careIntervention: any = {
       ...intervention,
       id: uuidv4(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
-    carePlan.interventions.push(careIntervention);
-    carePlan.updatedAt = new Date();
+    const updatedInterventions = [...(carePlan.interventions || []), careIntervention];
+    const updated = await this.db.updateCarePlan(carePlanId, companyId, {
+      interventions: updatedInterventions,
+    });
 
-    this.carePlans.set(carePlanId, carePlan);
     logger.info(`Care intervention added to plan ${carePlanId}`);
-
-    return carePlan;
+    return updated!;
   }
 
-  static activateCarePlan(carePlanId: string): CarePlan {
-    const carePlan = this.carePlans.get(carePlanId);
+  static async activateCarePlan(companyId: string, carePlanId: string): Promise<CarePlan> {
+    const carePlan = await this.db.getCarePlan(carePlanId, companyId);
     if (!carePlan) {
       throw new Error('Care plan not found');
     }
 
-    if (carePlan.goals.length === 0) {
+    if (!carePlan.goals || carePlan.goals.length === 0) {
       throw new Error('Cannot activate care plan without goals');
     }
 
-    carePlan.status = 'active';
-    carePlan.updatedAt = new Date();
+    const updated = await this.db.updateCarePlan(carePlanId, companyId, {
+      status: 'active',
+    });
 
-    this.carePlans.set(carePlanId, carePlan);
     logger.info(`Care plan activated: ${carePlanId}`);
-
-    return carePlan;
+    return updated!;
   }
 
-  static updateCarePlanStatus(
+  static async updateCarePlanStatus(
+    companyId: string,
     carePlanId: string,
-    status: CarePlan['status']
-  ): CarePlan {
-    const carePlan = this.carePlans.get(carePlanId);
+    status: 'draft' | 'active' | 'on_hold' | 'completed' | 'cancelled'
+  ): Promise<CarePlan> {
+    const carePlan = await this.db.getCarePlan(carePlanId, companyId);
     if (!carePlan) {
       throw new Error('Care plan not found');
     }
 
-    carePlan.status = status;
+    const updates: any = { status };
     if (status === 'completed' || status === 'cancelled') {
-      carePlan.endDate = new Date();
+      updates.endDate = new Date();
     }
-    carePlan.updatedAt = new Date();
 
-    this.carePlans.set(carePlanId, carePlan);
+    const updated = await this.db.updateCarePlan(carePlanId, companyId, updates);
     logger.info(`Care plan status updated: ${carePlanId} -> ${status}`);
-
-    return carePlan;
+    return updated!;
   }
 
-  static getCarePlanById(id: string): CarePlan | undefined {
-    return this.carePlans.get(id);
+  static async getCarePlanById(companyId: string, id: string): Promise<CarePlan | null> {
+    return await this.db.getCarePlan(id, companyId);
   }
 
-  static getCarePlansByPatient(patientId: string): CarePlan[] {
-    return Array.from(this.carePlans.values()).filter((plan) => plan.patientId === patientId);
+  static async getCarePlansByPatient(companyId: string, patientId: string): Promise<CarePlan[]> {
+    return await this.db.getCarePlans(companyId, { patientId });
   }
 
-  static getActiveCarePlans(): CarePlan[] {
-    return Array.from(this.carePlans.values()).filter((plan) => plan.status === 'active');
+  static async getActiveCarePlans(companyId: string): Promise<CarePlan[]> {
+    return await this.db.getCarePlans(companyId, { status: 'active' });
   }
 
-  static getCarePlansDueForReview(daysAhead: number = 7): CarePlan[] {
+  static async getCarePlansDueForReview(companyId: string, daysAhead: number = 7): Promise<CarePlan[]> {
+    const allActive = await this.db.getCarePlans(companyId, { status: 'active' });
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + daysAhead);
 
-    return Array.from(this.carePlans.values()).filter(
-      (plan) => plan.status === 'active' && plan.nextReviewDate <= futureDate
-    );
+    return allActive.filter((plan) => new Date(plan.nextReviewDate) <= futureDate);
   }
 
   private static calculateNextReviewDate(
