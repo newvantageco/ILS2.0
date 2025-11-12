@@ -49,6 +49,9 @@ import {
   messageTemplates,
   messages,
   unsubscribes,
+  audienceSegments,
+  campaigns,
+  campaignRecipients,
   type UpsertUser, 
   type User, 
   type UserWithRoles,
@@ -121,7 +124,13 @@ import {
   type Message,
   type InsertMessage,
   type Unsubscribe,
-  type InsertUnsubscribe
+  type InsertUnsubscribe,
+  type AudienceSegment,
+  type InsertAudienceSegment,
+  type Campaign,
+  type InsertCampaign,
+  type CampaignRecipient,
+  type InsertCampaignRecipient
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
@@ -2937,6 +2946,194 @@ export class DbStorage implements IStorage {
       .limit(1);
 
     return !!result;
+  }
+
+  // ========== Campaign Management - Audience Segments ==========
+
+  async createAudienceSegment(segment: InsertAudienceSegment): Promise<AudienceSegment> {
+    const [created] = await db
+      .insert(audienceSegments)
+      .values(segment)
+      .returning();
+    return created;
+  }
+
+  async getAudienceSegment(id: string, companyId: string): Promise<AudienceSegment | undefined> {
+    const [segment] = await db
+      .select()
+      .from(audienceSegments)
+      .where(and(
+        eq(audienceSegments.id, id),
+        eq(audienceSegments.companyId, companyId)
+      ));
+    return segment;
+  }
+
+  async getAudienceSegments(
+    companyId: string,
+    filters?: {
+      name?: string;
+    }
+  ): Promise<AudienceSegment[]> {
+    const conditions = [eq(audienceSegments.companyId, companyId)];
+
+    if (filters?.name) {
+      conditions.push(like(audienceSegments.name, `%${filters.name}%`));
+    }
+
+    return await db
+      .select()
+      .from(audienceSegments)
+      .where(and(...conditions))
+      .orderBy(audienceSegments.name);
+  }
+
+  async updateAudienceSegment(
+    id: string,
+    companyId: string,
+    updates: Partial<AudienceSegment>
+  ): Promise<AudienceSegment | undefined> {
+    const [updated] = await db
+      .update(audienceSegments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(
+        eq(audienceSegments.id, id),
+        eq(audienceSegments.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteAudienceSegment(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(audienceSegments)
+      .where(and(
+        eq(audienceSegments.id, id),
+        eq(audienceSegments.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Campaign Management - Campaigns ==========
+
+  async createCampaign(campaign: InsertCampaign): Promise<Campaign> {
+    const [created] = await db
+      .insert(campaigns)
+      .values(campaign)
+      .returning();
+    return created;
+  }
+
+  async getCampaign(id: string, companyId: string): Promise<Campaign | undefined> {
+    const [campaign] = await db
+      .select()
+      .from(campaigns)
+      .where(and(
+        eq(campaigns.id, id),
+        eq(campaigns.companyId, companyId)
+      ));
+    return campaign;
+  }
+
+  async getCampaigns(
+    companyId: string,
+    filters?: {
+      status?: string;
+      type?: string;
+      channel?: string;
+    }
+  ): Promise<Campaign[]> {
+    const conditions = [eq(campaigns.companyId, companyId)];
+
+    if (filters?.status) {
+      conditions.push(eq(campaigns.status, filters.status as any));
+    }
+    if (filters?.type) {
+      conditions.push(eq(campaigns.type, filters.type as any));
+    }
+    if (filters?.channel) {
+      conditions.push(eq(campaigns.channel, filters.channel as any));
+    }
+
+    return await db
+      .select()
+      .from(campaigns)
+      .where(and(...conditions))
+      .orderBy(desc(campaigns.createdAt));
+  }
+
+  async updateCampaign(
+    id: string,
+    companyId: string,
+    updates: Partial<Campaign>
+  ): Promise<Campaign | undefined> {
+    const [updated] = await db
+      .update(campaigns)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(
+        eq(campaigns.id, id),
+        eq(campaigns.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteCampaign(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(campaigns)
+      .where(and(
+        eq(campaigns.id, id),
+        eq(campaigns.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Campaign Management - Campaign Recipients ==========
+
+  async createCampaignRecipient(recipient: InsertCampaignRecipient): Promise<CampaignRecipient> {
+    const [created] = await db
+      .insert(campaignRecipients)
+      .values(recipient)
+      .returning();
+    return created;
+  }
+
+  async getCampaignRecipient(id: string): Promise<CampaignRecipient | undefined> {
+    const [recipient] = await db
+      .select()
+      .from(campaignRecipients)
+      .where(eq(campaignRecipients.id, id));
+    return recipient;
+  }
+
+  async getCampaignRecipients(
+    campaignId: string
+  ): Promise<CampaignRecipient[]> {
+    return await db
+      .select()
+      .from(campaignRecipients)
+      .where(eq(campaignRecipients.campaignId, campaignId))
+      .orderBy(campaignRecipients.sentAt);
+  }
+
+  async getCampaignRecipientsByRecipient(
+    recipientId: string
+  ): Promise<CampaignRecipient[]> {
+    return await db
+      .select()
+      .from(campaignRecipients)
+      .where(eq(campaignRecipients.recipientId, recipientId))
+      .orderBy(desc(campaignRecipients.sentAt));
+  }
+
+  async deleteCampaignRecipient(id: string): Promise<boolean> {
+    const result = await db
+      .delete(campaignRecipients)
+      .where(eq(campaignRecipients.id, id))
+      .returning();
+    return result.length > 0;
   }
 
   // ============================================================================
