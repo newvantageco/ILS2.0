@@ -44,6 +44,11 @@ import {
   claimBatches,
   claimAppeals,
   claimERAs,
+  qualityMeasures,
+  measureCalculations,
+  starRatings,
+  qualityGapAnalyses,
+  qualityDashboards,
   riskScores,
   healthRiskAssessments,
   predictiveModels,
@@ -126,6 +131,16 @@ import {
   type InsertClaimAppeal,
   type ClaimERA,
   type InsertClaimERA,
+  type QualityMeasure,
+  type InsertQualityMeasure,
+  type MeasureCalculation,
+  type InsertMeasureCalculation,
+  type StarRating,
+  type InsertStarRating,
+  type QualityGapAnalysis,
+  type InsertQualityGapAnalysis,
+  type QualityDashboard,
+  type InsertQualityDashboard,
   type RiskScore,
   type InsertRiskScore,
   type HealthRiskAssessment,
@@ -450,6 +465,36 @@ export interface IStorage {
   getClaimERA(id: string): Promise<ClaimERA | undefined>;
   getClaimERAs(payerId: string): Promise<ClaimERA[]>;
   updateClaimERA(id: string, updates: Partial<ClaimERA>): Promise<ClaimERA | undefined>;
+
+  // ============== QUALITY MEASURES METHODS ==============
+  // Quality Measures
+  createQualityMeasure(measure: InsertQualityMeasure): Promise<QualityMeasure>;
+  getQualityMeasure(id: string, companyId: string): Promise<QualityMeasure | undefined>;
+  getQualityMeasures(companyId: string, filters?: { type?: string; active?: boolean }): Promise<QualityMeasure[]>;
+  updateQualityMeasure(id: string, companyId: string, updates: Partial<QualityMeasure>): Promise<QualityMeasure | undefined>;
+
+  // Measure Calculations
+  createMeasureCalculation(calculation: InsertMeasureCalculation): Promise<MeasureCalculation>;
+  getMeasureCalculation(id: string): Promise<MeasureCalculation | undefined>;
+  getMeasureCalculations(measureId: string): Promise<MeasureCalculation[]>;
+  updateMeasureCalculation(id: string, updates: Partial<MeasureCalculation>): Promise<MeasureCalculation | undefined>;
+
+  // Star Ratings
+  createStarRating(rating: InsertStarRating): Promise<StarRating>;
+  getStarRating(id: string, companyId: string): Promise<StarRating | undefined>;
+  getStarRatings(companyId: string, filters?: { year?: number }): Promise<StarRating[]>;
+  updateStarRating(id: string, companyId: string, updates: Partial<StarRating>): Promise<StarRating | undefined>;
+
+  // Quality Gap Analyses
+  createQualityGapAnalysis(analysis: InsertQualityGapAnalysis): Promise<QualityGapAnalysis>;
+  getQualityGapAnalysis(id: string): Promise<QualityGapAnalysis | undefined>;
+  getQualityGapAnalyses(measureId: string): Promise<QualityGapAnalysis[]>;
+
+  // Quality Dashboards
+  createQualityDashboard(dashboard: InsertQualityDashboard): Promise<QualityDashboard>;
+  getQualityDashboard(id: string, companyId: string): Promise<QualityDashboard | undefined>;
+  getQualityDashboards(companyId: string): Promise<QualityDashboard[]>;
+  updateQualityDashboard(id: string, companyId: string, updates: Partial<QualityDashboard>): Promise<QualityDashboard | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -2537,6 +2582,229 @@ export class DbStorage implements IStorage {
         updatedAt: new Date()
       })
       .where(eq(claimERAs.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ========== Quality Measures ==========
+
+  async createQualityMeasure(measure: InsertQualityMeasure): Promise<QualityMeasure> {
+    const [created] = await db
+      .insert(qualityMeasures)
+      .values(measure)
+      .returning();
+    return created;
+  }
+
+  async getQualityMeasure(id: string, companyId: string): Promise<QualityMeasure | undefined> {
+    const [measure] = await db
+      .select()
+      .from(qualityMeasures)
+      .where(and(
+        eq(qualityMeasures.id, id),
+        eq(qualityMeasures.companyId, companyId)
+      ));
+    return measure;
+  }
+
+  async getQualityMeasures(companyId: string, filters?: { type?: string; active?: boolean }): Promise<QualityMeasure[]> {
+    const conditions = [eq(qualityMeasures.companyId, companyId)];
+
+    if (filters?.type) {
+      conditions.push(eq(qualityMeasures.type, filters.type as any));
+    }
+    if (filters?.active !== undefined) {
+      conditions.push(eq(qualityMeasures.active, filters.active));
+    }
+
+    return await db
+      .select()
+      .from(qualityMeasures)
+      .where(and(...conditions))
+      .orderBy(qualityMeasures.name);
+  }
+
+  async updateQualityMeasure(
+    id: string,
+    companyId: string,
+    updates: Partial<QualityMeasure>
+  ): Promise<QualityMeasure | undefined> {
+    const [updated] = await db
+      .update(qualityMeasures)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(qualityMeasures.id, id),
+        eq(qualityMeasures.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  // ========== Measure Calculations ==========
+
+  async createMeasureCalculation(calculation: InsertMeasureCalculation): Promise<MeasureCalculation> {
+    const [created] = await db
+      .insert(measureCalculations)
+      .values(calculation)
+      .returning();
+    return created;
+  }
+
+  async getMeasureCalculation(id: string): Promise<MeasureCalculation | undefined> {
+    const [calculation] = await db
+      .select()
+      .from(measureCalculations)
+      .where(eq(measureCalculations.id, id));
+    return calculation;
+  }
+
+  async getMeasureCalculations(measureId: string): Promise<MeasureCalculation[]> {
+    return await db
+      .select()
+      .from(measureCalculations)
+      .where(eq(measureCalculations.measureId, measureId))
+      .orderBy(desc(measureCalculations.calculationDate));
+  }
+
+  async updateMeasureCalculation(
+    id: string,
+    updates: Partial<MeasureCalculation>
+  ): Promise<MeasureCalculation | undefined> {
+    const [updated] = await db
+      .update(measureCalculations)
+      .set(updates)
+      .where(eq(measureCalculations.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ========== Star Ratings ==========
+
+  async createStarRating(rating: InsertStarRating): Promise<StarRating> {
+    const [created] = await db
+      .insert(starRatings)
+      .values(rating)
+      .returning();
+    return created;
+  }
+
+  async getStarRating(id: string, companyId: string): Promise<StarRating | undefined> {
+    const [rating] = await db
+      .select()
+      .from(starRatings)
+      .where(and(
+        eq(starRatings.id, id),
+        eq(starRatings.companyId, companyId)
+      ));
+    return rating;
+  }
+
+  async getStarRatings(companyId: string, filters?: { year?: number }): Promise<StarRating[]> {
+    const conditions = [eq(starRatings.companyId, companyId)];
+
+    if (filters?.year) {
+      conditions.push(eq(starRatings.measurementYear, filters.year));
+    }
+
+    return await db
+      .select()
+      .from(starRatings)
+      .where(and(...conditions))
+      .orderBy(desc(starRatings.measurementYear));
+  }
+
+  async updateStarRating(
+    id: string,
+    companyId: string,
+    updates: Partial<StarRating>
+  ): Promise<StarRating | undefined> {
+    const [updated] = await db
+      .update(starRatings)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(starRatings.id, id),
+        eq(starRatings.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  // ========== Quality Gap Analyses ==========
+
+  async createQualityGapAnalysis(analysis: InsertQualityGapAnalysis): Promise<QualityGapAnalysis> {
+    const [created] = await db
+      .insert(qualityGapAnalyses)
+      .values(analysis)
+      .returning();
+    return created;
+  }
+
+  async getQualityGapAnalysis(id: string): Promise<QualityGapAnalysis | undefined> {
+    const [analysis] = await db
+      .select()
+      .from(qualityGapAnalyses)
+      .where(eq(qualityGapAnalyses.id, id));
+    return analysis;
+  }
+
+  async getQualityGapAnalyses(measureId: string): Promise<QualityGapAnalysis[]> {
+    return await db
+      .select()
+      .from(qualityGapAnalyses)
+      .where(eq(qualityGapAnalyses.measureId, measureId))
+      .orderBy(desc(qualityGapAnalyses.analysisDate));
+  }
+
+  // ========== Quality Dashboards ==========
+
+  async createQualityDashboard(dashboard: InsertQualityDashboard): Promise<QualityDashboard> {
+    const [created] = await db
+      .insert(qualityDashboards)
+      .values(dashboard)
+      .returning();
+    return created;
+  }
+
+  async getQualityDashboard(id: string, companyId: string): Promise<QualityDashboard | undefined> {
+    const [dashboard] = await db
+      .select()
+      .from(qualityDashboards)
+      .where(and(
+        eq(qualityDashboards.id, id),
+        eq(qualityDashboards.companyId, companyId)
+      ));
+    return dashboard;
+  }
+
+  async getQualityDashboards(companyId: string): Promise<QualityDashboard[]> {
+    return await db
+      .select()
+      .from(qualityDashboards)
+      .where(eq(qualityDashboards.companyId, companyId))
+      .orderBy(qualityDashboards.name);
+  }
+
+  async updateQualityDashboard(
+    id: string,
+    companyId: string,
+    updates: Partial<QualityDashboard>
+  ): Promise<QualityDashboard | undefined> {
+    const [updated] = await db
+      .update(qualityDashboards)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(qualityDashboards.id, id),
+        eq(qualityDashboards.companyId, companyId)
+      ))
       .returning();
     return updated;
   }
