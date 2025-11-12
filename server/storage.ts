@@ -52,6 +52,12 @@ import {
   audienceSegments,
   campaigns,
   campaignRecipients,
+  drugs,
+  drugInteractions,
+  clinicalGuidelines,
+  clinicalAlerts,
+  treatmentRecommendations,
+  diagnosticSuggestions,
   type UpsertUser, 
   type User, 
   type UserWithRoles,
@@ -130,7 +136,19 @@ import {
   type Campaign,
   type InsertCampaign,
   type CampaignRecipient,
-  type InsertCampaignRecipient
+  type InsertCampaignRecipient,
+  type Drug,
+  type InsertDrug,
+  type DrugInteraction,
+  type InsertDrugInteraction,
+  type ClinicalGuideline,
+  type InsertClinicalGuideline,
+  type ClinicalAlert,
+  type InsertClinicalAlert,
+  type TreatmentRecommendation,
+  type InsertTreatmentRecommendation,
+  type DiagnosticSuggestion,
+  type InsertDiagnosticSuggestion
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
@@ -3132,6 +3150,414 @@ export class DbStorage implements IStorage {
     const result = await db
       .delete(campaignRecipients)
       .where(eq(campaignRecipients.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Clinical Decision Support - Drugs ==========
+
+  async createDrug(drug: InsertDrug): Promise<Drug> {
+    const [created] = await db
+      .insert(drugs)
+      .values(drug)
+      .returning();
+    return created;
+  }
+
+  async getDrug(id: string, companyId: string): Promise<Drug | undefined> {
+    const [drug] = await db
+      .select()
+      .from(drugs)
+      .where(and(
+        eq(drugs.id, id),
+        eq(drugs.companyId, companyId)
+      ));
+    return drug;
+  }
+
+  async getDrugs(
+    companyId: string,
+    filters?: {
+      name?: string;
+      genericName?: string;
+      drugClass?: string;
+    }
+  ): Promise<Drug[]> {
+    const conditions = [eq(drugs.companyId, companyId)];
+
+    if (filters?.name) {
+      conditions.push(like(drugs.name, `%${filters.name}%`));
+    }
+    if (filters?.genericName) {
+      conditions.push(like(drugs.genericName, `%${filters.genericName}%`));
+    }
+    if (filters?.drugClass) {
+      conditions.push(eq(drugs.drugClass, filters.drugClass));
+    }
+
+    return await db
+      .select()
+      .from(drugs)
+      .where(and(...conditions))
+      .orderBy(drugs.name);
+  }
+
+  async updateDrug(
+    id: string,
+    companyId: string,
+    updates: Partial<Drug>
+  ): Promise<Drug | undefined> {
+    const [updated] = await db
+      .update(drugs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(
+        eq(drugs.id, id),
+        eq(drugs.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteDrug(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(drugs)
+      .where(and(
+        eq(drugs.id, id),
+        eq(drugs.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Clinical Decision Support - Drug Interactions ==========
+
+  async createDrugInteraction(interaction: InsertDrugInteraction): Promise<DrugInteraction> {
+    const [created] = await db
+      .insert(drugInteractions)
+      .values(interaction)
+      .returning();
+    return created;
+  }
+
+  async getDrugInteraction(id: string, companyId: string): Promise<DrugInteraction | undefined> {
+    const [interaction] = await db
+      .select()
+      .from(drugInteractions)
+      .where(and(
+        eq(drugInteractions.id, id),
+        eq(drugInteractions.companyId, companyId)
+      ));
+    return interaction;
+  }
+
+  async getDrugInteractions(
+    companyId: string,
+    filters?: {
+      drug1Id?: string;
+      drug2Id?: string;
+      severity?: string;
+    }
+  ): Promise<DrugInteraction[]> {
+    const conditions = [eq(drugInteractions.companyId, companyId)];
+
+    if (filters?.drug1Id) {
+      conditions.push(
+        or(
+          eq(drugInteractions.drug1Id, filters.drug1Id),
+          eq(drugInteractions.drug2Id, filters.drug1Id)
+        )!
+      );
+    }
+    if (filters?.drug2Id) {
+      conditions.push(
+        or(
+          eq(drugInteractions.drug1Id, filters.drug2Id),
+          eq(drugInteractions.drug2Id, filters.drug2Id)
+        )!
+      );
+    }
+    if (filters?.severity) {
+      conditions.push(eq(drugInteractions.severity, filters.severity as any));
+    }
+
+    return await db
+      .select()
+      .from(drugInteractions)
+      .where(and(...conditions))
+      .orderBy(desc(drugInteractions.severity));
+  }
+
+  async deleteDrugInteraction(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(drugInteractions)
+      .where(and(
+        eq(drugInteractions.id, id),
+        eq(drugInteractions.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Clinical Decision Support - Clinical Guidelines ==========
+
+  async createClinicalGuideline(guideline: InsertClinicalGuideline): Promise<ClinicalGuideline> {
+    const [created] = await db
+      .insert(clinicalGuidelines)
+      .values(guideline)
+      .returning();
+    return created;
+  }
+
+  async getClinicalGuideline(id: string, companyId: string): Promise<ClinicalGuideline | undefined> {
+    const [guideline] = await db
+      .select()
+      .from(clinicalGuidelines)
+      .where(and(
+        eq(clinicalGuidelines.id, id),
+        eq(clinicalGuidelines.companyId, companyId)
+      ));
+    return guideline;
+  }
+
+  async getClinicalGuidelines(
+    companyId: string,
+    filters?: {
+      condition?: string;
+      organization?: string;
+    }
+  ): Promise<ClinicalGuideline[]> {
+    const conditions = [eq(clinicalGuidelines.companyId, companyId)];
+
+    if (filters?.condition) {
+      conditions.push(like(clinicalGuidelines.condition, `%${filters.condition}%`));
+    }
+    if (filters?.organization) {
+      conditions.push(eq(clinicalGuidelines.organization, filters.organization));
+    }
+
+    return await db
+      .select()
+      .from(clinicalGuidelines)
+      .where(and(...conditions))
+      .orderBy(clinicalGuidelines.condition);
+  }
+
+  async updateClinicalGuideline(
+    id: string,
+    companyId: string,
+    updates: Partial<ClinicalGuideline>
+  ): Promise<ClinicalGuideline | undefined> {
+    const [updated] = await db
+      .update(clinicalGuidelines)
+      .set(updates)
+      .where(and(
+        eq(clinicalGuidelines.id, id),
+        eq(clinicalGuidelines.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteClinicalGuideline(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(clinicalGuidelines)
+      .where(and(
+        eq(clinicalGuidelines.id, id),
+        eq(clinicalGuidelines.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Clinical Decision Support - Clinical Alerts ==========
+
+  async createClinicalAlert(alert: InsertClinicalAlert): Promise<ClinicalAlert> {
+    const [created] = await db
+      .insert(clinicalAlerts)
+      .values(alert)
+      .returning();
+    return created;
+  }
+
+  async getClinicalAlert(id: string, companyId: string): Promise<ClinicalAlert | undefined> {
+    const [alert] = await db
+      .select()
+      .from(clinicalAlerts)
+      .where(and(
+        eq(clinicalAlerts.id, id),
+        eq(clinicalAlerts.companyId, companyId)
+      ));
+    return alert;
+  }
+
+  async getClinicalAlerts(
+    companyId: string,
+    filters?: {
+      patientId?: string;
+      type?: string;
+      severity?: string;
+      acknowledged?: boolean;
+    }
+  ): Promise<ClinicalAlert[]> {
+    const conditions = [eq(clinicalAlerts.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(clinicalAlerts.patientId, filters.patientId));
+    }
+    if (filters?.type) {
+      conditions.push(eq(clinicalAlerts.type, filters.type as any));
+    }
+    if (filters?.severity) {
+      conditions.push(eq(clinicalAlerts.severity, filters.severity as any));
+    }
+    if (filters?.acknowledged !== undefined) {
+      if (filters.acknowledged) {
+        conditions.push(sql`${clinicalAlerts.acknowledgedAt} IS NOT NULL`);
+      } else {
+        conditions.push(sql`${clinicalAlerts.acknowledgedAt} IS NULL`);
+      }
+    }
+
+    return await db
+      .select()
+      .from(clinicalAlerts)
+      .where(and(...conditions))
+      .orderBy(desc(clinicalAlerts.createdAt));
+  }
+
+  async updateClinicalAlert(
+    id: string,
+    companyId: string,
+    updates: Partial<ClinicalAlert>
+  ): Promise<ClinicalAlert | undefined> {
+    const [updated] = await db
+      .update(clinicalAlerts)
+      .set(updates)
+      .where(and(
+        eq(clinicalAlerts.id, id),
+        eq(clinicalAlerts.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteClinicalAlert(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(clinicalAlerts)
+      .where(and(
+        eq(clinicalAlerts.id, id),
+        eq(clinicalAlerts.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Clinical Decision Support - Treatment Recommendations ==========
+
+  async createTreatmentRecommendation(recommendation: InsertTreatmentRecommendation): Promise<TreatmentRecommendation> {
+    const [created] = await db
+      .insert(treatmentRecommendations)
+      .values(recommendation)
+      .returning();
+    return created;
+  }
+
+  async getTreatmentRecommendation(id: string, companyId: string): Promise<TreatmentRecommendation | undefined> {
+    const [recommendation] = await db
+      .select()
+      .from(treatmentRecommendations)
+      .where(and(
+        eq(treatmentRecommendations.id, id),
+        eq(treatmentRecommendations.companyId, companyId)
+      ));
+    return recommendation;
+  }
+
+  async getTreatmentRecommendations(
+    companyId: string,
+    filters?: {
+      patientId?: string;
+      condition?: string;
+    }
+  ): Promise<TreatmentRecommendation[]> {
+    const conditions = [eq(treatmentRecommendations.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(treatmentRecommendations.patientId, filters.patientId));
+    }
+    if (filters?.condition) {
+      conditions.push(like(treatmentRecommendations.condition, `%${filters.condition}%`));
+    }
+
+    return await db
+      .select()
+      .from(treatmentRecommendations)
+      .where(and(...conditions))
+      .orderBy(desc(treatmentRecommendations.createdAt));
+  }
+
+  async deleteTreatmentRecommendation(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(treatmentRecommendations)
+      .where(and(
+        eq(treatmentRecommendations.id, id),
+        eq(treatmentRecommendations.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Clinical Decision Support - Diagnostic Suggestions ==========
+
+  async createDiagnosticSuggestion(suggestion: InsertDiagnosticSuggestion): Promise<DiagnosticSuggestion> {
+    const [created] = await db
+      .insert(diagnosticSuggestions)
+      .values(suggestion)
+      .returning();
+    return created;
+  }
+
+  async getDiagnosticSuggestion(id: string, companyId: string): Promise<DiagnosticSuggestion | undefined> {
+    const [suggestion] = await db
+      .select()
+      .from(diagnosticSuggestions)
+      .where(and(
+        eq(diagnosticSuggestions.id, id),
+        eq(diagnosticSuggestions.companyId, companyId)
+      ));
+    return suggestion;
+  }
+
+  async getDiagnosticSuggestions(
+    companyId: string,
+    filters?: {
+      patientId?: string;
+      confidence?: string;
+    }
+  ): Promise<DiagnosticSuggestion[]> {
+    const conditions = [eq(diagnosticSuggestions.companyId, companyId)];
+
+    if (filters?.patientId) {
+      conditions.push(eq(diagnosticSuggestions.patientId, filters.patientId));
+    }
+    if (filters?.confidence) {
+      conditions.push(eq(diagnosticSuggestions.confidence, filters.confidence as any));
+    }
+
+    return await db
+      .select()
+      .from(diagnosticSuggestions)
+      .where(and(...conditions))
+      .orderBy(desc(diagnosticSuggestions.createdAt));
+  }
+
+  async deleteDiagnosticSuggestion(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(diagnosticSuggestions)
+      .where(and(
+        eq(diagnosticSuggestions.id, id),
+        eq(diagnosticSuggestions.companyId, companyId)
+      ))
       .returning();
     return result.length > 0;
   }
