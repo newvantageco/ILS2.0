@@ -185,9 +185,21 @@ import {
   type ProviderAvailability,
   type InsertProviderAvailability,
   type AppointmentBooking,
-  type InsertAppointmentBooking
+  type InsertAppointmentBooking,
+  medicalRecords,
+  portalConversations,
+  portalMessages,
+  portalPayments,
+  type MedicalRecord,
+  type InsertMedicalRecord,
+  type PortalConversation,
+  type InsertPortalConversation,
+  type PortalMessage,
+  type InsertPortalMessage,
+  type PortalPayment,
+  type InsertPortalPayment
 } from "@shared/schema";
-import { eq, desc, and, or, like, sql, gt, lt, gte, lte, ne } from "drizzle-orm";
+import { eq, desc, and, or, like, sql, gt, lt, gte, lte, ne, asc } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
 
 export interface IStorage {
@@ -4283,6 +4295,170 @@ export class DbStorage implements IStorage {
         eq(appointmentBookings.confirmationCode, confirmationCode),
         eq(appointmentBookings.companyId, companyId)
       ));
+    return result || null;
+  }
+
+  // ========== Patient Portal Storage Methods ==========
+
+  async createMedicalRecord(data: InsertMedicalRecord): Promise<MedicalRecord> {
+    const [result] = await db.insert(medicalRecords).values(data).returning();
+    return result;
+  }
+
+  async getMedicalRecord(id: string, companyId: string): Promise<MedicalRecord | null> {
+    const [result] = await db
+      .select()
+      .from(medicalRecords)
+      .where(and(eq(medicalRecords.id, id), eq(medicalRecords.companyId, companyId)));
+    return result || null;
+  }
+
+  async getMedicalRecords(
+    companyId: string,
+    patientId: string,
+    options?: {
+      type?: string;
+      startDate?: Date;
+      endDate?: Date;
+    }
+  ): Promise<MedicalRecord[]> {
+    const conditions = [
+      eq(medicalRecords.companyId, companyId),
+      eq(medicalRecords.patientId, patientId),
+      eq(medicalRecords.viewable, true),
+    ];
+
+    if (options?.type) {
+      conditions.push(eq(medicalRecords.type, options.type as any));
+    }
+
+    if (options?.startDate) {
+      conditions.push(gte(medicalRecords.date, options.startDate));
+    }
+
+    if (options?.endDate) {
+      conditions.push(lte(medicalRecords.date, options.endDate));
+    }
+
+    return await db
+      .select()
+      .from(medicalRecords)
+      .where(and(...conditions))
+      .orderBy(desc(medicalRecords.date));
+  }
+
+  async createPortalConversation(data: InsertPortalConversation): Promise<PortalConversation> {
+    const [result] = await db.insert(portalConversations).values(data).returning();
+    return result;
+  }
+
+  async getPortalConversation(id: string, companyId: string): Promise<PortalConversation | null> {
+    const [result] = await db
+      .select()
+      .from(portalConversations)
+      .where(and(eq(portalConversations.id, id), eq(portalConversations.companyId, companyId)));
+    return result || null;
+  }
+
+  async getPortalConversations(companyId: string, patientId: string): Promise<PortalConversation[]> {
+    return await db
+      .select()
+      .from(portalConversations)
+      .where(and(
+        eq(portalConversations.companyId, companyId),
+        eq(portalConversations.patientId, patientId)
+      ))
+      .orderBy(desc(portalConversations.lastMessageAt));
+  }
+
+  async updatePortalConversation(
+    id: string,
+    companyId: string,
+    data: Partial<InsertPortalConversation>
+  ): Promise<PortalConversation | null> {
+    const [result] = await db
+      .update(portalConversations)
+      .set(data)
+      .where(and(eq(portalConversations.id, id), eq(portalConversations.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  async createPortalMessage(data: InsertPortalMessage): Promise<PortalMessage> {
+    const [result] = await db.insert(portalMessages).values(data).returning();
+    return result;
+  }
+
+  async getPortalMessages(companyId: string, conversationId: string): Promise<PortalMessage[]> {
+    return await db
+      .select()
+      .from(portalMessages)
+      .where(and(
+        eq(portalMessages.companyId, companyId),
+        eq(portalMessages.conversationId, conversationId)
+      ))
+      .orderBy(asc(portalMessages.sentAt));
+  }
+
+  async updatePortalMessage(
+    id: string,
+    companyId: string,
+    data: Partial<InsertPortalMessage>
+  ): Promise<PortalMessage | null> {
+    const [result] = await db
+      .update(portalMessages)
+      .set(data)
+      .where(and(eq(portalMessages.id, id), eq(portalMessages.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  async markMessagesAsRead(companyId: string, conversationId: string, recipientId: string): Promise<void> {
+    await db
+      .update(portalMessages)
+      .set({ read: true, readAt: new Date() })
+      .where(and(
+        eq(portalMessages.companyId, companyId),
+        eq(portalMessages.conversationId, conversationId),
+        eq(portalMessages.recipientId, recipientId),
+        eq(portalMessages.read, false)
+      ));
+  }
+
+  async createPortalPayment(data: InsertPortalPayment): Promise<PortalPayment> {
+    const [result] = await db.insert(portalPayments).values(data).returning();
+    return result;
+  }
+
+  async getPortalPayment(id: string, companyId: string): Promise<PortalPayment | null> {
+    const [result] = await db
+      .select()
+      .from(portalPayments)
+      .where(and(eq(portalPayments.id, id), eq(portalPayments.companyId, companyId)));
+    return result || null;
+  }
+
+  async getPatientPaymentHistory(companyId: string, patientId: string): Promise<PortalPayment[]> {
+    return await db
+      .select()
+      .from(portalPayments)
+      .where(and(
+        eq(portalPayments.companyId, companyId),
+        eq(portalPayments.patientId, patientId)
+      ))
+      .orderBy(desc(portalPayments.createdAt));
+  }
+
+  async updatePortalPayment(
+    id: string,
+    companyId: string,
+    data: Partial<InsertPortalPayment>
+  ): Promise<PortalPayment | null> {
+    const [result] = await db
+      .update(portalPayments)
+      .set(data)
+      .where(and(eq(portalPayments.id, id), eq(portalPayments.companyId, companyId)))
+      .returning();
     return result || null;
   }
 

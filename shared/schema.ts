@@ -6930,4 +6930,167 @@ export type InsertProviderAvailability = typeof providerAvailability.$inferInser
 export type AppointmentBooking = typeof appointmentBookings.$inferSelect;
 export type InsertAppointmentBooking = typeof appointmentBookings.$inferInsert;
 
+// ========== Patient Portal Tables ==========
+/**
+ * Patient Portal Enums
+ */
+export const medicalRecordTypeEnum = pgEnum("medical_record_type", [
+  "exam",
+  "prescription",
+  "lab_result",
+  "document",
+  "image",
+]);
+
+export const conversationStatusEnum = pgEnum("conversation_status", ["open", "closed"]);
+
+export const messageSenderTypeEnum = pgEnum("message_sender_type", ["patient", "provider"]);
+
+// NOTE: Reusing existing paymentMethodEnum from line 378
+
+export const portalPaymentStatusEnum = pgEnum("portal_payment_status", [
+  "pending",
+  "completed",
+  "failed",
+  "refunded",
+]);
+
+/**
+ * Medical Records Table
+ * Patient portal medical records (exams, prescriptions, lab results, documents)
+ */
+export const medicalRecords = pgTable(
+  "medical_records",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    type: medicalRecordTypeEnum("type").notNull(),
+    title: text("title").notNull(),
+    date: timestamp("date", { withTimezone: true }).notNull(),
+    provider: text("provider").notNull(),
+    summary: text("summary"),
+    details: jsonb("details").$type<Record<string, any>>(),
+    attachments: jsonb("attachments").$type<Array<{
+      id: string;
+      filename: string;
+      fileType: string;
+      fileSize: number;
+      url: string;
+    }>>(),
+    viewable: boolean("viewable").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("medical_records_company_idx").on(table.companyId),
+    patientIdx: index("medical_records_patient_idx").on(table.patientId),
+    typeIdx: index("medical_records_type_idx").on(table.type),
+    dateIdx: index("medical_records_date_idx").on(table.date),
+    createdAtIdx: index("medical_records_created_at_idx").on(table.createdAt),
+  })
+);
+
+/**
+ * Portal Conversations Table
+ * Patient-provider messaging conversations
+ */
+export const portalConversations = pgTable(
+  "portal_conversations",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    providerId: text("provider_id").notNull(),
+    providerName: text("provider_name").notNull(),
+    subject: text("subject").notNull(),
+    status: conversationStatusEnum("status").notNull().default("open"),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull(),
+    unreadCount: integer("unread_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("portal_conversations_company_idx").on(table.companyId),
+    patientIdx: index("portal_conversations_patient_idx").on(table.patientId),
+    providerIdx: index("portal_conversations_provider_idx").on(table.providerId),
+    statusIdx: index("portal_conversations_status_idx").on(table.status),
+    lastMessageAtIdx: index("portal_conversations_last_message_at_idx").on(table.lastMessageAt),
+  })
+);
+
+/**
+ * Portal Messages Table
+ * Individual messages within conversations
+ */
+export const portalMessages = pgTable(
+  "portal_messages",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id").notNull().references(() => portalConversations.id, { onDelete: "cascade" }),
+    from: messageSenderTypeEnum("from").notNull(),
+    senderId: text("sender_id").notNull(),
+    senderName: text("sender_name").notNull(),
+    recipientId: text("recipient_id").notNull(),
+    subject: text("subject"),
+    body: text("body").notNull(),
+    attachments: jsonb("attachments").$type<Array<{
+      filename: string;
+      url: string;
+    }>>(),
+    read: boolean("read").notNull().default(false),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("portal_messages_company_idx").on(table.companyId),
+    conversationIdx: index("portal_messages_conversation_idx").on(table.conversationId),
+    senderIdx: index("portal_messages_sender_idx").on(table.senderId),
+    recipientIdx: index("portal_messages_recipient_idx").on(table.recipientId),
+    sentAtIdx: index("portal_messages_sent_at_idx").on(table.sentAt),
+  })
+);
+
+/**
+ * Portal Payments Table
+ * Patient bill payments through portal
+ */
+export const portalPayments = pgTable(
+  "portal_payments",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    billId: text("bill_id").notNull().references(() => invoices.id, { onDelete: "restrict" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    amount: integer("amount").notNull(), // in cents
+    method: paymentMethodEnum("method").notNull(),
+    status: portalPaymentStatusEnum("status").notNull().default("pending"),
+    transactionId: text("transaction_id"),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("portal_payments_company_idx").on(table.companyId),
+    billIdx: index("portal_payments_bill_idx").on(table.billId),
+    patientIdx: index("portal_payments_patient_idx").on(table.patientId),
+    statusIdx: index("portal_payments_status_idx").on(table.status),
+    createdAtIdx: index("portal_payments_created_at_idx").on(table.createdAt),
+  })
+);
+
+// Zod validation schemas for Patient Portal tables
+export const insertMedicalRecordSchema = createInsertSchema(medicalRecords);
+export const insertPortalConversationSchema = createInsertSchema(portalConversations);
+export const insertPortalMessageSchema = createInsertSchema(portalMessages);
+export const insertPortalPaymentSchema = createInsertSchema(portalPayments);
+
+// TypeScript types
+export type MedicalRecord = typeof medicalRecords.$inferSelect;
+export type InsertMedicalRecord = typeof medicalRecords.$inferInsert;
+export type PortalConversation = typeof portalConversations.$inferSelect;
+export type InsertPortalConversation = typeof portalConversations.$inferInsert;
+export type PortalMessage = typeof portalMessages.$inferSelect;
+export type InsertPortalMessage = typeof portalMessages.$inferInsert;
+export type PortalPayment = typeof portalPayments.$inferSelect;
+export type InsertPortalPayment = typeof portalPayments.$inferInsert;
+
 // ========== End Predictive Analytics Tables ==========
