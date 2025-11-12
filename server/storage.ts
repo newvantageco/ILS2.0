@@ -37,6 +37,9 @@ import {
   gocComplianceChecks,
   prescriptionTemplates,
   clinicalProtocols,
+  insurancePayers,
+  insuranceClaims,
+  claimLineItems,
   type UpsertUser, 
   type User, 
   type UserWithRoles,
@@ -85,7 +88,13 @@ import {
   type AiLearningData,
   type InsertAiLearningData,
   type AiFeedback,
-  type InsertAiFeedback
+  type InsertAiFeedback,
+  type InsurancePayer,
+  type InsertInsurancePayer,
+  type InsuranceClaim,
+  type InsertInsuranceClaim,
+  type ClaimLineItem,
+  type InsertClaimLineItem
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
@@ -229,6 +238,28 @@ export interface IStorage {
   createAiFeedback(feedback: InsertAiFeedback): Promise<AiFeedback>;
   getAiFeedbackByMessage(messageId: string): Promise<AiFeedback[]>;
   getAiFeedbackByCompany(companyId: string): Promise<AiFeedback[]>;
+
+  // ============== RCM (REVENUE CYCLE MANAGEMENT) METHODS ==============
+  // Insurance Payers
+  createInsurancePayer(payer: InsertInsurancePayer): Promise<InsurancePayer>;
+  getInsurancePayer(id: string, companyId: string): Promise<InsurancePayer | undefined>;
+  getInsurancePayers(companyId: string, filters?: { active?: boolean; type?: string }): Promise<InsurancePayer[]>;
+  updateInsurancePayer(id: string, companyId: string, updates: Partial<InsurancePayer>): Promise<InsurancePayer | undefined>;
+  deleteInsurancePayer(id: string, companyId: string): Promise<boolean>;
+
+  // Insurance Claims
+  createInsuranceClaim(claim: InsertInsuranceClaim): Promise<InsuranceClaim>;
+  getInsuranceClaim(id: string, companyId: string): Promise<InsuranceClaim | undefined>;
+  getInsuranceClaims(companyId: string, filters?: { status?: string; patientId?: string; payerId?: string }): Promise<InsuranceClaim[]>;
+  updateInsuranceClaim(id: string, companyId: string, updates: Partial<InsuranceClaim>): Promise<InsuranceClaim | undefined>;
+  deleteInsuranceClaim(id: string, companyId: string): Promise<boolean>;
+
+  // Claim Line Items
+  createClaimLineItem(lineItem: InsertClaimLineItem): Promise<ClaimLineItem>;
+  getClaimLineItem(id: string): Promise<ClaimLineItem | undefined>;
+  getClaimLineItems(claimId: string): Promise<ClaimLineItem[]>;
+  updateClaimLineItem(id: string, updates: Partial<ClaimLineItem>): Promise<ClaimLineItem | undefined>;
+  deleteClaimLineItem(id: string): Promise<boolean>;
 }
 
 export class DbStorage implements IStorage {
@@ -1971,6 +2002,214 @@ export class DbStorage implements IStorage {
       .select()
       .from(trainingDataAnalytics)
       .orderBy(desc(trainingDataAnalytics.recordedAt));
+  }
+
+  // ============================================================================
+  // RCM (REVENUE CYCLE MANAGEMENT) METHODS
+  // ============================================================================
+
+  // ========== Insurance Payers ==========
+
+  async createInsurancePayer(payer: InsertInsurancePayer): Promise<InsurancePayer> {
+    const [created] = await db
+      .insert(insurancePayers)
+      .values(payer)
+      .returning();
+    return created;
+  }
+
+  async getInsurancePayer(id: string, companyId: string): Promise<InsurancePayer | undefined> {
+    const [payer] = await db
+      .select()
+      .from(insurancePayers)
+      .where(and(
+        eq(insurancePayers.id, id),
+        eq(insurancePayers.companyId, companyId)
+      ));
+    return payer;
+  }
+
+  async getInsurancePayers(
+    companyId: string,
+    filters?: { active?: boolean; type?: string }
+  ): Promise<InsurancePayer[]> {
+    let query = db
+      .select()
+      .from(insurancePayers)
+      .where(eq(insurancePayers.companyId, companyId));
+
+    if (filters?.active !== undefined) {
+      query = query.where(
+        and(
+          eq(insurancePayers.companyId, companyId),
+          eq(insurancePayers.active, filters.active)
+        )
+      ) as any;
+    }
+
+    if (filters?.type) {
+      query = query.where(
+        and(
+          eq(insurancePayers.companyId, companyId),
+          eq(insurancePayers.type, filters.type as any)
+        )
+      ) as any;
+    }
+
+    return await query.orderBy(insurancePayers.name);
+  }
+
+  async updateInsurancePayer(
+    id: string,
+    companyId: string,
+    updates: Partial<InsurancePayer>
+  ): Promise<InsurancePayer | undefined> {
+    const [updated] = await db
+      .update(insurancePayers)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(insurancePayers.id, id),
+        eq(insurancePayers.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteInsurancePayer(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(insurancePayers)
+      .where(and(
+        eq(insurancePayers.id, id),
+        eq(insurancePayers.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Insurance Claims ==========
+
+  async createInsuranceClaim(claim: InsertInsuranceClaim): Promise<InsuranceClaim> {
+    const [created] = await db
+      .insert(insuranceClaims)
+      .values(claim)
+      .returning();
+    return created;
+  }
+
+  async getInsuranceClaim(id: string, companyId: string): Promise<InsuranceClaim | undefined> {
+    const [claim] = await db
+      .select()
+      .from(insuranceClaims)
+      .where(and(
+        eq(insuranceClaims.id, id),
+        eq(insuranceClaims.companyId, companyId)
+      ));
+    return claim;
+  }
+
+  async getInsuranceClaims(
+    companyId: string,
+    filters?: { status?: string; patientId?: string; payerId?: string }
+  ): Promise<InsuranceClaim[]> {
+    const conditions = [eq(insuranceClaims.companyId, companyId)];
+
+    if (filters?.status) {
+      conditions.push(eq(insuranceClaims.status, filters.status as any));
+    }
+    if (filters?.patientId) {
+      conditions.push(eq(insuranceClaims.patientId, filters.patientId));
+    }
+    if (filters?.payerId) {
+      conditions.push(eq(insuranceClaims.payerId, filters.payerId));
+    }
+
+    return await db
+      .select()
+      .from(insuranceClaims)
+      .where(and(...conditions))
+      .orderBy(desc(insuranceClaims.serviceDate));
+  }
+
+  async updateInsuranceClaim(
+    id: string,
+    companyId: string,
+    updates: Partial<InsuranceClaim>
+  ): Promise<InsuranceClaim | undefined> {
+    const [updated] = await db
+      .update(insuranceClaims)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(insuranceClaims.id, id),
+        eq(insuranceClaims.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteInsuranceClaim(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(insuranceClaims)
+      .where(and(
+        eq(insuranceClaims.id, id),
+        eq(insuranceClaims.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Claim Line Items ==========
+
+  async createClaimLineItem(lineItem: InsertClaimLineItem): Promise<ClaimLineItem> {
+    const [created] = await db
+      .insert(claimLineItems)
+      .values(lineItem)
+      .returning();
+    return created;
+  }
+
+  async getClaimLineItem(id: string): Promise<ClaimLineItem | undefined> {
+    const [lineItem] = await db
+      .select()
+      .from(claimLineItems)
+      .where(eq(claimLineItems.id, id));
+    return lineItem;
+  }
+
+  async getClaimLineItems(claimId: string): Promise<ClaimLineItem[]> {
+    return await db
+      .select()
+      .from(claimLineItems)
+      .where(eq(claimLineItems.claimId, claimId))
+      .orderBy(claimLineItems.lineNumber);
+  }
+
+  async updateClaimLineItem(
+    id: string,
+    updates: Partial<ClaimLineItem>
+  ): Promise<ClaimLineItem | undefined> {
+    const [updated] = await db
+      .update(claimLineItems)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(claimLineItems.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteClaimLineItem(id: string): Promise<boolean> {
+    const result = await db
+      .delete(claimLineItems)
+      .where(eq(claimLineItems.id, id))
+      .returning();
+    return result.length > 0;
   }
 
   // ============================================================================
