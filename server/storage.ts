@@ -215,7 +215,31 @@ import {
   type CareCoordinationTask,
   type InsertCareCoordinationTask,
   type PatientOutreach,
-  type InsertPatientOutreach
+  type InsertPatientOutreach,
+  diseaseRegistries,
+  registryEnrollments,
+  diseaseManagementPrograms,
+  programEnrollments,
+  clinicalMetrics,
+  patientEngagement,
+  outcomeTracking,
+  preventiveCareRecommendations,
+  type DiseaseRegistry,
+  type InsertDiseaseRegistry,
+  type RegistryEnrollment,
+  type InsertRegistryEnrollment,
+  type DiseaseManagementProgram,
+  type InsertDiseaseManagementProgram,
+  type ProgramEnrollment,
+  type InsertProgramEnrollment,
+  type ClinicalMetric,
+  type InsertClinicalMetric,
+  type PatientEngagement,
+  type InsertPatientEngagement,
+  type OutcomeTracking,
+  type InsertOutcomeTracking,
+  type PreventiveCareRecommendation,
+  type InsertPreventiveCareRecommendation
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql, gt, lt, gte, lte, ne, asc } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
@@ -4850,6 +4874,365 @@ export class DbStorage implements IStorage {
       .where(and(eq(patientOutreach.id, id), eq(patientOutreach.companyId, companyId)))
       .returning();
     return result.length > 0;
+  }
+
+  // ============================================================================
+  // Chronic Disease Management Methods
+  // ============================================================================
+
+  // Disease Registries
+  async createDiseaseRegistry(data: InsertDiseaseRegistry): Promise<DiseaseRegistry> {
+    const [result] = await db.insert(diseaseRegistries).values(data).returning();
+    return result;
+  }
+
+  async getDiseaseRegistry(id: string, companyId: string): Promise<DiseaseRegistry | null> {
+    const [result] = await db
+      .select()
+      .from(diseaseRegistries)
+      .where(and(eq(diseaseRegistries.id, id), eq(diseaseRegistries.companyId, companyId)));
+    return result || null;
+  }
+
+  async getDiseaseRegistries(companyId: string, filters?: { active?: boolean }): Promise<DiseaseRegistry[]> {
+    const conditions = [eq(diseaseRegistries.companyId, companyId)];
+    if (filters?.active !== undefined) {
+      conditions.push(eq(diseaseRegistries.active, filters.active));
+    }
+    return await db
+      .select()
+      .from(diseaseRegistries)
+      .where(and(...conditions))
+      .orderBy(desc(diseaseRegistries.createdAt));
+  }
+
+  async updateDiseaseRegistry(
+    id: string,
+    companyId: string,
+    data: Partial<InsertDiseaseRegistry>
+  ): Promise<DiseaseRegistry | null> {
+    const [result] = await db
+      .update(diseaseRegistries)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(diseaseRegistries.id, id), eq(diseaseRegistries.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  // Registry Enrollments
+  async createRegistryEnrollment(data: InsertRegistryEnrollment): Promise<RegistryEnrollment> {
+    const [result] = await db.insert(registryEnrollments).values(data).returning();
+    return result;
+  }
+
+  async getRegistryEnrollment(id: string, companyId: string): Promise<RegistryEnrollment | null> {
+    const [result] = await db
+      .select()
+      .from(registryEnrollments)
+      .where(and(eq(registryEnrollments.id, id), eq(registryEnrollments.companyId, companyId)));
+    return result || null;
+  }
+
+  async getRegistryEnrollments(
+    companyId: string,
+    filters?: { registryId?: string; patientId?: string; status?: string }
+  ): Promise<RegistryEnrollment[]> {
+    const conditions = [eq(registryEnrollments.companyId, companyId)];
+    if (filters?.registryId) {
+      conditions.push(eq(registryEnrollments.registryId, filters.registryId));
+    }
+    if (filters?.patientId) {
+      conditions.push(eq(registryEnrollments.patientId, filters.patientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(registryEnrollments.status, filters.status as any));
+    }
+    return await db
+      .select()
+      .from(registryEnrollments)
+      .where(and(...conditions))
+      .orderBy(desc(registryEnrollments.enrollmentDate));
+  }
+
+  async updateRegistryEnrollment(
+    id: string,
+    companyId: string,
+    data: Partial<InsertRegistryEnrollment>
+  ): Promise<RegistryEnrollment | null> {
+    const [result] = await db
+      .update(registryEnrollments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(registryEnrollments.id, id), eq(registryEnrollments.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  // Disease Management Programs
+  async createDiseaseManagementProgram(data: InsertDiseaseManagementProgram): Promise<DiseaseManagementProgram> {
+    const [result] = await db.insert(diseaseManagementPrograms).values(data).returning();
+    return result;
+  }
+
+  async getDiseaseManagementProgram(id: string, companyId: string): Promise<DiseaseManagementProgram | null> {
+    const [result] = await db
+      .select()
+      .from(diseaseManagementPrograms)
+      .where(and(eq(diseaseManagementPrograms.id, id), eq(diseaseManagementPrograms.companyId, companyId)));
+    return result || null;
+  }
+
+  async getDiseaseManagementPrograms(
+    companyId: string,
+    filters?: { diseaseType?: string; active?: boolean }
+  ): Promise<DiseaseManagementProgram[]> {
+    const conditions = [eq(diseaseManagementPrograms.companyId, companyId)];
+    if (filters?.diseaseType) {
+      conditions.push(eq(diseaseManagementPrograms.diseaseType, filters.diseaseType));
+    }
+    if (filters?.active !== undefined) {
+      conditions.push(eq(diseaseManagementPrograms.active, filters.active));
+    }
+    return await db
+      .select()
+      .from(diseaseManagementPrograms)
+      .where(and(...conditions))
+      .orderBy(desc(diseaseManagementPrograms.createdAt));
+  }
+
+  async updateDiseaseManagementProgram(
+    id: string,
+    companyId: string,
+    data: Partial<InsertDiseaseManagementProgram>
+  ): Promise<DiseaseManagementProgram | null> {
+    const [result] = await db
+      .update(diseaseManagementPrograms)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(diseaseManagementPrograms.id, id), eq(diseaseManagementPrograms.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  // Program Enrollments
+  async createProgramEnrollment(data: InsertProgramEnrollment): Promise<ProgramEnrollment> {
+    const [result] = await db.insert(programEnrollments).values(data).returning();
+    return result;
+  }
+
+  async getProgramEnrollment(id: string, companyId: string): Promise<ProgramEnrollment | null> {
+    const [result] = await db
+      .select()
+      .from(programEnrollments)
+      .where(and(eq(programEnrollments.id, id), eq(programEnrollments.companyId, companyId)));
+    return result || null;
+  }
+
+  async getProgramEnrollments(
+    companyId: string,
+    filters?: { programId?: string; patientId?: string; status?: string; assignedCoach?: string }
+  ): Promise<ProgramEnrollment[]> {
+    const conditions = [eq(programEnrollments.companyId, companyId)];
+    if (filters?.programId) {
+      conditions.push(eq(programEnrollments.programId, filters.programId));
+    }
+    if (filters?.patientId) {
+      conditions.push(eq(programEnrollments.patientId, filters.patientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(programEnrollments.status, filters.status as any));
+    }
+    if (filters?.assignedCoach) {
+      conditions.push(eq(programEnrollments.assignedCoach, filters.assignedCoach));
+    }
+    return await db
+      .select()
+      .from(programEnrollments)
+      .where(and(...conditions))
+      .orderBy(desc(programEnrollments.enrollmentDate));
+  }
+
+  async updateProgramEnrollment(
+    id: string,
+    companyId: string,
+    data: Partial<InsertProgramEnrollment>
+  ): Promise<ProgramEnrollment | null> {
+    const [result] = await db
+      .update(programEnrollments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(programEnrollments.id, id), eq(programEnrollments.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  // Clinical Metrics
+  async createClinicalMetric(data: InsertClinicalMetric): Promise<ClinicalMetric> {
+    const [result] = await db.insert(clinicalMetrics).values(data).returning();
+    return result;
+  }
+
+  async getClinicalMetric(id: string, companyId: string): Promise<ClinicalMetric | null> {
+    const [result] = await db
+      .select()
+      .from(clinicalMetrics)
+      .where(and(eq(clinicalMetrics.id, id), eq(clinicalMetrics.companyId, companyId)));
+    return result || null;
+  }
+
+  async getClinicalMetrics(
+    companyId: string,
+    filters?: { patientId?: string; registryId?: string; programId?: string; metricType?: string }
+  ): Promise<ClinicalMetric[]> {
+    const conditions = [eq(clinicalMetrics.companyId, companyId)];
+    if (filters?.patientId) {
+      conditions.push(eq(clinicalMetrics.patientId, filters.patientId));
+    }
+    if (filters?.registryId) {
+      conditions.push(eq(clinicalMetrics.registryId, filters.registryId));
+    }
+    if (filters?.programId) {
+      conditions.push(eq(clinicalMetrics.programId, filters.programId));
+    }
+    if (filters?.metricType) {
+      conditions.push(eq(clinicalMetrics.metricType, filters.metricType));
+    }
+    return await db
+      .select()
+      .from(clinicalMetrics)
+      .where(and(...conditions))
+      .orderBy(desc(clinicalMetrics.measurementDate));
+  }
+
+  // Patient Engagement
+  async createPatientEngagementRecord(data: InsertPatientEngagement): Promise<PatientEngagement> {
+    const [result] = await db.insert(patientEngagement).values(data).returning();
+    return result;
+  }
+
+  async getPatientEngagementRecord(id: string, companyId: string): Promise<PatientEngagement | null> {
+    const [result] = await db
+      .select()
+      .from(patientEngagement)
+      .where(and(eq(patientEngagement.id, id), eq(patientEngagement.companyId, companyId)));
+    return result || null;
+  }
+
+  async getPatientEngagementRecords(
+    companyId: string,
+    filters?: { patientId?: string; programId?: string; engagementType?: string }
+  ): Promise<PatientEngagement[]> {
+    const conditions = [eq(patientEngagement.companyId, companyId)];
+    if (filters?.patientId) {
+      conditions.push(eq(patientEngagement.patientId, filters.patientId));
+    }
+    if (filters?.programId) {
+      conditions.push(eq(patientEngagement.programId, filters.programId));
+    }
+    if (filters?.engagementType) {
+      conditions.push(eq(patientEngagement.engagementType, filters.engagementType as any));
+    }
+    return await db
+      .select()
+      .from(patientEngagement)
+      .where(and(...conditions))
+      .orderBy(desc(patientEngagement.engagementDate));
+  }
+
+  // Outcome Tracking
+  async createOutcomeTracking(data: InsertOutcomeTracking): Promise<OutcomeTracking> {
+    const [result] = await db.insert(outcomeTracking).values(data).returning();
+    return result;
+  }
+
+  async getOutcomeTracking(id: string, companyId: string): Promise<OutcomeTracking | null> {
+    const [result] = await db
+      .select()
+      .from(outcomeTracking)
+      .where(and(eq(outcomeTracking.id, id), eq(outcomeTracking.companyId, companyId)));
+    return result || null;
+  }
+
+  async getOutcomeTrackings(
+    companyId: string,
+    filters?: { patientId?: string; programId?: string; registryId?: string; outcomeType?: string }
+  ): Promise<OutcomeTracking[]> {
+    const conditions = [eq(outcomeTracking.companyId, companyId)];
+    if (filters?.patientId) {
+      conditions.push(eq(outcomeTracking.patientId, filters.patientId));
+    }
+    if (filters?.programId) {
+      conditions.push(eq(outcomeTracking.programId, filters.programId));
+    }
+    if (filters?.registryId) {
+      conditions.push(eq(outcomeTracking.registryId, filters.registryId));
+    }
+    if (filters?.outcomeType) {
+      conditions.push(eq(outcomeTracking.outcomeType, filters.outcomeType as any));
+    }
+    return await db
+      .select()
+      .from(outcomeTracking)
+      .where(and(...conditions))
+      .orderBy(desc(outcomeTracking.latestMeasurementDate));
+  }
+
+  async updateOutcomeTracking(
+    id: string,
+    companyId: string,
+    data: Partial<InsertOutcomeTracking>
+  ): Promise<OutcomeTracking | null> {
+    const [result] = await db
+      .update(outcomeTracking)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(outcomeTracking.id, id), eq(outcomeTracking.companyId, companyId)))
+      .returning();
+    return result || null;
+  }
+
+  // Preventive Care Recommendations
+  async createPreventiveCareRecommendation(data: InsertPreventiveCareRecommendation): Promise<PreventiveCareRecommendation> {
+    const [result] = await db.insert(preventiveCareRecommendations).values(data).returning();
+    return result;
+  }
+
+  async getPreventiveCareRecommendation(id: string, companyId: string): Promise<PreventiveCareRecommendation | null> {
+    const [result] = await db
+      .select()
+      .from(preventiveCareRecommendations)
+      .where(and(eq(preventiveCareRecommendations.id, id), eq(preventiveCareRecommendations.companyId, companyId)));
+    return result || null;
+  }
+
+  async getPreventiveCareRecommendations(
+    companyId: string,
+    filters?: { patientId?: string; status?: string; recommendationType?: string }
+  ): Promise<PreventiveCareRecommendation[]> {
+    const conditions = [eq(preventiveCareRecommendations.companyId, companyId)];
+    if (filters?.patientId) {
+      conditions.push(eq(preventiveCareRecommendations.patientId, filters.patientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(preventiveCareRecommendations.status, filters.status as any));
+    }
+    if (filters?.recommendationType) {
+      conditions.push(eq(preventiveCareRecommendations.recommendationType, filters.recommendationType as any));
+    }
+    return await db
+      .select()
+      .from(preventiveCareRecommendations)
+      .where(and(...conditions))
+      .orderBy(desc(preventiveCareRecommendations.dueDate));
+  }
+
+  async updatePreventiveCareRecommendation(
+    id: string,
+    companyId: string,
+    data: Partial<InsertPreventiveCareRecommendation>
+  ): Promise<PreventiveCareRecommendation | null> {
+    const [result] = await db
+      .update(preventiveCareRecommendations)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(preventiveCareRecommendations.id, id), eq(preventiveCareRecommendations.companyId, companyId)))
+      .returning();
+    return result || null;
   }
 
   // ============================================================================
