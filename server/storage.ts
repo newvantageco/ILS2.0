@@ -41,6 +41,9 @@ import {
   insurancePayers,
   insuranceClaims,
   claimLineItems,
+  claimBatches,
+  claimAppeals,
+  claimERAs,
   riskScores,
   healthRiskAssessments,
   predictiveModels,
@@ -117,6 +120,12 @@ import {
   type InsertInsuranceClaim,
   type ClaimLineItem,
   type InsertClaimLineItem,
+  type ClaimBatch,
+  type InsertClaimBatch,
+  type ClaimAppeal,
+  type InsertClaimAppeal,
+  type ClaimERA,
+  type InsertClaimERA,
   type RiskScore,
   type InsertRiskScore,
   type HealthRiskAssessment,
@@ -423,6 +432,24 @@ export interface IStorage {
   getClaimLineItems(claimId: string): Promise<ClaimLineItem[]>;
   updateClaimLineItem(id: string, updates: Partial<ClaimLineItem>): Promise<ClaimLineItem | undefined>;
   deleteClaimLineItem(id: string): Promise<boolean>;
+
+  // Claim Batches
+  createClaimBatch(batch: InsertClaimBatch): Promise<ClaimBatch>;
+  getClaimBatch(id: string, companyId: string): Promise<ClaimBatch | undefined>;
+  getClaimBatches(companyId: string, filters?: { payerId?: string; status?: string }): Promise<ClaimBatch[]>;
+  updateClaimBatch(id: string, companyId: string, updates: Partial<ClaimBatch>): Promise<ClaimBatch | undefined>;
+
+  // Claim Appeals
+  createClaimAppeal(appeal: InsertClaimAppeal): Promise<ClaimAppeal>;
+  getClaimAppeal(id: string): Promise<ClaimAppeal | undefined>;
+  getClaimAppeals(claimId: string): Promise<ClaimAppeal[]>;
+  updateClaimAppeal(id: string, updates: Partial<ClaimAppeal>): Promise<ClaimAppeal | undefined>;
+
+  // Claim ERAs (Electronic Remittance Advice)
+  createClaimERA(era: InsertClaimERA): Promise<ClaimERA>;
+  getClaimERA(id: string): Promise<ClaimERA | undefined>;
+  getClaimERAs(payerId: string): Promise<ClaimERA[]>;
+  updateClaimERA(id: string, updates: Partial<ClaimERA>): Promise<ClaimERA | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -2373,6 +2400,145 @@ export class DbStorage implements IStorage {
       .where(eq(claimLineItems.id, id))
       .returning();
     return result.length > 0;
+  }
+
+  // ========== Claim Batches ==========
+
+  async createClaimBatch(batch: InsertClaimBatch): Promise<ClaimBatch> {
+    const [created] = await db
+      .insert(claimBatches)
+      .values(batch)
+      .returning();
+    return created;
+  }
+
+  async getClaimBatch(id: string, companyId: string): Promise<ClaimBatch | undefined> {
+    const [batch] = await db
+      .select()
+      .from(claimBatches)
+      .where(and(
+        eq(claimBatches.id, id),
+        eq(claimBatches.companyId, companyId)
+      ));
+    return batch;
+  }
+
+  async getClaimBatches(companyId: string, filters?: { payerId?: string; status?: string }): Promise<ClaimBatch[]> {
+    const conditions = [eq(claimBatches.companyId, companyId)];
+
+    if (filters?.payerId) {
+      conditions.push(eq(claimBatches.payerId, filters.payerId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(claimBatches.status, filters.status as any));
+    }
+
+    return await db
+      .select()
+      .from(claimBatches)
+      .where(and(...conditions))
+      .orderBy(desc(claimBatches.submittedAt));
+  }
+
+  async updateClaimBatch(
+    id: string,
+    companyId: string,
+    updates: Partial<ClaimBatch>
+  ): Promise<ClaimBatch | undefined> {
+    const [updated] = await db
+      .update(claimBatches)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(claimBatches.id, id),
+        eq(claimBatches.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  // ========== Claim Appeals ==========
+
+  async createClaimAppeal(appeal: InsertClaimAppeal): Promise<ClaimAppeal> {
+    const [created] = await db
+      .insert(claimAppeals)
+      .values(appeal)
+      .returning();
+    return created;
+  }
+
+  async getClaimAppeal(id: string): Promise<ClaimAppeal | undefined> {
+    const [appeal] = await db
+      .select()
+      .from(claimAppeals)
+      .where(eq(claimAppeals.id, id));
+    return appeal;
+  }
+
+  async getClaimAppeals(claimId: string): Promise<ClaimAppeal[]> {
+    return await db
+      .select()
+      .from(claimAppeals)
+      .where(eq(claimAppeals.claimId, claimId))
+      .orderBy(claimAppeals.appealNumber);
+  }
+
+  async updateClaimAppeal(
+    id: string,
+    updates: Partial<ClaimAppeal>
+  ): Promise<ClaimAppeal | undefined> {
+    const [updated] = await db
+      .update(claimAppeals)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(claimAppeals.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ========== Claim ERAs ==========
+
+  async createClaimERA(era: InsertClaimERA): Promise<ClaimERA> {
+    const [created] = await db
+      .insert(claimERAs)
+      .values(era)
+      .returning();
+    return created;
+  }
+
+  async getClaimERA(id: string): Promise<ClaimERA | undefined> {
+    const [era] = await db
+      .select()
+      .from(claimERAs)
+      .where(eq(claimERAs.id, id));
+    return era;
+  }
+
+  async getClaimERAs(payerId: string): Promise<ClaimERA[]> {
+    return await db
+      .select()
+      .from(claimERAs)
+      .where(eq(claimERAs.payerId, payerId))
+      .orderBy(desc(claimERAs.receivedAt));
+  }
+
+  async updateClaimERA(
+    id: string,
+    updates: Partial<ClaimERA>
+  ): Promise<ClaimERA | undefined> {
+    const [updated] = await db
+      .update(claimERAs)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(claimERAs.id, id))
+      .returning();
+    return updated;
   }
 
   // ========== Population Health - Risk Scores ==========

@@ -158,6 +158,27 @@ export const claimSubmissionMethodEnum = pgEnum("claim_submission_method", [
   "portal"
 ]);
 
+/**
+ * Batch submission status
+ * Status of claim submission batches
+ */
+export const batchStatusEnum = pgEnum("batch_status", [
+  "processing",
+  "completed",
+  "failed"
+]);
+
+/**
+ * Appeal status
+ * Status of claim appeals
+ */
+export const appealStatusEnum = pgEnum("appeal_status", [
+  "submitted",
+  "pending",
+  "approved",
+  "denied"
+]);
+
 // ========== End RCM Enums ==========
 
 export const analyticsEvents = pgTable("analytics_events", {
@@ -5408,6 +5429,123 @@ export const claimLineItems = pgTable("claim_line_items", {
   index("claim_line_items_service_date_idx").on(table.serviceDate),
 ]);
 
+/**
+ * Claim Submission Batches
+ * Tracks batches of claims submitted together
+ */
+export const claimBatches = pgTable("claim_batches", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+
+  // Batch Details
+  batchNumber: varchar("batch_number", { length: 100 }).notNull().unique(),
+  payerId: varchar("payer_id", { length: 255 }).references(() => insurancePayers.id),
+
+  // Claim IDs in batch (stored as JSON array)
+  claimIds: jsonb("claim_ids").notNull().$type<string[]>(),
+
+  // Statistics
+  totalClaims: integer("total_claims").notNull(),
+  succeeded: integer("succeeded").notNull().default(0),
+  totalChargeAmount: decimal("total_charge_amount", { precision: 12, scale: 2 }).notNull(),
+
+  // Submission
+  submittedAt: timestamp("submitted_at").notNull(),
+  submittedBy: varchar("submitted_by", { length: 255 }).notNull(),
+  status: batchStatusEnum("status").notNull().default("processing"),
+
+  // Clearinghouse Response
+  clearinghouseResponse: jsonb("clearinghouse_response"),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("claim_batches_company_idx").on(table.companyId),
+  index("claim_batches_payer_idx").on(table.payerId),
+  index("claim_batches_status_idx").on(table.status),
+  index("claim_batches_submitted_idx").on(table.submittedAt),
+]);
+
+/**
+ * Claim Appeals
+ * Tracks appeals for denied or underpaid claims
+ */
+export const claimAppeals = pgTable("claim_appeals", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  claimId: varchar("claim_id", { length: 255 }).notNull().references(() => insuranceClaims.id, { onDelete: "cascade" }),
+
+  // Appeal Details
+  appealNumber: integer("appeal_number").notNull(),
+  appealDate: timestamp("appeal_date").notNull(),
+  appealedBy: varchar("appealed_by", { length: 255 }).notNull(),
+  appealReason: text("appeal_reason").notNull(),
+  supportingDocuments: jsonb("supporting_documents").$type<string[]>(),
+
+  // Status
+  status: appealStatusEnum("status").notNull().default("submitted"),
+
+  // Resolution
+  resolutionDate: timestamp("resolution_date"),
+  resolutionAmount: decimal("resolution_amount", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("claim_appeals_claim_idx").on(table.claimId),
+  index("claim_appeals_status_idx").on(table.status),
+  index("claim_appeals_date_idx").on(table.appealDate),
+]);
+
+/**
+ * Electronic Remittance Advice (ERA)
+ * Tracks electronic payment remittance from payers
+ */
+export const claimERAs = pgTable("claim_eras", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // ERA Details
+  eraNumber: varchar("era_number", { length: 100 }).notNull().unique(),
+  payerId: varchar("payer_id", { length: 255 }).references(() => insurancePayers.id),
+
+  // Payment Information
+  paymentAmount: decimal("payment_amount", { precision: 12, scale: 2 }).notNull(),
+  paymentDate: date("payment_date").notNull(),
+  checkNumber: varchar("check_number", { length: 100 }),
+
+  // Claim Payments (stored as JSON array)
+  claimPayments: jsonb("claim_payments").notNull().$type<Array<{
+    claimId: string;
+    claimNumber: string;
+    paidAmount: number;
+    allowedAmount: number;
+    adjustments: Array<{
+      code: string;
+      amount: number;
+      reason: string;
+    }>;
+  }>>(),
+
+  // Processing
+  receivedAt: timestamp("received_at").notNull(),
+  processedAt: timestamp("processed_at"),
+
+  // Metadata
+  metadata: jsonb("metadata"),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("claim_eras_payer_idx").on(table.payerId),
+  index("claim_eras_payment_date_idx").on(table.paymentDate),
+  index("claim_eras_received_idx").on(table.receivedAt),
+]);
+
 // ========== End RCM Tables ==========
 
 // Zod Schemas for RCM
@@ -5420,6 +5558,15 @@ export const updateClaimSchema = insertClaimSchema.partial();
 export const insertClaimLineItemSchema = createInsertSchema(claimLineItems);
 export const updateClaimLineItemSchema = insertClaimLineItemSchema.partial();
 
+export const insertClaimBatchSchema = createInsertSchema(claimBatches);
+export const updateClaimBatchSchema = insertClaimBatchSchema.partial();
+
+export const insertClaimAppealSchema = createInsertSchema(claimAppeals);
+export const updateClaimAppealSchema = insertClaimAppealSchema.partial();
+
+export const insertClaimERASchema = createInsertSchema(claimERAs);
+export const updateClaimERASchema = insertClaimERASchema.partial();
+
 // Export RCM Types
 export type InsurancePayer = typeof insurancePayers.$inferSelect;
 export type InsertInsurancePayer = typeof insurancePayers.$inferInsert;
@@ -5427,6 +5574,12 @@ export type InsuranceClaim = typeof insuranceClaims.$inferSelect;
 export type InsertInsuranceClaim = typeof insuranceClaims.$inferInsert;
 export type ClaimLineItem = typeof claimLineItems.$inferSelect;
 export type InsertClaimLineItem = typeof claimLineItems.$inferInsert;
+export type ClaimBatch = typeof claimBatches.$inferSelect;
+export type InsertClaimBatch = typeof claimBatches.$inferInsert;
+export type ClaimAppeal = typeof claimAppeals.$inferSelect;
+export type InsertClaimAppeal = typeof claimAppeals.$inferInsert;
+export type ClaimERA = typeof claimERAs.$inferSelect;
+export type InsertClaimERA = typeof claimERAs.$inferInsert;
 
 // ========== Population Health Enums ==========
 
