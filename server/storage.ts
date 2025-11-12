@@ -41,6 +41,14 @@ import {
   insurancePayers,
   insuranceClaims,
   claimLineItems,
+  claimBatches,
+  claimAppeals,
+  claimERAs,
+  qualityMeasures,
+  measureCalculations,
+  starRatings,
+  qualityGapAnalyses,
+  qualityDashboards,
   riskScores,
   healthRiskAssessments,
   predictiveModels,
@@ -117,6 +125,22 @@ import {
   type InsertInsuranceClaim,
   type ClaimLineItem,
   type InsertClaimLineItem,
+  type ClaimBatch,
+  type InsertClaimBatch,
+  type ClaimAppeal,
+  type InsertClaimAppeal,
+  type ClaimERA,
+  type InsertClaimERA,
+  type QualityMeasure,
+  type InsertQualityMeasure,
+  type MeasureCalculation,
+  type InsertMeasureCalculation,
+  type StarRating,
+  type InsertStarRating,
+  type QualityGapAnalysis,
+  type InsertQualityGapAnalysis,
+  type QualityDashboard,
+  type InsertQualityDashboard,
   type RiskScore,
   type InsertRiskScore,
   type HealthRiskAssessment,
@@ -423,6 +447,54 @@ export interface IStorage {
   getClaimLineItems(claimId: string): Promise<ClaimLineItem[]>;
   updateClaimLineItem(id: string, updates: Partial<ClaimLineItem>): Promise<ClaimLineItem | undefined>;
   deleteClaimLineItem(id: string): Promise<boolean>;
+
+  // Claim Batches
+  createClaimBatch(batch: InsertClaimBatch): Promise<ClaimBatch>;
+  getClaimBatch(id: string, companyId: string): Promise<ClaimBatch | undefined>;
+  getClaimBatches(companyId: string, filters?: { payerId?: string; status?: string }): Promise<ClaimBatch[]>;
+  updateClaimBatch(id: string, companyId: string, updates: Partial<ClaimBatch>): Promise<ClaimBatch | undefined>;
+
+  // Claim Appeals
+  createClaimAppeal(appeal: InsertClaimAppeal): Promise<ClaimAppeal>;
+  getClaimAppeal(id: string): Promise<ClaimAppeal | undefined>;
+  getClaimAppeals(claimId: string): Promise<ClaimAppeal[]>;
+  updateClaimAppeal(id: string, updates: Partial<ClaimAppeal>): Promise<ClaimAppeal | undefined>;
+
+  // Claim ERAs (Electronic Remittance Advice)
+  createClaimERA(era: InsertClaimERA): Promise<ClaimERA>;
+  getClaimERA(id: string): Promise<ClaimERA | undefined>;
+  getClaimERAs(payerId: string): Promise<ClaimERA[]>;
+  updateClaimERA(id: string, updates: Partial<ClaimERA>): Promise<ClaimERA | undefined>;
+
+  // ============== QUALITY MEASURES METHODS ==============
+  // Quality Measures
+  createQualityMeasure(measure: InsertQualityMeasure): Promise<QualityMeasure>;
+  getQualityMeasure(id: string, companyId: string): Promise<QualityMeasure | undefined>;
+  getQualityMeasures(companyId: string, filters?: { type?: string; active?: boolean }): Promise<QualityMeasure[]>;
+  updateQualityMeasure(id: string, companyId: string, updates: Partial<QualityMeasure>): Promise<QualityMeasure | undefined>;
+
+  // Measure Calculations
+  createMeasureCalculation(calculation: InsertMeasureCalculation): Promise<MeasureCalculation>;
+  getMeasureCalculation(id: string): Promise<MeasureCalculation | undefined>;
+  getMeasureCalculations(measureId: string): Promise<MeasureCalculation[]>;
+  updateMeasureCalculation(id: string, updates: Partial<MeasureCalculation>): Promise<MeasureCalculation | undefined>;
+
+  // Star Ratings
+  createStarRating(rating: InsertStarRating): Promise<StarRating>;
+  getStarRating(id: string, companyId: string): Promise<StarRating | undefined>;
+  getStarRatings(companyId: string, filters?: { year?: number }): Promise<StarRating[]>;
+  updateStarRating(id: string, companyId: string, updates: Partial<StarRating>): Promise<StarRating | undefined>;
+
+  // Quality Gap Analyses
+  createQualityGapAnalysis(analysis: InsertQualityGapAnalysis): Promise<QualityGapAnalysis>;
+  getQualityGapAnalysis(id: string): Promise<QualityGapAnalysis | undefined>;
+  getQualityGapAnalyses(measureId: string): Promise<QualityGapAnalysis[]>;
+
+  // Quality Dashboards
+  createQualityDashboard(dashboard: InsertQualityDashboard): Promise<QualityDashboard>;
+  getQualityDashboard(id: string, companyId: string): Promise<QualityDashboard | undefined>;
+  getQualityDashboards(companyId: string): Promise<QualityDashboard[]>;
+  updateQualityDashboard(id: string, companyId: string, updates: Partial<QualityDashboard>): Promise<QualityDashboard | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -2373,6 +2445,368 @@ export class DbStorage implements IStorage {
       .where(eq(claimLineItems.id, id))
       .returning();
     return result.length > 0;
+  }
+
+  // ========== Claim Batches ==========
+
+  async createClaimBatch(batch: InsertClaimBatch): Promise<ClaimBatch> {
+    const [created] = await db
+      .insert(claimBatches)
+      .values(batch)
+      .returning();
+    return created;
+  }
+
+  async getClaimBatch(id: string, companyId: string): Promise<ClaimBatch | undefined> {
+    const [batch] = await db
+      .select()
+      .from(claimBatches)
+      .where(and(
+        eq(claimBatches.id, id),
+        eq(claimBatches.companyId, companyId)
+      ));
+    return batch;
+  }
+
+  async getClaimBatches(companyId: string, filters?: { payerId?: string; status?: string }): Promise<ClaimBatch[]> {
+    const conditions = [eq(claimBatches.companyId, companyId)];
+
+    if (filters?.payerId) {
+      conditions.push(eq(claimBatches.payerId, filters.payerId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(claimBatches.status, filters.status as any));
+    }
+
+    return await db
+      .select()
+      .from(claimBatches)
+      .where(and(...conditions))
+      .orderBy(desc(claimBatches.submittedAt));
+  }
+
+  async updateClaimBatch(
+    id: string,
+    companyId: string,
+    updates: Partial<ClaimBatch>
+  ): Promise<ClaimBatch | undefined> {
+    const [updated] = await db
+      .update(claimBatches)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(claimBatches.id, id),
+        eq(claimBatches.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  // ========== Claim Appeals ==========
+
+  async createClaimAppeal(appeal: InsertClaimAppeal): Promise<ClaimAppeal> {
+    const [created] = await db
+      .insert(claimAppeals)
+      .values(appeal)
+      .returning();
+    return created;
+  }
+
+  async getClaimAppeal(id: string): Promise<ClaimAppeal | undefined> {
+    const [appeal] = await db
+      .select()
+      .from(claimAppeals)
+      .where(eq(claimAppeals.id, id));
+    return appeal;
+  }
+
+  async getClaimAppeals(claimId: string): Promise<ClaimAppeal[]> {
+    return await db
+      .select()
+      .from(claimAppeals)
+      .where(eq(claimAppeals.claimId, claimId))
+      .orderBy(claimAppeals.appealNumber);
+  }
+
+  async updateClaimAppeal(
+    id: string,
+    updates: Partial<ClaimAppeal>
+  ): Promise<ClaimAppeal | undefined> {
+    const [updated] = await db
+      .update(claimAppeals)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(claimAppeals.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ========== Claim ERAs ==========
+
+  async createClaimERA(era: InsertClaimERA): Promise<ClaimERA> {
+    const [created] = await db
+      .insert(claimERAs)
+      .values(era)
+      .returning();
+    return created;
+  }
+
+  async getClaimERA(id: string): Promise<ClaimERA | undefined> {
+    const [era] = await db
+      .select()
+      .from(claimERAs)
+      .where(eq(claimERAs.id, id));
+    return era;
+  }
+
+  async getClaimERAs(payerId: string): Promise<ClaimERA[]> {
+    return await db
+      .select()
+      .from(claimERAs)
+      .where(eq(claimERAs.payerId, payerId))
+      .orderBy(desc(claimERAs.receivedAt));
+  }
+
+  async updateClaimERA(
+    id: string,
+    updates: Partial<ClaimERA>
+  ): Promise<ClaimERA | undefined> {
+    const [updated] = await db
+      .update(claimERAs)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(claimERAs.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ========== Quality Measures ==========
+
+  async createQualityMeasure(measure: InsertQualityMeasure): Promise<QualityMeasure> {
+    const [created] = await db
+      .insert(qualityMeasures)
+      .values(measure)
+      .returning();
+    return created;
+  }
+
+  async getQualityMeasure(id: string, companyId: string): Promise<QualityMeasure | undefined> {
+    const [measure] = await db
+      .select()
+      .from(qualityMeasures)
+      .where(and(
+        eq(qualityMeasures.id, id),
+        eq(qualityMeasures.companyId, companyId)
+      ));
+    return measure;
+  }
+
+  async getQualityMeasures(companyId: string, filters?: { type?: string; active?: boolean }): Promise<QualityMeasure[]> {
+    const conditions = [eq(qualityMeasures.companyId, companyId)];
+
+    if (filters?.type) {
+      conditions.push(eq(qualityMeasures.type, filters.type as any));
+    }
+    if (filters?.active !== undefined) {
+      conditions.push(eq(qualityMeasures.active, filters.active));
+    }
+
+    return await db
+      .select()
+      .from(qualityMeasures)
+      .where(and(...conditions))
+      .orderBy(qualityMeasures.name);
+  }
+
+  async updateQualityMeasure(
+    id: string,
+    companyId: string,
+    updates: Partial<QualityMeasure>
+  ): Promise<QualityMeasure | undefined> {
+    const [updated] = await db
+      .update(qualityMeasures)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(qualityMeasures.id, id),
+        eq(qualityMeasures.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  // ========== Measure Calculations ==========
+
+  async createMeasureCalculation(calculation: InsertMeasureCalculation): Promise<MeasureCalculation> {
+    const [created] = await db
+      .insert(measureCalculations)
+      .values(calculation)
+      .returning();
+    return created;
+  }
+
+  async getMeasureCalculation(id: string): Promise<MeasureCalculation | undefined> {
+    const [calculation] = await db
+      .select()
+      .from(measureCalculations)
+      .where(eq(measureCalculations.id, id));
+    return calculation;
+  }
+
+  async getMeasureCalculations(measureId: string): Promise<MeasureCalculation[]> {
+    return await db
+      .select()
+      .from(measureCalculations)
+      .where(eq(measureCalculations.measureId, measureId))
+      .orderBy(desc(measureCalculations.calculationDate));
+  }
+
+  async updateMeasureCalculation(
+    id: string,
+    updates: Partial<MeasureCalculation>
+  ): Promise<MeasureCalculation | undefined> {
+    const [updated] = await db
+      .update(measureCalculations)
+      .set(updates)
+      .where(eq(measureCalculations.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ========== Star Ratings ==========
+
+  async createStarRating(rating: InsertStarRating): Promise<StarRating> {
+    const [created] = await db
+      .insert(starRatings)
+      .values(rating)
+      .returning();
+    return created;
+  }
+
+  async getStarRating(id: string, companyId: string): Promise<StarRating | undefined> {
+    const [rating] = await db
+      .select()
+      .from(starRatings)
+      .where(and(
+        eq(starRatings.id, id),
+        eq(starRatings.companyId, companyId)
+      ));
+    return rating;
+  }
+
+  async getStarRatings(companyId: string, filters?: { year?: number }): Promise<StarRating[]> {
+    const conditions = [eq(starRatings.companyId, companyId)];
+
+    if (filters?.year) {
+      conditions.push(eq(starRatings.measurementYear, filters.year));
+    }
+
+    return await db
+      .select()
+      .from(starRatings)
+      .where(and(...conditions))
+      .orderBy(desc(starRatings.measurementYear));
+  }
+
+  async updateStarRating(
+    id: string,
+    companyId: string,
+    updates: Partial<StarRating>
+  ): Promise<StarRating | undefined> {
+    const [updated] = await db
+      .update(starRatings)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(starRatings.id, id),
+        eq(starRatings.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  // ========== Quality Gap Analyses ==========
+
+  async createQualityGapAnalysis(analysis: InsertQualityGapAnalysis): Promise<QualityGapAnalysis> {
+    const [created] = await db
+      .insert(qualityGapAnalyses)
+      .values(analysis)
+      .returning();
+    return created;
+  }
+
+  async getQualityGapAnalysis(id: string): Promise<QualityGapAnalysis | undefined> {
+    const [analysis] = await db
+      .select()
+      .from(qualityGapAnalyses)
+      .where(eq(qualityGapAnalyses.id, id));
+    return analysis;
+  }
+
+  async getQualityGapAnalyses(measureId: string): Promise<QualityGapAnalysis[]> {
+    return await db
+      .select()
+      .from(qualityGapAnalyses)
+      .where(eq(qualityGapAnalyses.measureId, measureId))
+      .orderBy(desc(qualityGapAnalyses.analysisDate));
+  }
+
+  // ========== Quality Dashboards ==========
+
+  async createQualityDashboard(dashboard: InsertQualityDashboard): Promise<QualityDashboard> {
+    const [created] = await db
+      .insert(qualityDashboards)
+      .values(dashboard)
+      .returning();
+    return created;
+  }
+
+  async getQualityDashboard(id: string, companyId: string): Promise<QualityDashboard | undefined> {
+    const [dashboard] = await db
+      .select()
+      .from(qualityDashboards)
+      .where(and(
+        eq(qualityDashboards.id, id),
+        eq(qualityDashboards.companyId, companyId)
+      ));
+    return dashboard;
+  }
+
+  async getQualityDashboards(companyId: string): Promise<QualityDashboard[]> {
+    return await db
+      .select()
+      .from(qualityDashboards)
+      .where(eq(qualityDashboards.companyId, companyId))
+      .orderBy(qualityDashboards.name);
+  }
+
+  async updateQualityDashboard(
+    id: string,
+    companyId: string,
+    updates: Partial<QualityDashboard>
+  ): Promise<QualityDashboard | undefined> {
+    const [updated] = await db
+      .update(qualityDashboards)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(qualityDashboards.id, id),
+        eq(qualityDashboards.companyId, companyId)
+      ))
+      .returning();
+    return updated;
   }
 
   // ========== Population Health - Risk Scores ==========
