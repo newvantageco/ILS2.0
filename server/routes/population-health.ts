@@ -806,7 +806,8 @@ router.put('/care-gaps/:id', async (req: Request, res: Response) => {
  */
 router.get('/care-gaps/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const careGaps = CareCoordinationService.getCareGapsByPatient(req.params.patientId);
+    const companyId = getCompanyId(req);
+    const careGaps = await CareCoordinationService.getCareGapsByPatient(companyId, req.params.patientId);
     res.json({
       success: true,
       data: careGaps,
@@ -827,8 +828,9 @@ router.get('/care-gaps/patient/:patientId', async (req: Request, res: Response) 
  */
 router.get('/care-gaps/open', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { category } = req.query;
-    const careGaps = CareCoordinationService.getOpenCareGaps(category as any);
+    const careGaps = await CareCoordinationService.getOpenCareGaps(companyId, category as any);
     res.json({
       success: true,
       data: careGaps,
@@ -849,7 +851,8 @@ router.get('/care-gaps/open', async (req: Request, res: Response) => {
  */
 router.get('/care-gaps/overdue', async (req: Request, res: Response) => {
   try {
-    const careGaps = CareCoordinationService.getOverdueCareGaps();
+    const companyId = getCompanyId(req);
+    const careGaps = await CareCoordinationService.getOverdueCareGaps(companyId);
     res.json({
       success: true,
       data: careGaps,
@@ -870,7 +873,8 @@ router.get('/care-gaps/overdue', async (req: Request, res: Response) => {
  */
 router.post('/transitions', async (req: Request, res: Response) => {
   try {
-    const transition = CareCoordinationService.createTransitionOfCare(req.body);
+    const companyId = getCompanyId(req);
+    const transition = await CareCoordinationService.createTransitionOfCare(companyId, req.body);
     res.status(201).json({
       success: true,
       data: transition,
@@ -891,7 +895,9 @@ router.post('/transitions', async (req: Request, res: Response) => {
  */
 router.post('/transitions/:id/medications', async (req: Request, res: Response) => {
   try {
-    const transition = CareCoordinationService.addMedicationReconciliation(
+    const companyId = getCompanyId(req);
+    const transition = await CareCoordinationService.addMedicationReconciliation(
+      companyId,
       req.params.id,
       req.body
     );
@@ -915,8 +921,9 @@ router.post('/transitions/:id/medications', async (req: Request, res: Response) 
  */
 router.put('/transitions/:id/status', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { status } = req.body;
-    const transition = CareCoordinationService.updateTransitionStatus(req.params.id, status);
+    const transition = await CareCoordinationService.updateTransitionStatus(companyId, req.params.id, status);
     res.json({
       success: true,
       data: transition,
@@ -937,7 +944,8 @@ router.put('/transitions/:id/status', async (req: Request, res: Response) => {
  */
 router.put('/transitions/:id/complete-followup', async (req: Request, res: Response) => {
   try {
-    const transition = CareCoordinationService.completeFollowUp(req.params.id);
+    const companyId = getCompanyId(req);
+    const transition = await CareCoordinationService.completeFollowUp(companyId, req.params.id);
     res.json({
       success: true,
       data: transition,
@@ -958,7 +966,8 @@ router.put('/transitions/:id/complete-followup', async (req: Request, res: Respo
  */
 router.get('/transitions/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const transitions = CareCoordinationService.getTransitionsByPatient(req.params.patientId);
+    const companyId = getCompanyId(req);
+    const transitions = await CareCoordinationService.getTransitionsByPatient(companyId, req.params.patientId);
     res.json({
       success: true,
       data: transitions,
@@ -979,7 +988,8 @@ router.get('/transitions/patient/:patientId', async (req: Request, res: Response
  */
 router.get('/transitions/pending-followups', async (req: Request, res: Response) => {
   try {
-    const transitions = CareCoordinationService.getPendingFollowUps();
+    const companyId = getCompanyId(req);
+    const transitions = await CareCoordinationService.getPendingFollowUps(companyId);
     res.json({
       success: true,
       data: transitions,
@@ -1000,7 +1010,8 @@ router.get('/transitions/pending-followups', async (req: Request, res: Response)
  */
 router.post('/tasks', async (req: Request, res: Response) => {
   try {
-    const task = CareCoordinationService.createCareCoordinationTask(req.body);
+    const companyId = getCompanyId(req);
+    const task = await CareCoordinationService.createCareCoordinationTask(companyId, req.body);
     res.status(201).json({
       success: true,
       data: task,
@@ -1021,8 +1032,9 @@ router.post('/tasks', async (req: Request, res: Response) => {
  */
 router.put('/tasks/:id/status', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { status, completedBy, notes } = req.body;
-    const task = CareCoordinationService.updateTaskStatus(req.params.id, status, completedBy, notes);
+    const task = await CareCoordinationService.updateTaskStatus(companyId, req.params.id, status, completedBy, notes);
     res.json({
       success: true,
       data: task,
@@ -1043,8 +1055,9 @@ router.put('/tasks/:id/status', async (req: Request, res: Response) => {
  */
 router.put('/tasks/:id/assign', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { assignedTo } = req.body;
-    const task = CareCoordinationService.assignTask(req.params.id, assignedTo);
+    const task = await CareCoordinationService.assignTask(companyId, req.params.id, assignedTo);
     res.json({
       success: true,
       data: task,
@@ -1065,7 +1078,8 @@ router.put('/tasks/:id/assign', async (req: Request, res: Response) => {
  */
 router.get('/tasks/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const tasks = CareCoordinationService.getTasksByPatient(req.params.patientId);
+    const companyId = getCompanyId(req);
+    const tasks = await CareCoordinationService.getTasksByPatient(companyId, req.params.patientId);
     res.json({
       success: true,
       data: tasks,
