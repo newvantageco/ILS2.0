@@ -1100,7 +1100,8 @@ router.get('/tasks/patient/:patientId', async (req: Request, res: Response) => {
  */
 router.get('/tasks/assignee/:userId', async (req: Request, res: Response) => {
   try {
-    const tasks = CareCoordinationService.getTasksByAssignee(req.params.userId);
+    const companyId = getCompanyId(req);
+    const tasks = await CareCoordinationService.getTasksByAssignee(companyId, req.params.userId);
     res.json({
       success: true,
       data: tasks,
@@ -1121,7 +1122,8 @@ router.get('/tasks/assignee/:userId', async (req: Request, res: Response) => {
  */
 router.get('/tasks/overdue', async (req: Request, res: Response) => {
   try {
-    const tasks = CareCoordinationService.getOverdueTasks();
+    const companyId = getCompanyId(req);
+    const tasks = await CareCoordinationService.getOverdueTasks(companyId);
     res.json({
       success: true,
       data: tasks,
@@ -1142,7 +1144,8 @@ router.get('/tasks/overdue', async (req: Request, res: Response) => {
  */
 router.post('/outreach', async (req: Request, res: Response) => {
   try {
-    const outreach = CareCoordinationService.createPatientOutreach(req.body);
+    const companyId = getCompanyId(req);
+    const outreach = await CareCoordinationService.createPatientOutreach(companyId, req.body);
     res.status(201).json({
       success: true,
       data: outreach,
@@ -1163,7 +1166,8 @@ router.post('/outreach', async (req: Request, res: Response) => {
  */
 router.post('/outreach/:id/attempt', async (req: Request, res: Response) => {
   try {
-    const outreach = CareCoordinationService.recordOutreachAttempt(req.params.id, req.body);
+    const companyId = getCompanyId(req);
+    const outreach = await CareCoordinationService.recordOutreachAttempt(companyId, req.params.id, req.body);
     res.json({
       success: true,
       data: outreach,
@@ -1184,7 +1188,8 @@ router.post('/outreach/:id/attempt', async (req: Request, res: Response) => {
  */
 router.get('/outreach/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const outreach = CareCoordinationService.getOutreachByPatient(req.params.patientId);
+    const companyId = getCompanyId(req);
+    const outreach = await CareCoordinationService.getOutreachByPatient(companyId, req.params.patientId);
     res.json({
       success: true,
       data: outreach,
@@ -1205,8 +1210,10 @@ router.get('/outreach/patient/:patientId', async (req: Request, res: Response) =
  */
 router.get('/care-coordination/statistics', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { startDate, endDate } = req.query;
-    const statistics = CareCoordinationService.getStatistics(
+    const statistics = await CareCoordinationService.getStatistics(
+      companyId,
       startDate ? new Date(startDate as string) : undefined,
       endDate ? new Date(endDate as string) : undefined
     );
