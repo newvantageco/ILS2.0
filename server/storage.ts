@@ -1,4 +1,5 @@
 import { db } from "../db";
+import crypto from 'crypto';
 import { 
   users, 
   userRoles,
@@ -58,6 +59,9 @@ import {
   clinicalAlerts,
   treatmentRecommendations,
   diagnosticSuggestions,
+  workflows,
+  workflowInstances,
+  workflowRunCounts,
   type UpsertUser, 
   type User, 
   type UserWithRoles,
@@ -148,7 +152,13 @@ import {
   type TreatmentRecommendation,
   type InsertTreatmentRecommendation,
   type DiagnosticSuggestion,
-  type InsertDiagnosticSuggestion
+  type InsertDiagnosticSuggestion,
+  type Workflow,
+  type InsertWorkflow,
+  type WorkflowInstance,
+  type InsertWorkflowInstance,
+  type WorkflowRunCount,
+  type InsertWorkflowRunCount
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
@@ -3560,6 +3570,222 @@ export class DbStorage implements IStorage {
       ))
       .returning();
     return result.length > 0;
+  }
+
+  // ========== Engagement Workflows - Workflows ==========
+
+  async createWorkflow(workflow: InsertWorkflow): Promise<Workflow> {
+    const [created] = await db
+      .insert(workflows)
+      .values(workflow)
+      .returning();
+    return created;
+  }
+
+  async getWorkflow(id: string, companyId: string): Promise<Workflow | undefined> {
+    const [workflow] = await db
+      .select()
+      .from(workflows)
+      .where(and(
+        eq(workflows.id, id),
+        eq(workflows.companyId, companyId)
+      ));
+    return workflow;
+  }
+
+  async getWorkflows(
+    companyId: string,
+    filters?: {
+      trigger?: string;
+      status?: string;
+    }
+  ): Promise<Workflow[]> {
+    const conditions = [eq(workflows.companyId, companyId)];
+
+    if (filters?.trigger) {
+      conditions.push(eq(workflows.trigger, filters.trigger as any));
+    }
+    if (filters?.status) {
+      conditions.push(eq(workflows.status, filters.status as any));
+    }
+
+    return await db
+      .select()
+      .from(workflows)
+      .where(and(...conditions))
+      .orderBy(workflows.name);
+  }
+
+  async updateWorkflow(
+    id: string,
+    companyId: string,
+    updates: Partial<Workflow>
+  ): Promise<Workflow | undefined> {
+    const [updated] = await db
+      .update(workflows)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(
+        eq(workflows.id, id),
+        eq(workflows.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteWorkflow(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(workflows)
+      .where(and(
+        eq(workflows.id, id),
+        eq(workflows.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Engagement Workflows - Workflow Instances ==========
+
+  async createWorkflowInstance(instance: InsertWorkflowInstance): Promise<WorkflowInstance> {
+    const [created] = await db
+      .insert(workflowInstances)
+      .values(instance)
+      .returning();
+    return created;
+  }
+
+  async getWorkflowInstance(id: string, companyId: string): Promise<WorkflowInstance | undefined> {
+    const [instance] = await db
+      .select()
+      .from(workflowInstances)
+      .where(and(
+        eq(workflowInstances.id, id),
+        eq(workflowInstances.companyId, companyId)
+      ));
+    return instance;
+  }
+
+  async getWorkflowInstances(
+    companyId: string,
+    filters?: {
+      workflowId?: string;
+      patientId?: string;
+      status?: string;
+    }
+  ): Promise<WorkflowInstance[]> {
+    const conditions = [eq(workflowInstances.companyId, companyId)];
+
+    if (filters?.workflowId) {
+      conditions.push(eq(workflowInstances.workflowId, filters.workflowId));
+    }
+    if (filters?.patientId) {
+      conditions.push(eq(workflowInstances.patientId, filters.patientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(workflowInstances.status, filters.status as any));
+    }
+
+    return await db
+      .select()
+      .from(workflowInstances)
+      .where(and(...conditions))
+      .orderBy(desc(workflowInstances.startedAt));
+  }
+
+  async updateWorkflowInstance(
+    id: string,
+    companyId: string,
+    updates: Partial<WorkflowInstance>
+  ): Promise<WorkflowInstance | undefined> {
+    const [updated] = await db
+      .update(workflowInstances)
+      .set(updates)
+      .where(and(
+        eq(workflowInstances.id, id),
+        eq(workflowInstances.companyId, companyId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteWorkflowInstance(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(workflowInstances)
+      .where(and(
+        eq(workflowInstances.id, id),
+        eq(workflowInstances.companyId, companyId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ========== Engagement Workflows - Workflow Run Counts ==========
+
+  async getWorkflowRunCount(
+    workflowId: string,
+    patientId: string,
+    companyId: string
+  ): Promise<WorkflowRunCount | undefined> {
+    const [count] = await db
+      .select()
+      .from(workflowRunCounts)
+      .where(and(
+        eq(workflowRunCounts.workflowId, workflowId),
+        eq(workflowRunCounts.patientId, patientId),
+        eq(workflowRunCounts.companyId, companyId)
+      ));
+    return count;
+  }
+
+  async incrementWorkflowRunCount(
+    workflowId: string,
+    patientId: string,
+    companyId: string
+  ): Promise<WorkflowRunCount> {
+    // Try to get existing count
+    const existing = await this.getWorkflowRunCount(workflowId, patientId, companyId);
+
+    if (existing) {
+      // Increment existing
+      const [updated] = await db
+        .update(workflowRunCounts)
+        .set({
+          runCount: existing.runCount + 1,
+          lastRunAt: new Date(),
+        })
+        .where(and(
+          eq(workflowRunCounts.id, existing.id),
+          eq(workflowRunCounts.companyId, companyId)
+        ))
+        .returning();
+      return updated;
+    } else {
+      // Create new
+      const [created] = await db
+        .insert(workflowRunCounts)
+        .values({
+          id: crypto.randomUUID(),
+          companyId,
+          workflowId,
+          patientId,
+          runCount: 1,
+          lastRunAt: new Date(),
+        })
+        .returning();
+      return created;
+    }
+  }
+
+  async getPatientWorkflowRunCounts(
+    patientId: string,
+    companyId: string
+  ): Promise<WorkflowRunCount[]> {
+    return await db
+      .select()
+      .from(workflowRunCounts)
+      .where(and(
+        eq(workflowRunCounts.patientId, patientId),
+        eq(workflowRunCounts.companyId, companyId)
+      ));
   }
 
   // ============================================================================
