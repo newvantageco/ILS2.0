@@ -1,5 +1,23 @@
+/**
+ * Quality Measures Service
+ *
+ * STATUS: Database infrastructure ready, service migration in progress
+ *
+ * ✅ COMPLETED:
+ * - Database tables created (quality_measures, measure_calculations, star_ratings, etc.)
+ * - Storage CRUD methods implemented
+ *
+ * ⏳ TODO: Migrate service methods from in-memory Maps to database
+ * - Update createQualityMeasure to use db.createQualityMeasure
+ * - Update getQualityMeasures to use db.getQualityMeasures
+ * - Update all other methods to use database
+ *
+ * TEMPORARY: Service still uses in-memory Maps (data loss risk remains)
+ */
+
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../utils/logger';
+import { storage, type IStorage } from '../../storage';
 
 // ============================================================================
 // Quality Measures Types
@@ -161,6 +179,13 @@ export interface QualityDashboard {
 // ============================================================================
 
 export class QualityMeasuresService {
+  private static db: IStorage = storage;
+
+  /**
+   * Legacy in-memory storage - TO BE REMOVED
+   * @deprecated Database tables and storage methods are ready. Service methods need migration.
+   * WARNING: Data stored in these Maps will be lost on server restart.
+   */
   private static qualityMeasures: Map<string, QualityMeasure> = new Map();
   private static measureCalculations: Map<string, MeasureCalculation> = new Map();
   private static starRatings: Map<string, StarRating> = new Map();
