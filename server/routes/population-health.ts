@@ -5,6 +5,15 @@ import { ChronicDiseaseManagementService } from '../services/population-health/C
 
 const router = express.Router();
 
+// Helper to extract companyId from authenticated request
+function getCompanyId(req: Request): string {
+  const companyId = (req as any).user?.companyId;
+  if (!companyId) {
+    throw new Error('Authentication required - no companyId found');
+  }
+  return companyId;
+}
+
 // ============================================================================
 // Risk Stratification Routes
 // ============================================================================
@@ -449,7 +458,8 @@ router.get('/risk-stratification/statistics', async (req: Request, res: Response
  */
 router.post('/care-plans', async (req: Request, res: Response) => {
   try {
-    const carePlan = CareCoordinationService.createCarePlan(req.body);
+    const companyId = getCompanyId(req);
+    const carePlan = await CareCoordinationService.createCarePlan(companyId, req.body);
     res.status(201).json({
       success: true,
       data: carePlan,
@@ -470,7 +480,8 @@ router.post('/care-plans', async (req: Request, res: Response) => {
  */
 router.get('/care-plans/:id', async (req: Request, res: Response) => {
   try {
-    const carePlan = CareCoordinationService.getCarePlanById(req.params.id);
+    const companyId = getCompanyId(req);
+    const carePlan = await CareCoordinationService.getCarePlanById(companyId, req.params.id);
     if (!carePlan) {
       return res.status(404).json({
         success: false,
@@ -496,7 +507,8 @@ router.get('/care-plans/:id', async (req: Request, res: Response) => {
  */
 router.get('/care-plans/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const carePlans = CareCoordinationService.getCarePlansByPatient(req.params.patientId);
+    const companyId = getCompanyId(req);
+    const carePlans = await CareCoordinationService.getCarePlansByPatient(companyId, req.params.patientId);
     res.json({
       success: true,
       data: carePlans,
@@ -517,7 +529,8 @@ router.get('/care-plans/patient/:patientId', async (req: Request, res: Response)
  */
 router.post('/care-plans/:id/goals', async (req: Request, res: Response) => {
   try {
-    const carePlan = CareCoordinationService.addCareGoal(req.params.id, req.body);
+    const companyId = getCompanyId(req);
+    const carePlan = await CareCoordinationService.addCareGoal(companyId, req.params.id, req.body);
     res.status(201).json({
       success: true,
       data: carePlan,
@@ -538,7 +551,8 @@ router.post('/care-plans/:id/goals', async (req: Request, res: Response) => {
  */
 router.put('/care-plans/:planId/goals/:goalId', async (req: Request, res: Response) => {
   try {
-    const carePlan = CareCoordinationService.updateCareGoal(
+    const companyId = getCompanyId(req);
+    const carePlan = await CareCoordinationService.updateCareGoal(companyId,
       req.params.planId,
       req.params.goalId,
       req.body
@@ -563,7 +577,8 @@ router.put('/care-plans/:planId/goals/:goalId', async (req: Request, res: Respon
  */
 router.post('/care-plans/:id/interventions', async (req: Request, res: Response) => {
   try {
-    const carePlan = CareCoordinationService.addCareIntervention(req.params.id, req.body);
+    const companyId = getCompanyId(req);
+    const carePlan = await CareCoordinationService.addCareIntervention(companyId, req.params.id, req.body);
     res.status(201).json({
       success: true,
       data: carePlan,
@@ -584,7 +599,8 @@ router.post('/care-plans/:id/interventions', async (req: Request, res: Response)
  */
 router.put('/care-plans/:id/activate', async (req: Request, res: Response) => {
   try {
-    const carePlan = CareCoordinationService.activateCarePlan(req.params.id);
+    const companyId = getCompanyId(req);
+    const carePlan = await CareCoordinationService.activateCarePlan(companyId, req.params.id);
     res.json({
       success: true,
       data: carePlan,
@@ -605,8 +621,9 @@ router.put('/care-plans/:id/activate', async (req: Request, res: Response) => {
  */
 router.put('/care-plans/:id/status', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { status } = req.body;
-    const carePlan = CareCoordinationService.updateCarePlanStatus(req.params.id, status);
+    const carePlan = await CareCoordinationService.updateCarePlanStatus(companyId, req.params.id, status);
     res.json({
       success: true,
       data: carePlan,
@@ -627,8 +644,10 @@ router.put('/care-plans/:id/status', async (req: Request, res: Response) => {
  */
 router.get('/care-plans/due-for-review', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { daysAhead } = req.query;
-    const carePlans = CareCoordinationService.getCarePlansDueForReview(
+    const carePlans = await CareCoordinationService.getCarePlansDueForReview(
+      companyId,
       daysAhead ? parseInt(daysAhead as string) : 7
     );
     res.json({
@@ -651,7 +670,8 @@ router.get('/care-plans/due-for-review', async (req: Request, res: Response) => 
  */
 router.post('/care-teams', async (req: Request, res: Response) => {
   try {
-    const careTeam = CareCoordinationService.createCareTeam(req.body);
+    const companyId = getCompanyId(req);
+    const careTeam = await CareCoordinationService.createCareTeam(companyId, req.body);
     res.status(201).json({
       success: true,
       data: careTeam,
@@ -672,7 +692,8 @@ router.post('/care-teams', async (req: Request, res: Response) => {
  */
 router.post('/care-teams/:id/members', async (req: Request, res: Response) => {
   try {
-    const careTeam = CareCoordinationService.addCareTeamMember(req.params.id, req.body);
+    const companyId = getCompanyId(req);
+    const careTeam = await CareCoordinationService.addCareTeamMember(companyId, req.params.id, req.body);
     res.status(201).json({
       success: true,
       data: careTeam,
@@ -693,7 +714,9 @@ router.post('/care-teams/:id/members', async (req: Request, res: Response) => {
  */
 router.delete('/care-teams/:teamId/members/:memberId', async (req: Request, res: Response) => {
   try {
-    const careTeam = CareCoordinationService.removeCareTeamMember(
+    const companyId = getCompanyId(req);
+    const careTeam = await CareCoordinationService.removeCareTeamMember(
+      companyId,
       req.params.teamId,
       req.params.memberId
     );
@@ -717,7 +740,8 @@ router.delete('/care-teams/:teamId/members/:memberId', async (req: Request, res:
  */
 router.get('/care-teams/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const careTeams = CareCoordinationService.getCareTeamsByPatient(req.params.patientId);
+    const companyId = getCompanyId(req);
+    const careTeams = await CareCoordinationService.getCareTeamsByPatient(companyId, req.params.patientId);
     res.json({
       success: true,
       data: careTeams,
@@ -738,7 +762,8 @@ router.get('/care-teams/patient/:patientId', async (req: Request, res: Response)
  */
 router.post('/care-gaps', async (req: Request, res: Response) => {
   try {
-    const careGap = CareCoordinationService.identifyCareGap(req.body);
+    const companyId = getCompanyId(req);
+    const careGap = await CareCoordinationService.identifyCareGap(companyId, req.body);
     res.status(201).json({
       success: true,
       data: careGap,
@@ -759,7 +784,8 @@ router.post('/care-gaps', async (req: Request, res: Response) => {
  */
 router.put('/care-gaps/:id', async (req: Request, res: Response) => {
   try {
-    const careGap = CareCoordinationService.updateCareGap(req.params.id, req.body);
+    const companyId = getCompanyId(req);
+    const careGap = await CareCoordinationService.updateCareGap(companyId, req.params.id, req.body);
     res.json({
       success: true,
       data: careGap,
@@ -780,7 +806,8 @@ router.put('/care-gaps/:id', async (req: Request, res: Response) => {
  */
 router.get('/care-gaps/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const careGaps = CareCoordinationService.getCareGapsByPatient(req.params.patientId);
+    const companyId = getCompanyId(req);
+    const careGaps = await CareCoordinationService.getCareGapsByPatient(companyId, req.params.patientId);
     res.json({
       success: true,
       data: careGaps,
@@ -801,8 +828,9 @@ router.get('/care-gaps/patient/:patientId', async (req: Request, res: Response) 
  */
 router.get('/care-gaps/open', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { category } = req.query;
-    const careGaps = CareCoordinationService.getOpenCareGaps(category as any);
+    const careGaps = await CareCoordinationService.getOpenCareGaps(companyId, category as any);
     res.json({
       success: true,
       data: careGaps,
@@ -823,7 +851,8 @@ router.get('/care-gaps/open', async (req: Request, res: Response) => {
  */
 router.get('/care-gaps/overdue', async (req: Request, res: Response) => {
   try {
-    const careGaps = CareCoordinationService.getOverdueCareGaps();
+    const companyId = getCompanyId(req);
+    const careGaps = await CareCoordinationService.getOverdueCareGaps(companyId);
     res.json({
       success: true,
       data: careGaps,
@@ -844,7 +873,8 @@ router.get('/care-gaps/overdue', async (req: Request, res: Response) => {
  */
 router.post('/transitions', async (req: Request, res: Response) => {
   try {
-    const transition = CareCoordinationService.createTransitionOfCare(req.body);
+    const companyId = getCompanyId(req);
+    const transition = await CareCoordinationService.createTransitionOfCare(companyId, req.body);
     res.status(201).json({
       success: true,
       data: transition,
@@ -865,7 +895,9 @@ router.post('/transitions', async (req: Request, res: Response) => {
  */
 router.post('/transitions/:id/medications', async (req: Request, res: Response) => {
   try {
-    const transition = CareCoordinationService.addMedicationReconciliation(
+    const companyId = getCompanyId(req);
+    const transition = await CareCoordinationService.addMedicationReconciliation(
+      companyId,
       req.params.id,
       req.body
     );
@@ -889,8 +921,9 @@ router.post('/transitions/:id/medications', async (req: Request, res: Response) 
  */
 router.put('/transitions/:id/status', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { status } = req.body;
-    const transition = CareCoordinationService.updateTransitionStatus(req.params.id, status);
+    const transition = await CareCoordinationService.updateTransitionStatus(companyId, req.params.id, status);
     res.json({
       success: true,
       data: transition,
@@ -911,7 +944,8 @@ router.put('/transitions/:id/status', async (req: Request, res: Response) => {
  */
 router.put('/transitions/:id/complete-followup', async (req: Request, res: Response) => {
   try {
-    const transition = CareCoordinationService.completeFollowUp(req.params.id);
+    const companyId = getCompanyId(req);
+    const transition = await CareCoordinationService.completeFollowUp(companyId, req.params.id);
     res.json({
       success: true,
       data: transition,
@@ -932,7 +966,8 @@ router.put('/transitions/:id/complete-followup', async (req: Request, res: Respo
  */
 router.get('/transitions/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const transitions = CareCoordinationService.getTransitionsByPatient(req.params.patientId);
+    const companyId = getCompanyId(req);
+    const transitions = await CareCoordinationService.getTransitionsByPatient(companyId, req.params.patientId);
     res.json({
       success: true,
       data: transitions,
@@ -953,7 +988,8 @@ router.get('/transitions/patient/:patientId', async (req: Request, res: Response
  */
 router.get('/transitions/pending-followups', async (req: Request, res: Response) => {
   try {
-    const transitions = CareCoordinationService.getPendingFollowUps();
+    const companyId = getCompanyId(req);
+    const transitions = await CareCoordinationService.getPendingFollowUps(companyId);
     res.json({
       success: true,
       data: transitions,
@@ -974,7 +1010,8 @@ router.get('/transitions/pending-followups', async (req: Request, res: Response)
  */
 router.post('/tasks', async (req: Request, res: Response) => {
   try {
-    const task = CareCoordinationService.createCareCoordinationTask(req.body);
+    const companyId = getCompanyId(req);
+    const task = await CareCoordinationService.createCareCoordinationTask(companyId, req.body);
     res.status(201).json({
       success: true,
       data: task,
@@ -995,8 +1032,9 @@ router.post('/tasks', async (req: Request, res: Response) => {
  */
 router.put('/tasks/:id/status', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { status, completedBy, notes } = req.body;
-    const task = CareCoordinationService.updateTaskStatus(req.params.id, status, completedBy, notes);
+    const task = await CareCoordinationService.updateTaskStatus(companyId, req.params.id, status, completedBy, notes);
     res.json({
       success: true,
       data: task,
@@ -1017,8 +1055,9 @@ router.put('/tasks/:id/status', async (req: Request, res: Response) => {
  */
 router.put('/tasks/:id/assign', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { assignedTo } = req.body;
-    const task = CareCoordinationService.assignTask(req.params.id, assignedTo);
+    const task = await CareCoordinationService.assignTask(companyId, req.params.id, assignedTo);
     res.json({
       success: true,
       data: task,
@@ -1039,7 +1078,8 @@ router.put('/tasks/:id/assign', async (req: Request, res: Response) => {
  */
 router.get('/tasks/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const tasks = CareCoordinationService.getTasksByPatient(req.params.patientId);
+    const companyId = getCompanyId(req);
+    const tasks = await CareCoordinationService.getTasksByPatient(companyId, req.params.patientId);
     res.json({
       success: true,
       data: tasks,
@@ -1060,7 +1100,8 @@ router.get('/tasks/patient/:patientId', async (req: Request, res: Response) => {
  */
 router.get('/tasks/assignee/:userId', async (req: Request, res: Response) => {
   try {
-    const tasks = CareCoordinationService.getTasksByAssignee(req.params.userId);
+    const companyId = getCompanyId(req);
+    const tasks = await CareCoordinationService.getTasksByAssignee(companyId, req.params.userId);
     res.json({
       success: true,
       data: tasks,
@@ -1081,7 +1122,8 @@ router.get('/tasks/assignee/:userId', async (req: Request, res: Response) => {
  */
 router.get('/tasks/overdue', async (req: Request, res: Response) => {
   try {
-    const tasks = CareCoordinationService.getOverdueTasks();
+    const companyId = getCompanyId(req);
+    const tasks = await CareCoordinationService.getOverdueTasks(companyId);
     res.json({
       success: true,
       data: tasks,
@@ -1102,7 +1144,8 @@ router.get('/tasks/overdue', async (req: Request, res: Response) => {
  */
 router.post('/outreach', async (req: Request, res: Response) => {
   try {
-    const outreach = CareCoordinationService.createPatientOutreach(req.body);
+    const companyId = getCompanyId(req);
+    const outreach = await CareCoordinationService.createPatientOutreach(companyId, req.body);
     res.status(201).json({
       success: true,
       data: outreach,
@@ -1123,7 +1166,8 @@ router.post('/outreach', async (req: Request, res: Response) => {
  */
 router.post('/outreach/:id/attempt', async (req: Request, res: Response) => {
   try {
-    const outreach = CareCoordinationService.recordOutreachAttempt(req.params.id, req.body);
+    const companyId = getCompanyId(req);
+    const outreach = await CareCoordinationService.recordOutreachAttempt(companyId, req.params.id, req.body);
     res.json({
       success: true,
       data: outreach,
@@ -1144,7 +1188,8 @@ router.post('/outreach/:id/attempt', async (req: Request, res: Response) => {
  */
 router.get('/outreach/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const outreach = CareCoordinationService.getOutreachByPatient(req.params.patientId);
+    const companyId = getCompanyId(req);
+    const outreach = await CareCoordinationService.getOutreachByPatient(companyId, req.params.patientId);
     res.json({
       success: true,
       data: outreach,
@@ -1165,8 +1210,10 @@ router.get('/outreach/patient/:patientId', async (req: Request, res: Response) =
  */
 router.get('/care-coordination/statistics', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { startDate, endDate } = req.query;
-    const statistics = CareCoordinationService.getStatistics(
+    const statistics = await CareCoordinationService.getStatistics(
+      companyId,
       startDate ? new Date(startDate as string) : undefined,
       endDate ? new Date(endDate as string) : undefined
     );
@@ -1193,7 +1240,8 @@ router.get('/care-coordination/statistics', async (req: Request, res: Response) 
  */
 router.post('/disease-registries', async (req: Request, res: Response) => {
   try {
-    const registry = ChronicDiseaseManagementService.createDiseaseRegistry(req.body);
+    const companyId = getCompanyId(req);
+    const registry = await ChronicDiseaseManagementService.createDiseaseRegistry(companyId, req.body);
     res.status(201).json({
       success: true,
       data: registry,
@@ -1214,8 +1262,9 @@ router.post('/disease-registries', async (req: Request, res: Response) => {
  */
 router.get('/disease-registries', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { activeOnly } = req.query;
-    const registries = ChronicDiseaseManagementService.getDiseaseRegistries(activeOnly !== 'false');
+    const registries = await ChronicDiseaseManagementService.getDiseaseRegistries(companyId, activeOnly !== 'false');
     res.json({
       success: true,
       data: registries,
@@ -1236,7 +1285,8 @@ router.get('/disease-registries', async (req: Request, res: Response) => {
  */
 router.post('/disease-registries/:id/enroll', async (req: Request, res: Response) => {
   try {
-    const enrollment = ChronicDiseaseManagementService.enrollInRegistry({
+    const companyId = getCompanyId(req);
+    const enrollment = await ChronicDiseaseManagementService.enrollInRegistry(companyId, {
       registryId: req.params.id,
       ...req.body
     });
@@ -1260,7 +1310,8 @@ router.post('/disease-registries/:id/enroll', async (req: Request, res: Response
  */
 router.get('/disease-registries/:id/patients', async (req: Request, res: Response) => {
   try {
-    const enrollments = ChronicDiseaseManagementService.getRegistryPatients(req.params.id);
+    const companyId = getCompanyId(req);
+    const enrollments = await ChronicDiseaseManagementService.getRegistryPatients(companyId, req.params.id);
     res.json({
       success: true,
       data: enrollments,
@@ -1281,7 +1332,8 @@ router.get('/disease-registries/:id/patients', async (req: Request, res: Respons
  */
 router.post('/disease-programs', async (req: Request, res: Response) => {
   try {
-    const program = ChronicDiseaseManagementService.createDiseaseManagementProgram(req.body);
+    const companyId = getCompanyId(req);
+    const program = await ChronicDiseaseManagementService.createDiseaseManagementProgram(companyId, req.body);
     res.status(201).json({
       success: true,
       data: program,
@@ -1302,8 +1354,9 @@ router.post('/disease-programs', async (req: Request, res: Response) => {
  */
 router.get('/disease-programs', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { activeOnly } = req.query;
-    const programs = ChronicDiseaseManagementService.getDiseaseManagementPrograms(activeOnly !== 'false');
+    const programs = await ChronicDiseaseManagementService.getDiseaseManagementPrograms(companyId, activeOnly !== 'false');
     res.json({
       success: true,
       data: programs,
@@ -1324,7 +1377,8 @@ router.get('/disease-programs', async (req: Request, res: Response) => {
  */
 router.post('/disease-programs/:id/enroll', async (req: Request, res: Response) => {
   try {
-    const enrollment = ChronicDiseaseManagementService.enrollInProgram({
+    const companyId = getCompanyId(req);
+    const enrollment = await ChronicDiseaseManagementService.enrollInProgram(companyId, {
       programId: req.params.id,
       ...req.body
     });
@@ -1348,8 +1402,10 @@ router.post('/disease-programs/:id/enroll', async (req: Request, res: Response) 
  */
 router.post('/program-enrollments/:id/interventions', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { interventionId, outcome } = req.body;
-    const enrollment = ChronicDiseaseManagementService.recordInterventionCompletion(
+    const enrollment = await ChronicDiseaseManagementService.recordInterventionCompletion(
+      companyId,
       req.params.id,
       interventionId,
       outcome
@@ -1374,7 +1430,9 @@ router.post('/program-enrollments/:id/interventions', async (req: Request, res: 
  */
 router.put('/program-enrollments/:id', async (req: Request, res: Response) => {
   try {
-    const enrollment = ChronicDiseaseManagementService.updateProgramEnrollment(
+    const companyId = getCompanyId(req);
+    const enrollment = await ChronicDiseaseManagementService.updateProgramEnrollment(
+      companyId,
       req.params.id,
       req.body
     );
@@ -1398,7 +1456,8 @@ router.put('/program-enrollments/:id', async (req: Request, res: Response) => {
  */
 router.post('/clinical-metrics', async (req: Request, res: Response) => {
   try {
-    const metric = ChronicDiseaseManagementService.recordClinicalMetric(req.body);
+    const companyId = getCompanyId(req);
+    const metric = await ChronicDiseaseManagementService.recordClinicalMetric(companyId, req.body);
     res.status(201).json({
       success: true,
       data: metric,
@@ -1419,8 +1478,10 @@ router.post('/clinical-metrics', async (req: Request, res: Response) => {
  */
 router.get('/clinical-metrics/patient/:patientId', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { metricType } = req.query;
-    const metrics = ChronicDiseaseManagementService.getClinicalMetricsByPatient(
+    const metrics = await ChronicDiseaseManagementService.getClinicalMetricsByPatient(
+      companyId,
       req.params.patientId,
       metricType as string | undefined
     );
@@ -1444,7 +1505,8 @@ router.get('/clinical-metrics/patient/:patientId', async (req: Request, res: Res
  */
 router.post('/patient-engagement', async (req: Request, res: Response) => {
   try {
-    const engagement = ChronicDiseaseManagementService.recordPatientEngagement(req.body);
+    const companyId = getCompanyId(req);
+    const engagement = await ChronicDiseaseManagementService.recordPatientEngagement(companyId, req.body);
     res.status(201).json({
       success: true,
       data: engagement,
@@ -1465,8 +1527,10 @@ router.post('/patient-engagement', async (req: Request, res: Response) => {
  */
 router.get('/patient-engagement/patient/:patientId', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { startDate, endDate } = req.query;
-    const engagement = ChronicDiseaseManagementService.getPatientEngagement(
+    const engagement = await ChronicDiseaseManagementService.getPatientEngagement(
+      companyId,
       req.params.patientId,
       startDate ? new Date(startDate as string) : undefined,
       endDate ? new Date(endDate as string) : undefined
@@ -1491,8 +1555,10 @@ router.get('/patient-engagement/patient/:patientId', async (req: Request, res: R
  */
 router.get('/patient-engagement/patient/:patientId/score', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { days } = req.query;
-    const score = ChronicDiseaseManagementService.calculateEngagementScore(
+    const score = await ChronicDiseaseManagementService.calculateEngagementScore(
+      companyId,
       req.params.patientId,
       days ? parseInt(days as string) : 30
     );
@@ -1515,7 +1581,8 @@ router.get('/patient-engagement/patient/:patientId/score', async (req: Request, 
  */
 router.post('/outcome-tracking', async (req: Request, res: Response) => {
   try {
-    const outcome = ChronicDiseaseManagementService.initializeOutcomeTracking(req.body);
+    const companyId = getCompanyId(req);
+    const outcome = await ChronicDiseaseManagementService.initializeOutcomeTracking(companyId, req.body);
     res.status(201).json({
       success: true,
       data: outcome,
@@ -1536,7 +1603,8 @@ router.post('/outcome-tracking', async (req: Request, res: Response) => {
  */
 router.get('/outcome-tracking/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const outcomes = ChronicDiseaseManagementService.getOutcomesByPatient(req.params.patientId);
+    const companyId = getCompanyId(req);
+    const outcomes = await ChronicDiseaseManagementService.getOutcomesByPatient(companyId, req.params.patientId);
     res.json({
       success: true,
       data: outcomes,
@@ -1557,7 +1625,8 @@ router.get('/outcome-tracking/patient/:patientId', async (req: Request, res: Res
  */
 router.post('/preventive-care', async (req: Request, res: Response) => {
   try {
-    const recommendation = ChronicDiseaseManagementService.createPreventiveCareRecommendation(req.body);
+    const companyId = getCompanyId(req);
+    const recommendation = await ChronicDiseaseManagementService.createPreventiveCareRecommendation(companyId, req.body);
     res.status(201).json({
       success: true,
       data: recommendation,
@@ -1578,8 +1647,10 @@ router.post('/preventive-care', async (req: Request, res: Response) => {
  */
 router.put('/preventive-care/:id/complete', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { completedDate, nextDueDate } = req.body;
-    const recommendation = ChronicDiseaseManagementService.completePreventiveCare(
+    const recommendation = await ChronicDiseaseManagementService.completePreventiveCare(
+      companyId,
       req.params.id,
       new Date(completedDate),
       nextDueDate ? new Date(nextDueDate) : undefined
@@ -1604,8 +1675,10 @@ router.put('/preventive-care/:id/complete', async (req: Request, res: Response) 
  */
 router.get('/preventive-care/patient/:patientId', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { status } = req.query;
-    const recommendations = ChronicDiseaseManagementService.getPreventiveCareByPatient(
+    const recommendations = await ChronicDiseaseManagementService.getPreventiveCareByPatient(
+      companyId,
       req.params.patientId,
       status as any
     );
@@ -1629,8 +1702,10 @@ router.get('/preventive-care/patient/:patientId', async (req: Request, res: Resp
  */
 router.get('/preventive-care/due', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { daysAhead } = req.query;
-    const recommendations = ChronicDiseaseManagementService.getDuePreventiveCare(
+    const recommendations = await ChronicDiseaseManagementService.getDuePreventiveCare(
+      companyId,
       daysAhead ? parseInt(daysAhead as string) : 30
     );
     res.json({
@@ -1653,8 +1728,10 @@ router.get('/preventive-care/due', async (req: Request, res: Response) => {
  */
 router.get('/disease-management/statistics', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { startDate, endDate } = req.query;
-    const statistics = ChronicDiseaseManagementService.getStatistics(
+    const statistics = await ChronicDiseaseManagementService.getStatistics(
+      companyId,
       startDate ? new Date(startDate as string) : undefined,
       endDate ? new Date(endDate as string) : undefined
     );

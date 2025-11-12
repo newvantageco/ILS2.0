@@ -7094,3 +7094,902 @@ export type PortalPayment = typeof portalPayments.$inferSelect;
 export type InsertPortalPayment = typeof portalPayments.$inferInsert;
 
 // ========== End Predictive Analytics Tables ==========
+
+// ========== Care Coordination Tables ==========
+
+/**
+ * Care Coordination Enums
+ */
+export const carePlanStatusEnum = pgEnum("care_plan_status", ["draft", "active", "on_hold", "completed", "cancelled"]);
+export const carePlanCategoryEnum = pgEnum("care_plan_category", ["chronic_disease", "preventive", "transitional", "behavioral_health", "other"]);
+export const careGoalStatusEnum = pgEnum("care_goal_status", ["not_started", "in_progress", "achieved", "not_achieved", "cancelled"]);
+export const careInterventionTypeEnum = pgEnum("care_intervention_type", ["education", "medication", "monitoring", "lifestyle", "referral", "therapy", "other"]);
+export const careInterventionStatusEnum = pgEnum("care_intervention_status", ["planned", "active", "completed", "cancelled"]);
+export const reviewFrequencyEnum = pgEnum("review_frequency", ["weekly", "biweekly", "monthly", "quarterly"]);
+export const careTeamStatusEnum = pgEnum("care_team_status", ["active", "inactive"]);
+export const careTeamMemberStatusEnum = pgEnum("care_team_member_status", ["active", "inactive"]);
+export const careGapCategoryEnum = pgEnum("care_gap_category", ["preventive", "chronic_care", "medication", "screening", "follow_up"]);
+export const careGapSeverityEnum = pgEnum("care_gap_severity", ["low", "medium", "high", "critical"]);
+export const careGapStatusEnum = pgEnum("care_gap_status", ["open", "in_progress", "closed", "not_applicable"]);
+export const transitionTypeEnum = pgEnum("transition_type", ["hospital_to_home", "hospital_to_snf", "snf_to_home", "er_to_home", "specialist_referral", "other"]);
+export const transitionStatusEnum = pgEnum("transition_status", ["planned", "in_progress", "completed", "failed"]);
+export const medicationActionEnum = pgEnum("medication_action", ["continue", "new", "discontinued", "changed"]);
+export const coordinationTaskTypeEnum = pgEnum("coordination_task_type", ["outreach", "follow_up", "assessment", "referral", "education", "coordination", "other"]);
+export const coordinationTaskPriorityEnum = pgEnum("coordination_task_priority", ["low", "medium", "high", "urgent"]);
+export const coordinationTaskStatusEnum = pgEnum("coordination_task_status", ["pending", "in_progress", "completed", "cancelled"]);
+export const outreachTypeEnum = pgEnum("outreach_type", ["phone", "email", "sms", "mail", "in_person", "portal"]);
+export const outreachStatusEnum = pgEnum("outreach_status", ["scheduled", "attempted", "completed", "failed", "cancelled"]);
+export const outreachContactResultEnum = pgEnum("outreach_contact_result", ["successful", "no_answer", "left_message", "wrong_number", "declined"]);
+
+/**
+ * Care Plans Table
+ * Comprehensive care plans for patients
+ */
+export const carePlans = pgTable(
+  "care_plans",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    status: carePlanStatusEnum("status").notNull().default("draft"),
+    category: carePlanCategoryEnum("category").notNull(),
+    goals: jsonb("goals").notNull().$type<Array<{
+      id: string;
+      description: string;
+      targetDate: string; // ISO date
+      status: string;
+      measurableOutcome: string;
+      currentValue?: number;
+      targetValue?: number;
+      unit?: string;
+      progress: number;
+      barriers: string[];
+      notes: string;
+      createdAt: string;
+      updatedAt: string;
+    }>>(),
+    interventions: jsonb("interventions").notNull().$type<Array<{
+      id: string;
+      type: string;
+      description: string;
+      frequency: string;
+      assignedTo?: string;
+      status: string;
+      startDate: string;
+      endDate?: string;
+      outcomes: string[];
+      createdAt: string;
+      updatedAt: string;
+    }>>(),
+    careTeamId: text("care_team_id"),
+    startDate: timestamp("start_date", { withTimezone: true }).notNull(),
+    endDate: timestamp("end_date", { withTimezone: true }),
+    reviewFrequency: reviewFrequencyEnum("review_frequency").notNull(),
+    nextReviewDate: timestamp("next_review_date", { withTimezone: true }).notNull(),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("care_plans_company_idx").on(table.companyId),
+    patientIdx: index("care_plans_patient_idx").on(table.patientId),
+    statusIdx: index("care_plans_status_idx").on(table.status),
+    categoryIdx: index("care_plans_category_idx").on(table.category),
+    nextReviewIdx: index("care_plans_next_review_idx").on(table.nextReviewDate),
+  })
+);
+
+/**
+ * Care Teams Table
+ * Multi-disciplinary care teams for patients
+ */
+export const careTeams = pgTable(
+  "care_teams",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    members: jsonb("members").notNull().$type<Array<{
+      id: string;
+      userId: string;
+      name: string;
+      role: string;
+      specialty?: string;
+      isPrimary: boolean;
+      responsibilities: string[];
+      contactInfo: {
+        phone?: string;
+        email?: string;
+        extension?: string;
+      };
+      joinedDate: string;
+      status: string;
+    }>>(),
+    status: careTeamStatusEnum("status").notNull().default("active"),
+    primaryContact: text("primary_contact"),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("care_teams_company_idx").on(table.companyId),
+    patientIdx: index("care_teams_patient_idx").on(table.patientId),
+    statusIdx: index("care_teams_status_idx").on(table.status),
+  })
+);
+
+/**
+ * Care Gaps Table
+ * Identified gaps in patient care requiring attention
+ */
+export const careGaps = pgTable(
+  "care_gaps",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    gapType: text("gap_type").notNull(),
+    category: careGapCategoryEnum("category").notNull(),
+    description: text("description").notNull(),
+    severity: careGapSeverityEnum("severity").notNull(),
+    status: careGapStatusEnum("status").notNull().default("open"),
+    identifiedDate: timestamp("identified_date", { withTimezone: true }).notNull(),
+    dueDate: timestamp("due_date", { withTimezone: true }).notNull(),
+    closedDate: timestamp("closed_date", { withTimezone: true }),
+    recommendations: jsonb("recommendations").notNull().$type<string[]>(),
+    assignedTo: text("assigned_to"),
+    evidence: text("evidence").notNull(),
+    measure: text("measure"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("care_gaps_company_idx").on(table.companyId),
+    patientIdx: index("care_gaps_patient_idx").on(table.patientId),
+    categoryIdx: index("care_gaps_category_idx").on(table.category),
+    severityIdx: index("care_gaps_severity_idx").on(table.severity),
+    statusIdx: index("care_gaps_status_idx").on(table.status),
+    dueDateIdx: index("care_gaps_due_date_idx").on(table.dueDate),
+  })
+);
+
+/**
+ * Transitions of Care Table
+ * Tracks patient transitions between care settings
+ */
+export const transitionsOfCare = pgTable(
+  "transitions_of_care",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    transitionType: transitionTypeEnum("transition_type").notNull(),
+    fromLocation: text("from_location").notNull(),
+    toLocation: text("to_location").notNull(),
+    status: transitionStatusEnum("status").notNull().default("planned"),
+    dischargeDate: timestamp("discharge_date", { withTimezone: true }),
+    admissionDate: timestamp("admission_date", { withTimezone: true }),
+    followUpRequired: boolean("follow_up_required").notNull().default(false),
+    followUpDate: timestamp("follow_up_date", { withTimezone: true }),
+    followUpCompleted: boolean("follow_up_completed").notNull().default(false),
+    medications: jsonb("medications").notNull().$type<Array<{
+      medicationId: string;
+      medicationName: string;
+      action: string;
+      previousDose?: string;
+      newDose?: string;
+      reason?: string;
+      reconciledBy: string;
+      reconciledDate: string;
+    }>>(),
+    careInstructions: jsonb("care_instructions").notNull().$type<string[]>(),
+    riskFactors: jsonb("risk_factors").notNull().$type<string[]>(),
+    responsibleProvider: text("responsible_provider"),
+    coordinatedBy: text("coordinated_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("transitions_company_idx").on(table.companyId),
+    patientIdx: index("transitions_patient_idx").on(table.patientId),
+    typeIdx: index("transitions_type_idx").on(table.transitionType),
+    statusIdx: index("transitions_status_idx").on(table.status),
+    followUpIdx: index("transitions_follow_up_idx").on(table.followUpDate),
+  })
+);
+
+/**
+ * Care Coordination Tasks Table
+ * Tasks for care coordination workflow
+ */
+export const careCoordinationTasks = pgTable(
+  "care_coordination_tasks",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    carePlanId: text("care_plan_id").references(() => carePlans.id, { onDelete: "cascade" }),
+    transitionId: text("transition_id").references(() => transitionsOfCare.id, { onDelete: "cascade" }),
+    gapId: text("gap_id").references(() => careGaps.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    type: coordinationTaskTypeEnum("type").notNull(),
+    priority: coordinationTaskPriorityEnum("priority").notNull(),
+    status: coordinationTaskStatusEnum("status").notNull().default("pending"),
+    assignedTo: text("assigned_to"),
+    dueDate: timestamp("due_date", { withTimezone: true }).notNull(),
+    completedDate: timestamp("completed_date", { withTimezone: true }),
+    completedBy: text("completed_by"),
+    notes: text("notes").notNull(),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("coordination_tasks_company_idx").on(table.companyId),
+    patientIdx: index("coordination_tasks_patient_idx").on(table.patientId),
+    carePlanIdx: index("coordination_tasks_care_plan_idx").on(table.carePlanId),
+    statusIdx: index("coordination_tasks_status_idx").on(table.status),
+    priorityIdx: index("coordination_tasks_priority_idx").on(table.priority),
+    dueDateIdx: index("coordination_tasks_due_date_idx").on(table.dueDate),
+    assignedToIdx: index("coordination_tasks_assigned_to_idx").on(table.assignedTo),
+  })
+);
+
+/**
+ * Patient Outreach Table
+ * Tracks patient outreach attempts and outcomes
+ */
+export const patientOutreach = pgTable(
+  "patient_outreach",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    taskId: text("task_id").references(() => careCoordinationTasks.id, { onDelete: "set null" }),
+    outreachType: outreachTypeEnum("outreach_type").notNull(),
+    purpose: text("purpose").notNull(),
+    status: outreachStatusEnum("status").notNull().default("scheduled"),
+    scheduledDate: timestamp("scheduled_date", { withTimezone: true }),
+    attemptedDate: timestamp("attempted_date", { withTimezone: true }),
+    completedDate: timestamp("completed_date", { withTimezone: true }),
+    contactResult: outreachContactResultEnum("contact_result"),
+    notes: text("notes").notNull(),
+    nextSteps: jsonb("next_steps").notNull().$type<string[]>(),
+    performedBy: text("performed_by"),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("patient_outreach_company_idx").on(table.companyId),
+    patientIdx: index("patient_outreach_patient_idx").on(table.patientId),
+    taskIdx: index("patient_outreach_task_idx").on(table.taskId),
+    statusIdx: index("patient_outreach_status_idx").on(table.status),
+    scheduledDateIdx: index("patient_outreach_scheduled_date_idx").on(table.scheduledDate),
+    typeIdx: index("patient_outreach_type_idx").on(table.outreachType),
+  })
+);
+
+// Zod validation schemas for Care Coordination tables
+export const insertCarePlanSchema = createInsertSchema(carePlans);
+export const insertCareTeamSchema = createInsertSchema(careTeams);
+export const insertCareGapSchema = createInsertSchema(careGaps);
+export const insertTransitionOfCareSchema = createInsertSchema(transitionsOfCare);
+export const insertCareCoordinationTaskSchema = createInsertSchema(careCoordinationTasks);
+export const insertPatientOutreachSchema = createInsertSchema(patientOutreach);
+
+// TypeScript types
+export type CarePlan = typeof carePlans.$inferSelect;
+export type InsertCarePlan = typeof carePlans.$inferInsert;
+export type CareTeam = typeof careTeams.$inferSelect;
+export type InsertCareTeam = typeof careTeams.$inferInsert;
+export type CareGap = typeof careGaps.$inferSelect;
+export type InsertCareGap = typeof careGaps.$inferInsert;
+export type TransitionOfCare = typeof transitionsOfCare.$inferSelect;
+export type InsertTransitionOfCare = typeof transitionsOfCare.$inferInsert;
+export type CareCoordinationTask = typeof careCoordinationTasks.$inferSelect;
+export type InsertCareCoordinationTask = typeof careCoordinationTasks.$inferInsert;
+export type PatientOutreach = typeof patientOutreach.$inferSelect;
+export type InsertPatientOutreach = typeof patientOutreach.$inferInsert;
+
+// ========== End Care Coordination Tables ==========
+
+// ========== Chronic Disease Management Tables ==========
+
+/**
+ * Chronic Disease Management Enums
+ */
+export const registryCriteriaTypeEnum = pgEnum("registry_criteria_type", ["diagnosis", "lab_value", "medication", "procedure", "risk_score"]);
+export const criteriaOperatorEnum = pgEnum("criteria_operator", ["equals", "contains", "greater_than", "less_than", "in_range"]);
+export const registryEnrollmentStatusEnum = pgEnum("registry_enrollment_status", ["active", "inactive", "graduated", "deceased", "transferred"]);
+export const programCriteriaTypeEnum = pgEnum("program_criteria_type", ["clinical", "demographic", "behavioral", "financial"]);
+export const programInterventionTypeEnum = pgEnum("program_intervention_type", ["education", "coaching", "monitoring", "medication_management", "lifestyle"]);
+export const interventionDeliveryMethodEnum = pgEnum("intervention_delivery_method", ["in_person", "phone", "video", "online", "app"]);
+export const measurementFrequencyEnum = pgEnum("measurement_frequency", ["monthly", "quarterly", "annually"]);
+export const programEnrollmentStatusEnum = pgEnum("program_enrollment_status", ["active", "completed", "withdrawn", "failed"]);
+export const engagementTypeEnum = pgEnum("engagement_type", ["education_completed", "coaching_session", "self_monitoring", "goal_set", "milestone_achieved"]);
+export const outcomeTypeEnum = pgEnum("outcome_type", ["clinical", "functional", "behavioral", "quality_of_life", "cost"]);
+export const preventiveCareTypeEnum = pgEnum("preventive_care_type", ["screening", "vaccination", "counseling", "medication"]);
+export const preventiveCareStatusEnum = pgEnum("preventive_care_status", ["due", "overdue", "completed", "not_applicable", "refused"]);
+export const preventiveCareImportanceEnum = pgEnum("preventive_care_importance", ["routine", "recommended", "essential"]);
+
+/**
+ * Disease Registries Table
+ * Chronic disease registries for population management
+ */
+export const diseaseRegistries = pgTable(
+  "disease_registries",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    diseaseCode: text("disease_code").notNull(),
+    description: text("description").notNull(),
+    criteria: jsonb("criteria").notNull().$type<Array<{
+      type: string;
+      field: string;
+      operator: string;
+      value: any;
+    }>>(),
+    active: boolean("active").notNull().default(true),
+    patientCount: integer("patient_count").notNull().default(0),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("disease_registries_company_idx").on(table.companyId),
+    diseaseCodeIdx: index("disease_registries_disease_code_idx").on(table.diseaseCode),
+    activeIdx: index("disease_registries_active_idx").on(table.active),
+  })
+);
+
+/**
+ * Registry Enrollments Table
+ * Patient enrollments in disease registries
+ */
+export const registryEnrollments = pgTable(
+  "registry_enrollments",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    registryId: text("registry_id").notNull().references(() => diseaseRegistries.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    enrollmentDate: timestamp("enrollment_date", { withTimezone: true }).notNull(),
+    status: registryEnrollmentStatusEnum("status").notNull().default("active"),
+    enrollmentReason: text("enrollment_reason").notNull(),
+    disenrollmentDate: timestamp("disenrollment_date", { withTimezone: true }),
+    disenrollmentReason: text("disenrollment_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("registry_enrollments_company_idx").on(table.companyId),
+    registryIdx: index("registry_enrollments_registry_idx").on(table.registryId),
+    patientIdx: index("registry_enrollments_patient_idx").on(table.patientId),
+    statusIdx: index("registry_enrollments_status_idx").on(table.status),
+  })
+);
+
+/**
+ * Disease Management Programs Table
+ * Disease management programs and protocols
+ */
+export const diseaseManagementPrograms = pgTable(
+  "disease_management_programs",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    diseaseType: text("disease_type").notNull(),
+    description: text("description").notNull(),
+    objectives: jsonb("objectives").notNull().$type<string[]>(),
+    eligibilityCriteria: jsonb("eligibility_criteria").notNull().$type<Array<{
+      type: string;
+      description: string;
+      required: boolean;
+    }>>(),
+    interventions: jsonb("interventions").notNull().$type<Array<{
+      id: string;
+      type: string;
+      name: string;
+      description: string;
+      frequency: string;
+      duration: number;
+      deliveryMethod: string;
+    }>>(),
+    qualityMeasures: jsonb("quality_measures").notNull().$type<Array<{
+      id: string;
+      name: string;
+      description: string;
+      numerator: string;
+      denominator: string;
+      targetValue: number;
+      unit: string;
+      measurementFrequency: string;
+    }>>(),
+    duration: integer("duration").notNull(), // days
+    active: boolean("active").notNull().default(true),
+    enrollmentCount: integer("enrollment_count").notNull().default(0),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("disease_programs_company_idx").on(table.companyId),
+    diseaseTypeIdx: index("disease_programs_disease_type_idx").on(table.diseaseType),
+    activeIdx: index("disease_programs_active_idx").on(table.active),
+  })
+);
+
+/**
+ * Program Enrollments Table
+ * Patient enrollments in disease management programs
+ */
+export const programEnrollments = pgTable(
+  "program_enrollments",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    programId: text("program_id").notNull().references(() => diseaseManagementPrograms.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    enrollmentDate: timestamp("enrollment_date", { withTimezone: true }).notNull(),
+    expectedEndDate: timestamp("expected_end_date", { withTimezone: true }).notNull(),
+    status: programEnrollmentStatusEnum("status").notNull().default("active"),
+    completionPercentage: integer("completion_percentage").notNull().default(0),
+    interventionsCompleted: jsonb("interventions_completed").notNull().$type<string[]>(),
+    outcomesAchieved: jsonb("outcomes_achieved").notNull().$type<string[]>(),
+    withdrawalReason: text("withdrawal_reason"),
+    endDate: timestamp("end_date", { withTimezone: true }),
+    assignedCoach: text("assigned_coach"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("program_enrollments_company_idx").on(table.companyId),
+    programIdx: index("program_enrollments_program_idx").on(table.programId),
+    patientIdx: index("program_enrollments_patient_idx").on(table.patientId),
+    statusIdx: index("program_enrollments_status_idx").on(table.status),
+    coachIdx: index("program_enrollments_coach_idx").on(table.assignedCoach),
+  })
+);
+
+/**
+ * Clinical Metrics Table
+ * Clinical measurements and outcomes tracking
+ */
+export const clinicalMetrics = pgTable(
+  "clinical_metrics",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    registryId: text("registry_id").references(() => diseaseRegistries.id, { onDelete: "set null" }),
+    programId: text("program_id").references(() => diseaseManagementPrograms.id, { onDelete: "set null" }),
+    metricType: text("metric_type").notNull(),
+    metricName: text("metric_name").notNull(),
+    value: real("value").notNull(),
+    unit: text("unit").notNull(),
+    targetValue: real("target_value"),
+    isAtGoal: boolean("is_at_goal").notNull(),
+    measurementDate: timestamp("measurement_date", { withTimezone: true }).notNull(),
+    source: text("source").notNull(),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("clinical_metrics_company_idx").on(table.companyId),
+    patientIdx: index("clinical_metrics_patient_idx").on(table.patientId),
+    registryIdx: index("clinical_metrics_registry_idx").on(table.registryId),
+    programIdx: index("clinical_metrics_program_idx").on(table.programId),
+    metricTypeIdx: index("clinical_metrics_metric_type_idx").on(table.metricType),
+    measurementDateIdx: index("clinical_metrics_measurement_date_idx").on(table.measurementDate),
+  })
+);
+
+/**
+ * Patient Engagement Table
+ * Patient engagement activities and milestones
+ */
+export const patientEngagement = pgTable(
+  "patient_engagement",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    programId: text("program_id").references(() => diseaseManagementPrograms.id, { onDelete: "set null" }),
+    engagementType: engagementTypeEnum("engagement_type").notNull(),
+    description: text("description").notNull(),
+    engagementDate: timestamp("engagement_date", { withTimezone: true }).notNull(),
+    score: integer("score"),
+    notes: text("notes").notNull(),
+    recordedBy: text("recorded_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("patient_engagement_company_idx").on(table.companyId),
+    patientIdx: index("patient_engagement_patient_idx").on(table.patientId),
+    programIdx: index("patient_engagement_program_idx").on(table.programId),
+    engagementTypeIdx: index("patient_engagement_type_idx").on(table.engagementType),
+    engagementDateIdx: index("patient_engagement_date_idx").on(table.engagementDate),
+  })
+);
+
+/**
+ * Outcome Tracking Table
+ * Clinical and quality outcomes tracking
+ */
+export const outcomeTracking = pgTable(
+  "outcome_tracking",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    programId: text("program_id").references(() => diseaseManagementPrograms.id, { onDelete: "set null" }),
+    registryId: text("registry_id").references(() => diseaseRegistries.id, { onDelete: "set null" }),
+    outcomeType: outcomeTypeEnum("outcome_type").notNull(),
+    measure: text("measure").notNull(),
+    baselineValue: real("baseline_value").notNull(),
+    currentValue: real("current_value").notNull(),
+    targetValue: real("target_value"),
+    improvement: real("improvement").notNull(),
+    improvementPercentage: real("improvement_percentage").notNull(),
+    unit: text("unit").notNull(),
+    baselineDate: timestamp("baseline_date", { withTimezone: true }).notNull(),
+    latestMeasurementDate: timestamp("latest_measurement_date", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("outcome_tracking_company_idx").on(table.companyId),
+    patientIdx: index("outcome_tracking_patient_idx").on(table.patientId),
+    programIdx: index("outcome_tracking_program_idx").on(table.programId),
+    registryIdx: index("outcome_tracking_registry_idx").on(table.registryId),
+    outcomeTypeIdx: index("outcome_tracking_outcome_type_idx").on(table.outcomeType),
+  })
+);
+
+/**
+ * Preventive Care Recommendations Table
+ * Preventive care recommendations and tracking
+ */
+export const preventiveCareRecommendations = pgTable(
+  "preventive_care_recommendations",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    recommendationType: preventiveCareTypeEnum("recommendation_type").notNull(),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    frequency: text("frequency").notNull(),
+    dueDate: timestamp("due_date", { withTimezone: true }).notNull(),
+    status: preventiveCareStatusEnum("status").notNull().default("due"),
+    completedDate: timestamp("completed_date", { withTimezone: true }),
+    nextDueDate: timestamp("next_due_date", { withTimezone: true }),
+    evidence: text("evidence").notNull(),
+    importance: preventiveCareImportanceEnum("importance").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("preventive_care_company_idx").on(table.companyId),
+    patientIdx: index("preventive_care_patient_idx").on(table.patientId),
+    typeIdx: index("preventive_care_type_idx").on(table.recommendationType),
+    statusIdx: index("preventive_care_status_idx").on(table.status),
+    dueDateIdx: index("preventive_care_due_date_idx").on(table.dueDate),
+  })
+);
+
+// Zod validation schemas for Chronic Disease Management tables
+export const insertDiseaseRegistrySchema = createInsertSchema(diseaseRegistries);
+export const insertRegistryEnrollmentSchema = createInsertSchema(registryEnrollments);
+export const insertDiseaseManagementProgramSchema = createInsertSchema(diseaseManagementPrograms);
+export const insertProgramEnrollmentSchema = createInsertSchema(programEnrollments);
+export const insertClinicalMetricSchema = createInsertSchema(clinicalMetrics);
+export const insertPatientEngagementSchema = createInsertSchema(patientEngagement);
+export const insertOutcomeTrackingSchema = createInsertSchema(outcomeTracking);
+export const insertPreventiveCareRecommendationSchema = createInsertSchema(preventiveCareRecommendations);
+
+// TypeScript types
+export type DiseaseRegistry = typeof diseaseRegistries.$inferSelect;
+export type InsertDiseaseRegistry = typeof diseaseRegistries.$inferInsert;
+export type RegistryEnrollment = typeof registryEnrollments.$inferSelect;
+export type InsertRegistryEnrollment = typeof registryEnrollments.$inferInsert;
+export type DiseaseManagementProgram = typeof diseaseManagementPrograms.$inferSelect;
+export type InsertDiseaseManagementProgram = typeof diseaseManagementPrograms.$inferInsert;
+export type ProgramEnrollment = typeof programEnrollments.$inferSelect;
+export type InsertProgramEnrollment = typeof programEnrollments.$inferInsert;
+export type ClinicalMetric = typeof clinicalMetrics.$inferSelect;
+export type InsertClinicalMetric = typeof clinicalMetrics.$inferInsert;
+export type PatientEngagement = typeof patientEngagement.$inferSelect;
+export type InsertPatientEngagement = typeof patientEngagement.$inferInsert;
+export type OutcomeTracking = typeof outcomeTracking.$inferSelect;
+export type InsertOutcomeTracking = typeof outcomeTracking.$inferInsert;
+export type PreventiveCareRecommendation = typeof preventiveCareRecommendations.$inferSelect;
+export type InsertPreventiveCareRecommendation = typeof preventiveCareRecommendations.$inferInsert;
+
+// ========== End Chronic Disease Management Tables ==========
+
+// ========== Quality Improvement Tables ==========
+
+// Enums
+export const qiProjectStatusEnum = pgEnum("qi_project_status", ["planning", "active", "on_hold", "completed", "cancelled"]);
+export const qiPriorityEnum = pgEnum("qi_priority", ["low", "medium", "high", "critical"]);
+export const qiInterventionTypeEnum = pgEnum("qi_intervention_type", ["process_change", "education", "technology", "policy", "workflow", "other"]);
+export const qiInterventionStatusEnum = pgEnum("qi_intervention_status", ["planned", "implemented", "sustained", "abandoned"]);
+export const qiImpactEnum = pgEnum("qi_impact", ["positive", "negative", "neutral", "unknown"]);
+export const pdsaCycleStatusEnum = pgEnum("pdsa_cycle_status", ["plan", "do", "study", "act", "completed"]);
+export const pdsaDecisionEnum = pgEnum("pdsa_decision", ["adopt", "adapt", "abandon"]);
+export const piTrendEnum = pgEnum("pi_trend", ["improving", "declining", "stable"]);
+export const piStatusEnum = pgEnum("pi_status", ["active", "met", "missed", "abandoned"]);
+export const evidenceLevelEnum = pgEnum("evidence_level", ["Level_I", "Level_II", "Level_III", "Level_IV", "Level_V"]);
+export const adoptionStatusEnum = pgEnum("adoption_status", ["proposed", "pilot", "adopted", "sustained"]);
+
+// Quality Improvement Projects table
+export const qualityImprovementProjects = pgTable(
+  "quality_improvement_projects",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    projectNumber: text("project_number").notNull(),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    aim: text("aim").notNull(),
+    scope: text("scope").notNull(),
+    status: qiProjectStatusEnum("status").notNull().default("planning"),
+    priority: qiPriorityEnum("priority").notNull(),
+    teamLead: text("team_lead").notNull(),
+    teamMembers: jsonb("team_members").notNull().$type<string[]>(),
+    startDate: timestamp("start_date", { withTimezone: true }).notNull(),
+    targetCompletionDate: timestamp("target_completion_date", { withTimezone: true }).notNull(),
+    actualCompletionDate: timestamp("actual_completion_date", { withTimezone: true }),
+    baseline: jsonb("baseline").notNull().$type<{
+      metric: string;
+      value: number;
+      measurementDate: string;
+      dataSource: string;
+    }>(),
+    target: jsonb("target").notNull().$type<{
+      metric: string;
+      targetValue: number;
+      targetDate: string;
+      stretchGoalValue?: number;
+    }>(),
+    pdsaCycles: jsonb("pdsa_cycles").notNull().default([]).$type<string[]>(),
+    interventions: jsonb("interventions").notNull().default([]).$type<Array<{
+      id: string;
+      name: string;
+      description: string;
+      type: string;
+      implementationDate: string;
+      status: string;
+      impact: string;
+      notes: string;
+    }>>(),
+    barriers: jsonb("barriers").notNull().default([]).$type<string[]>(),
+    successFactors: jsonb("success_factors").notNull().default([]).$type<string[]>(),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("qi_projects_company_idx").on(table.companyId),
+    statusIdx: index("qi_projects_status_idx").on(table.status),
+    priorityIdx: index("qi_projects_priority_idx").on(table.priority),
+    projectNumberIdx: index("qi_projects_project_number_idx").on(table.projectNumber),
+  })
+);
+
+// PDSA Cycles table
+export const pdsaCycles = pgTable(
+  "pdsa_cycles",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    projectId: text("project_id").notNull().references(() => qualityImprovementProjects.id, { onDelete: "cascade" }),
+    cycleNumber: integer("cycle_number").notNull(),
+    status: pdsaCycleStatusEnum("status").notNull().default("plan"),
+    plan: jsonb("plan").notNull().$type<{
+      objective: string;
+      predictions: string[];
+      measures: string[];
+      plan: string[];
+    }>(),
+    do: jsonb("do").notNull().default({}).$type<{
+      implementationDate?: string;
+      observations: string[];
+      dataCollected: Array<{
+        dataPoint: string;
+        value: number;
+        collectionDate: string;
+        notes: string;
+      }>;
+      issues: string[];
+    }>(),
+    study: jsonb("study").notNull().default({}).$type<{
+      results: string[];
+      comparedToObjective: string;
+      learnings: string[];
+      unexpectedFindings: string[];
+    }>(),
+    act: jsonb("act").notNull().default({}).$type<{
+      decision: string;
+      nextSteps: string[];
+      changesAdopted: string[];
+      nextCycleChanges: string[];
+    }>(),
+    startDate: timestamp("start_date", { withTimezone: true }).notNull(),
+    completionDate: timestamp("completion_date", { withTimezone: true }),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("pdsa_cycles_company_idx").on(table.companyId),
+    projectIdx: index("pdsa_cycles_project_idx").on(table.projectId),
+    statusIdx: index("pdsa_cycles_status_idx").on(table.status),
+  })
+);
+
+// Care Bundles table
+export const careBundles = pgTable(
+  "care_bundles",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    bundleId: text("bundle_id").notNull(),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    category: text("category").notNull(),
+    elements: jsonb("elements").notNull().$type<Array<{
+      id: string;
+      elementNumber: number;
+      description: string;
+      specification: string;
+      frequency: string;
+      responsible: string;
+      criticalElement: boolean;
+    }>>(),
+    evidenceBase: text("evidence_base").notNull(),
+    targetPopulation: text("target_population").notNull(),
+    active: boolean("active").notNull().default(true),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("care_bundles_company_idx").on(table.companyId),
+    bundleIdIdx: index("care_bundles_bundle_id_idx").on(table.bundleId),
+    categoryIdx: index("care_bundles_category_idx").on(table.category),
+    activeIdx: index("care_bundles_active_idx").on(table.active),
+  })
+);
+
+// Bundle Compliance table
+export const bundleCompliance = pgTable(
+  "bundle_compliance",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    bundleId: text("bundle_id").notNull().references(() => careBundles.id, { onDelete: "cascade" }),
+    encounterId: text("encounter_id").notNull(),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    assessmentDate: timestamp("assessment_date", { withTimezone: true }).notNull(),
+    elementCompliance: jsonb("element_compliance").notNull().$type<Array<{
+      elementId: string;
+      compliant: boolean;
+      notApplicable: boolean;
+      reason?: string;
+      evidence?: string;
+    }>>(),
+    overallCompliance: boolean("overall_compliance").notNull(),
+    complianceRate: numeric("compliance_rate", { precision: 5, scale: 2 }).notNull(),
+    assessedBy: text("assessed_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("bundle_compliance_company_idx").on(table.companyId),
+    bundleIdx: index("bundle_compliance_bundle_idx").on(table.bundleId),
+    patientIdx: index("bundle_compliance_patient_idx").on(table.patientId),
+    encounterIdx: index("bundle_compliance_encounter_idx").on(table.encounterId),
+    assessmentDateIdx: index("bundle_compliance_assessment_date_idx").on(table.assessmentDate),
+  })
+);
+
+// Performance Improvements table
+export const performanceImprovements = pgTable(
+  "performance_improvements",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    metric: text("metric").notNull(),
+    baselineValue: numeric("baseline_value", { precision: 10, scale: 2 }).notNull(),
+    baselineDate: timestamp("baseline_date", { withTimezone: true }).notNull(),
+    targetValue: numeric("target_value", { precision: 10, scale: 2 }).notNull(),
+    targetDate: timestamp("target_date", { withTimezone: true }).notNull(),
+    currentValue: numeric("current_value", { precision: 10, scale: 2 }).notNull(),
+    currentDate: timestamp("current_date", { withTimezone: true }).notNull(),
+    improvement: numeric("improvement", { precision: 10, scale: 2 }).notNull(),
+    improvementPercentage: numeric("improvement_percentage", { precision: 5, scale: 2 }).notNull(),
+    trend: piTrendEnum("trend").notNull(),
+    status: piStatusEnum("status").notNull(),
+    dataPoints: jsonb("data_points").notNull().default([]).$type<Array<{
+      date: string;
+      value: number;
+      notes: string;
+    }>>(),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("performance_improvements_company_idx").on(table.companyId),
+    metricIdx: index("performance_improvements_metric_idx").on(table.metric),
+    statusIdx: index("performance_improvements_status_idx").on(table.status),
+    trendIdx: index("performance_improvements_trend_idx").on(table.trend),
+  })
+);
+
+// Best Practices table
+export const bestPractices = pgTable(
+  "best_practices",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    practiceId: text("practice_id").notNull(),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    category: text("category").notNull(),
+    clinicalArea: text("clinical_area").notNull(),
+    evidenceLevel: evidenceLevelEnum("evidence_level").notNull(),
+    evidenceSource: text("evidence_source").notNull(),
+    implementation: text("implementation").notNull(),
+    outcomes: jsonb("outcomes").notNull().$type<string[]>(),
+    adoptionStatus: adoptionStatusEnum("adoption_status").notNull(),
+    adoptionDate: timestamp("adoption_date", { withTimezone: true }),
+    owner: text("owner").notNull(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("best_practices_company_idx").on(table.companyId),
+    practiceIdIdx: index("best_practices_practice_id_idx").on(table.practiceId),
+    categoryIdx: index("best_practices_category_idx").on(table.category),
+    clinicalAreaIdx: index("best_practices_clinical_area_idx").on(table.clinicalArea),
+    adoptionStatusIdx: index("best_practices_adoption_status_idx").on(table.adoptionStatus),
+    activeIdx: index("best_practices_active_idx").on(table.active),
+  })
+);
+
+// Zod validation schemas for Quality Improvement tables
+export const insertQualityImprovementProjectSchema = createInsertSchema(qualityImprovementProjects);
+export const insertPDSACycleSchema = createInsertSchema(pdsaCycles);
+export const insertCareBundleSchema = createInsertSchema(careBundles);
+export const insertBundleComplianceSchema = createInsertSchema(bundleCompliance);
+export const insertPerformanceImprovementSchema = createInsertSchema(performanceImprovements);
+export const insertBestPracticeSchema = createInsertSchema(bestPractices);
+
+// TypeScript types
+export type QualityImprovementProject = typeof qualityImprovementProjects.$inferSelect;
+export type InsertQualityImprovementProject = typeof qualityImprovementProjects.$inferInsert;
+export type PDSACycle = typeof pdsaCycles.$inferSelect;
+export type InsertPDSACycle = typeof pdsaCycles.$inferInsert;
+export type CareBundle = typeof careBundles.$inferSelect;
+export type InsertCareBundle = typeof careBundles.$inferInsert;
+export type BundleCompliance = typeof bundleCompliance.$inferSelect;
+export type InsertBundleCompliance = typeof bundleCompliance.$inferInsert;
+export type PerformanceImprovement = typeof performanceImprovements.$inferSelect;
+export type InsertPerformanceImprovement = typeof performanceImprovements.$inferInsert;
+export type BestPractice = typeof bestPractices.$inferSelect;
+export type InsertBestPractice = typeof bestPractices.$inferInsert;
+
+// ========== End Quality Improvement Tables ==========
