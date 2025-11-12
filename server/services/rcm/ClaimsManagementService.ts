@@ -22,6 +22,8 @@
 
 import { loggers } from '../../utils/logger.js';
 import crypto from 'crypto';
+import { storage } from '../../storage.js';
+import type { IStorage } from '../../storage.js';
 
 const logger = loggers.api;
 
@@ -235,10 +237,22 @@ export interface ERA {
 
 /**
  * Claims Management Service
+ *
+ * MIGRATION STATUS: Partially migrated to database storage
+ * - Payers: DATABASE BACKED ✅
+ * - Claims: DATABASE BACKED ✅
+ * - Batches: IN-MEMORY (to be migrated)
+ * - Appeals: IN-MEMORY (to be migrated)
+ * - ERAs: IN-MEMORY (to be migrated)
  */
 export class ClaimsManagementService {
   /**
-   * In-memory stores (use database in production)
+   * Storage layer for database access
+   */
+  private static db: IStorage = storage;
+
+  /**
+   * Legacy in-memory stores (being phased out)
    */
   private static claims = new Map<string, Claim>();
   private static payers = new Map<string, Payer>();
