@@ -1,6 +1,21 @@
 /**
  * Claims Management Service
  *
+ * ⚠️  ⚠️  ⚠️  DEVELOPMENT VERSION - IN-MEMORY STORAGE ONLY  ⚠️  ⚠️  ⚠️
+ *
+ * CRITICAL LIMITATIONS:
+ * - All data stored in memory (Map objects)
+ * - Data is LOST on server restart
+ * - NOT suitable for production use
+ * - NO database persistence
+ * - NO data recovery possible
+ *
+ * STATUS: Architectural prototype with 1,200+ lines of working code
+ * TODO: Migrate to database before production deployment
+ *       Database tables exist in schema but are not yet connected
+ *
+ * IMPACT: Claims, payers, batches, appeals, and ERAs will vanish on restart
+ *
  * Manages insurance claims lifecycle from creation through adjudication,
  * including submission, tracking, and appeals
  */

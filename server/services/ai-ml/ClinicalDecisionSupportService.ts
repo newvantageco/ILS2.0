@@ -1,6 +1,20 @@
 /**
  * Clinical Decision Support Service
  *
+ * ⚠️  ⚠️  ⚠️  DEVELOPMENT VERSION - HARDCODED DATA ONLY  ⚠️  ⚠️  ⚠️
+ *
+ * CRITICAL LIMITATIONS:
+ * - Drug database is hardcoded static data
+ * - NO real drug interaction API integration
+ * - NO database persistence
+ * - NOT suitable for clinical use
+ * - Mock clinical guidelines only
+ *
+ * STATUS: Demonstration prototype
+ * TODO: Integrate with real drug database API (OpenFDA, RxNorm)
+ *
+ * WARNING: Do NOT use for actual patient care
+ *
  * AI-powered clinical decision support including drug interactions,
  * treatment recommendations, and diagnostic assistance
  */

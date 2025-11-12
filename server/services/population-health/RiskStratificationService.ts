@@ -1,3 +1,21 @@
+/**
+ * Risk Stratification Service
+ *
+ * ⚠️  ⚠️  ⚠️  DEVELOPMENT VERSION - IN-MEMORY STORAGE ONLY  ⚠️  ⚠️  ⚠️
+ *
+ * CRITICAL LIMITATIONS:
+ * - All data stored in memory (Map objects)
+ * - Risk scores, assessments, and models LOST on restart
+ * - NOT suitable for production use
+ * - NO database persistence
+ * - Predictive models are mock simulations
+ *
+ * STATUS: Architectural prototype with 1,600+ lines of code
+ * TODO: Migrate to database and implement real ML models
+ *
+ * IMPACT: Patient risk stratification data vanishes on server restart
+ */
+
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../utils/logger';
 
