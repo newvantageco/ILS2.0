@@ -6339,3 +6339,200 @@ export type DiagnosticSuggestion = typeof diagnosticSuggestions.$inferSelect;
 export type InsertDiagnosticSuggestion = typeof diagnosticSuggestions.$inferInsert;
 
 // ========== End Clinical Decision Support Tables ==========
+
+// ========== Engagement Workflows Enums ==========
+
+/**
+ * Workflow trigger types
+ */
+export const workflowTriggerEnum = pgEnum("workflow_trigger", [
+  "patient_registered",
+  "appointment_scheduled",
+  "appointment_reminder",
+  "appointment_completed",
+  "test_results_available",
+  "prescription_expiring",
+  "no_show",
+  "missed_appointment",
+  "payment_due",
+  "payment_overdue",
+  "birthday",
+  "annual_checkup_due",
+  "custom"
+]);
+
+/**
+ * Workflow action types
+ */
+export const workflowActionTypeEnum = pgEnum("workflow_action_type", [
+  "send_message",
+  "wait",
+  "add_tag",
+  "remove_tag",
+  "create_task",
+  "branch"
+]);
+
+/**
+ * Workflow status
+ */
+export const workflowStatusEnum = pgEnum("workflow_status", [
+  "active",
+  "paused",
+  "archived"
+]);
+
+/**
+ * Workflow instance status
+ */
+export const workflowInstanceStatusEnum = pgEnum("workflow_instance_status", [
+  "pending",
+  "running",
+  "completed",
+  "failed",
+  "cancelled"
+]);
+
+// ========== End Engagement Workflows Enums ==========
+
+// ========== Engagement Workflows Tables ==========
+
+/**
+ * Workflows Table
+ * Stores workflow definitions for automated patient engagement
+ */
+export const workflows = pgTable(
+  "workflows",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    trigger: workflowTriggerEnum("trigger").notNull(),
+    status: workflowStatusEnum("status").notNull().default("active"),
+
+    // Conditions for workflow execution
+    conditions: jsonb("conditions").$type<Array<{
+      field: string;
+      operator: 'eq' | 'ne' | 'gt' | 'lt' | 'contains';
+      value: any;
+    }>>(),
+
+    // Workflow actions
+    actions: jsonb("actions").notNull().$type<Array<{
+      id: string;
+      type: string;
+      order: number;
+      channel?: string;
+      templateId?: string;
+      variables?: Record<string, string>;
+      delayDays?: number;
+      delayHours?: number;
+      tags?: string[];
+      taskTitle?: string;
+      taskAssigneeId?: string;
+      condition?: {
+        field: string;
+        operator: 'eq' | 'ne' | 'gt' | 'lt' | 'contains';
+        value: any;
+      };
+      trueActions?: any[];
+      falseActions?: any[];
+    }>>(),
+
+    // Settings
+    runOnce: boolean("run_once").notNull().default(false),
+    maxRuns: integer("max_runs"),
+
+    // Statistics
+    totalRuns: integer("total_runs").notNull().default(0),
+    totalCompleted: integer("total_completed").notNull().default(0),
+    totalFailed: integer("total_failed").notNull().default(0),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("workflows_company_idx").on(table.companyId),
+    triggerIdx: index("workflows_trigger_idx").on(table.trigger),
+    statusIdx: index("workflows_status_idx").on(table.status),
+  })
+);
+
+/**
+ * Workflow Instances Table
+ * Stores individual workflow executions for patients
+ */
+export const workflowInstances = pgTable(
+  "workflow_instances",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    workflowId: text("workflow_id").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+
+    triggerData: jsonb("trigger_data").notNull().$type<Record<string, any>>(),
+
+    status: workflowInstanceStatusEnum("status").notNull().default("pending"),
+    currentActionIndex: integer("current_action_index").notNull().default(0),
+
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    failedAt: timestamp("failed_at", { withTimezone: true }),
+    error: text("error"),
+
+    executionLog: jsonb("execution_log").notNull().$type<Array<{
+      actionId: string;
+      actionType: string;
+      executedAt: Date;
+      success: boolean;
+      error?: string;
+      result?: any;
+    }>>().default([]),
+  },
+  (table) => ({
+    companyIdx: index("workflow_instances_company_idx").on(table.companyId),
+    workflowIdx: index("workflow_instances_workflow_idx").on(table.workflowId),
+    patientIdx: index("workflow_instances_patient_idx").on(table.patientId),
+    statusIdx: index("workflow_instances_status_idx").on(table.status),
+    startedAtIdx: index("workflow_instances_started_at_idx").on(table.startedAt),
+  })
+);
+
+/**
+ * Workflow Run Counts Table
+ * Tracks how many times each workflow has run for each patient
+ */
+export const workflowRunCounts = pgTable(
+  "workflow_run_counts",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    workflowId: text("workflow_id").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+    runCount: integer("run_count").notNull().default(0),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+  },
+  (table) => ({
+    companyIdx: index("workflow_run_counts_company_idx").on(table.companyId),
+    workflowPatientIdx: uniqueIndex("workflow_run_counts_workflow_patient_unique").on(
+      table.workflowId,
+      table.patientId
+    ),
+  })
+);
+
+// Zod validation schemas for Engagement Workflows tables
+export const insertWorkflowSchema = createInsertSchema(workflows);
+export const insertWorkflowInstanceSchema = createInsertSchema(workflowInstances);
+export const insertWorkflowRunCountSchema = createInsertSchema(workflowRunCounts);
+
+// TypeScript types
+export type Workflow = typeof workflows.$inferSelect;
+export type InsertWorkflow = typeof workflows.$inferInsert;
+export type WorkflowInstance = typeof workflowInstances.$inferSelect;
+export type InsertWorkflowInstance = typeof workflowInstances.$inferInsert;
+export type WorkflowRunCount = typeof workflowRunCounts.$inferSelect;
+export type InsertWorkflowRunCount = typeof workflowRunCounts.$inferInsert;
+
+// ========== End Engagement Workflows Tables ==========
