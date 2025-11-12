@@ -261,6 +261,40 @@ export class ClaimsManagementService {
   private static eras: ERA[] = [];
   private static claimCounter = 1000;
 
+  // ========== Type Converters ==========
+
+  /**
+   * Convert database InsurancePayer to service Payer type
+   */
+  private static dbPayerToServicePayer(dbPayer: any): Payer {
+    return {
+      id: dbPayer.id,
+      name: dbPayer.name,
+      payerId: dbPayer.payerId,
+      type: dbPayer.type,
+      claimSubmissionMethod: dbPayer.claimSubmissionMethod || 'electronic',
+      contactInfo: dbPayer.contactInfo || {},
+      timely_filing_limit_days: dbPayer.timelyFilingLimitDays || 365,
+      active: dbPayer.active ?? true,
+    };
+  }
+
+  /**
+   * Convert service Payer type to database InsertInsurancePayer
+   */
+  private static servicePayerToDbPayer(companyId: string, payer: Omit<Payer, 'id'>): any {
+    return {
+      companyId,
+      name: payer.name,
+      payerId: payer.payerId,
+      type: payer.type,
+      claimSubmissionMethod: payer.claimSubmissionMethod,
+      contactInfo: payer.contactInfo,
+      timelyFilingLimitDays: payer.timely_filing_limit_days,
+      active: payer.active,
+    };
+  }
+
   /**
    * Denial reasons database
    */
@@ -425,53 +459,46 @@ export class ClaimsManagementService {
   }
 
   /**
-   * Register payer
+   * Register payer (DATABASE-BACKED)
    */
-  static registerPayer(payer: Omit<Payer, 'id'>): Payer {
-    const newPayer: Payer = {
-      id: crypto.randomUUID(),
-      ...payer,
-    };
+  static async registerPayer(companyId: string, payer: Omit<Payer, 'id'>): Promise<Payer> {
+    const dbPayer = this.servicePayerToDbPayer(companyId, payer);
+    const created = await this.db.createInsurancePayer(dbPayer);
 
-    this.payers.set(newPayer.id, newPayer);
+    logger.info({ payerId: created.id, name: payer.name, companyId }, 'Payer registered');
 
-    logger.info({ payerId: newPayer.id, name: payer.name }, 'Payer registered');
-
-    return newPayer;
+    return this.dbPayerToServicePayer(created);
   }
 
   /**
-   * Get payer
+   * Get payer (DATABASE-BACKED)
    */
-  static getPayer(payerId: string): Payer | null {
-    return this.payers.get(payerId) || null;
+  static async getPayer(payerId: string, companyId: string): Promise<Payer | null> {
+    const dbPayer = await this.db.getInsurancePayer(payerId, companyId);
+    return dbPayer ? this.dbPayerToServicePayer(dbPayer) : null;
   }
 
   /**
-   * List payers
+   * List payers (DATABASE-BACKED)
    */
-  static listPayers(active?: boolean): Payer[] {
-    let payers = Array.from(this.payers.values());
-
-    if (active !== undefined) {
-      payers = payers.filter((p) => p.active === active);
-    }
-
-    return payers.sort((a, b) => a.name.localeCompare(b.name));
+  static async listPayers(companyId: string, active?: boolean): Promise<Payer[]> {
+    const filters = active !== undefined ? { active } : undefined;
+    const dbPayers = await this.db.getInsurancePayers(companyId, filters);
+    return dbPayers.map((p) => this.dbPayerToServicePayer(p));
   }
 
   /**
-   * Get payers (alias for listPayers)
+   * Get payers (alias for listPayers) (DATABASE-BACKED)
    */
-  static getPayers(active?: boolean): Payer[] {
-    return this.listPayers(active);
+  static async getPayers(companyId: string, active?: boolean): Promise<Payer[]> {
+    return this.listPayers(companyId, active);
   }
 
   /**
-   * Create payer (alias for registerPayer)
+   * Create payer (alias for registerPayer) (DATABASE-BACKED)
    */
-  static createPayer(payer: Omit<Payer, 'id'>): Payer {
-    return this.registerPayer(payer);
+  static async createPayer(companyId: string, payer: Omit<Payer, 'id'>): Promise<Payer> {
+    return this.registerPayer(companyId, payer);
   }
 
   // ========== Claim Management ==========

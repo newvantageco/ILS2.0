@@ -264,7 +264,15 @@ router.get('/claims/statistics', async (req: Request, res: Response) => {
  */
 router.get('/payers', async (req: Request, res: Response) => {
   try {
-    const payers = ClaimsManagementService.getPayers();
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required - no companyId found'
+      });
+    }
+
+    const payers = await ClaimsManagementService.getPayers(companyId);
     res.json({
       success: true,
       data: payers,
@@ -285,7 +293,15 @@ router.get('/payers', async (req: Request, res: Response) => {
  */
 router.post('/payers', async (req: Request, res: Response) => {
   try {
-    const payer = ClaimsManagementService.createPayer(req.body);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required - no companyId found'
+      });
+    }
+
+    const payer = await ClaimsManagementService.createPayer(companyId, req.body);
     res.status(201).json({
       success: true,
       data: payer,
