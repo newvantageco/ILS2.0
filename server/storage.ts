@@ -618,6 +618,19 @@ export interface IStorage {
   createRiskStratificationCohort(cohort: InsertRiskStratificationCohort): Promise<RiskStratificationCohort>;
   getRiskStratificationCohort(id: string, companyId: string): Promise<RiskStratificationCohort | undefined>;
   getRiskStratificationCohorts(companyId: string, filters?: { active?: boolean }): Promise<RiskStratificationCohort[]>;
+
+  // ============== COMMUNICATIONS METHODS ==============
+  // Message Templates
+  createMessageTemplate(template: InsertMessageTemplate): Promise<MessageTemplate>;
+  getMessageTemplate(id: string, companyId: string): Promise<MessageTemplate | undefined>;
+  getMessageTemplates(companyId: string, filters?: { category?: string; channel?: string; active?: boolean }): Promise<MessageTemplate[]>;
+  updateMessageTemplate(id: string, companyId: string, updates: Partial<MessageTemplate>): Promise<MessageTemplate | undefined>;
+
+  // Messages
+  createMessage(message: InsertMessage): Promise<Message>;
+  getMessage(id: string, companyId: string): Promise<Message | undefined>;
+  getMessages(companyId: string, filters?: { patientId?: string; status?: string; channel?: string }): Promise<Message[]>;
+  updateMessage(id: string, companyId: string, updates: Partial<Message>): Promise<Message | undefined>;
 }
 
 export class DbStorage implements IStorage {

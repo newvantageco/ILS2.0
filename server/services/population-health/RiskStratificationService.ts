@@ -26,11 +26,15 @@
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../utils/logger';
 import { storage, type IStorage } from '../../storage';
+import type {
+  RiskScore,
+  HealthRiskAssessment,
+  PredictiveModel,
+  SocialDeterminant,
+  RiskStratificationCohort,
+} from '../../../shared/schema';
 
-// ============================================================================
-// Risk Stratification Types
-// ============================================================================
-
+// Type aliases and sub-types for JSON fields
 export type RiskLevel = 'low' | 'moderate' | 'high' | 'very_high';
 export type RiskCategory =
   | 'clinical'
@@ -39,21 +43,6 @@ export type RiskCategory =
   | 'social'
   | 'behavioral'
   | 'functional';
-
-export interface RiskScore {
-  id: string;
-  patientId: string;
-  scoreType: string;
-  score: number;
-  riskLevel: RiskLevel;
-  category: RiskCategory;
-  factors: RiskFactor[];
-  calculatedDate: Date;
-  validUntil: Date;
-  calculatedBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
 
 export interface RiskFactor {
   factor: string;
@@ -64,44 +53,12 @@ export interface RiskFactor {
   description: string;
 }
 
-export interface HealthRiskAssessment {
-  id: string;
-  patientId: string;
-  assessmentType: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'expired';
-  responses: AssessmentResponse[];
-  totalScore: number;
-  riskLevel: RiskLevel;
-  recommendations: string[];
-  completedDate?: Date;
-  expirationDate: Date;
-  administeredBy?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface AssessmentResponse {
   questionId: string;
   question: string;
   response: any;
   score: number;
   category: string;
-}
-
-export interface PredictiveModel {
-  id: string;
-  name: string;
-  version: string;
-  modelType: string;
-  description: string;
-  inputFeatures: string[];
-  outputMetric: string;
-  accuracy: number;
-  validFrom: Date;
-  validUntil?: Date;
-  isActive: boolean;
-  createdBy: string;
-  createdAt: Date;
 }
 
 export interface PredictiveAnalysis {
@@ -120,41 +77,6 @@ export interface PredictiveAnalysis {
   recommendations: string[];
   analyzedDate: Date;
   createdAt: Date;
-}
-
-export interface SocialDeterminant {
-  id: string;
-  patientId: string;
-  category:
-    | 'economic_stability'
-    | 'education'
-    | 'social_community'
-    | 'healthcare_access'
-    | 'neighborhood_environment';
-  factor: string;
-  status: 'identified' | 'intervention_planned' | 'intervention_active' | 'resolved';
-  severity: 'low' | 'moderate' | 'high';
-  description: string;
-  impact: string;
-  interventions: string[];
-  identifiedDate: Date;
-  resolvedDate?: Date;
-  identifiedBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface RiskStratificationCohort {
-  id: string;
-  name: string;
-  description: string;
-  criteria: CohortCriteria[];
-  riskLevels: RiskLevel[];
-  patientCount: number;
-  active: boolean;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface CohortCriteria {
