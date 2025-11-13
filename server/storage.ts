@@ -5810,6 +5810,43 @@ export class DbStorage implements IStorage {
     return result || null;
   }
 
+  // Wrapper methods to match interface declarations
+  async getRegistryEnrollmentsByPatient(patientId: string, companyId: string): Promise<RegistryEnrollment[]> {
+    return this.getRegistryEnrollments(companyId, { patientId });
+  }
+
+  async getRegistryEnrollmentsByRegistry(registryId: string, companyId: string): Promise<RegistryEnrollment[]> {
+    return this.getRegistryEnrollments(companyId, { registryId });
+  }
+
+  async getProgramEnrollmentsByPatient(patientId: string, companyId: string): Promise<ProgramEnrollment[]> {
+    return this.getProgramEnrollments(companyId, { patientId });
+  }
+
+  async getProgramEnrollmentsByProgram(programId: string, companyId: string): Promise<ProgramEnrollment[]> {
+    return this.getProgramEnrollments(companyId, { programId });
+  }
+
+  async getClinicalMetricsByPatient(patientId: string, companyId: string, filters?: { metricType?: string }): Promise<ClinicalMetric[]> {
+    return this.getClinicalMetrics(companyId, { patientId, ...filters });
+  }
+
+  async createPatientEngagement(engagement: InsertPatientEngagement): Promise<PatientEngagement> {
+    return this.createPatientEngagementRecord(engagement);
+  }
+
+  async getPatientEngagement(id: string, companyId: string): Promise<PatientEngagement | null> {
+    return this.getPatientEngagementRecord(id, companyId);
+  }
+
+  async getOutcomeTrackingByPatient(patientId: string, companyId: string, filters?: { outcomeType?: string }): Promise<OutcomeTracking[]> {
+    return this.getOutcomeTrackings(companyId, { patientId, ...filters });
+  }
+
+  async getPreventiveCareRecommendationsByPatient(patientId: string, companyId: string, filters?: { status?: string }): Promise<PreventiveCareRecommendation[]> {
+    return this.getPreventiveCareRecommendations(companyId, { patientId, ...filters });
+  }
+
   // ============================================================================
   // Quality Improvement Methods
   // ============================================================================
