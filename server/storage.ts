@@ -585,6 +585,39 @@ export interface IStorage {
   getPreventiveCareRecommendation(id: string, companyId: string): Promise<PreventiveCareRecommendation | null>;
   getPreventiveCareRecommendationsByPatient(patientId: string, companyId: string, filters?: { status?: string }): Promise<PreventiveCareRecommendation[]>;
   updatePreventiveCareRecommendation(id: string, companyId: string, updates: Partial<PreventiveCareRecommendation>): Promise<PreventiveCareRecommendation | null>;
+
+  // ============== RISK STRATIFICATION METHODS ==============
+  // Risk Scores
+  createRiskScore(riskScore: InsertRiskScore): Promise<RiskScore>;
+  getRiskScore(id: string, companyId: string): Promise<RiskScore | undefined>;
+  getRiskScores(companyId: string, filters?: { patientId?: string; riskLevel?: string }): Promise<RiskScore[]>;
+
+  // Health Risk Assessments
+  createHealthRiskAssessment(assessment: InsertHealthRiskAssessment): Promise<HealthRiskAssessment>;
+  getHealthRiskAssessment(id: string, companyId: string): Promise<HealthRiskAssessment | undefined>;
+  getHealthRiskAssessments(companyId: string, filters?: { patientId?: string }): Promise<HealthRiskAssessment[]>;
+  updateHealthRiskAssessment(id: string, companyId: string, updates: Partial<HealthRiskAssessment>): Promise<HealthRiskAssessment | undefined>;
+
+  // Social Determinants
+  createSocialDeterminant(determinant: InsertSocialDeterminant): Promise<SocialDeterminant>;
+  getSocialDeterminant(id: string, companyId: string): Promise<SocialDeterminant | undefined>;
+  getSocialDeterminants(companyId: string, filters?: { patientId?: string }): Promise<SocialDeterminant[]>;
+  updateSocialDeterminant(id: string, companyId: string, updates: Partial<SocialDeterminant>): Promise<SocialDeterminant | undefined>;
+
+  // Predictive Models
+  createPredictiveModel(model: InsertPredictiveModel): Promise<PredictiveModel>;
+  getPredictiveModel(id: string, companyId: string): Promise<PredictiveModel | undefined>;
+  getPredictiveModels(companyId: string, filters?: { modelType?: string }): Promise<PredictiveModel[]>;
+
+  // Predictive Analyses
+  createPredictiveAnalysis(analysis: InsertPredictiveAnalysis): Promise<PredictiveAnalysis>;
+  getPredictiveAnalysis(id: string, companyId: string): Promise<PredictiveAnalysis | undefined>;
+  getPredictiveAnalyses(companyId: string, filters?: { patientId?: string; modelType?: string }): Promise<PredictiveAnalysis[]>;
+
+  // Risk Stratification Cohorts
+  createRiskStratificationCohort(cohort: InsertRiskStratificationCohort): Promise<RiskStratificationCohort>;
+  getRiskStratificationCohort(id: string, companyId: string): Promise<RiskStratificationCohort | undefined>;
+  getRiskStratificationCohorts(companyId: string, filters?: { riskLevel?: string }): Promise<RiskStratificationCohort[]>;
 }
 
 export class DbStorage implements IStorage {
