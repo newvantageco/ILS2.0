@@ -19,6 +19,7 @@
 import { loggers } from '../../utils/logger.js';
 import crypto from 'crypto';
 import { storage, type IStorage } from '../../storage';
+import type { MessageTemplate, Message } from '../../../shared/schema';
 
 const logger = loggers.api;
 
@@ -48,63 +49,6 @@ export type MessageStatus =
  * Message priority
  */
 export type MessagePriority = 'low' | 'normal' | 'high' | 'urgent';
-
-/**
- * Message template
- */
-export interface MessageTemplate {
-  id: string;
-  name: string;
-  description?: string;
-  channel: CommunicationChannel;
-  subject?: string; // For email
-  body: string; // Supports template variables like {{firstName}}
-  variables: string[]; // List of required variables
-  category: 'transactional' | 'marketing' | 'appointment' | 'clinical' | 'billing';
-  active: boolean;
-  createdAt: Date;
-  updatedAt?: Date;
-}
-
-/**
- * Message
- */
-export interface Message {
-  id: string;
-  channel: CommunicationChannel;
-  templateId?: string;
-
-  // Recipients
-  recipientId: string; // Patient/User ID
-  recipientType: 'patient' | 'user' | 'provider';
-  to: string; // Email address, phone number, or device token
-
-  // Content
-  subject?: string;
-  body: string;
-  metadata?: Record<string, any>;
-
-  // Status
-  status: MessageStatus;
-  priority: MessagePriority;
-  scheduledFor?: Date;
-  sentAt?: Date;
-  deliveredAt?: Date;
-  openedAt?: Date;
-  clickedAt?: Date;
-  failedAt?: Date;
-
-  // Error handling
-  errorMessage?: string;
-  retryCount: number;
-  maxRetries: number;
-
-  // Tracking
-  trackingId?: string;
-  campaignId?: string;
-
-  createdAt: Date;
-}
 
 /**
  * Unsubscribe record
@@ -166,7 +110,7 @@ export class CommunicationsService {
    */
   private static async initializeDefaultTemplates(companyId: string): Promise<void> {
     // Appointment reminder email
-    this.createTemplate({
+    this.createTemplate(companyId, {
       name: 'Appointment Reminder',
       description: 'Reminder for upcoming appointment',
       channel: 'email',
@@ -192,10 +136,11 @@ Thank you,
     });
 
     // Appointment reminder SMS
-    this.createTemplate({
+    this.createTemplate(companyId, {
       name: 'Appointment Reminder SMS',
       description: 'SMS reminder for upcoming appointment',
       channel: 'sms',
+      subject: null,
       body: 'Reminder: Your appointment with {{providerName}} is on {{appointmentDate}} at {{appointmentTime}}. Reply CANCEL to cancel.',
       variables: ['providerName', 'appointmentDate', 'appointmentTime'],
       category: 'appointment',
@@ -203,7 +148,7 @@ Thank you,
     });
 
     // Welcome email
-    this.createTemplate({
+    this.createTemplate(companyId, {
       name: 'Welcome Email',
       description: 'Welcome new patients',
       channel: 'email',
@@ -233,7 +178,7 @@ Best regards,
     });
 
     // Test results notification
-    this.createTemplate({
+    this.createTemplate(companyId, {
       name: 'Test Results Available',
       description: 'Notify patient that test results are ready',
       channel: 'email',
@@ -257,7 +202,7 @@ Best regards,
     });
 
     // Bill payment reminder
-    this.createTemplate({
+    this.createTemplate(companyId, {
       name: 'Payment Reminder',
       description: 'Reminder for outstanding bill',
       channel: 'email',
@@ -287,7 +232,7 @@ Thank you,
    */
   static async createTemplate(
     companyId: string,
-    template: Omit<MessageTemplate, 'id' | 'createdAt' | 'companyId'>
+    template: Omit<MessageTemplate, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>
   ): Promise<MessageTemplate> {
     const newTemplate = await this.db.createMessageTemplate({
       id: crypto.randomUUID(),
@@ -671,13 +616,10 @@ Thank you,
     category?: MessageTemplate['category'],
     reason?: string
   ): Promise<void> {
-    await this.db.createUnsubscribe({
-      id: crypto.randomUUID(),
-      companyId,
+    await this.db.createUnsubscribe(companyId, {
       recipientId,
       channel,
       category,
-      unsubscribedAt: new Date(),
       reason,
     });
 
@@ -705,16 +647,8 @@ Thank you,
     channel: CommunicationChannel,
     category?: MessageTemplate['category']
   ): Promise<void> {
-    // Find and delete the unsubscribe record
-    const unsubscribes = await this.db.getUnsubscribes(companyId, {
-      recipientId,
-      channel,
-      category,
-    });
-
-    for (const unsub of unsubscribes) {
-      await this.db.deleteUnsubscribe(unsub.id, companyId);
-    }
+    // Delete the unsubscribe record
+    await this.db.deleteUnsubscribe(companyId, recipientId, channel, category);
 
     logger.info({ recipientId, channel, category }, 'Recipient resubscribed');
   }

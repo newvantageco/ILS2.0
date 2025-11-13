@@ -629,8 +629,33 @@ export interface IStorage {
   // Messages
   createMessage(message: InsertMessage): Promise<Message>;
   getMessage(id: string, companyId: string): Promise<Message | undefined>;
-  getMessages(companyId: string, filters?: { patientId?: string; status?: string; channel?: string }): Promise<Message[]>;
+  getMessages(companyId: string, filters?: { patientId?: string; recipientId?: string; status?: string; channel?: string; campaignId?: string }): Promise<Message[]>;
   updateMessage(id: string, companyId: string, updates: Partial<Message>): Promise<Message | undefined>;
+
+  // Unsubscribes
+  createUnsubscribe(companyId: string, unsubscribe: { recipientId: string; channel: string; category?: string; reason?: string }): Promise<void>;
+  isUnsubscribed(companyId: string, recipientId: string, channel: string, category?: string): Promise<boolean>;
+  getUnsubscribes(companyId: string, filters?: { recipientId?: string; channel?: string }): Promise<any[]>;
+  deleteUnsubscribe(companyId: string, recipientId: string, channel: string, category?: string): Promise<void>;
+
+  // ============== CAMPAIGN METHODS ==============
+  // Audience Segments
+  createAudienceSegment(segment: InsertAudienceSegment): Promise<AudienceSegment>;
+  getAudienceSegment(id: string, companyId: string): Promise<AudienceSegment | undefined>;
+  getAudienceSegments(companyId: string, filters?: { type?: string; active?: boolean }): Promise<AudienceSegment[]>;
+  updateAudienceSegment(id: string, companyId: string, updates: Partial<AudienceSegment>): Promise<AudienceSegment | undefined>;
+
+  // Campaigns
+  createCampaign(campaign: InsertCampaign): Promise<Campaign>;
+  getCampaign(id: string, companyId: string): Promise<Campaign | undefined>;
+  getCampaigns(companyId: string, filters?: { status?: string; type?: string }): Promise<Campaign[]>;
+  updateCampaign(id: string, companyId: string, updates: Partial<Campaign>): Promise<Campaign | undefined>;
+
+  // Campaign Recipients
+  createCampaignRecipient(recipient: InsertCampaignRecipient): Promise<CampaignRecipient>;
+  getCampaignRecipient(id: string): Promise<CampaignRecipient | undefined>;
+  getCampaignRecipients(campaignId: string): Promise<CampaignRecipient[]>;
+  getCampaignRecipientsByRecipient(recipientId: string): Promise<CampaignRecipient[]>;
 }
 
 export class DbStorage implements IStorage {

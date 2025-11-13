@@ -17,11 +17,15 @@ const logger = loggers.api;
 
 router.get('/drugs', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { query } = req.query;
     if (!query) {
       return res.status(400).json({ success: false, error: 'Query parameter required' });
     }
-    const drugs = ClinicalDecisionSupportService.searchDrugs(query as string);
+    const drugs = await ClinicalDecisionSupportService.searchDrugs(query as string, companyId);
     res.json({ success: true, drugs });
   } catch (error) {
     logger.error({ error }, 'Search drugs error');
@@ -31,7 +35,11 @@ router.get('/drugs', async (req, res) => {
 
 router.get('/drugs/:drugId', async (req, res) => {
   try {
-    const drug = ClinicalDecisionSupportService.getDrug(req.params.drugId);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    const drug = await ClinicalDecisionSupportService.getDrug(req.params.drugId, companyId);
     if (!drug) {
       return res.status(404).json({ success: false, error: 'Drug not found' });
     }
@@ -44,11 +52,15 @@ router.get('/drugs/:drugId', async (req, res) => {
 
 router.post('/drugs/interactions', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { drugIds } = req.body;
     if (!Array.isArray(drugIds)) {
       return res.status(400).json({ success: false, error: 'drugIds must be an array' });
     }
-    const interactions = ClinicalDecisionSupportService.checkDrugInteractions(drugIds);
+    const interactions = await ClinicalDecisionSupportService.checkDrugInteractions(companyId, drugIds);
     res.json({ success: true, interactions });
   } catch (error) {
     logger.error({ error }, 'Check drug interactions error');
@@ -86,7 +98,11 @@ router.get('/guidelines', async (req, res) => {
 
 router.get('/guidelines/:guidelineId', async (req, res) => {
   try {
-    const guideline = ClinicalDecisionSupportService.getGuideline(req.params.guidelineId);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    const guideline = await ClinicalDecisionSupportService.getGuideline(req.params.guidelineId, companyId);
     if (!guideline) {
       return res.status(404).json({ success: false, error: 'Guideline not found' });
     }
@@ -116,8 +132,13 @@ router.post('/guidelines/:guidelineId/recommendations', async (req, res) => {
 
 router.post('/treatment-recommendations', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { patientId, condition, diagnosis, patientCriteria } = req.body;
-    const recommendations = ClinicalDecisionSupportService.generateTreatmentRecommendations(
+    const recommendations = await ClinicalDecisionSupportService.generateTreatmentRecommendations(
+      companyId,
       patientId,
       condition,
       diagnosis,
@@ -162,8 +183,13 @@ router.post('/lab-interpretation', async (req, res) => {
 
 router.get('/clinical-alerts', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { patientId, type, severity } = req.query;
-    const alerts = ClinicalDecisionSupportService.getAlerts(
+    const alerts = await ClinicalDecisionSupportService.getAlerts(
+      companyId,
       patientId as string,
       type as any,
       severity as any
@@ -177,8 +203,12 @@ router.get('/clinical-alerts', async (req, res) => {
 
 router.post('/clinical-alerts/:alertId/acknowledge', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { userId } = req.body;
-    const alert = ClinicalDecisionSupportService.acknowledgeAlert(req.params.alertId, userId);
+    const alert = await ClinicalDecisionSupportService.acknowledgeAlert(req.params.alertId, companyId, userId);
     if (!alert) {
       return res.status(404).json({ success: false, error: 'Alert not found' });
     }
@@ -203,8 +233,12 @@ router.get('/cds/statistics', async (req, res) => {
 
 router.get('/models', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { status } = req.query;
-    const models = PredictiveAnalyticsService.listModels(status as any);
+    const models = await PredictiveAnalyticsService.listModels(companyId, status as any);
     res.json({ success: true, models });
   } catch (error) {
     logger.error({ error }, 'List models error');
@@ -214,7 +248,11 @@ router.get('/models', async (req, res) => {
 
 router.get('/models/:modelId', async (req, res) => {
   try {
-    const model = PredictiveAnalyticsService.getModel(req.params.modelId);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    const model = await PredictiveAnalyticsService.getModel(companyId, req.params.modelId);
     if (!model) {
       return res.status(404).json({ success: false, error: 'Model not found' });
     }
@@ -227,8 +265,13 @@ router.get('/models/:modelId', async (req, res) => {
 
 router.post('/risk-stratification', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { patientId, riskType, patientData } = req.body;
-    const stratification = PredictiveAnalyticsService.calculateRiskStratification(
+    const stratification = await PredictiveAnalyticsService.calculateRiskStratification(
+      companyId,
       patientId,
       riskType,
       patientData || {}
@@ -242,8 +285,13 @@ router.post('/risk-stratification', async (req, res) => {
 
 router.get('/risk-stratification/:patientId', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { riskType } = req.query;
-    const stratifications = PredictiveAnalyticsService.getRiskStratification(
+    const stratifications = await PredictiveAnalyticsService.getRiskStratification(
+      companyId,
       req.params.patientId,
       riskType as any
     );
@@ -256,8 +304,13 @@ router.get('/risk-stratification/:patientId', async (req, res) => {
 
 router.post('/predict/readmission', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { patientId, admissionId, timeframe, patientData } = req.body;
-    const prediction = PredictiveAnalyticsService.predictReadmission(
+    const prediction = await PredictiveAnalyticsService.predictReadmission(
+      companyId,
       patientId,
       admissionId,
       timeframe,
@@ -272,8 +325,13 @@ router.post('/predict/readmission', async (req, res) => {
 
 router.post('/predict/no-show', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { patientId, appointmentId, appointmentData } = req.body;
-    const prediction = PredictiveAnalyticsService.predictNoShow(
+    const prediction = await PredictiveAnalyticsService.predictNoShow(
+      companyId,
       patientId,
       appointmentId,
       appointmentData || {}
@@ -287,8 +345,13 @@ router.post('/predict/no-show', async (req, res) => {
 
 router.post('/predict/disease-progression', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { patientId, disease, currentStage, patientData } = req.body;
-    const prediction = PredictiveAnalyticsService.predictDiseaseProgression(
+    const prediction = await PredictiveAnalyticsService.predictDiseaseProgression(
+      companyId,
       patientId,
       disease,
       currentStage,
@@ -303,8 +366,13 @@ router.post('/predict/disease-progression', async (req, res) => {
 
 router.post('/predict/treatment-outcome', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { patientId, treatment, condition, patientData } = req.body;
-    const prediction = PredictiveAnalyticsService.predictTreatmentOutcome(
+    const prediction = await PredictiveAnalyticsService.predictTreatmentOutcome(
+      companyId,
       patientId,
       treatment,
       condition,
@@ -336,7 +404,11 @@ router.post('/population-health', async (req, res) => {
 
 router.get('/analytics/statistics', async (req, res) => {
   try {
-    const stats = PredictiveAnalyticsService.getStatistics();
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    const stats = await PredictiveAnalyticsService.getStatistics(companyId);
     res.json({ success: true, statistics: stats });
   } catch (error) {
     logger.error({ error }, 'Get analytics statistics error');
