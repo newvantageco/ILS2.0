@@ -532,6 +532,13 @@ export interface IStorage {
   getPatientOutreach(id: string, companyId: string): Promise<PatientOutreach | null>;
   getPatientOutreaches(companyId: string, filters?: { patientId?: string; status?: string }): Promise<PatientOutreach[]>;
   updatePatientOutreach(id: string, companyId: string, updates: Partial<PatientOutreach>): Promise<PatientOutreach | null>;
+
+  // ============== QUALITY IMPROVEMENT METHODS ==============
+  // QI Projects
+  createQIProject(project: InsertQualityImprovementProject): Promise<QualityImprovementProject>;
+  getQIProject(id: string, companyId: string): Promise<QualityImprovementProject | null>;
+  getQIProjects(companyId: string, filters?: { status?: string }): Promise<QualityImprovementProject[]>;
+  updateQIProject(id: string, companyId: string, updates: Partial<QualityImprovementProject>): Promise<QualityImprovementProject | null>;
 }
 
 export class DbStorage implements IStorage {
