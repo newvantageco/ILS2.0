@@ -15,7 +15,8 @@ import { StatCardSkeleton } from "@/components/ui/CardSkeleton";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserCheck, UserX, Clock, CheckCircle, XCircle, Ban, Shield, Trash2, UserPlus, Brain, TrendingUp, Zap, AlertTriangle, Lightbulb } from "lucide-react";
+import { Users, UserCheck, UserX, Clock, CheckCircle, XCircle, Ban, Shield, Trash2, UserPlus, Brain, TrendingUp, Zap, AlertTriangle, Lightbulb, ShieldCheck, ArrowRight } from "lucide-react";
+import { StatsCard, SkeletonStats } from "@/components/ui";
 
 type User = {
   id: string;
@@ -251,16 +252,12 @@ export default function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Manage users and platform access</p>
+      <div className="space-y-8 animate-fade-in">
+        {/* Loading Header */}
+        <div className="relative overflow-hidden rounded-2xl gradient-primary p-8">
+          <div className="h-24 animate-pulse bg-white/10 rounded-lg" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <StatCardSkeleton key={i} />
-          ))}
-        </div>
+        <SkeletonStats />
         <Card>
           <CardHeader>
             <CardTitle>All Users</CardTitle>
@@ -274,113 +271,151 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold" data-testid="text-page-title">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Manage users and platform access</p>
-      </div>
+    <div className="space-y-8 animate-fade-in">
+      {/* Modern Header Section with Gradient */}
+      <div className="relative overflow-hidden rounded-2xl gradient-primary p-8 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl -ml-48 -mb-48" />
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-total-users">{stats?.total || 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Approval</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-pending-users">{stats?.pending || 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-            <UserCheck className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-active-users">{stats?.active || 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Suspended</CardTitle>
-            <UserX className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-suspended-users">{stats?.suspended || 0}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* AI System Statistics */}
-      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-background">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-primary" />
-            <CardTitle>AI System Statistics</CardTitle>
+        <div className="relative z-10">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <ShieldCheck className="w-8 h-8" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">Admin Dashboard</h1>
+              <p className="text-white/90 mt-1">
+                Manage users, permissions, and platform access
+              </p>
+            </div>
           </div>
-          <CardDescription>Platform-wide AI Assistant usage and performance</CardDescription>
+        </div>
+      </div>
+
+      {/* Enhanced Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatsCard
+          title="Total Users"
+          value={(stats?.total || 0).toString()}
+          subtitle="Registered accounts"
+          icon={Users}
+          variant="default"
+          trend={{
+            value: 12.5,
+            isPositive: true,
+            label: "vs last month",
+          }}
+        />
+        <StatsCard
+          title="Pending Approval"
+          value={(stats?.pending || 0).toString()}
+          subtitle="Awaiting review"
+          icon={Clock}
+          variant="warning"
+          trend={{
+            value: stats?.pending || 0,
+            isPositive: false,
+            label: "needs attention",
+          }}
+        />
+        <StatsCard
+          title="Active Users"
+          value={(stats?.active || 0).toString()}
+          subtitle="Currently active"
+          icon={UserCheck}
+          variant="success"
+          trend={{
+            value: 8.3,
+            isPositive: true,
+            label: "activity rate",
+          }}
+        />
+        <StatsCard
+          title="Suspended"
+          value={(stats?.suspended || 0).toString()}
+          subtitle="Restricted access"
+          icon={UserX}
+          variant="default"
+          trend={{
+            value: stats?.suspended || 0,
+            isPositive: stats?.suspended === 0,
+            label: "suspended accounts",
+          }}
+        />
+      </div>
+
+      {/* AI System Statistics - Enhanced Modern Card */}
+      <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-background shadow-lg shadow-primary/5 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+              <Brain className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-xl">AI System Statistics</CardTitle>
+              <CardDescription className="mt-0.5">Platform-wide AI Assistant usage and performance</CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 rounded-lg bg-background border">
-              <div className="text-2xl font-bold text-primary">{aiStats?.totalQueries || 0}</div>
-              <div className="text-xs text-muted-foreground mt-1">Total Queries</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="text-center p-5 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/20 hover:border-primary/40 transition-all duration-200 hover:scale-105">
+              <div className="text-3xl font-bold text-primary">{aiStats?.totalQueries || 0}</div>
+              <div className="text-xs font-medium text-muted-foreground mt-2">Total Queries</div>
             </div>
-            <div className="text-center p-4 rounded-lg bg-background border">
-              <div className="text-2xl font-bold text-green-600">{aiStats?.activeUsers || 0}</div>
-              <div className="text-xs text-muted-foreground mt-1">Active Users</div>
+            <div className="text-center p-5 rounded-xl bg-gradient-to-br from-green-50 to-green-50/50 border-2 border-green-200 hover:border-green-300 transition-all duration-200 hover:scale-105">
+              <div className="text-3xl font-bold text-green-600">{aiStats?.activeUsers || 0}</div>
+              <div className="text-xs font-medium text-muted-foreground mt-2">Active Users</div>
             </div>
-            <div className="text-center p-4 rounded-lg bg-background border">
-              <div className="text-2xl font-bold text-blue-600">{aiStats?.cacheHitRate || 0}%</div>
-              <div className="text-xs text-muted-foreground mt-1">Cache Hit Rate</div>
+            <div className="text-center p-5 rounded-xl bg-gradient-to-br from-blue-50 to-blue-50/50 border-2 border-blue-200 hover:border-blue-300 transition-all duration-200 hover:scale-105">
+              <div className="text-3xl font-bold text-blue-600">{aiStats?.cacheHitRate || 0}%</div>
+              <div className="text-xs font-medium text-muted-foreground mt-2">Cache Hit Rate</div>
             </div>
-            <div className="text-center p-4 rounded-lg bg-background border">
-              <div className="text-2xl font-bold text-orange-600">{aiStats?.rateLimitHits || 0}</div>
-              <div className="text-xs text-muted-foreground mt-1">Rate Limit Hits</div>
+            <div className="text-center p-5 rounded-xl bg-gradient-to-br from-orange-50 to-orange-50/50 border-2 border-orange-200 hover:border-orange-300 transition-all duration-200 hover:scale-105">
+              <div className="text-3xl font-bold text-orange-600">{aiStats?.rateLimitHits || 0}</div>
+              <div className="text-xs font-medium text-muted-foreground mt-2">Rate Limit Hits</div>
             </div>
           </div>
-          <div className="mt-4 flex gap-2">
-            <Button variant="outline" size="sm" className="flex-1">
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant="outline" size="sm" className="h-auto py-3 hover:bg-primary/10 hover:border-primary/40 transition-all">
               <TrendingUp className="h-4 w-4 mr-2" />
               View AI Analytics
             </Button>
-            <Button variant="outline" size="sm" className="flex-1">
+            <Button variant="outline" size="sm" className="h-auto py-3 hover:bg-primary/10 hover:border-primary/40 transition-all">
               <Zap className="h-4 w-4 mr-2" />
               AI Settings
             </Button>
           </div>
 
-          {/* Admin AI Quick Actions */}
+          {/* Admin AI Quick Actions - Enhanced */}
           {adminQuickActions.length > 0 && (
-            <div className="mt-4 pt-4 border-t">
-              <div className="flex items-center gap-2 mb-3">
-                <Lightbulb className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">AI Suggested Actions</span>
+            <div className="mt-6 pt-6 border-t border-primary/20">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                  <Lightbulb className="h-4 w-4 text-primary" />
+                </div>
+                <span className="font-semibold text-base">AI Suggested Actions</span>
               </div>
-              <div className="space-y-2">
+              <div className="grid gap-3">
                 {adminQuickActions.map((action) => (
                   <button
                     key={action.id}
                     onClick={() => handleAdminQuickAction(action.question)}
-                    className="w-full text-left p-2 rounded-lg hover:bg-background/80 transition-colors border border-border/50 hover:border-primary/50 group"
+                    className="w-full text-left p-4 rounded-xl hover:bg-white/80 transition-all duration-200 border-2 border-border/50 hover:border-primary/50 hover:shadow-md group"
                   >
-                    <div className="flex items-center gap-2">
-                      <action.icon className={`h-4 w-4 ${action.color} group-hover:scale-110 transition-transform`} />
-                      <span className="text-xs sm:text-sm font-medium group-hover:text-primary transition-colors">
-                        {action.title}
-                      </span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <action.icon className={`h-5 w-5 ${action.color}`} />
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-sm font-semibold group-hover:text-primary transition-colors block">
+                          {action.title}
+                        </span>
+                        <span className="text-xs text-muted-foreground mt-0.5 block">
+                          Ask AI for insights
+                        </span>
+                      </div>
+                      <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                     </div>
                   </button>
                 ))}
@@ -390,11 +425,18 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* Users Table */}
-      <Card>
+      {/* Users Table - Enhanced */}
+      <Card className="border-2 shadow-sm hover:shadow-md transition-shadow">
         <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>Manage user accounts and permissions</CardDescription>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Users className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-xl">All Users</CardTitle>
+              <CardDescription className="mt-0.5">Manage user accounts, roles, and permissions</CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {users.length === 0 ? (

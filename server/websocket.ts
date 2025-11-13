@@ -66,16 +66,16 @@ export class WebSocketService {
     });
 
     this.wss.on("error", (error) => {
-      this.logger.error("WebSocket server error", error);
+      this.logger.error({ error }, "WebSocket server error");
     });
 
     // Start heartbeat monitoring
     this.startHeartbeat();
 
-    this.logger.info("WebSocket server initialized", {
+    this.logger.info({
       path: "/ws",
       heartbeatInterval: this.HEARTBEAT_INTERVAL,
-    });
+    }, "WebSocket server initialized");
   }
 
   /**
@@ -94,13 +94,13 @@ export class WebSocketService {
     };
 
     this.broadcastToRoom(organizationId, message);
-    
-    this.logger.debug("Order status broadcasted", {
+
+    this.logger.debug({
       orderId,
       status,
       organizationId,
       recipients: this.rooms.get(organizationId)?.size || 0,
-    });
+    }, "Order status broadcasted");
   }
 
   /**
@@ -115,12 +115,12 @@ export class WebSocketService {
     };
 
     this.broadcastToRoom(organizationId, message);
-    
-    this.logger.warn("Anomaly alert broadcasted", {
+
+    this.logger.warn({
       alertType: alert.type,
       severity: alert.severity,
       organizationId,
-    });
+    }, "Anomaly alert broadcasted");
   }
 
   /**
@@ -135,12 +135,12 @@ export class WebSocketService {
     };
 
     this.broadcastToRoom(organizationId, message);
-    
-    this.logger.warn("Bottleneck alert broadcasted", {
+
+    this.logger.warn({
       location: bottleneck.location,
       severity: bottleneck.severity,
       organizationId,
-    });
+    }, "Bottleneck alert broadcasted");
   }
 
   /**
@@ -176,13 +176,13 @@ export class WebSocketService {
     };
 
     this.broadcastToRoom(organizationId, message);
-    
-    this.logger.debug("LIMS sync broadcasted", {
+
+    this.logger.debug({
       jobId,
       jobStatus,
       orderId,
       organizationId,
-    });
+    }, "LIMS sync broadcasted");
   }
 
   /**
@@ -236,15 +236,15 @@ export class WebSocketService {
   private async handleConnection(socket: WebSocket, request: IncomingMessage): Promise<void> {
     const clientId = this.generateClientId();
 
-    this.logger.info("WebSocket connection attempt", {
+    this.logger.info({
       clientId,
       ip: request.socket.remoteAddress,
-    });
+    }, "WebSocket connection attempt");
 
     // Extract and validate auth info from session
     const auth = await this.extractAuthInfo(request);
     if (!auth) {
-      this.logger.warn("WebSocket connection rejected - authentication failed", { clientId });
+      this.logger.warn({ clientId }, "WebSocket connection rejected - authentication failed");
       socket.close(4001, "Authentication required");
       return;
     }
@@ -277,7 +277,7 @@ export class WebSocketService {
     });
 
     socket.on("error", (error: Error) => {
-      this.logger.error("WebSocket client error", error, { clientId });
+      this.logger.error({ error, clientId }, "WebSocket client error");
     });
 
     // Send welcome message
@@ -291,12 +291,12 @@ export class WebSocketService {
       timestamp: new Date().toISOString(),
     });
 
-    this.logger.info("WebSocket client connected", {
+    this.logger.info({
       clientId,
       userId: auth.userId,
       organizationId: auth.organizationId,
       totalConnections: this.clients.size,
-    });
+    }, "WebSocket client connected");
   }
 
   private handleMessage(clientId: string, data: Buffer): void {
@@ -307,11 +307,11 @@ export class WebSocketService {
 
     try {
       const message = JSON.parse(data.toString());
-      
-      this.logger.debug("WebSocket message received", {
+
+      this.logger.debug({
         clientId,
         messageType: message.type,
-      });
+      }, "WebSocket message received");
 
       // Handle different message types
       if (message.type === "ping") {
@@ -322,13 +322,13 @@ export class WebSocketService {
         });
       } else if (message.type === "subscribe") {
         // Handle subscription to specific events
-        this.logger.debug("Client subscribed", {
+        this.logger.debug({
           clientId,
           subscription: message.payload,
-        });
+        }, "Client subscribed");
       }
     } catch (error) {
-      this.logger.error("Failed to parse WebSocket message", error as Error, { clientId });
+      this.logger.error({ error: error as Error, clientId }, "Failed to parse WebSocket message");
     }
   }
 
@@ -346,7 +346,7 @@ export class WebSocketService {
     this.leaveRoom(client.organizationId, clientId);
     this.clients.delete(clientId);
 
-    this.logger.info("WebSocket client disconnected", {
+    this.logger.info({
       clientId,
       userId: client.userId,
       organizationId: client.organizationId,
@@ -354,13 +354,13 @@ export class WebSocketService {
       reason: reason || "No reason provided",
       duration: Date.now() - client.connectedAt.getTime(),
       totalConnections: this.clients.size,
-    });
+    }, "WebSocket client disconnected");
   }
 
   private broadcastToRoom(organizationId: string, message: WebSocketMessage): void {
     const clientIds = this.rooms.get(organizationId);
     if (!clientIds || clientIds.size === 0) {
-      this.logger.debug("No clients in room", { organizationId });
+      this.logger.debug({ organizationId }, "No clients in room");
       return;
     }
 
@@ -371,12 +371,12 @@ export class WebSocketService {
       }
     });
 
-    this.logger.debug("Message broadcasted to room", {
+    this.logger.debug({
       organizationId,
       messageType: message.type,
       recipients: clientIds.size,
       sent: sentCount,
-    });
+    }, "Message broadcasted to room");
   }
 
   private sendToClient(clientId: string, message: WebSocketMessage): boolean {
@@ -391,7 +391,7 @@ export class WebSocketService {
       client.socket.send(JSON.stringify(message));
       return true;
     } catch (error) {
-      this.logger.error("Failed to send message to client", error as Error, { clientId });
+      this.logger.error({ error: error as Error, clientId }, "Failed to send message to client");
       return false;
     }
   }
@@ -420,7 +420,7 @@ export class WebSocketService {
       this.clients.forEach((client, clientId) => {
         // Check for inactive clients
         if (now - client.lastActivity.getTime() > this.CLIENT_TIMEOUT) {
-          this.logger.warn("Client timeout - disconnecting", { clientId });
+          this.logger.warn({ clientId }, "Client timeout - disconnecting");
           client.socket.close(4000, "Timeout");
           this.handleDisconnection(clientId, 4000, "Timeout");
           return;
@@ -482,7 +482,7 @@ export class WebSocketService {
         const sessionData = await redisClient.get(sessionKey);
 
         if (!sessionData) {
-          this.logger.warn("Session not found in Redis", { sessionId });
+          this.logger.warn({ sessionId }, "Session not found in Redis");
           return null;
         }
 
@@ -491,7 +491,7 @@ export class WebSocketService {
         const user = session.passport?.user;
 
         if (!user) {
-          this.logger.warn("No user in session", { sessionId });
+          this.logger.warn({ sessionId }, "No user in session");
           return null;
         }
 
@@ -501,7 +501,7 @@ export class WebSocketService {
         const role = user.role || 'user';
 
         if (!userId || !organizationId) {
-          this.logger.warn("Missing userId or organizationId in session", { sessionId });
+          this.logger.warn({ sessionId }, "Missing userId or organizationId in session");
           return null;
         }
 
@@ -523,7 +523,7 @@ export class WebSocketService {
           const roles = url.searchParams.get("roles")?.split(",") || ["user"];
 
           if (userId && organizationId) {
-            this.logger.debug("Using query param auth (development mode)", { userId, organizationId });
+            this.logger.debug({ userId, organizationId }, "Using query param auth (development mode)");
             return {
               userId,
               organizationId,
@@ -535,7 +535,7 @@ export class WebSocketService {
         return null;
       }
     } catch (error) {
-      this.logger.error("Error extracting auth info", error as Error);
+      this.logger.error({ error: error as Error }, "Error extracting auth info");
       return null;
     }
   }

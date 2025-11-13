@@ -1,35 +1,16 @@
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../utils/logger';
+import { storage, type IStorage } from '../../storage';
+import type {
+  QualityImprovementProject,
+  PDSACycle,
+  CareBundle,
+  BundleCompliance,
+  PerformanceImprovement,
+  BestPractice,
+} from '../../../shared/schema';
 
-// ============================================================================
-// Quality Improvement Types
-// ============================================================================
-
-export interface QualityImprovementProject {
-  id: string;
-  projectNumber: string;
-  name: string;
-  description: string;
-  aim: string;
-  scope: string;
-  status: 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  teamLead: string;
-  teamMembers: string[];
-  startDate: Date;
-  targetCompletionDate: Date;
-  actualCompletionDate?: Date;
-  baseline: ProjectBaseline;
-  target: ProjectTarget;
-  pdsaCycles: string[]; // Array of PDSA cycle IDs
-  interventions: QIIntervention[];
-  barriers: string[];
-  successFactors: string[];
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
+// Sub-types for JSON fields
 export interface ProjectBaseline {
   metric: string;
   value: number;
@@ -55,62 +36,11 @@ export interface QIIntervention {
   notes: string;
 }
 
-export interface PDSACycle {
-  id: string;
-  cycleNumber: number;
-  projectId: string;
-  status: 'plan' | 'do' | 'study' | 'act' | 'completed';
-  plan: {
-    objective: string;
-    predictions: string[];
-    measures: string[];
-    plan: string[];
-  };
-  do: {
-    implementationDate?: Date;
-    observations: string[];
-    dataCollected: CycleData[];
-    issues: string[];
-  };
-  study: {
-    results: string[];
-    comparedToObjective: string;
-    learnings: string[];
-    unexpectedFindings: string[];
-  };
-  act: {
-    decision: 'adopt' | 'adapt' | 'abandon';
-    nextSteps: string[];
-    changesAdopted: string[];
-    nextCycleChanges: string[];
-  };
-  startDate: Date;
-  completionDate?: Date;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface CycleData {
   dataPoint: string;
   value: number;
   collectionDate: Date;
   notes: string;
-}
-
-export interface CareBundle {
-  id: string;
-  bundleId: string;
-  name: string;
-  description: string;
-  category: string;
-  elements: BundleElement[];
-  evidenceBase: string;
-  targetPopulation: string;
-  active: boolean;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface BundleElement {
@@ -123,19 +53,6 @@ export interface BundleElement {
   criticalElement: boolean;
 }
 
-export interface BundleCompliance {
-  id: string;
-  bundleId: string;
-  encounterId: string;
-  patientId: string;
-  assessmentDate: Date;
-  elementCompliance: ElementCompliance[];
-  overallCompliance: boolean;
-  complianceRate: number;
-  assessedBy: string;
-  createdAt: Date;
-}
-
 export interface ElementCompliance {
   elementId: string;
   compliant: boolean;
@@ -144,50 +61,10 @@ export interface ElementCompliance {
   evidence?: string;
 }
 
-export interface PerformanceImprovement {
-  id: string;
-  name: string;
-  description: string;
-  metric: string;
-  baselineValue: number;
-  baselineDate: Date;
-  targetValue: number;
-  targetDate: Date;
-  currentValue: number;
-  currentDate: Date;
-  improvement: number;
-  improvementPercentage: number;
-  trend: 'improving' | 'declining' | 'stable';
-  status: 'active' | 'met' | 'missed' | 'abandoned';
-  dataPoints: DataPoint[];
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface DataPoint {
   date: Date;
   value: number;
   notes: string;
-}
-
-export interface BestPractice {
-  id: string;
-  practiceId: string;
-  name: string;
-  description: string;
-  category: string;
-  clinicalArea: string;
-  evidenceLevel: 'Level_I' | 'Level_II' | 'Level_III' | 'Level_IV' | 'Level_V';
-  evidenceSource: string;
-  implementation: string;
-  outcomes: string[];
-  adoptionStatus: 'proposed' | 'pilot' | 'adopted' | 'sustained';
-  adoptionDate?: Date;
-  owner: string;
-  active: boolean;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 // ============================================================================
@@ -195,24 +72,16 @@ export interface BestPractice {
 // ============================================================================
 
 export class QualityImprovementService {
-  private static projects: Map<string, QualityImprovementProject> = new Map();
-  private static pdsaCycles: Map<string, PDSACycle> = new Map();
-  private static careBundles: Map<string, CareBundle> = new Map();
-  private static bundleCompliance: Map<string, BundleCompliance> = new Map();
-  private static performanceImprovements: Map<string, PerformanceImprovement> = new Map();
-  private static bestPractices: Map<string, BestPractice> = new Map();
-  private static projectCounter = 1000;
+  private static db: IStorage = storage;
+  private static projectCounter = 1000; // Will be replaced with database sequence
 
-  // Initialize with default bundles
-  static {
-    this.initializeDefaultBundles();
-  }
+  // NOTE: Default bundles should be seeded via database migration per company
 
   // ============================================================================
   // Quality Improvement Projects
   // ============================================================================
 
-  static createQIProject(data: {
+  static async createQIProject(companyId: string, data: {
     name: string;
     description: string;
     aim: string;
@@ -225,12 +94,13 @@ export class QualityImprovementService {
     baseline: ProjectBaseline;
     target: ProjectTarget;
     createdBy: string;
-  }): QualityImprovementProject {
+  }): Promise<QualityImprovementProject> {
     const id = uuidv4();
     const projectNumber = `QI-${this.projectCounter++}`;
 
-    const project: QualityImprovementProject = {
+    const project = await this.db.createQIProject({
       id,
+      companyId,
       projectNumber,
       name: data.name,
       description: data.description,
@@ -242,49 +112,57 @@ export class QualityImprovementService {
       teamMembers: data.teamMembers,
       startDate: data.startDate,
       targetCompletionDate: data.targetCompletionDate,
-      baseline: data.baseline,
-      target: data.target,
+      baseline: {
+        metric: data.baseline.metric,
+        value: data.baseline.value,
+        measurementDate: data.baseline.measurementDate.toISOString(),
+        dataSource: data.baseline.dataSource,
+      },
+      target: {
+        metric: data.target.metric,
+        targetValue: data.target.targetValue,
+        targetDate: data.target.targetDate.toISOString(),
+        stretchGoalValue: data.target.stretchGoalValue,
+      },
       pdsaCycles: [],
       interventions: [],
       barriers: [],
       successFactors: [],
       createdBy: data.createdBy,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    this.projects.set(id, project);
     logger.info(`QI project created: ${projectNumber} - ${data.name}`);
 
     return project;
   }
 
-  static updateQIProjectStatus(
+  static async updateQIProjectStatus(
+    companyId: string,
     projectId: string,
     status: QualityImprovementProject['status']
-  ): QualityImprovementProject {
-    const project = this.projects.get(projectId);
+  ): Promise<QualityImprovementProject> {
+    const project = await this.db.getQIProject(companyId, projectId);
     if (!project) {
       throw new Error('QI project not found');
     }
 
-    project.status = status;
+    const updateData: any = { status };
     if (status === 'completed') {
-      project.actualCompletionDate = new Date();
+      updateData.actualCompletionDate = new Date();
     }
-    project.updatedAt = new Date();
 
-    this.projects.set(projectId, project);
+    const updated = await this.db.updateQIProject(companyId, projectId, updateData);
     logger.info(`QI project ${project.projectNumber} status updated to ${status}`);
 
-    return project;
+    return updated!;
   }
 
-  static addQIIntervention(
+  static async addQIIntervention(
+    companyId: string,
     projectId: string,
     intervention: Omit<QIIntervention, 'id'>
-  ): QualityImprovementProject {
-    const project = this.projects.get(projectId);
+  ): Promise<QualityImprovementProject> {
+    const project = await this.db.getQIProject(companyId, projectId);
     if (!project) {
       throw new Error('QI project not found');
     }
@@ -294,27 +172,26 @@ export class QualityImprovementService {
       id: uuidv4(),
     };
 
-    project.interventions.push(interventionWithId);
-    project.updatedAt = new Date();
+    const updatedInterventions = [...project.interventions, {
+      ...interventionWithId,
+      implementationDate: interventionWithId.implementationDate.toISOString(),
+    }];
 
-    this.projects.set(projectId, project);
+    const updated = await this.db.updateQIProject(companyId, projectId, {
+      interventions: updatedInterventions,
+    });
+
     logger.info(`Intervention added to project ${project.projectNumber}`);
 
-    return project;
+    return updated!;
   }
 
-  static getQIProjectById(id: string): QualityImprovementProject | undefined {
-    return this.projects.get(id);
+  static async getQIProjectById(companyId: string, id: string): Promise<QualityImprovementProject | undefined> {
+    return await this.db.getQIProject(companyId, id);
   }
 
-  static getQIProjects(status?: QualityImprovementProject['status']): QualityImprovementProject[] {
-    let projects = Array.from(this.projects.values());
-
-    if (status) {
-      projects = projects.filter((p) => p.status === status);
-    }
-
-    return projects.sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
+  static async getQIProjects(companyId: string, status?: QualityImprovementProject['status']): Promise<QualityImprovementProject[]> {
+    return await this.db.getQIProjects(companyId, status ? { status } : {});
   }
 
   // ============================================================================

@@ -17,7 +17,12 @@ const logger = loggers.api;
 
 router.post('/templates', async (req, res) => {
   try {
-    const template = CommunicationsService.createTemplate(req.body);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const template = await CommunicationsService.createTemplate(companyId, req.body);
     res.status(201).json({ success: true, template });
   } catch (error) {
     logger.error({ error }, 'Create template error');
@@ -27,8 +32,13 @@ router.post('/templates', async (req, res) => {
 
 router.get('/templates', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
     const { channel, category } = req.query;
-    const templates = CommunicationsService.listTemplates(channel as any, category as any);
+    const templates = await CommunicationsService.listTemplates(companyId, channel as any, category as any);
     res.json({ success: true, templates });
   } catch (error) {
     logger.error({ error }, 'List templates error');
@@ -38,7 +48,12 @@ router.get('/templates', async (req, res) => {
 
 router.get('/templates/:templateId', async (req, res) => {
   try {
-    const template = CommunicationsService.getTemplate(req.params.templateId);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const template = await CommunicationsService.getTemplate(req.params.templateId, companyId);
     if (!template) {
       return res.status(404).json({ success: false, error: 'Template not found' });
     }
@@ -53,8 +68,14 @@ router.get('/templates/:templateId', async (req, res) => {
 
 router.post('/messages/send', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
     const { channel, recipientId, recipientType, to, content, options } = req.body;
     const result = await CommunicationsService.sendMessage(
+      companyId,
       channel,
       recipientId,
       recipientType,
@@ -76,8 +97,14 @@ router.post('/messages/send', async (req, res) => {
 
 router.post('/messages/send-template', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
     const { templateId, recipientId, recipientType, to, variables, options } = req.body;
     const result = await CommunicationsService.sendFromTemplate(
+      companyId,
       templateId,
       recipientId,
       recipientType,
@@ -99,7 +126,12 @@ router.post('/messages/send-template', async (req, res) => {
 
 router.get('/messages/:messageId', async (req, res) => {
   try {
-    const message = CommunicationsService.getMessage(req.params.messageId);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const message = await CommunicationsService.getMessage(req.params.messageId, companyId);
     if (!message) {
       return res.status(404).json({ success: false, error: 'Message not found' });
     }
@@ -112,8 +144,13 @@ router.get('/messages/:messageId', async (req, res) => {
 
 router.get('/messages/recipient/:recipientId', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
     const { channel } = req.query;
-    const messages = CommunicationsService.getRecipientMessages(req.params.recipientId, channel as any);
+    const messages = await CommunicationsService.getRecipientMessages(req.params.recipientId, companyId, channel as any);
     res.json({ success: true, messages });
   } catch (error) {
     logger.error({ error }, 'Get recipient messages error');
@@ -123,8 +160,13 @@ router.get('/messages/recipient/:recipientId', async (req, res) => {
 
 router.get('/messages/stats', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
     const { campaignId, channel, startDate, endDate } = req.query;
-    const stats = CommunicationsService.getMessageStats({
+    const stats = await CommunicationsService.getMessageStats(companyId, {
       campaignId: campaignId as string,
       channel: channel as any,
       startDate: startDate ? new Date(startDate as string) : undefined,
@@ -141,7 +183,12 @@ router.get('/messages/stats', async (req, res) => {
 
 router.post('/campaigns', async (req, res) => {
   try {
-    const campaign = await CampaignService.createCampaign(req.body);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const campaign = await CampaignService.createCampaign(companyId, req.body);
     res.status(201).json({ success: true, campaign });
   } catch (error) {
     logger.error({ error }, 'Create campaign error');
@@ -151,8 +198,13 @@ router.post('/campaigns', async (req, res) => {
 
 router.get('/campaigns', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
     const { status } = req.query;
-    const campaigns = CampaignService.listCampaigns(status as any);
+    const campaigns = await CampaignService.listCampaigns(companyId, status as any);
     res.json({ success: true, campaigns });
   } catch (error) {
     logger.error({ error }, 'List campaigns error');
@@ -162,7 +214,12 @@ router.get('/campaigns', async (req, res) => {
 
 router.get('/campaigns/:campaignId', async (req, res) => {
   try {
-    const campaign = CampaignService.getCampaign(req.params.campaignId);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const campaign = await CampaignService.getCampaign(req.params.campaignId, companyId);
     if (!campaign) {
       return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
@@ -175,7 +232,12 @@ router.get('/campaigns/:campaignId', async (req, res) => {
 
 router.post('/campaigns/:campaignId/launch', async (req, res) => {
   try {
-    const result = await CampaignService.launchCampaign(req.params.campaignId);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const result = await CampaignService.launchCampaign(req.params.campaignId, companyId);
     if (!result.success) {
       return res.status(400).json(result);
     }
@@ -188,7 +250,12 @@ router.post('/campaigns/:campaignId/launch', async (req, res) => {
 
 router.post('/campaigns/:campaignId/pause', async (req, res) => {
   try {
-    const campaign = CampaignService.pauseCampaign(req.params.campaignId);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const campaign = await CampaignService.pauseCampaign(req.params.campaignId, companyId);
     if (!campaign) {
       return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
@@ -201,7 +268,12 @@ router.post('/campaigns/:campaignId/pause', async (req, res) => {
 
 router.get('/campaigns/:campaignId/analytics', async (req, res) => {
   try {
-    const analytics = await CampaignService.getCampaignAnalytics(req.params.campaignId);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const analytics = await CampaignService.getCampaignAnalytics(req.params.campaignId, companyId);
     if (!analytics) {
       return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
@@ -216,8 +288,13 @@ router.get('/campaigns/:campaignId/analytics', async (req, res) => {
 
 router.post('/segments', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
     const { name, description, criteria } = req.body;
-    const segment = await CampaignService.createSegment(name, description, criteria);
+    const segment = await CampaignService.createSegment(companyId, name, description, criteria);
     res.status(201).json({ success: true, segment });
   } catch (error) {
     logger.error({ error }, 'Create segment error');
@@ -227,7 +304,12 @@ router.post('/segments', async (req, res) => {
 
 router.get('/segments', async (req, res) => {
   try {
-    const segments = CampaignService.listSegments();
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const segments = await CampaignService.listSegments(companyId);
     res.json({ success: true, segments });
   } catch (error) {
     logger.error({ error }, 'List segments error');
@@ -239,7 +321,12 @@ router.get('/segments', async (req, res) => {
 
 router.post('/workflows', async (req, res) => {
   try {
-    const workflow = EngagementWorkflowService.createWorkflow(req.body);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const workflow = await EngagementWorkflowService.createWorkflow(companyId, req.body);
     res.status(201).json({ success: true, workflow });
   } catch (error) {
     logger.error({ error }, 'Create workflow error');
@@ -249,8 +336,13 @@ router.post('/workflows', async (req, res) => {
 
 router.get('/workflows', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
     const { trigger, status } = req.query;
-    const workflows = EngagementWorkflowService.listWorkflows(trigger as any, status as any);
+    const workflows = await EngagementWorkflowService.listWorkflows(companyId, trigger as any, status as any);
     res.json({ success: true, workflows });
   } catch (error) {
     logger.error({ error }, 'List workflows error');
@@ -260,7 +352,12 @@ router.get('/workflows', async (req, res) => {
 
 router.get('/workflows/:workflowId', async (req, res) => {
   try {
-    const workflow = EngagementWorkflowService.getWorkflow(req.params.workflowId);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const workflow = await EngagementWorkflowService.getWorkflow(companyId, req.params.workflowId);
     if (!workflow) {
       return res.status(404).json({ success: false, error: 'Workflow not found' });
     }
@@ -273,8 +370,13 @@ router.get('/workflows/:workflowId', async (req, res) => {
 
 router.post('/workflows/trigger', async (req, res) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
     const { trigger, patientId, triggerData } = req.body;
-    const instances = await EngagementWorkflowService.triggerWorkflow(trigger, patientId, triggerData);
+    const instances = await EngagementWorkflowService.triggerWorkflow(companyId, trigger, patientId, triggerData);
     res.json({ success: true, instances });
   } catch (error) {
     logger.error({ error }, 'Trigger workflow error');
@@ -284,7 +386,12 @@ router.post('/workflows/trigger', async (req, res) => {
 
 router.get('/workflows/instances/:instanceId', async (req, res) => {
   try {
-    const instance = EngagementWorkflowService.getWorkflowInstance(req.params.instanceId);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const instance = await EngagementWorkflowService.getWorkflowInstance(companyId, req.params.instanceId);
     if (!instance) {
       return res.status(404).json({ success: false, error: 'Instance not found' });
     }

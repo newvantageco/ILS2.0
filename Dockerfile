@@ -53,11 +53,9 @@ RUN groupadd -g 1001 nodejs && \
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files and node_modules from builder
 COPY --chown=nodejs:nodejs package*.json ./
-
-# Install ALL dependencies (bundled server needs all packages at runtime)
-RUN npm ci --include=dev
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 
 # Copy built application from builder (contains bundled index.js and public/)
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
@@ -68,17 +66,18 @@ RUN mkdir -p /app/uploads && chown -R nodejs:nodejs /app/uploads
 # Switch to non-root user
 USER nodejs
 
-# Expose application port
+# Expose application port (Railway will override with $PORT)
 EXPOSE 5000
 
 # Set environment variables
+# Note: Railway will override PORT automatically
 ENV NODE_ENV=production \
     PORT=5000 \
     HOST=0.0.0.0
 
-# Health check
+# Health check (uses PORT environment variable for Railway compatibility)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:5000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+    CMD node -e "const port = process.env.PORT || 5000; require('http').get(\`http://localhost:\${port}/api/health\`, (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]

@@ -1,249 +1,305 @@
-# Railway Deployment - Quick Start
+# Railway Quick Start Guide
 
-**Complete deployment in 15 minutes!**
+Get ILS 2.0 deployed to Railway in under 10 minutes.
 
 ## Prerequisites
 
-- [x] Railway account: [railway.app](https://railway.app)
-- [x] Code pushed to GitHub
-- [x] Build passes locally: `npm run build`
+- Railway account (sign up at https://railway.app)
+- GitHub account
+- Node.js 20+ installed locally
 
----
-
-## Step 1: Create Project (2 minutes)
-
-1. Go to [railway.app/new](https://railway.app/new)
-2. Click **"Deploy from GitHub repo"**
-3. Select your ILS2.0 repository
-4. Railway auto-detects Node.js and Dockerfile ✅
-
-## Step 2: Add Services (3 minutes)
-
-### Add PostgreSQL
-
-1. Click **"+ New"** → **"Database"** → **"PostgreSQL"**
-2. Railway auto-configures `DATABASE_URL` ✅
-
-### Add Redis
-
-1. Click **"+ New"** → **"Database"** → **"Redis"**
-2. Railway auto-configures `REDIS_URL` ✅
-
-## Step 3: Configure Environment (5 minutes)
-
-Click your app service → **"Variables"** → Add these:
-
-### Required Variables
-
-```env
-NODE_ENV=production
-PORT=5000
-SESSION_SECRET=<copy-from-generator-below>
-ADMIN_SETUP_KEY=<copy-from-generator-below>
-```
-
-### Master User (Recommended)
-
-```env
-MASTER_USER_EMAIL=admin@yourdomain.com
-MASTER_USER_PASSWORD=<min-12-chars>
-MASTER_USER_FIRST_NAME=Admin
-MASTER_USER_LAST_NAME=User
-MASTER_USER_ORGANIZATION=ILS Platform
-```
-
-### Generate Secure Secrets
+## 1. Install Railway CLI
 
 ```bash
-# Generate SESSION_SECRET (64 chars)
-openssl rand -base64 48
+npm install -g @railway/cli
+```
 
-# Generate ADMIN_SETUP_KEY (32 chars)
+## 2. Login to Railway
+
+```bash
+railway login
+```
+
+This opens your browser for authentication.
+
+## 3. Create New Railway Project
+
+```bash
+# Navigate to your ILS 2.0 directory
+cd /path/to/ILS2.0
+
+# Initialize Railway project
+railway init
+```
+
+Follow the prompts to:
+- Create a new project
+- Name your project (e.g., "ILS-Production")
+- Select empty project
+
+## 4. Add Services
+
+### Add PostgreSQL Database
+
+```bash
+railway add --database postgres
+```
+
+Enable Production Mode:
+1. Go to Railway dashboard
+2. Select PostgreSQL service
+3. Settings → Enable "Production Mode"
+
+### Add Redis (Recommended)
+
+```bash
+railway add --database redis
+```
+
+## 5. Configure Environment Variables
+
+Go to Railway dashboard → Your Project → Web Service → Variables
+
+Add the following (minimum required):
+
+```bash
+NODE_ENV=production
+APP_URL=https://your-app.up.railway.app  # Update after domain setup
+SESSION_SECRET=<generate-with-openssl-rand-base64-32>
+ADMIN_SETUP_KEY=<your-secure-admin-key>
+```
+
+Railway automatically provides:
+- `DATABASE_URL` (from PostgreSQL service)
+- `REDIS_URL` (from Redis service)
+- `PORT` (Railway auto-assigns)
+
+**Generate secure secrets:**
+
+```bash
+# Generate SESSION_SECRET
+openssl rand -base64 32
+
+# Generate ADMIN_SETUP_KEY
 openssl rand -base64 24
 ```
 
----
+### Optional but Recommended Variables
 
-## Step 4: Deploy (3 minutes)
-
-### Trigger Deployment
+Add these for full functionality:
 
 ```bash
-git add .
-git commit -m "deploy: Railway production deployment"
-git push origin main
+# Email (Resend)
+RESEND_API_KEY=re_xxxxxxxxxxxx
+MAIL_FROM=hello@yourdomain.com
+
+# Payments (Stripe) - Use test keys initially
+STRIPE_SECRET_KEY=sk_test_xxxxxxxxxxxx
+STRIPE_PUBLISHABLE_KEY=pk_test_xxxxxxxxxxxx
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxx
+
+# AI Services (Optional)
+OPENAI_API_KEY=sk-xxxxxxxxxxxx
+ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
+
+# Master User (Auto-provisioned admin)
+MASTER_USER_EMAIL=admin@example.com
+MASTER_USER_PASSWORD=<secure-password-min-12-chars>
+MASTER_USER_FIRST_NAME=Admin
+MASTER_USER_LAST_NAME=User
+MASTER_USER_ORGANIZATION=Platform Control
 ```
 
-Railway will:
-1. Build Docker image (~2-3 minutes)
-2. Run health checks
-3. Deploy with zero downtime
-4. Provide public URL
+## 6. Connect GitHub Repository
 
-### Watch Deployment
+1. Go to Railway dashboard
+2. Select your project
+3. Click "New" → "GitHub Repo"
+4. Select `newvantageco/ILS2.0`
+5. Choose branch (typically `main`)
 
-In Railway dashboard:
-- Click your app service
-- Go to **"Deployments"** tab
-- Watch logs in real-time
+Railway will automatically:
+- Detect the Dockerfile
+- Build your application
+- Deploy to production
 
----
+## 7. Wait for Deployment
 
-## Step 5: Initialize Database (2 minutes)
-
-### Via Railway Shell
-
-1. Click your app service
-2. Go to **"Shell"** tab
-3. Run:
+Watch deployment progress:
 
 ```bash
-npm run db:push
+railway logs
 ```
 
-This creates all 90+ database tables using Drizzle ORM.
+Or in the Railway dashboard: Deployments tab
 
-### Verify
+Deployment typically takes 3-5 minutes.
+
+## 8. Verify Deployment
 
 Check health endpoint:
 
 ```bash
-curl https://your-app.railway.app/api/health
+curl https://your-app.up.railway.app/api/health
 ```
 
-Expected response:
+Should return:
 ```json
 {
   "status": "ok",
-  "database": "connected",
-  "redis": "connected",
-  "timestamp": "2025-11-13T..."
+  "timestamp": "2025-11-13T...",
+  "environment": "production"
 }
 ```
 
----
+## 9. Run Database Migrations
 
-## Step 6: Verify Deployment (2 minutes)
-
-### Quick Tests
+After first deployment:
 
 ```bash
-# 1. Health check
-curl https://your-app.railway.app/api/health
-
-# 2. Frontend loads
-curl -I https://your-app.railway.app
-
-# 3. Login page
-open https://your-app.railway.app
+railway run npm run db:push
 ```
 
-### Login with Master User
+This creates all database tables.
 
-1. Open your app URL
-2. Click **"Sign in"**
-3. Use credentials from `MASTER_USER_EMAIL` and `MASTER_USER_PASSWORD`
+## 10. Access Your Application
 
----
-
-## Optional: Custom Domain (5 minutes)
-
-1. Go to your app → **"Settings"** → **"Domains"**
-2. Click **"Custom Domain"**
-3. Add your domain (e.g., `app.yourdomain.com`)
-4. Update DNS:
-
+Your app is now live at:
 ```
-CNAME  app  <your-app>.railway.app
+https://your-app-name.up.railway.app
 ```
 
-Railway automatically provisions SSL certificate ✅
+## Next Steps
 
----
+### Add Custom Domain
+
+1. Railway dashboard → Service → Settings → Domains
+2. Click "Add Domain"
+3. Enter: `app.yourdomain.com`
+4. Add CNAME record in your DNS:
+   ```
+   CNAME app your-app.up.railway.app
+   ```
+5. Wait for SSL (automatic, 1-5 minutes)
+6. Update `APP_URL` environment variable
+
+### Enable Auto-Deploy
+
+Already enabled by default! Every push to `main` branch deploys automatically.
+
+To deploy manually:
+```bash
+railway up
+```
+
+### Configure Stripe Webhooks
+
+1. Go to Stripe Dashboard → Developers → Webhooks
+2. Add endpoint: `https://app.yourdomain.com/api/stripe/webhooks`
+3. Select events: `payment_intent.succeeded`, `customer.subscription.updated`, etc.
+4. Copy webhook signing secret
+5. Add to Railway variables: `STRIPE_WEBHOOK_SECRET`
+
+### Set Up Monitoring
+
+1. **Uptime Monitoring**: Add https://app.yourdomain.com/api/health to UptimeRobot
+2. **Error Tracking**: Configure Sentry (add `SENTRY_DSN` to Railway variables)
+3. **Analytics**: Configure PostHog (add `POSTHOG_API_KEY` to Railway variables)
+
+## Useful Commands
+
+```bash
+# View logs (real-time)
+railway logs
+
+# Check deployment status
+railway status
+
+# Open Railway dashboard
+railway open
+
+# Deploy manually
+railway up
+
+# Rollback to previous deployment
+railway rollback
+
+# Restart service
+railway restart
+
+# Run command in Railway environment
+railway run <command>
+
+# SSH into running container
+railway shell
+```
 
 ## Troubleshooting
 
 ### Build Fails
 
-```bash
-# Test locally first
-npm run build
+1. Check logs: `railway logs`
+2. Verify Dockerfile exists
+3. Test build locally: `docker build -t ils-test .`
 
-# Check Railway logs
-railway logs --tail 100
-```
+### Database Connection Error
 
-### Database Connection Issues
-
-```bash
-# Verify DATABASE_URL is set
-railway variables | grep DATABASE_URL
-
-# Should output: DATABASE_URL=postgresql://...
-```
+1. Verify `DATABASE_URL` is set (Railway provides this automatically)
+2. Check database service is running
+3. Enable Production Mode on database
 
 ### Application Won't Start
 
-Check logs for errors:
+1. Check logs: `railway logs`
+2. Verify health check endpoint: `/api/health`
+3. Check `PORT` environment variable (Railway sets this automatically)
+4. Verify build completed successfully
+
+### Out of Memory
+
+1. Railway dashboard → Service → Settings → Resources
+2. Increase memory allocation (512MB → 1GB → 2GB)
+
+## Production Checklist
+
+Before going live:
+
+- [ ] Custom domain configured with SSL
+- [ ] Production database backups enabled
+- [ ] Environment variables validated (`npm run validate:env`)
+- [ ] Master user can log in
+- [ ] Stripe live keys configured
+- [ ] Uptime monitoring set up
+- [ ] Error tracking configured
+- [ ] CORS origins configured correctly
+- [ ] Rate limiting tested
+
+## Quick Start Scripts
+
+We've included helper scripts:
 
 ```bash
-railway logs | grep ERROR
+# Validate environment variables
+npm run validate:env
+
+# Deploy with validation
+./scripts/railway-deploy.sh
+
+# Check Railway status
+npm run railway:status
 ```
 
-Common issues:
-- Missing environment variables
-- Database not initialized (`npm run db:push`)
-- Port binding (ensure app uses `process.env.PORT`)
+## Support
+
+- **Railway Docs**: https://docs.railway.app
+- **ILS 2.0 Full Guide**: [docs/RAILWAY_DEPLOYMENT.md](docs/RAILWAY_DEPLOYMENT.md)
+- **Deployment Checklist**: [RAILWAY_CHECKLIST.md](RAILWAY_CHECKLIST.md)
+- **Railway Discord**: https://discord.gg/railway
 
 ---
 
-## Next Steps
+**Estimated Time**: 10 minutes
+**Difficulty**: Beginner
+**Cost**: $5-20/month (Railway pricing)
 
-✅ **Production is live!**
-
-Now:
-1. Set up monitoring: [./docs/OBSERVABILITY.md](./docs/OBSERVABILITY.md)
-2. Configure backups: See [RAILWAY_DEPLOYMENT_GUIDE.md](./RAILWAY_DEPLOYMENT_GUIDE.md)
-3. Add team members: Railway → "Settings" → "Members"
-4. Review security: [./docs/SECURITY_IMPLEMENTATION.md](./docs/SECURITY_IMPLEMENTATION.md)
-
----
-
-## Essential Commands
-
-```bash
-# Install Railway CLI
-npm install -g @railway/cli
-
-# Login
-railway login
-
-# Link to project
-railway link
-
-# View logs
-railway logs
-
-# Run commands in production
-railway run npm run db:push
-
-# Open shell
-railway shell
-```
-
----
-
-## Need Help?
-
-- **Full Guide**: [./RAILWAY_DEPLOYMENT_GUIDE.md](./RAILWAY_DEPLOYMENT_GUIDE.md)
-- **Railway Docs**: [docs.railway.app](https://docs.railway.app)
-- **Platform Docs**: [./README.md](./README.md)
-- **Support**: Railway Discord or support@railway.app
-
----
-
-**Estimated Total Time**: 15-20 minutes
-
-**Status**: ✅ Production Ready
-
-**Last Updated**: November 2025
+You're all set! 🚀

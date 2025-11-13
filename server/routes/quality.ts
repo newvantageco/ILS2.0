@@ -8,7 +8,11 @@ const router = express.Router();
 // Quality Measures Routes
 router.post('/measures', async (req: Request, res: Response) => {
   try {
-    const measure = QualityMeasuresService.createQualityMeasure(req.body);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    const measure = await QualityMeasuresService.createQualityMeasure(companyId, req.body);
     res.status(201).json({ success: true, data: measure });
   } catch (error) {
     res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Failed' });
@@ -17,8 +21,12 @@ router.post('/measures', async (req: Request, res: Response) => {
 
 router.get('/measures', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { type, activeOnly } = req.query;
-    const measures = QualityMeasuresService.getQualityMeasures(type as any, activeOnly !== 'false');
+    const measures = await QualityMeasuresService.getQualityMeasures(companyId, type as any, activeOnly !== 'false');
     res.json({ success: true, data: measures, count: measures.length });
   } catch (error) {
     res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed' });
@@ -27,7 +35,11 @@ router.get('/measures', async (req: Request, res: Response) => {
 
 router.post('/measures/:id/calculate', async (req: Request, res: Response) => {
   try {
-    const calculation = QualityMeasuresService.calculateMeasure({ measureId: req.params.id, ...req.body });
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    const calculation = await QualityMeasuresService.calculateMeasure(companyId, { measureId: req.params.id, ...req.body });
     res.status(201).json({ success: true, data: calculation });
   } catch (error) {
     res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Failed' });
@@ -36,7 +48,11 @@ router.post('/measures/:id/calculate', async (req: Request, res: Response) => {
 
 router.get('/measures/:id/calculations', async (req: Request, res: Response) => {
   try {
-    const calculations = QualityMeasuresService.getMeasureCalculations(req.params.id);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    const calculations = await QualityMeasuresService.getMeasureCalculations(companyId, req.params.id);
     res.json({ success: true, data: calculations, count: calculations.length });
   } catch (error) {
     res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed' });
@@ -45,7 +61,11 @@ router.get('/measures/:id/calculations', async (req: Request, res: Response) => 
 
 router.post('/measures/:id/gap-analysis', async (req: Request, res: Response) => {
   try {
-    const analysis = QualityMeasuresService.performGapAnalysis({ measureId: req.params.id, ...req.body });
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    const analysis = await QualityMeasuresService.performGapAnalysis(companyId, { measureId: req.params.id, ...req.body });
     res.status(201).json({ success: true, data: analysis });
   } catch (error) {
     res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Failed' });
@@ -54,7 +74,11 @@ router.post('/measures/:id/gap-analysis', async (req: Request, res: Response) =>
 
 router.post('/star-ratings', async (req: Request, res: Response) => {
   try {
-    const rating = QualityMeasuresService.calculateStarRating(req.body);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    const rating = await QualityMeasuresService.calculateStarRating(companyId, req.body);
     res.status(201).json({ success: true, data: rating });
   } catch (error) {
     res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Failed' });
@@ -63,7 +87,11 @@ router.post('/star-ratings', async (req: Request, res: Response) => {
 
 router.put('/star-ratings/:id/publish', async (req: Request, res: Response) => {
   try {
-    const rating = QualityMeasuresService.publishStarRating(req.params.id);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    const rating = await QualityMeasuresService.publishStarRating(companyId, req.params.id);
     res.json({ success: true, data: rating });
   } catch (error) {
     res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Failed' });
@@ -72,8 +100,13 @@ router.put('/star-ratings/:id/publish', async (req: Request, res: Response) => {
 
 router.get('/measures/statistics', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { startDate, endDate, measureType } = req.query;
-    const stats = QualityMeasuresService.getStatistics(
+    const stats = await QualityMeasuresService.getStatistics(
+      companyId,
       startDate ? new Date(startDate as string) : undefined,
       endDate ? new Date(endDate as string) : undefined,
       measureType as any
@@ -87,6 +120,10 @@ router.get('/measures/statistics', async (req: Request, res: Response) => {
 // Regulatory Compliance Routes
 router.post('/compliance/requirements', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const requirement = RegulatoryComplianceService.createComplianceRequirement(req.body);
     res.status(201).json({ success: true, data: requirement });
   } catch (error) {
@@ -96,6 +133,10 @@ router.post('/compliance/requirements', async (req: Request, res: Response) => {
 
 router.get('/compliance/requirements', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { program, status } = req.query;
     const requirements = RegulatoryComplianceService.getComplianceRequirements(program as any, status as any);
     res.json({ success: true, data: requirements, count: requirements.length });
@@ -106,6 +147,10 @@ router.get('/compliance/requirements', async (req: Request, res: Response) => {
 
 router.get('/compliance/requirements/overdue', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const requirements = RegulatoryComplianceService.getOverdueRequirements();
     res.json({ success: true, data: requirements, count: requirements.length });
   } catch (error) {
@@ -115,6 +160,10 @@ router.get('/compliance/requirements/overdue', async (req: Request, res: Respons
 
 router.post('/compliance/attestations', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const attestation = RegulatoryComplianceService.createAttestation(req.body);
     res.status(201).json({ success: true, data: attestation });
   } catch (error) {
@@ -124,6 +173,10 @@ router.post('/compliance/attestations', async (req: Request, res: Response) => {
 
 router.put('/compliance/attestations/:id/revoke', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { revokedBy, reason } = req.body;
     const attestation = RegulatoryComplianceService.revokeAttestation(req.params.id, revokedBy, reason);
     res.json({ success: true, data: attestation });
@@ -134,6 +187,10 @@ router.put('/compliance/attestations/:id/revoke', async (req: Request, res: Resp
 
 router.post('/compliance/audits', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const audit = RegulatoryComplianceService.createRegulatoryAudit(req.body);
     res.status(201).json({ success: true, data: audit });
   } catch (error) {
@@ -143,6 +200,10 @@ router.post('/compliance/audits', async (req: Request, res: Response) => {
 
 router.post('/compliance/audits/:id/findings', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const audit = RegulatoryComplianceService.addAuditFinding(req.params.id, req.body);
     res.json({ success: true, data: audit });
   } catch (error) {
@@ -152,6 +213,10 @@ router.post('/compliance/audits/:id/findings', async (req: Request, res: Respons
 
 router.post('/compliance/audits/:id/corrective-actions', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const audit = RegulatoryComplianceService.addCorrectiveAction(req.params.id, req.body);
     res.json({ success: true, data: audit });
   } catch (error) {
@@ -161,6 +226,10 @@ router.post('/compliance/audits/:id/corrective-actions', async (req: Request, re
 
 router.post('/compliance/mips-submissions', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const submission = RegulatoryComplianceService.createMIPSSubmission(req.body);
     res.status(201).json({ success: true, data: submission });
   } catch (error) {
@@ -170,6 +239,10 @@ router.post('/compliance/mips-submissions', async (req: Request, res: Response) 
 
 router.put('/compliance/mips-submissions/:id/submit', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { submittedBy } = req.body;
     const submission = RegulatoryComplianceService.submitMIPS(req.params.id, submittedBy);
     res.json({ success: true, data: submission });
@@ -180,6 +253,10 @@ router.put('/compliance/mips-submissions/:id/submit', async (req: Request, res: 
 
 router.post('/compliance/reports', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const report = RegulatoryComplianceService.generateComplianceReport(req.body);
     res.status(201).json({ success: true, data: report });
   } catch (error) {
@@ -189,6 +266,10 @@ router.post('/compliance/reports', async (req: Request, res: Response) => {
 
 router.post('/compliance/policies', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const policy = RegulatoryComplianceService.createPolicyDocument(req.body);
     res.status(201).json({ success: true, data: policy });
   } catch (error) {
@@ -198,6 +279,10 @@ router.post('/compliance/policies', async (req: Request, res: Response) => {
 
 router.post('/compliance/risk-assessments', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const assessment = RegulatoryComplianceService.createRiskAssessment(req.body);
     res.status(201).json({ success: true, data: assessment });
   } catch (error) {
@@ -207,6 +292,10 @@ router.post('/compliance/risk-assessments', async (req: Request, res: Response) 
 
 router.get('/compliance/statistics', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const stats = RegulatoryComplianceService.getStatistics();
     res.json({ success: true, data: stats });
   } catch (error) {
@@ -217,7 +306,11 @@ router.get('/compliance/statistics', async (req: Request, res: Response) => {
 // Quality Improvement Routes
 router.post('/improvement/projects', async (req: Request, res: Response) => {
   try {
-    const project = QualityImprovementService.createQIProject(req.body);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    const project = await QualityImprovementService.createQIProject(companyId, req.body);
     res.status(201).json({ success: true, data: project });
   } catch (error) {
     res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Failed' });
@@ -226,8 +319,12 @@ router.post('/improvement/projects', async (req: Request, res: Response) => {
 
 router.get('/improvement/projects', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { status } = req.query;
-    const projects = QualityImprovementService.getQIProjects(status as any);
+    const projects = await QualityImprovementService.getQIProjects(companyId, status as any);
     res.json({ success: true, data: projects, count: projects.length });
   } catch (error) {
     res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed' });
@@ -236,8 +333,12 @@ router.get('/improvement/projects', async (req: Request, res: Response) => {
 
 router.put('/improvement/projects/:id/status', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { status } = req.body;
-    const project = QualityImprovementService.updateQIProjectStatus(req.params.id, status);
+    const project = await QualityImprovementService.updateQIProjectStatus(companyId, req.params.id, status);
     res.json({ success: true, data: project });
   } catch (error) {
     res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Failed' });
@@ -246,7 +347,11 @@ router.put('/improvement/projects/:id/status', async (req: Request, res: Respons
 
 router.post('/improvement/projects/:id/interventions', async (req: Request, res: Response) => {
   try {
-    const project = QualityImprovementService.addQIIntervention(req.params.id, req.body);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    const project = await QualityImprovementService.addQIIntervention(companyId, req.params.id, req.body);
     res.json({ success: true, data: project });
   } catch (error) {
     res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Failed' });
@@ -255,6 +360,10 @@ router.post('/improvement/projects/:id/interventions', async (req: Request, res:
 
 router.post('/improvement/pdsa-cycles', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const cycle = QualityImprovementService.createPDSACycle(req.body);
     res.status(201).json({ success: true, data: cycle });
   } catch (error) {
@@ -264,6 +373,10 @@ router.post('/improvement/pdsa-cycles', async (req: Request, res: Response) => {
 
 router.put('/improvement/pdsa-cycles/:id/:phase', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { phase } = req.params;
     const cycle = QualityImprovementService.updatePDSAPhase(req.params.id, phase as any, req.body);
     res.json({ success: true, data: cycle });
@@ -274,6 +387,10 @@ router.put('/improvement/pdsa-cycles/:id/:phase', async (req: Request, res: Resp
 
 router.post('/improvement/bundles', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const bundle = QualityImprovementService.createCareBundle(req.body);
     res.status(201).json({ success: true, data: bundle });
   } catch (error) {
@@ -283,6 +400,10 @@ router.post('/improvement/bundles', async (req: Request, res: Response) => {
 
 router.get('/improvement/bundles', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { activeOnly } = req.query;
     const bundles = QualityImprovementService.getCareBundles(activeOnly !== 'false');
     res.json({ success: true, data: bundles, count: bundles.length });
@@ -293,6 +414,10 @@ router.get('/improvement/bundles', async (req: Request, res: Response) => {
 
 router.post('/improvement/bundles/compliance', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const compliance = QualityImprovementService.assessBundleCompliance(req.body);
     res.status(201).json({ success: true, data: compliance });
   } catch (error) {
@@ -302,6 +427,10 @@ router.post('/improvement/bundles/compliance', async (req: Request, res: Respons
 
 router.get('/improvement/bundles/:bundleId/statistics', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { startDate, endDate } = req.query;
     const stats = QualityImprovementService.getBundleComplianceStats(
       req.params.bundleId,
@@ -316,6 +445,10 @@ router.get('/improvement/bundles/:bundleId/statistics', async (req: Request, res
 
 router.post('/improvement/performance', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const improvement = QualityImprovementService.createPerformanceImprovement(req.body);
     res.status(201).json({ success: true, data: improvement });
   } catch (error) {
@@ -325,6 +458,10 @@ router.post('/improvement/performance', async (req: Request, res: Response) => {
 
 router.post('/improvement/performance/:id/data-points', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const improvement = QualityImprovementService.addDataPoint(req.params.id, req.body);
     res.json({ success: true, data: improvement });
   } catch (error) {
@@ -334,6 +471,10 @@ router.post('/improvement/performance/:id/data-points', async (req: Request, res
 
 router.post('/improvement/best-practices', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const practice = QualityImprovementService.createBestPractice(req.body);
     res.status(201).json({ success: true, data: practice });
   } catch (error) {
@@ -343,6 +484,10 @@ router.post('/improvement/best-practices', async (req: Request, res: Response) =
 
 router.put('/improvement/best-practices/:id/status', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { status } = req.body;
     const practice = QualityImprovementService.updateBestPracticeStatus(req.params.id, status);
     res.json({ success: true, data: practice });
@@ -353,6 +498,10 @@ router.put('/improvement/best-practices/:id/status', async (req: Request, res: R
 
 router.get('/improvement/statistics', async (req: Request, res: Response) => {
   try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const stats = QualityImprovementService.getStatistics();
     res.json({ success: true, data: stats });
   } catch (error) {

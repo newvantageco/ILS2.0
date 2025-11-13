@@ -1,29 +1,32 @@
+/**
+ * Care Coordination Service
+ *
+ * ✅ DATABASE-BACKED - Production Ready
+ *
+ * MIGRATED FEATURES:
+ * - Care plans stored in PostgreSQL (multi-tenant)
+ * - Care teams with member management persisted
+ * - Care gaps tracking with severity and status
+ * - Transitions of care with medication reconciliation
+ * - Care coordination tasks with priority and assignment
+ * - Patient outreach tracking with contact results
+ * - All data survives server restarts
+ *
+ * STATUS: Full migration complete
+ */
+
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../utils/logger';
+import { storage, type IStorage } from '../../storage';
+import type {
+  CarePlan,
+  CareTeam,
+  CareGap,
+  TransitionOfCare,
+  PatientOutreach,
+} from '../../../shared/schema';
 
-// ============================================================================
-// Care Coordination Types
-// ============================================================================
-
-export interface CarePlan {
-  id: string;
-  patientId: string;
-  name: string;
-  description: string;
-  status: 'draft' | 'active' | 'on_hold' | 'completed' | 'cancelled';
-  category: 'chronic_disease' | 'preventive' | 'transitional' | 'behavioral_health' | 'other';
-  goals: CareGoal[];
-  interventions: CareIntervention[];
-  careTeamId?: string;
-  startDate: Date;
-  endDate?: Date;
-  reviewFrequency: 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
-  nextReviewDate: Date;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
+// Sub-types for JSON fields
 export interface CareGoal {
   id: string;
   description: string;
@@ -54,19 +57,6 @@ export interface CareIntervention {
   updatedAt: Date;
 }
 
-export interface CareTeam {
-  id: string;
-  name: string;
-  patientId: string;
-  description: string;
-  members: CareTeamMember[];
-  status: 'active' | 'inactive';
-  primaryContact?: string;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface CareTeamMember {
   id: string;
   userId: string;
@@ -82,52 +72,6 @@ export interface CareTeamMember {
   };
   joinedDate: Date;
   status: 'active' | 'inactive';
-}
-
-export interface CareGap {
-  id: string;
-  patientId: string;
-  gapType: string;
-  category: 'preventive' | 'chronic_care' | 'medication' | 'screening' | 'follow_up';
-  description: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  status: 'open' | 'in_progress' | 'closed' | 'not_applicable';
-  identifiedDate: Date;
-  dueDate: Date;
-  closedDate?: Date;
-  recommendations: string[];
-  assignedTo?: string;
-  evidence: string;
-  measure?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface TransitionOfCare {
-  id: string;
-  patientId: string;
-  transitionType:
-    | 'hospital_to_home'
-    | 'hospital_to_snf'
-    | 'snf_to_home'
-    | 'er_to_home'
-    | 'specialist_referral'
-    | 'other';
-  fromLocation: string;
-  toLocation: string;
-  status: 'planned' | 'in_progress' | 'completed' | 'failed';
-  dischargeDate?: Date;
-  admissionDate?: Date;
-  followUpRequired: boolean;
-  followUpDate?: Date;
-  followUpCompleted: boolean;
-  medications: MedicationReconciliation[];
-  careInstructions: string[];
-  riskFactors: string[];
-  responsibleProvider?: string;
-  coordinatedBy: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface MedicationReconciliation {
@@ -162,57 +106,37 @@ export interface CareCoordinationTask {
   updatedAt: Date;
 }
 
-export interface PatientOutreach {
-  id: string;
-  patientId: string;
-  taskId?: string;
-  outreachType: 'phone' | 'email' | 'sms' | 'mail' | 'in_person' | 'portal';
-  purpose: string;
-  status: 'scheduled' | 'attempted' | 'completed' | 'failed' | 'cancelled';
-  scheduledDate?: Date;
-  attemptedDate?: Date;
-  completedDate?: Date;
-  contactResult?: 'successful' | 'no_answer' | 'left_message' | 'wrong_number' | 'declined';
-  notes: string;
-  nextSteps: string[];
-  performedBy?: string;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 // ============================================================================
 // Care Coordination Service
 // ============================================================================
 
 export class CareCoordinationService {
-  private static carePlans: Map<string, CarePlan> = new Map();
-  private static careTeams: Map<string, CareTeam> = new Map();
-  private static careGaps: Map<string, CareGap> = new Map();
-  private static transitions: Map<string, TransitionOfCare> = new Map();
-  private static tasks: Map<string, CareCoordinationTask> = new Map();
-  private static outreach: Map<string, PatientOutreach> = new Map();
+  private static db: IStorage = storage;
 
   // ============================================================================
   // Care Plan Management
   // ============================================================================
 
-  static createCarePlan(data: {
-    patientId: string;
-    name: string;
-    description: string;
-    category: CarePlan['category'];
-    startDate: Date;
-    reviewFrequency: CarePlan['reviewFrequency'];
-    createdBy: string;
-  }): CarePlan {
+  static async createCarePlan(
+    companyId: string,
+    data: {
+      patientId: string;
+      name: string;
+      description: string;
+      category: CarePlan['category'];
+      startDate: Date;
+      reviewFrequency: CarePlan['reviewFrequency'];
+      createdBy: string;
+    }
+  ): Promise<CarePlan> {
     const id = uuidv4();
 
     // Calculate next review date
     const nextReviewDate = this.calculateNextReviewDate(data.startDate, data.reviewFrequency);
 
-    const carePlan: CarePlan = {
+    const carePlan = await this.db.createCarePlan({
       id,
+      companyId,
       patientId: data.patientId,
       name: data.name,
       description: data.description,
@@ -224,150 +148,148 @@ export class CareCoordinationService {
       reviewFrequency: data.reviewFrequency,
       nextReviewDate,
       createdBy: data.createdBy,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    this.carePlans.set(id, carePlan);
     logger.info(`Care plan created for patient ${data.patientId}: ${data.name}`);
-
     return carePlan;
   }
 
-  static addCareGoal(carePlanId: string, goal: Omit<CareGoal, 'id' | 'createdAt' | 'updatedAt'>): CarePlan {
-    const carePlan = this.carePlans.get(carePlanId);
+  static async addCareGoal(
+    companyId: string,
+    carePlanId: string,
+    goal: Omit<CareGoal, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<CarePlan> {
+    const carePlan = await this.db.getCarePlan(carePlanId, companyId);
     if (!carePlan) {
       throw new Error('Care plan not found');
     }
 
-    const careGoal: CareGoal = {
+    const careGoal: any = {
       ...goal,
       id: uuidv4(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
-    carePlan.goals.push(careGoal);
-    carePlan.updatedAt = new Date();
+    const updatedGoals = [...(carePlan.goals || []), careGoal];
+    const updated = await this.db.updateCarePlan(carePlanId, companyId, {
+      goals: updatedGoals,
+    });
 
-    this.carePlans.set(carePlanId, carePlan);
     logger.info(`Care goal added to plan ${carePlanId}`);
-
-    return carePlan;
+    return updated!;
   }
 
-  static updateCareGoal(
+  static async updateCareGoal(
+    companyId: string,
     carePlanId: string,
     goalId: string,
     updates: Partial<Omit<CareGoal, 'id' | 'createdAt' | 'updatedAt'>>
-  ): CarePlan {
-    const carePlan = this.carePlans.get(carePlanId);
+  ): Promise<CarePlan> {
+    const carePlan = await this.db.getCarePlan(carePlanId, companyId);
     if (!carePlan) {
       throw new Error('Care plan not found');
     }
 
-    const goalIndex = carePlan.goals.findIndex((g) => g.id === goalId);
+    const goals = [...(carePlan.goals || [])];
+    const goalIndex = goals.findIndex((g) => g.id === goalId);
     if (goalIndex === -1) {
       throw new Error('Care goal not found');
     }
 
-    carePlan.goals[goalIndex] = {
-      ...carePlan.goals[goalIndex],
+    goals[goalIndex] = {
+      ...goals[goalIndex],
       ...updates,
-      updatedAt: new Date(),
+      updatedAt: new Date().toISOString(),
     };
 
-    carePlan.updatedAt = new Date();
-    this.carePlans.set(carePlanId, carePlan);
-
+    const updated = await this.db.updateCarePlan(carePlanId, companyId, { goals });
     logger.info(`Care goal ${goalId} updated`);
-    return carePlan;
+    return updated!;
   }
 
-  static addCareIntervention(
+  static async addCareIntervention(
+    companyId: string,
     carePlanId: string,
     intervention: Omit<CareIntervention, 'id' | 'createdAt' | 'updatedAt'>
-  ): CarePlan {
-    const carePlan = this.carePlans.get(carePlanId);
+  ): Promise<CarePlan> {
+    const carePlan = await this.db.getCarePlan(carePlanId, companyId);
     if (!carePlan) {
       throw new Error('Care plan not found');
     }
 
-    const careIntervention: CareIntervention = {
+    const careIntervention: any = {
       ...intervention,
       id: uuidv4(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
-    carePlan.interventions.push(careIntervention);
-    carePlan.updatedAt = new Date();
+    const updatedInterventions = [...(carePlan.interventions || []), careIntervention];
+    const updated = await this.db.updateCarePlan(carePlanId, companyId, {
+      interventions: updatedInterventions,
+    });
 
-    this.carePlans.set(carePlanId, carePlan);
     logger.info(`Care intervention added to plan ${carePlanId}`);
-
-    return carePlan;
+    return updated!;
   }
 
-  static activateCarePlan(carePlanId: string): CarePlan {
-    const carePlan = this.carePlans.get(carePlanId);
+  static async activateCarePlan(companyId: string, carePlanId: string): Promise<CarePlan> {
+    const carePlan = await this.db.getCarePlan(carePlanId, companyId);
     if (!carePlan) {
       throw new Error('Care plan not found');
     }
 
-    if (carePlan.goals.length === 0) {
+    if (!carePlan.goals || carePlan.goals.length === 0) {
       throw new Error('Cannot activate care plan without goals');
     }
 
-    carePlan.status = 'active';
-    carePlan.updatedAt = new Date();
+    const updated = await this.db.updateCarePlan(carePlanId, companyId, {
+      status: 'active',
+    });
 
-    this.carePlans.set(carePlanId, carePlan);
     logger.info(`Care plan activated: ${carePlanId}`);
-
-    return carePlan;
+    return updated!;
   }
 
-  static updateCarePlanStatus(
+  static async updateCarePlanStatus(
+    companyId: string,
     carePlanId: string,
-    status: CarePlan['status']
-  ): CarePlan {
-    const carePlan = this.carePlans.get(carePlanId);
+    status: 'draft' | 'active' | 'on_hold' | 'completed' | 'cancelled'
+  ): Promise<CarePlan> {
+    const carePlan = await this.db.getCarePlan(carePlanId, companyId);
     if (!carePlan) {
       throw new Error('Care plan not found');
     }
 
-    carePlan.status = status;
+    const updates: any = { status };
     if (status === 'completed' || status === 'cancelled') {
-      carePlan.endDate = new Date();
+      updates.endDate = new Date();
     }
-    carePlan.updatedAt = new Date();
 
-    this.carePlans.set(carePlanId, carePlan);
+    const updated = await this.db.updateCarePlan(carePlanId, companyId, updates);
     logger.info(`Care plan status updated: ${carePlanId} -> ${status}`);
-
-    return carePlan;
+    return updated!;
   }
 
-  static getCarePlanById(id: string): CarePlan | undefined {
-    return this.carePlans.get(id);
+  static async getCarePlanById(companyId: string, id: string): Promise<CarePlan | null> {
+    return await this.db.getCarePlan(id, companyId);
   }
 
-  static getCarePlansByPatient(patientId: string): CarePlan[] {
-    return Array.from(this.carePlans.values()).filter((plan) => plan.patientId === patientId);
+  static async getCarePlansByPatient(companyId: string, patientId: string): Promise<CarePlan[]> {
+    return await this.db.getCarePlans(companyId, { patientId });
   }
 
-  static getActiveCarePlans(): CarePlan[] {
-    return Array.from(this.carePlans.values()).filter((plan) => plan.status === 'active');
+  static async getActiveCarePlans(companyId: string): Promise<CarePlan[]> {
+    return await this.db.getCarePlans(companyId, { status: 'active' });
   }
 
-  static getCarePlansDueForReview(daysAhead: number = 7): CarePlan[] {
+  static async getCarePlansDueForReview(companyId: string, daysAhead: number = 7): Promise<CarePlan[]> {
+    const allActive = await this.db.getCarePlans(companyId, { status: 'active' });
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + daysAhead);
 
-    return Array.from(this.carePlans.values()).filter(
-      (plan) => plan.status === 'active' && plan.nextReviewDate <= futureDate
-    );
+    return allActive.filter((plan) => new Date(plan.nextReviewDate) <= futureDate);
   }
 
   private static calculateNextReviewDate(
@@ -398,108 +320,121 @@ export class CareCoordinationService {
   // Care Team Management
   // ============================================================================
 
-  static createCareTeam(data: {
-    name: string;
-    patientId: string;
-    description: string;
-    createdBy: string;
-  }): CareTeam {
+  static async createCareTeam(
+    companyId: string,
+    data: {
+      name: string;
+      patientId: string;
+      description: string;
+      createdBy: string;
+    }
+  ): Promise<CareTeam> {
     const id = uuidv4();
 
-    const careTeam: CareTeam = {
+    const careTeam = await this.db.createCareTeam({
       id,
+      companyId,
       name: data.name,
       patientId: data.patientId,
       description: data.description,
       members: [],
       status: 'active',
       createdBy: data.createdBy,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    this.careTeams.set(id, careTeam);
     logger.info(`Care team created for patient ${data.patientId}`);
-
     return careTeam;
   }
 
-  static addCareTeamMember(
+  static async addCareTeamMember(
+    companyId: string,
     careTeamId: string,
     member: Omit<CareTeamMember, 'id' | 'joinedDate' | 'status'>
-  ): CareTeam {
-    const careTeam = this.careTeams.get(careTeamId);
+  ): Promise<CareTeam> {
+    const careTeam = await this.db.getCareTeam(careTeamId, companyId);
     if (!careTeam) {
       throw new Error('Care team not found');
     }
+
+    const members = [...(careTeam.members || [])];
 
     // If this member is set as primary, unset others
     if (member.isPrimary) {
-      careTeam.members.forEach((m) => (m.isPrimary = false));
-      careTeam.primaryContact = member.userId;
+      members.forEach((m) => (m.isPrimary = false));
     }
 
-    const careTeamMember: CareTeamMember = {
+    const careTeamMember: any = {
       ...member,
       id: uuidv4(),
-      joinedDate: new Date(),
+      joinedDate: new Date().toISOString(),
       status: 'active',
     };
 
-    careTeam.members.push(careTeamMember);
-    careTeam.updatedAt = new Date();
+    members.push(careTeamMember);
 
-    this.careTeams.set(careTeamId, careTeam);
+    const updates: any = { members };
+    if (member.isPrimary) {
+      updates.primaryContact = member.userId;
+    }
+
+    const updated = await this.db.updateCareTeam(careTeamId, companyId, updates);
     logger.info(`Member added to care team ${careTeamId}`);
-
-    return careTeam;
+    return updated!;
   }
 
-  static removeCareTeamMember(careTeamId: string, memberId: string): CareTeam {
-    const careTeam = this.careTeams.get(careTeamId);
+  static async removeCareTeamMember(
+    companyId: string,
+    careTeamId: string,
+    memberId: string
+  ): Promise<CareTeam> {
+    const careTeam = await this.db.getCareTeam(careTeamId, companyId);
     if (!careTeam) {
       throw new Error('Care team not found');
     }
 
-    const memberIndex = careTeam.members.findIndex((m) => m.id === memberId);
+    const members = [...(careTeam.members || [])];
+    const memberIndex = members.findIndex((m) => m.id === memberId);
     if (memberIndex !== -1) {
-      careTeam.members[memberIndex].status = 'inactive';
-      careTeam.updatedAt = new Date();
-
-      this.careTeams.set(careTeamId, careTeam);
+      members[memberIndex].status = 'inactive';
+      const updated = await this.db.updateCareTeam(careTeamId, companyId, { members });
       logger.info(`Member removed from care team ${careTeamId}`);
+      return updated!;
     }
 
     return careTeam;
   }
 
-  static getCareTeamById(id: string): CareTeam | undefined {
-    return this.careTeams.get(id);
+  static async getCareTeamById(companyId: string, id: string): Promise<CareTeam | null> {
+    return await this.db.getCareTeam(id, companyId);
   }
 
-  static getCareTeamsByPatient(patientId: string): CareTeam[] {
-    return Array.from(this.careTeams.values()).filter((team) => team.patientId === patientId);
+  static async getCareTeamsByPatient(companyId: string, patientId: string): Promise<CareTeam[]> {
+    return await this.db.getCareTeams(companyId, { patientId });
   }
 
   // ============================================================================
   // Care Gap Management
   // ============================================================================
 
-  static identifyCareGap(data: {
-    patientId: string;
-    gapType: string;
-    category: CareGap['category'];
-    description: string;
-    severity: CareGap['severity'];
-    dueDate: Date;
-    recommendations: string[];
-    evidence: string;
-    measure?: string;
-  }): CareGap {
+  static async identifyCareGap(
+    companyId: string,
+    data: {
+      patientId: string;
+      gapType: string;
+      category: CareGap['category'];
+      description: string;
+      severity: CareGap['severity'];
+      dueDate: Date;
+      recommendations: string[];
+      evidence: string;
+      measure?: string;
+    }
+  ): Promise<CareGap> {
     const id = uuidv4();
 
-    const careGap: CareGap = {
+    const careGap = await this.db.createCareGap({
       id,
+      companyId,
       patientId: data.patientId,
       gapType: data.gapType,
       category: data.category,
@@ -511,16 +446,13 @@ export class CareCoordinationService {
       recommendations: data.recommendations,
       evidence: data.evidence,
       measure: data.measure,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    this.careGaps.set(id, careGap);
     logger.info(`Care gap identified for patient ${data.patientId}: ${data.gapType}`);
 
     // Auto-create task for high/critical gaps
     if (data.severity === 'high' || data.severity === 'critical') {
-      this.createCareCoordinationTask({
+      await this.createCareCoordinationTask(companyId, {
         patientId: data.patientId,
         gapId: id,
         title: `Address care gap: ${data.gapType}`,
@@ -528,6 +460,7 @@ export class CareCoordinationService {
         type: 'assessment',
         priority: data.severity === 'critical' ? 'urgent' : 'high',
         dueDate: data.dueDate,
+        notes: '',
         createdBy: 'system',
       });
     }
@@ -535,78 +468,82 @@ export class CareCoordinationService {
     return careGap;
   }
 
-  static updateCareGap(
+  static async updateCareGap(
+    companyId: string,
     id: string,
     updates: {
-      status?: CareGap['status'];
+      status?: 'open' | 'in_progress' | 'closed' | 'not_applicable';
       assignedTo?: string;
       closedDate?: Date;
     }
-  ): CareGap {
-    const careGap = this.careGaps.get(id);
+  ): Promise<CareGap> {
+    const careGap = await this.db.getCareGap(id, companyId);
     if (!careGap) {
       throw new Error('Care gap not found');
     }
 
-    if (updates.status) careGap.status = updates.status;
-    if (updates.assignedTo) careGap.assignedTo = updates.assignedTo;
-    if (updates.closedDate) careGap.closedDate = updates.closedDate;
+    const updateData: any = { ...updates };
 
-    if (updates.status === 'closed' && !careGap.closedDate) {
-      careGap.closedDate = new Date();
+    if (updates.status === 'closed' && !updates.closedDate) {
+      updateData.closedDate = new Date();
     }
 
-    careGap.updatedAt = new Date();
-
-    this.careGaps.set(id, careGap);
+    const updated = await this.db.updateCareGap(id, companyId, updateData);
     logger.info(`Care gap updated: ${id} -> ${updates.status}`);
-
-    return careGap;
+    return updated!;
   }
 
-  static getCareGapById(id: string): CareGap | undefined {
-    return this.careGaps.get(id);
+  static async getCareGapById(companyId: string, id: string): Promise<CareGap | null> {
+    return await this.db.getCareGap(id, companyId);
   }
 
-  static getCareGapsByPatient(patientId: string): CareGap[] {
-    return Array.from(this.careGaps.values()).filter((gap) => gap.patientId === patientId);
+  static async getCareGapsByPatient(companyId: string, patientId: string): Promise<CareGap[]> {
+    return await this.db.getCareGaps(companyId, { patientId });
   }
 
-  static getOpenCareGaps(category?: CareGap['category']): CareGap[] {
-    return Array.from(this.careGaps.values()).filter(
-      (gap) => gap.status === 'open' && (!category || gap.category === category)
-    );
+  static async getOpenCareGaps(
+    companyId: string,
+    category?: 'preventive' | 'chronic_care' | 'medication' | 'screening' | 'follow_up'
+  ): Promise<CareGap[]> {
+    const filters: any = { status: 'open' };
+    if (category) {
+      filters.category = category;
+    }
+    return await this.db.getCareGaps(companyId, filters);
   }
 
-  static getOverdueCareGaps(): CareGap[] {
+  static async getOverdueCareGaps(companyId: string): Promise<CareGap[]> {
+    const allOpen = await this.db.getCareGaps(companyId, { status: 'open' });
     const now = new Date();
-    return Array.from(this.careGaps.values()).filter(
-      (gap) => gap.status === 'open' && gap.dueDate < now
-    );
+    return allOpen.filter((gap) => new Date(gap.dueDate) < now);
   }
 
   // ============================================================================
   // Transitions of Care
   // ============================================================================
 
-  static createTransitionOfCare(data: {
-    patientId: string;
-    transitionType: TransitionOfCare['transitionType'];
-    fromLocation: string;
-    toLocation: string;
-    dischargeDate?: Date;
-    admissionDate?: Date;
-    followUpRequired: boolean;
-    followUpDate?: Date;
-    careInstructions: string[];
-    riskFactors: string[];
-    responsibleProvider?: string;
-    coordinatedBy: string;
-  }): TransitionOfCare {
+  static async createTransitionOfCare(
+    companyId: string,
+    data: {
+      patientId: string;
+      transitionType: TransitionOfCare['transitionType'];
+      fromLocation: string;
+      toLocation: string;
+      dischargeDate?: Date;
+      admissionDate?: Date;
+      followUpRequired: boolean;
+      followUpDate?: Date;
+      careInstructions: string[];
+      riskFactors: string[];
+      responsibleProvider?: string;
+      coordinatedBy: string;
+    }
+  ): Promise<TransitionOfCare> {
     const id = uuidv4();
 
-    const transition: TransitionOfCare = {
+    const transition = await this.db.createTransitionOfCare({
       id,
+      companyId,
       patientId: data.patientId,
       transitionType: data.transitionType,
       fromLocation: data.fromLocation,
@@ -622,16 +559,13 @@ export class CareCoordinationService {
       riskFactors: data.riskFactors,
       responsibleProvider: data.responsibleProvider,
       coordinatedBy: data.coordinatedBy,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    this.transitions.set(id, transition);
     logger.info(`Transition of care created for patient ${data.patientId}`);
 
     // Create follow-up task if required
     if (data.followUpRequired && data.followUpDate) {
-      this.createCareCoordinationTask({
+      await this.createCareCoordinationTask(companyId, {
         patientId: data.patientId,
         transitionId: id,
         title: `Follow-up after ${data.transitionType}`,
@@ -639,6 +573,7 @@ export class CareCoordinationService {
         type: 'follow_up',
         priority: 'high',
         dueDate: data.followUpDate,
+        notes: '',
         createdBy: data.coordinatedBy,
       });
     }
@@ -646,73 +581,78 @@ export class CareCoordinationService {
     return transition;
   }
 
-  static addMedicationReconciliation(
+  static async addMedicationReconciliation(
+    companyId: string,
     transitionId: string,
     reconciliation: MedicationReconciliation
-  ): TransitionOfCare {
-    const transition = this.transitions.get(transitionId);
+  ): Promise<TransitionOfCare> {
+    const transition = await this.db.getTransitionOfCare(transitionId, companyId);
     if (!transition) {
       throw new Error('Transition of care not found');
     }
 
-    transition.medications.push(reconciliation);
-    transition.updatedAt = new Date();
+    const medications = [...(transition.medications || [])];
+    const medRec: any = {
+      ...reconciliation,
+      reconciledDate: typeof reconciliation.reconciledDate === 'string'
+        ? reconciliation.reconciledDate
+        : reconciliation.reconciledDate.toISOString(),
+    };
+    medications.push(medRec);
 
-    this.transitions.set(transitionId, transition);
+    const updated = await this.db.updateTransitionOfCare(transitionId, companyId, { medications });
     logger.info(`Medication reconciliation added to transition ${transitionId}`);
-
-    return transition;
+    return updated!;
   }
 
-  static updateTransitionStatus(
+  static async updateTransitionStatus(
+    companyId: string,
     transitionId: string,
-    status: TransitionOfCare['status']
-  ): TransitionOfCare {
-    const transition = this.transitions.get(transitionId);
+    status: 'planned' | 'in_progress' | 'completed' | 'failed'
+  ): Promise<TransitionOfCare> {
+    const transition = await this.db.getTransitionOfCare(transitionId, companyId);
     if (!transition) {
       throw new Error('Transition of care not found');
     }
 
-    transition.status = status;
-    transition.updatedAt = new Date();
-
-    this.transitions.set(transitionId, transition);
+    const updated = await this.db.updateTransitionOfCare(transitionId, companyId, { status });
     logger.info(`Transition status updated: ${transitionId} -> ${status}`);
-
-    return transition;
+    return updated!;
   }
 
-  static completeFollowUp(transitionId: string): TransitionOfCare {
-    const transition = this.transitions.get(transitionId);
+  static async completeFollowUp(companyId: string, transitionId: string): Promise<TransitionOfCare> {
+    const transition = await this.db.getTransitionOfCare(transitionId, companyId);
     if (!transition) {
       throw new Error('Transition of care not found');
     }
 
-    transition.followUpCompleted = true;
-    transition.updatedAt = new Date();
-
-    this.transitions.set(transitionId, transition);
+    const updated = await this.db.updateTransitionOfCare(transitionId, companyId, {
+      followUpCompleted: true,
+    });
     logger.info(`Follow-up completed for transition ${transitionId}`);
-
-    return transition;
+    return updated!;
   }
 
-  static getTransitionById(id: string): TransitionOfCare | undefined {
-    return this.transitions.get(id);
+  static async getTransitionById(companyId: string, id: string): Promise<TransitionOfCare | null> {
+    return await this.db.getTransitionOfCare(id, companyId);
   }
 
-  static getTransitionsByPatient(patientId: string): TransitionOfCare[] {
-    return Array.from(this.transitions.values()).filter((t) => t.patientId === patientId);
+  static async getTransitionsByPatient(
+    companyId: string,
+    patientId: string
+  ): Promise<TransitionOfCare[]> {
+    return await this.db.getTransitionsOfCare(companyId, { patientId });
   }
 
-  static getPendingFollowUps(): TransitionOfCare[] {
+  static async getPendingFollowUps(companyId: string): Promise<TransitionOfCare[]> {
+    const all = await this.db.getTransitionsOfCare(companyId, {});
     const now = new Date();
-    return Array.from(this.transitions.values()).filter(
+    return all.filter(
       (t) =>
         t.followUpRequired &&
         !t.followUpCompleted &&
         t.followUpDate &&
-        t.followUpDate <= now
+        new Date(t.followUpDate) <= now
     );
   }
 
@@ -720,23 +660,28 @@ export class CareCoordinationService {
   // Care Coordination Tasks
   // ============================================================================
 
-  static createCareCoordinationTask(data: {
-    patientId: string;
-    carePlanId?: string;
-    transitionId?: string;
-    gapId?: string;
-    title: string;
-    description: string;
-    type: CareCoordinationTask['type'];
-    priority: CareCoordinationTask['priority'];
-    dueDate: Date;
-    assignedTo?: string;
-    createdBy: string;
-  }): CareCoordinationTask {
+  static async createCareCoordinationTask(
+    companyId: string,
+    data: {
+      patientId: string;
+      carePlanId?: string;
+      transitionId?: string;
+      gapId?: string;
+      title: string;
+      description: string;
+      type: CareCoordinationTask['type'];
+      priority: CareCoordinationTask['priority'];
+      dueDate: Date;
+      assignedTo?: string;
+      notes: string;
+      createdBy: string;
+    }
+  ): Promise<CareCoordinationTask> {
     const id = uuidv4();
 
-    const task: CareCoordinationTask = {
+    const task = await this.db.createCareCoordinationTask({
       id,
+      companyId,
       patientId: data.patientId,
       carePlanId: data.carePlanId,
       transitionId: data.transitionId,
@@ -748,76 +693,81 @@ export class CareCoordinationService {
       status: 'pending',
       assignedTo: data.assignedTo,
       dueDate: data.dueDate,
-      notes: '',
+      notes: data.notes,
       createdBy: data.createdBy,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    this.tasks.set(id, task);
     logger.info(`Care coordination task created: ${data.title}`);
-
     return task;
   }
 
-  static updateTaskStatus(
+  static async updateTaskStatus(
+    companyId: string,
     taskId: string,
-    status: CareCoordinationTask['status'],
+    status: 'pending' | 'in_progress' | 'completed' | 'cancelled',
     completedBy?: string,
     notes?: string
-  ): CareCoordinationTask {
-    const task = this.tasks.get(taskId);
+  ): Promise<CareCoordinationTask> {
+    const task = await this.db.getCareCoordinationTask(taskId, companyId);
     if (!task) {
       throw new Error('Task not found');
     }
 
-    task.status = status;
+    const updates: any = { status };
     if (status === 'completed') {
-      task.completedDate = new Date();
-      task.completedBy = completedBy;
+      updates.completedDate = new Date();
+      updates.completedBy = completedBy;
     }
     if (notes) {
-      task.notes = notes;
+      updates.notes = notes;
     }
-    task.updatedAt = new Date();
 
-    this.tasks.set(taskId, task);
+    const updated = await this.db.updateCareCoordinationTask(taskId, companyId, updates);
     logger.info(`Task status updated: ${taskId} -> ${status}`);
-
-    return task;
+    return updated!;
   }
 
-  static assignTask(taskId: string, assignedTo: string): CareCoordinationTask {
-    const task = this.tasks.get(taskId);
+  static async assignTask(
+    companyId: string,
+    taskId: string,
+    assignedTo: string
+  ): Promise<CareCoordinationTask> {
+    const task = await this.db.getCareCoordinationTask(taskId, companyId);
     if (!task) {
       throw new Error('Task not found');
     }
 
-    task.assignedTo = assignedTo;
-    task.updatedAt = new Date();
-
-    this.tasks.set(taskId, task);
+    const updated = await this.db.updateCareCoordinationTask(taskId, companyId, { assignedTo });
     logger.info(`Task assigned: ${taskId} -> ${assignedTo}`);
-
-    return task;
+    return updated!;
   }
 
-  static getTaskById(id: string): CareCoordinationTask | undefined {
-    return this.tasks.get(id);
+  static async getTaskById(companyId: string, id: string): Promise<CareCoordinationTask | null> {
+    return await this.db.getCareCoordinationTask(id, companyId);
   }
 
-  static getTasksByPatient(patientId: string): CareCoordinationTask[] {
-    return Array.from(this.tasks.values()).filter((task) => task.patientId === patientId);
+  static async getTasksByPatient(
+    companyId: string,
+    patientId: string
+  ): Promise<CareCoordinationTask[]> {
+    return await this.db.getCareCoordinationTasks(companyId, { patientId });
   }
 
-  static getTasksByAssignee(userId: string): CareCoordinationTask[] {
-    return Array.from(this.tasks.values()).filter((task) => task.assignedTo === userId);
+  static async getTasksByAssignee(
+    companyId: string,
+    userId: string
+  ): Promise<CareCoordinationTask[]> {
+    return await this.db.getCareCoordinationTasks(companyId, { assignedTo: userId });
   }
 
-  static getOverdueTasks(): CareCoordinationTask[] {
+  static async getOverdueTasks(companyId: string): Promise<CareCoordinationTask[]> {
+    const allTasks = await this.db.getCareCoordinationTasks(companyId, {});
     const now = new Date();
-    return Array.from(this.tasks.values()).filter(
-      (task) => task.status !== 'completed' && task.status !== 'cancelled' && task.dueDate < now
+    return allTasks.filter(
+      (task) =>
+        task.status !== 'completed' &&
+        task.status !== 'cancelled' &&
+        new Date(task.dueDate) < now
     );
   }
 
@@ -825,18 +775,22 @@ export class CareCoordinationService {
   // Patient Outreach
   // ============================================================================
 
-  static createPatientOutreach(data: {
-    patientId: string;
-    taskId?: string;
-    outreachType: PatientOutreach['outreachType'];
-    purpose: string;
-    scheduledDate?: Date;
-    createdBy: string;
-  }): PatientOutreach {
+  static async createPatientOutreach(
+    companyId: string,
+    data: {
+      patientId: string;
+      taskId?: string;
+      outreachType: PatientOutreach['outreachType'];
+      purpose: string;
+      scheduledDate?: Date;
+      createdBy: string;
+    }
+  ): Promise<PatientOutreach> {
     const id = uuidv4();
 
-    const outreach: PatientOutreach = {
+    const outreach = await this.db.createPatientOutreach({
       id,
+      companyId,
       patientId: data.patientId,
       taskId: data.taskId,
       outreachType: data.outreachType,
@@ -846,17 +800,14 @@ export class CareCoordinationService {
       notes: '',
       nextSteps: [],
       createdBy: data.createdBy,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    this.outreach.set(id, outreach);
     logger.info(`Patient outreach created for patient ${data.patientId}`);
-
     return outreach;
   }
 
-  static recordOutreachAttempt(
+  static async recordOutreachAttempt(
+    companyId: string,
     outreachId: string,
     data: {
       contactResult: PatientOutreach['contactResult'];
@@ -864,48 +815,51 @@ export class CareCoordinationService {
       nextSteps: string[];
       performedBy: string;
     }
-  ): PatientOutreach {
-    const outreach = this.outreach.get(outreachId);
+  ): Promise<PatientOutreach> {
+    const outreach = await this.db.getPatientOutreach(outreachId, companyId);
     if (!outreach) {
       throw new Error('Outreach not found');
     }
 
-    outreach.status = data.contactResult === 'successful' ? 'completed' : 'attempted';
-    outreach.attemptedDate = new Date();
-    outreach.contactResult = data.contactResult;
-    outreach.notes = data.notes;
-    outreach.nextSteps = data.nextSteps;
-    outreach.performedBy = data.performedBy;
+    const updates: any = {
+      status: data.contactResult === 'successful' ? 'completed' : 'attempted',
+      attemptedDate: new Date(),
+      contactResult: data.contactResult,
+      notes: data.notes,
+      nextSteps: data.nextSteps,
+      performedBy: data.performedBy,
+    };
 
     if (data.contactResult === 'successful') {
-      outreach.completedDate = new Date();
+      updates.completedDate = new Date();
     }
 
-    outreach.updatedAt = new Date();
-
-    this.outreach.set(outreachId, outreach);
+    const updated = await this.db.updatePatientOutreach(outreachId, companyId, updates);
     logger.info(`Outreach attempt recorded: ${outreachId}`);
-
-    return outreach;
+    return updated!;
   }
 
-  static getOutreachById(id: string): PatientOutreach | undefined {
-    return this.outreach.get(id);
+  static async getOutreachById(companyId: string, id: string): Promise<PatientOutreach | null> {
+    return await this.db.getPatientOutreach(id, companyId);
   }
 
-  static getOutreachByPatient(patientId: string): PatientOutreach[] {
-    return Array.from(this.outreach.values()).filter((o) => o.patientId === patientId);
+  static async getOutreachByPatient(
+    companyId: string,
+    patientId: string
+  ): Promise<PatientOutreach[]> {
+    return await this.db.getPatientOutreaches(companyId, { patientId });
   }
 
-  static getScheduledOutreach(daysAhead: number = 7): PatientOutreach[] {
+  static async getScheduledOutreach(
+    companyId: string,
+    daysAhead: number = 7
+  ): Promise<PatientOutreach[]> {
+    const allScheduled = await this.db.getPatientOutreaches(companyId, { status: 'scheduled' });
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + daysAhead);
 
-    return Array.from(this.outreach.values()).filter(
-      (o) =>
-        o.status === 'scheduled' &&
-        o.scheduledDate &&
-        o.scheduledDate <= futureDate
+    return allScheduled.filter(
+      (o) => o.scheduledDate && new Date(o.scheduledDate) <= futureDate
     );
   }
 

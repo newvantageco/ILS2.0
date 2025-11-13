@@ -315,7 +315,7 @@ export default function EyeExaminationComprehensive() {
   const urlParams = new URLSearchParams(window.location.search);
   const urlPatientId = urlParams.get('patientId');
 
-  const canEdit = user?.enhancedRole === 'optometrist' || user?.role === 'ecp' || user?.role === 'platform_admin' || user?.role === 'admin' || user?.role === 'company_admin';
+  const canEdit = user?.role === 'ecp' || user?.role === 'platform_admin' || user?.role === 'admin' || user?.role === 'company_admin';
 
   // Form state - comprehensive data structure
   const [formData, setFormData] = useState<Partial<EyeExaminationData>>({

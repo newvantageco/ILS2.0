@@ -70,7 +70,55 @@ ILS 2.0 uses a modern containerized infrastructure with:
 
 ## Deployment Options
 
-### 1. Docker Compose (Development/Staging)
+### 1. Railway (Recommended for Production SaaS)
+
+**Best for**: Production SaaS deployments, automatic scaling, managed infrastructure
+
+Railway provides the easiest path to production for ILS 2.0 with:
+- Automatic deployments from GitHub
+- Managed PostgreSQL with backups
+- Managed Redis for sessions and queues
+- Automatic SSL certificates
+- Simple environment variable management
+- Built-in monitoring and logging
+- Cost-effective pricing
+
+**Quick Setup**:
+
+```bash
+# Install Railway CLI
+npm install -g @railway/cli
+
+# Login and link project
+railway login
+railway link
+
+# Deploy
+railway up
+```
+
+**Services to Create**:
+1. PostgreSQL Database (enable Production Mode)
+2. Redis Service
+3. Web Application (auto-deploys from GitHub)
+
+**See detailed guide**: [Railway Deployment Guide](./RAILWAY_DEPLOYMENT.md)
+
+**Pros**:
+- ✅ Fastest time to production
+- ✅ Auto-scaling and managed services
+- ✅ Automatic SSL and domain management
+- ✅ GitHub integration
+- ✅ Built-in monitoring
+- ✅ Cost-effective for SaaS
+
+**Cons**:
+- Vendor lock-in (mitigated by Docker containerization)
+- Less control than self-hosted Kubernetes
+
+---
+
+### 2. Docker Compose (Development/Staging)
 
 **Best for**: Local development, small deployments
 
@@ -92,7 +140,7 @@ docker-compose -f docker-compose.dev.yml up
 - Single host deployment
 - Limited high availability
 
-### 2. Kubernetes (Production)
+### 3. Kubernetes (Production - Enterprise)
 
 **Best for**: Production deployments, high availability
 
@@ -114,7 +162,7 @@ kubectl apply -f .
 - More complex setup
 - Higher resource requirements
 
-### 3. Cloud Platforms
+### 4. Cloud Platforms
 
 #### AWS ECS/Fargate
 
