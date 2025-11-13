@@ -1,36 +1,16 @@
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../utils/logger';
 import { storage, type IStorage } from '../../storage';
+import type {
+  QualityImprovementProject,
+  PDSACycle,
+  CareBundle,
+  BundleCompliance,
+  PerformanceImprovement,
+  BestPractice,
+} from '../../../shared/schema';
 
-// ============================================================================
-// Quality Improvement Types
-// ============================================================================
-
-export interface QualityImprovementProject {
-  id: string;
-  projectNumber: string;
-  name: string;
-  description: string;
-  aim: string;
-  scope: string;
-  status: 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  teamLead: string;
-  teamMembers: string[];
-  startDate: Date;
-  targetCompletionDate: Date;
-  actualCompletionDate?: Date;
-  baseline: ProjectBaseline;
-  target: ProjectTarget;
-  pdsaCycles: string[]; // Array of PDSA cycle IDs
-  interventions: QIIntervention[];
-  barriers: string[];
-  successFactors: string[];
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
+// Sub-types for JSON fields
 export interface ProjectBaseline {
   metric: string;
   value: number;
@@ -56,62 +36,11 @@ export interface QIIntervention {
   notes: string;
 }
 
-export interface PDSACycle {
-  id: string;
-  cycleNumber: number;
-  projectId: string;
-  status: 'plan' | 'do' | 'study' | 'act' | 'completed';
-  plan: {
-    objective: string;
-    predictions: string[];
-    measures: string[];
-    plan: string[];
-  };
-  do: {
-    implementationDate?: Date;
-    observations: string[];
-    dataCollected: CycleData[];
-    issues: string[];
-  };
-  study: {
-    results: string[];
-    comparedToObjective: string;
-    learnings: string[];
-    unexpectedFindings: string[];
-  };
-  act: {
-    decision: 'adopt' | 'adapt' | 'abandon';
-    nextSteps: string[];
-    changesAdopted: string[];
-    nextCycleChanges: string[];
-  };
-  startDate: Date;
-  completionDate?: Date;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface CycleData {
   dataPoint: string;
   value: number;
   collectionDate: Date;
   notes: string;
-}
-
-export interface CareBundle {
-  id: string;
-  bundleId: string;
-  name: string;
-  description: string;
-  category: string;
-  elements: BundleElement[];
-  evidenceBase: string;
-  targetPopulation: string;
-  active: boolean;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface BundleElement {
@@ -124,19 +53,6 @@ export interface BundleElement {
   criticalElement: boolean;
 }
 
-export interface BundleCompliance {
-  id: string;
-  bundleId: string;
-  encounterId: string;
-  patientId: string;
-  assessmentDate: Date;
-  elementCompliance: ElementCompliance[];
-  overallCompliance: boolean;
-  complianceRate: number;
-  assessedBy: string;
-  createdAt: Date;
-}
-
 export interface ElementCompliance {
   elementId: string;
   compliant: boolean;
@@ -145,50 +61,10 @@ export interface ElementCompliance {
   evidence?: string;
 }
 
-export interface PerformanceImprovement {
-  id: string;
-  name: string;
-  description: string;
-  metric: string;
-  baselineValue: number;
-  baselineDate: Date;
-  targetValue: number;
-  targetDate: Date;
-  currentValue: number;
-  currentDate: Date;
-  improvement: number;
-  improvementPercentage: number;
-  trend: 'improving' | 'declining' | 'stable';
-  status: 'active' | 'met' | 'missed' | 'abandoned';
-  dataPoints: DataPoint[];
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface DataPoint {
   date: Date;
   value: number;
   notes: string;
-}
-
-export interface BestPractice {
-  id: string;
-  practiceId: string;
-  name: string;
-  description: string;
-  category: string;
-  clinicalArea: string;
-  evidenceLevel: 'Level_I' | 'Level_II' | 'Level_III' | 'Level_IV' | 'Level_V';
-  evidenceSource: string;
-  implementation: string;
-  outcomes: string[];
-  adoptionStatus: 'proposed' | 'pilot' | 'adopted' | 'sustained';
-  adoptionDate?: Date;
-  owner: string;
-  active: boolean;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 // ============================================================================
