@@ -196,15 +196,19 @@ app.use(requestTimeout(30000));
   log("Starting server initialization...");
 
   await ensureMasterUser();
-    
-    // Add health check endpoint
-    app.get('/health', (req, res) => {
-      res.json({ 
+
+    // Add health check endpoints (both /health and /api/health for Railway compatibility)
+    const healthCheck = (req, res) => {
+      res.json({
         status: 'ok',
         timestamp: new Date().toISOString(),
-        environment: app.get("env")
+        environment: app.get("env"),
+        uptime: process.uptime(),
+        memory: process.memoryUsage()
       });
-    });
+    };
+    app.get('/health', healthCheck);
+    app.get('/api/health', healthCheck);
 
     // Metrics endpoint (optional)
     if (process.env.METRICS_ENABLED === 'true') {
