@@ -556,9 +556,28 @@ export class MLModelManagementService {
         break;
 
       case 'linear_regression':
-        // Use regression for trend analysis
-        predictions = { trend: 'Regression prediction not yet implemented' };
-        confidence = 0.75;
+        // Use ForecastingAI for trend change detection and analysis
+        const trendChanges = ForecastingAI.detectTrendChanges(
+          inputData.data || [],
+          inputData.windowSize || 7
+        );
+
+        // Calculate overall trend direction
+        const data = inputData.data || [];
+        const avgTrend = trendChanges.length > 0
+          ? trendChanges.reduce((sum, c) => sum + c.newTrend, 0) / trendChanges.length
+          : 0;
+
+        predictions = {
+          trendDirection: avgTrend > 0 ? 'increasing' : avgTrend < 0 ? 'decreasing' : 'stable',
+          avgTrendValue: avgTrend,
+          changePoints: trendChanges,
+          significantChanges: trendChanges.filter(c => c.significant),
+          dataPoints: data.length,
+        };
+
+        // Calculate confidence based on data quality and number of change points
+        confidence = Math.min(0.85, 0.5 + (data.length / 100));
         break;
 
       case 'z_score':

@@ -281,7 +281,15 @@ import {
   type PerformanceImprovement,
   type InsertPerformanceImprovement,
   type BestPractice,
-  type InsertBestPractice
+  type InsertBestPractice,
+  type AIModelVersion,
+  type InsertAIModelVersion,
+  type AIModelDeployment,
+  type InsertAIModelDeployment,
+  type AITrainingJob,
+  type InsertAITrainingJob,
+  type MasterTrainingDataset,
+  type InsertMasterTrainingDataset
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql, gt, lt, gte, lte, ne, asc } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
@@ -5922,6 +5930,141 @@ export class DbStorage implements IStorage {
       .where(and(eq(bestPractices.id, id), eq(bestPractices.companyId, companyId)))
       .returning();
     return result || null;
+  }
+
+  // ============================================================================
+  // AI/ML MODEL MANAGEMENT METHODS
+  // ============================================================================
+
+  // AI Model Versions
+  async createAIModelVersion(data: InsertAIModelVersion): Promise<AIModelVersion> {
+    const [result] = await db.insert(aiModelVersions).values(data).returning();
+    return result;
+  }
+
+  async getAIModelVersion(id: string, companyId: string): Promise<AIModelVersion | undefined> {
+    const [result] = await db
+      .select()
+      .from(aiModelVersions)
+      .where(and(eq(aiModelVersions.id, id), eq(aiModelVersions.companyId, companyId)));
+    return result;
+  }
+
+  async getAIModelVersions(companyId: string, filters?: any): Promise<AIModelVersion[]> {
+    const conditions = [eq(aiModelVersions.companyId, companyId)];
+
+    if (filters?.modelType) conditions.push(eq(aiModelVersions.modelType, filters.modelType));
+    if (filters?.algorithm) conditions.push(eq(aiModelVersions.algorithm, filters.algorithm));
+    if (filters?.status) conditions.push(eq(aiModelVersions.status, filters.status));
+
+    return await db.select().from(aiModelVersions).where(and(...conditions));
+  }
+
+  async updateAIModelVersion(id: string, companyId: string, data: Partial<AIModelVersion>): Promise<AIModelVersion | undefined> {
+    const [result] = await db
+      .update(aiModelVersions)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(aiModelVersions.id, id), eq(aiModelVersions.companyId, companyId)))
+      .returning();
+    return result;
+  }
+
+  // AI Model Deployments
+  async createAIModelDeployment(data: InsertAIModelDeployment): Promise<AIModelDeployment> {
+    const [result] = await db.insert(aiModelDeployments).values(data).returning();
+    return result;
+  }
+
+  async getAIModelDeployment(id: string, companyId: string): Promise<AIModelDeployment | undefined> {
+    const [result] = await db
+      .select()
+      .from(aiModelDeployments)
+      .where(and(eq(aiModelDeployments.id, id), eq(aiModelDeployments.companyId, companyId)));
+    return result;
+  }
+
+  async getAIModelDeployments(companyId: string, filters?: any): Promise<AIModelDeployment[]> {
+    const conditions = [eq(aiModelDeployments.companyId, companyId)];
+
+    if (filters?.modelVersionId) conditions.push(eq(aiModelDeployments.modelVersionId, filters.modelVersionId));
+    if (filters?.environment) conditions.push(eq(aiModelDeployments.environment, filters.environment));
+    if (filters?.status) conditions.push(eq(aiModelDeployments.status, filters.status));
+
+    return await db.select().from(aiModelDeployments).where(and(...conditions));
+  }
+
+  async updateAIModelDeployment(id: string, companyId: string, data: Partial<AIModelDeployment>): Promise<AIModelDeployment | undefined> {
+    const [result] = await db
+      .update(aiModelDeployments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(aiModelDeployments.id, id), eq(aiModelDeployments.companyId, companyId)))
+      .returning();
+    return result;
+  }
+
+  // AI Training Jobs
+  async createAITrainingJob(data: InsertAITrainingJob): Promise<AITrainingJob> {
+    const [result] = await db.insert(aiTrainingJobs).values(data).returning();
+    return result;
+  }
+
+  async getAITrainingJob(id: string, companyId: string): Promise<AITrainingJob | undefined> {
+    const [result] = await db
+      .select()
+      .from(aiTrainingJobs)
+      .where(and(eq(aiTrainingJobs.id, id), eq(aiTrainingJobs.companyId, companyId)));
+    return result;
+  }
+
+  async getAITrainingJobs(companyId: string, filters?: any): Promise<AITrainingJob[]> {
+    const conditions = [eq(aiTrainingJobs.companyId, companyId)];
+
+    if (filters?.status) conditions.push(eq(aiTrainingJobs.status, filters.status));
+    if (filters?.modelType) conditions.push(eq(aiTrainingJobs.modelType, filters.modelType));
+    if (filters?.algorithm) conditions.push(eq(aiTrainingJobs.algorithm, filters.algorithm));
+
+    return await db.select().from(aiTrainingJobs).where(and(...conditions));
+  }
+
+  async updateAITrainingJob(id: string, companyId: string, data: Partial<AITrainingJob>): Promise<AITrainingJob | undefined> {
+    const [result] = await db
+      .update(aiTrainingJobs)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(aiTrainingJobs.id, id), eq(aiTrainingJobs.companyId, companyId)))
+      .returning();
+    return result;
+  }
+
+  // Master Training Datasets
+  async createMasterTrainingDataset(data: InsertMasterTrainingDataset): Promise<MasterTrainingDataset> {
+    const [result] = await db.insert(masterTrainingDatasets).values(data).returning();
+    return result;
+  }
+
+  async getMasterTrainingDataset(id: string, companyId: string): Promise<MasterTrainingDataset | undefined> {
+    const [result] = await db
+      .select()
+      .from(masterTrainingDatasets)
+      .where(and(eq(masterTrainingDatasets.id, id), eq(masterTrainingDatasets.companyId, companyId)));
+    return result;
+  }
+
+  async getMasterTrainingDatasets(companyId: string, filters?: any): Promise<MasterTrainingDataset[]> {
+    const conditions = [eq(masterTrainingDatasets.companyId, companyId)];
+
+    if (filters?.datasetType) conditions.push(eq(masterTrainingDatasets.datasetType, filters.datasetType));
+    if (filters?.status) conditions.push(eq(masterTrainingDatasets.status, filters.status));
+
+    return await db.select().from(masterTrainingDatasets).where(and(...conditions));
+  }
+
+  async updateMasterTrainingDataset(id: string, companyId: string, data: Partial<MasterTrainingDataset>): Promise<MasterTrainingDataset | undefined> {
+    const [result] = await db
+      .update(masterTrainingDatasets)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(masterTrainingDatasets.id, id), eq(masterTrainingDatasets.companyId, companyId)))
+      .returning();
+    return result;
   }
 
   // ============================================================================
