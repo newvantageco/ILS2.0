@@ -1,0 +1,14 @@
+# Railway Ignore File
+# This overrides .gitignore for Railway uploads
+# We need to include dist folder for deployment
+
+# Still exclude these
+node_modules
+.git
+.env
+.env.local
+*.log
+coverage
+test-results
+
+# Everything else (including dist/) will be uploaded

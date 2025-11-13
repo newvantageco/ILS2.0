@@ -1,12 +1,29 @@
-# ================================
-# Single-Stage Production Dockerfile
-# ================================
-# Build: 2025-11-13-simple
-# Note: Application must be built locally before deploying
+# Multi-stage build to handle npm optional dependencies bug
+FROM node:20 AS builder
 
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Workaround for npm optional dependencies bug
+# Remove package-lock.json and force clean install
+RUN rm -f package-lock.json && \
+    npm cache clean --force && \
+    npm install --include=optional && \
+    npm install --force @rollup/rollup-linux-x64-gnu && \
+    npm list @rollup/rollup-linux-x64-gnu || true
+
+# Copy source code
+COPY . .
+
+# Build application
+RUN npm run build
+
+# Production stage
 FROM node:20-slim AS production
 
-# Install runtime dependencies only
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     libcairo2 \
     libjpeg62-turbo \
@@ -22,35 +39,25 @@ RUN groupadd -g 1001 nodejs && \
 
 WORKDIR /app
 
-# Copy package files
-COPY --chown=nodejs:nodejs package*.json ./
+# Copy package files and install production dependencies only
+COPY package*.json ./
+RUN npm ci --omit=dev
 
-# Install ALL dependencies (bundled server needs all packages at runtime)
-RUN npm ci --include=dev
+# Copy built application from builder
+COPY --from=builder /app/dist ./dist
 
-# Copy pre-built application (dist folder must exist from local build)
-COPY --chown=nodejs:nodejs dist ./dist
-
-# Create uploads directory with correct permissions
+# Create uploads directory
 RUN mkdir -p /app/uploads && chown -R nodejs:nodejs /app/uploads
 
-# Switch to non-root user
 USER nodejs
-
-# Expose application port
 EXPOSE 5000
 
-# Set environment variables
 ENV NODE_ENV=production \
     PORT=5000 \
     HOST=0.0.0.0
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD node -e "require('http').get('http://localhost:5000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
-
-# Start the application
 CMD ["node", "dist/index.js"]
