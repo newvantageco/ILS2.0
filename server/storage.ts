@@ -544,7 +544,7 @@ export interface IStorage {
   // Disease Registries
   createDiseaseRegistry(registry: InsertDiseaseRegistry): Promise<DiseaseRegistry>;
   getDiseaseRegistry(id: string, companyId: string): Promise<DiseaseRegistry | null>;
-  getDiseaseRegistries(companyId: string, filters?: { diseaseType?: string }): Promise<DiseaseRegistry[]>;
+  getDiseaseRegistries(companyId: string, filters?: { active?: boolean }): Promise<DiseaseRegistry[]>;
   updateDiseaseRegistry(id: string, companyId: string, updates: Partial<DiseaseRegistry>): Promise<DiseaseRegistry | null>;
 
   // Registry Enrollments
@@ -557,7 +557,7 @@ export interface IStorage {
   // Disease Management Programs
   createDiseaseManagementProgram(program: InsertDiseaseManagementProgram): Promise<DiseaseManagementProgram>;
   getDiseaseManagementProgram(id: string, companyId: string): Promise<DiseaseManagementProgram | null>;
-  getDiseaseManagementPrograms(companyId: string, filters?: { diseaseType?: string; status?: string }): Promise<DiseaseManagementProgram[]>;
+  getDiseaseManagementPrograms(companyId: string, filters?: { diseaseType?: string; active?: boolean }): Promise<DiseaseManagementProgram[]>;
   updateDiseaseManagementProgram(id: string, companyId: string, updates: Partial<DiseaseManagementProgram>): Promise<DiseaseManagementProgram | null>;
 
   // Program Enrollments
@@ -617,7 +617,7 @@ export interface IStorage {
   // Risk Stratification Cohorts
   createRiskStratificationCohort(cohort: InsertRiskStratificationCohort): Promise<RiskStratificationCohort>;
   getRiskStratificationCohort(id: string, companyId: string): Promise<RiskStratificationCohort | undefined>;
-  getRiskStratificationCohorts(companyId: string, filters?: { riskLevel?: string }): Promise<RiskStratificationCohort[]>;
+  getRiskStratificationCohorts(companyId: string, filters?: { active?: boolean }): Promise<RiskStratificationCohort[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -5882,13 +5882,13 @@ export class DbStorage implements IStorage {
     companyId: string,
     id: string,
     data: Partial<InsertQualityImprovementProject>
-  ): Promise<QualityImprovementProject | null> {
+  ): Promise<QualityImprovementProject | undefined> {
     const [result] = await db
       .update(qualityImprovementProjects)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(qualityImprovementProjects.id, id), eq(qualityImprovementProjects.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   // PDSA Cycles
