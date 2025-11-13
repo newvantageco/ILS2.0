@@ -1,45 +1,9 @@
 # ================================
-# Multi-Stage Production Dockerfile
+# Single-Stage Production Dockerfile
 # ================================
-# Build: 2025-11-11-v2
+# Build: 2025-11-13-simple
+# Note: Application must be built locally before deploying
 
-# ----------------
-# Stage 1: Builder
-# ----------------
-FROM node:20 AS builder
-
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    libcairo2-dev \
-    libjpeg-dev \
-    libpango1.0-dev \
-    libgif-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install ALL dependencies (including devDependencies for build)
-# Clean install with explicit Rollup binary for platform
-RUN rm -f package-lock.json && \
-    npm cache clean --force && \
-    npm install && \
-    npm install @rollup/rollup-linux-x64-gnu --save-optional
-
-# Copy source code
-COPY . .
-
-# Build the application
-RUN npm run build
-
-# ----------------
-# Stage 2: Production
-# ----------------
 FROM node:20-slim AS production
 
 # Install runtime dependencies only
@@ -64,8 +28,8 @@ COPY --chown=nodejs:nodejs package*.json ./
 # Install ALL dependencies (bundled server needs all packages at runtime)
 RUN npm ci --include=dev
 
-# Copy built application from builder (contains bundled index.js and public/)
-COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+# Copy pre-built application (dist folder must exist from local build)
+COPY --chown=nodejs:nodejs dist ./dist
 
 # Create uploads directory with correct permissions
 RUN mkdir -p /app/uploads && chown -R nodejs:nodejs /app/uploads
