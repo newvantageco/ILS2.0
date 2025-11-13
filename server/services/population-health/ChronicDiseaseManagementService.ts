@@ -1,59 +1,24 @@
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../utils/logger';
 import { storage, type IStorage } from '../../storage';
+import type {
+  DiseaseRegistry,
+  RegistryEnrollment,
+  DiseaseManagementProgram,
+  ProgramEnrollment,
+  ClinicalMetric,
+  PatientEngagement,
+  OutcomeTracking,
+  PreventiveCareRecommendation,
+  QualityMeasure,
+} from '../../../shared/schema';
 
-// ============================================================================
-// Chronic Disease Management Types
-// ============================================================================
-
-export interface DiseaseRegistry {
-  id: string;
-  name: string;
-  diseaseCode: string;
-  description: string;
-  criteria: RegistryCriteria[];
-  active: boolean;
-  patientCount: number;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
+// Sub-types for JSON fields
 export interface RegistryCriteria {
   type: 'diagnosis' | 'lab_value' | 'medication' | 'procedure' | 'risk_score';
   field: string;
   operator: 'equals' | 'contains' | 'greater_than' | 'less_than' | 'in_range';
   value: any;
-}
-
-export interface RegistryEnrollment {
-  id: string;
-  registryId: string;
-  patientId: string;
-  enrollmentDate: Date;
-  status: 'active' | 'inactive' | 'graduated' | 'deceased' | 'transferred';
-  enrollmentReason: string;
-  disenrollmentDate?: Date;
-  disenrollmentReason?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface DiseaseManagementProgram {
-  id: string;
-  name: string;
-  diseaseType: string;
-  description: string;
-  objectives: string[];
-  eligibilityCriteria: ProgramCriteria[];
-  interventions: ProgramIntervention[];
-  qualityMeasures: QualityMeasure[];
-  duration: number; // days
-  active: boolean;
-  enrollmentCount: number;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface ProgramCriteria {
@@ -68,102 +33,8 @@ export interface ProgramIntervention {
   name: string;
   description: string;
   frequency: string;
-  duration: number; // days
+  duration: number;
   deliveryMethod: 'in_person' | 'phone' | 'video' | 'online' | 'app';
-}
-
-export interface QualityMeasure {
-  id: string;
-  name: string;
-  description: string;
-  numerator: string;
-  denominator: string;
-  targetValue: number;
-  unit: string;
-  measurementFrequency: 'monthly' | 'quarterly' | 'annually';
-}
-
-export interface ProgramEnrollment {
-  id: string;
-  programId: string;
-  patientId: string;
-  enrollmentDate: Date;
-  expectedEndDate: Date;
-  status: 'active' | 'completed' | 'withdrawn' | 'failed';
-  completionPercentage: number;
-  interventionsCompleted: string[];
-  outcomesAchieved: string[];
-  withdrawalReason?: string;
-  endDate?: Date;
-  assignedCoach?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface ClinicalMetric {
-  id: string;
-  patientId: string;
-  registryId?: string;
-  programId?: string;
-  metricType: string;
-  metricName: string;
-  value: number;
-  unit: string;
-  targetValue?: number;
-  isAtGoal: boolean;
-  measurementDate: Date;
-  source: string;
-  notes?: string;
-  createdAt: Date;
-}
-
-export interface PatientEngagement {
-  id: string;
-  patientId: string;
-  programId?: string;
-  engagementType: 'education_completed' | 'coaching_session' | 'self_monitoring' | 'goal_set' | 'milestone_achieved';
-  description: string;
-  engagementDate: Date;
-  score?: number;
-  notes: string;
-  recordedBy: string;
-  createdAt: Date;
-}
-
-export interface OutcomeTracking {
-  id: string;
-  patientId: string;
-  programId?: string;
-  registryId?: string;
-  outcomeType: 'clinical' | 'functional' | 'behavioral' | 'quality_of_life' | 'cost';
-  measure: string;
-  baselineValue: number;
-  currentValue: number;
-  targetValue?: number;
-  improvement: number;
-  improvementPercentage: number;
-  unit: string;
-  baselineDate: Date;
-  latestMeasurementDate: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface PreventiveCareRecommendation {
-  id: string;
-  patientId: string;
-  recommendationType: 'screening' | 'vaccination' | 'counseling' | 'medication';
-  name: string;
-  description: string;
-  frequency: string;
-  dueDate: Date;
-  status: 'due' | 'overdue' | 'completed' | 'not_applicable' | 'refused';
-  completedDate?: Date;
-  nextDueDate?: Date;
-  evidence: string;
-  importance: 'routine' | 'recommended' | 'essential';
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 // ============================================================================
