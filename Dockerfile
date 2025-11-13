@@ -25,8 +25,11 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install ALL dependencies (including devDependencies for build)
-# Using npm install instead of npm ci to handle optional dependencies correctly
-RUN npm install
+# Clean install with explicit Rollup binary for platform
+RUN rm -f package-lock.json && \
+    npm cache clean --force && \
+    npm install && \
+    npm install @rollup/rollup-linux-x64-gnu --save-optional
 
 # Copy source code
 COPY . .
