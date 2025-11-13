@@ -54,11 +54,9 @@ RUN groupadd -g 1001 nodejs && \
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files and node_modules from builder
 COPY --chown=nodejs:nodejs package*.json ./
-
-# Install ALL dependencies (bundled server needs all packages at runtime)
-RUN npm ci --include=dev
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 
 # Copy built application from builder (contains bundled index.js and public/)
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
