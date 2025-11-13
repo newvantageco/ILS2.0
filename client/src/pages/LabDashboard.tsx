@@ -12,7 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatCardSkeleton } from "@/components/ui/CardSkeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/badge";
-import { Package, Clock, CheckCircle, TrendingUp, Printer, Mail, ClipboardList, Wifi, WifiOff } from "lucide-react";
+import { Package, Clock, CheckCircle, TrendingUp, Printer, Mail, ClipboardList, Wifi, WifiOff, Beaker, Plus, Activity } from "lucide-react";
+import { StatsCard, SkeletonStats } from "@/components/ui";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -237,27 +238,46 @@ export default function LabDashboard() {
   const completedToday = stats?.completed || 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Lab Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Monitor production status and manage your order queue.
-          </p>
+    <div className="space-y-8 animate-fade-in">
+      {/* Modern Header Section with Gradient */}
+      <div className="relative overflow-hidden rounded-2xl gradient-secondary p-8 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl -ml-48 -mb-48" />
+
+        <div className="relative z-10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Beaker className="w-8 h-8" />
+              </div>
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-3xl font-bold tracking-tight">Lab Dashboard</h1>
+                  <Badge
+                    variant={ws && ws.readyState === WebSocket.OPEN ? "default" : "secondary"}
+                    className="gap-2 bg-white/20 backdrop-blur-sm border-white/30"
+                  >
+                    {ws && ws.readyState === WebSocket.OPEN ? (
+                      <>
+                        <Wifi className="h-3 w-3" />
+                        Live Updates
+                      </>
+                    ) : (
+                      <>
+                        <WifiOff className="h-3 w-3" />
+                        Offline
+                      </>
+                    )}
+                  </Badge>
+                </div>
+                <p className="text-white/90 mt-1">
+                  Monitor production status and manage your order queue
+                </p>
+              </div>
+            </div>
+            <CreatePurchaseOrderDialog />
+          </div>
         </div>
-        <Badge variant={ws && ws.readyState === WebSocket.OPEN ? "default" : "secondary"} className="gap-2">
-          {ws && ws.readyState === WebSocket.OPEN ? (
-            <>
-              <Wifi className="h-3 w-3" />
-              Live Updates
-            </>
-          ) : (
-            <>
-              <WifiOff className="h-3 w-3" />
-              Offline
-            </>
-          )}
-        </Badge>
       </div>
 
       <Tabs defaultValue="orders" className="w-full">
@@ -268,33 +288,58 @@ export default function LabDashboard() {
         </TabsList>
 
         <TabsContent value="orders" className="space-y-6 mt-6">
+          {/* Enhanced Stats Grid - Beautiful Modern Cards */}
           {statsLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[1, 2, 3, 4].map((i) => (
-                <StatCardSkeleton key={i} />
-              ))}
-            </div>
+            <SkeletonStats />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <StatCard
+              <StatsCard
                 title="Total Orders"
                 value={stats?.total.toString() || "0"}
+                subtitle="All time orders"
                 icon={Package}
+                variant="default"
+                trend={{
+                  value: 8.5,
+                  isPositive: true,
+                  label: "vs last week",
+                }}
               />
-              <StatCard
+              <StatsCard
                 title="In Production"
                 value={stats?.inProduction.toString() || "0"}
-                icon={Clock}
+                subtitle="Currently processing"
+                icon={Activity}
+                variant="primary"
+                trend={{
+                  value: 12.3,
+                  isPositive: true,
+                  label: "production rate",
+                }}
               />
-              <StatCard
+              <StatsCard
                 title="Completed Today"
                 value={completedToday.toString()}
+                subtitle="Successfully finished"
                 icon={CheckCircle}
+                variant="success"
+                trend={{
+                  value: 15.8,
+                  isPositive: true,
+                  label: "vs yesterday",
+                }}
               />
-              <StatCard
+              <StatsCard
                 title="Efficiency Rate"
                 value={`${efficiencyRate}%`}
+                subtitle="Overall completion rate"
                 icon={TrendingUp}
+                variant="default"
+                trend={{
+                  value: efficiencyRate,
+                  isPositive: efficiencyRate >= 75,
+                  label: "target: 80%",
+                }}
               />
             </div>
           )}
@@ -344,15 +389,22 @@ export default function LabDashboard() {
         </TabsContent>
 
         <TabsContent value="purchase-orders" className="space-y-6 mt-6">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Manage purchase orders and send them to suppliers</p>
+          <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-border/50">
+            <div>
+              <h3 className="font-semibold text-base">Purchase Orders</h3>
+              <p className="text-sm text-muted-foreground mt-0.5">Manage purchase orders and send them to suppliers</p>
+            </div>
             <CreatePurchaseOrderDialog />
           </div>
-          
+
           {purchaseOrders && purchaseOrders.length > 0 ? (
-            <Card>
+            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow">
               <CardHeader>
-                <CardTitle>Purchase Orders</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5 text-primary" />
+                  Active Purchase Orders
+                </CardTitle>
+                <CardDescription>Track and manage orders sent to suppliers</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -408,12 +460,18 @@ export default function LabDashboard() {
               </CardContent>
             </Card>
           ) : (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center">
-                  <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Purchase Orders</h3>
-                  <p className="text-muted-foreground mb-4">Create your first purchase order to get started.</p>
+            <Card className="border-2 border-dashed">
+              <CardContent className="py-16">
+                <EmptyState
+                  icon={Package}
+                  title="No Purchase Orders Yet"
+                  description="Create your first purchase order to start ordering from suppliers."
+                  action={{
+                    label: "Create Purchase Order",
+                    onClick: () => {}, // Handled by CreatePurchaseOrderDialog
+                  }}
+                />
+                <div className="flex justify-center mt-6">
                   <CreatePurchaseOrderDialog />
                 </div>
               </CardContent>

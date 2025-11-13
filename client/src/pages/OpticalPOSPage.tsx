@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Search, User, Check, Package, X, ArrowLeft, Mail } from "lucide-react";
+import { Search, User, Check, Package, X, ArrowLeft, Mail, CheckCircle, Activity } from "lucide-react";
 import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -401,18 +401,26 @@ export default function OpticalPOSPage() {
   };
 
   const posContent = (
-    <div className="fixed inset-0 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center p-6 z-[9999]">
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50 flex items-center justify-center p-6 z-[9999] animate-fade-in">
       {/* Floating Modal Container with Drop Shadow */}
-      <div className="w-full max-w-[1400px] h-[90vh] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden relative">
-        {/* Header with Back Button */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-          <h1 className="text-2xl font-bold text-gray-800">Point of Sale</h1>
+      <div className="w-full max-w-[1400px] h-[90vh] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden relative animate-scale-in">
+        {/* Header with Back Button - Enhanced */}
+        <div className="flex items-center justify-between px-6 py-5 border-b-2 border-gray-200/80 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md">
+              <Package className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">Point of Sale</h1>
+              <p className="text-xs text-gray-500 mt-0.5">Optical dispensing system</p>
+            </div>
+          </div>
           <button
             onClick={() => setLocation('/ecp/dashboard')}
-            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-lg transition-colors duration-200 shadow-sm hover:shadow-md border border-gray-200"
+            className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg border-2 border-gray-200 hover:border-gray-300 hover:-translate-y-0.5"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm font-medium">Back to Dashboard</span>
+            <span className="text-sm font-semibold">Back to Dashboard</span>
           </button>
         </div>
 
@@ -508,17 +516,24 @@ export default function OpticalPOSPage() {
                   <button
                     key={product.id}
                     onClick={() => handleProductSelect(product)}
-                    className={`w-full text-left p-3 rounded-xl text-sm transition-all duration-200 ${
+                    className={`w-full text-left p-4 rounded-xl text-sm transition-all duration-300 group ${
                       selectedProduct?.id === product.id
-                        ? "bg-blue-600 text-white shadow-md"
-                        : "bg-white border border-gray-200 hover:bg-gray-50 hover:shadow-sm text-gray-900"
+                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50 scale-105"
+                        : "bg-white border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-md text-gray-900 hover:scale-102"
                     }`}
                   >
-                    <div className="font-medium truncate">{product.brand} {product.model || product.name}</div>
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-xs opacity-80">${product.unitPrice}</span>
+                    <div className="font-semibold truncate flex items-center gap-2">
+                      <Package className={`h-4 w-4 ${selectedProduct?.id === product.id ? 'text-white' : 'text-gray-400 group-hover:text-blue-600'}`} />
+                      {product.brand} {product.model || product.name}
+                    </div>
+                    <div className="flex justify-between items-center mt-2">
+                      <span className={`text-sm font-bold ${selectedProduct?.id === product.id ? 'text-white' : 'text-blue-600'}`}>
+                        ${product.unitPrice}
+                      </span>
                       {product.category && (
-                        <span className="text-xs opacity-60">{product.category}</span>
+                        <Badge variant={selectedProduct?.id === product.id ? "secondary" : "outline"} className="text-xs">
+                          {product.category}
+                        </Badge>
                       )}
                     </div>
                   </button>
@@ -559,23 +574,44 @@ export default function OpticalPOSPage() {
                 Frame Price: ${selectedProduct.unitPrice}
               </div>
 
-              {/* Colors */}
+              {/* Colors - Enhanced */}
               {selectedProduct.colorOptions && selectedProduct.colorOptions.length > 0 && (
                 <div className="mb-8">
-                  <Label className="text-lg font-semibold mb-4 block text-gray-900">Colors</Label>
-                  <div className="flex gap-3">
+                  <Label className="text-lg font-semibold mb-4 block text-gray-900 flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-gradient-to-r from-pink-500 to-purple-500" />
+                    Frame Colors
+                  </Label>
+                  <div className="flex flex-wrap gap-4">
                     {selectedProduct.colorOptions.map((color) => (
                       <button
                         key={color}
                         onClick={() => setSelectedColor(color)}
-                        className={`w-14 h-14 rounded-full border-3 transition-all duration-200 ${
+                        className={`group relative transition-all duration-300 ${
                           selectedColor === color
-                            ? "border-blue-600 ring-4 ring-blue-200 scale-110"
-                            : "border-gray-300 hover:border-gray-400 hover:scale-105"
+                            ? "scale-110"
+                            : "hover:scale-105"
                         }`}
-                        style={{ backgroundColor: getColorHex(color) }}
                         title={color}
-                      />
+                      >
+                        <div
+                          className={`w-16 h-16 rounded-2xl border-4 transition-all duration-300 shadow-md ${
+                            selectedColor === color
+                              ? "border-blue-600 ring-4 ring-blue-200 shadow-lg shadow-blue-500/50"
+                              : "border-gray-300 hover:border-gray-400 hover:shadow-lg group-hover:ring-2 group-hover:ring-gray-200"
+                          }`}
+                          style={{ backgroundColor: getColorHex(color) }}
+                        />
+                        <div className={`mt-2 text-xs font-medium text-center transition-colors ${
+                          selectedColor === color ? 'text-blue-600' : 'text-gray-600'
+                        }`}>
+                          {color}
+                        </div>
+                        {selectedColor === color && (
+                          <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                            <Check className="h-4 w-4 text-white" />
+                          </div>
+                        )}
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -818,14 +854,23 @@ export default function OpticalPOSPage() {
         </Card>
       </div>
 
-      {/* Right Column - Action Panel */}
-      <div className="w-72 flex flex-col gap-5 overflow-y-auto">
+      {/* Right Column - Action Panel - Enhanced */}
+      <div className="w-72 flex flex-col gap-4 overflow-y-auto">
+        <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200/50">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+            <Activity className="h-4 w-4 text-blue-600" />
+            Quick Actions
+          </h3>
+          <p className="text-xs text-gray-500">Complete your sale in 3 easy steps</p>
+        </div>
+
         <Button
           size="lg"
-          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white h-auto py-7 text-lg font-semibold rounded-2xl shadow-xl transition-all duration-200 hover:shadow-2xl hover:scale-[1.02] flex-shrink-0"
+          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white h-auto py-8 text-lg font-bold rounded-2xl shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-[1.03] hover:-translate-y-1 flex-shrink-0 relative overflow-hidden group"
           onClick={handleAddToAccount}
           disabled={!selectedCustomer || !selectedProduct}
         >
+          <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
           <Check className="mr-2 h-6 w-6" />
           Add to Basket
         </Button>
@@ -833,20 +878,23 @@ export default function OpticalPOSPage() {
         <Button
           size="lg"
           variant="outline"
-          className="w-full h-auto py-7 text-lg font-semibold bg-white hover:bg-gray-50 border-2 border-gray-300 rounded-2xl shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] flex-shrink-0"
+          className="w-full h-auto py-8 text-lg font-bold bg-white hover:bg-gray-50 border-3 border-gray-300 hover:border-gray-400 rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.03] hover:-translate-y-1 flex-shrink-0"
           onClick={handleCancel}
           disabled={!selectedProduct}
         >
+          <X className="mr-2 h-5 w-5" />
           Cancel
         </Button>
 
         <Button
           size="lg"
-          className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white h-auto py-7 text-lg font-semibold rounded-2xl shadow-xl transition-all duration-200 hover:shadow-2xl hover:scale-[1.02] flex-shrink-0"
+          className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white h-auto py-8 text-lg font-bold rounded-2xl shadow-xl transition-all duration-300 hover:shadow-2xl hover:shadow-green-500/50 hover:scale-[1.03] hover:-translate-y-1 flex-shrink-0 relative overflow-hidden group"
           onClick={handleProceedToPayment}
           disabled={!selectedCustomer || !selectedProduct || processing}
         >
-          {processing ? 'Processing...' : 'Payment'}
+          <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+          <CheckCircle className="mr-2 h-6 w-6" />
+          {processing ? 'Processing...' : 'Complete Payment'}
         </Button>
 
         {/* Customer Info Card */}
