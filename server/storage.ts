@@ -539,6 +539,52 @@ export interface IStorage {
   getQIProject(id: string, companyId: string): Promise<QualityImprovementProject | null>;
   getQIProjects(companyId: string, filters?: { status?: string }): Promise<QualityImprovementProject[]>;
   updateQIProject(id: string, companyId: string, updates: Partial<QualityImprovementProject>): Promise<QualityImprovementProject | null>;
+
+  // ============== CHRONIC DISEASE MANAGEMENT METHODS ==============
+  // Disease Registries
+  createDiseaseRegistry(registry: InsertDiseaseRegistry): Promise<DiseaseRegistry>;
+  getDiseaseRegistry(id: string, companyId: string): Promise<DiseaseRegistry | null>;
+  getDiseaseRegistries(companyId: string, filters?: { diseaseType?: string }): Promise<DiseaseRegistry[]>;
+  updateDiseaseRegistry(id: string, companyId: string, updates: Partial<DiseaseRegistry>): Promise<DiseaseRegistry | null>;
+
+  // Registry Enrollments
+  createRegistryEnrollment(enrollment: InsertRegistryEnrollment): Promise<RegistryEnrollment>;
+  getRegistryEnrollment(id: string, companyId: string): Promise<RegistryEnrollment | null>;
+  getRegistryEnrollmentsByPatient(patientId: string, companyId: string): Promise<RegistryEnrollment[]>;
+  getRegistryEnrollmentsByRegistry(registryId: string, companyId: string): Promise<RegistryEnrollment[]>;
+  updateRegistryEnrollment(id: string, companyId: string, updates: Partial<RegistryEnrollment>): Promise<RegistryEnrollment | null>;
+
+  // Disease Management Programs
+  createDiseaseManagementProgram(program: InsertDiseaseManagementProgram): Promise<DiseaseManagementProgram>;
+  getDiseaseManagementProgram(id: string, companyId: string): Promise<DiseaseManagementProgram | null>;
+  getDiseaseManagementPrograms(companyId: string, filters?: { diseaseType?: string; status?: string }): Promise<DiseaseManagementProgram[]>;
+  updateDiseaseManagementProgram(id: string, companyId: string, updates: Partial<DiseaseManagementProgram>): Promise<DiseaseManagementProgram | null>;
+
+  // Program Enrollments
+  createProgramEnrollment(enrollment: InsertProgramEnrollment): Promise<ProgramEnrollment>;
+  getProgramEnrollment(id: string, companyId: string): Promise<ProgramEnrollment | null>;
+  getProgramEnrollmentsByPatient(patientId: string, companyId: string): Promise<ProgramEnrollment[]>;
+  getProgramEnrollmentsByProgram(programId: string, companyId: string): Promise<ProgramEnrollment[]>;
+  updateProgramEnrollment(id: string, companyId: string, updates: Partial<ProgramEnrollment>): Promise<ProgramEnrollment | null>;
+
+  // Clinical Metrics
+  createClinicalMetric(metric: InsertClinicalMetric): Promise<ClinicalMetric>;
+  getClinicalMetricsByPatient(patientId: string, companyId: string, filters?: { metricType?: string }): Promise<ClinicalMetric[]>;
+
+  // Patient Engagement
+  createPatientEngagement(engagement: InsertPatientEngagement): Promise<PatientEngagement>;
+  getPatientEngagement(id: string, companyId: string): Promise<PatientEngagement | null>;
+
+  // Outcome Tracking
+  createOutcomeTracking(outcome: InsertOutcomeTracking): Promise<OutcomeTracking>;
+  getOutcomeTrackingByPatient(patientId: string, companyId: string, filters?: { outcomeType?: string }): Promise<OutcomeTracking[]>;
+  updateOutcomeTracking(id: string, companyId: string, updates: Partial<OutcomeTracking>): Promise<OutcomeTracking | null>;
+
+  // Preventive Care Recommendations
+  createPreventiveCareRecommendation(recommendation: InsertPreventiveCareRecommendation): Promise<PreventiveCareRecommendation>;
+  getPreventiveCareRecommendation(id: string, companyId: string): Promise<PreventiveCareRecommendation | null>;
+  getPreventiveCareRecommendationsByPatient(patientId: string, companyId: string, filters?: { status?: string }): Promise<PreventiveCareRecommendation[]>;
+  updatePreventiveCareRecommendation(id: string, companyId: string, updates: Partial<PreventiveCareRecommendation>): Promise<PreventiveCareRecommendation | null>;
 }
 
 export class DbStorage implements IStorage {
