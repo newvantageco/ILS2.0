@@ -556,9 +556,19 @@ export class MLModelManagementService {
         break;
 
       case 'linear_regression':
-        // Use regression for trend analysis
-        predictions = { trend: 'Regression prediction not yet implemented' };
-        confidence = 0.75;
+        // Use ForecastingAI for linear regression trend analysis
+        const trendAnalysis = ForecastingAI.analyzeTrendWithRegression(
+          inputData.data || [],
+          inputData.windowSize || 7
+        );
+        predictions = {
+          trend: trendAnalysis.trend,
+          slope: trendAnalysis.slope,
+          rSquared: trendAnalysis.r2,
+          changePoints: trendAnalysis.changePoints || [],
+          forecast: trendAnalysis.predictions || [],
+        };
+        confidence = trendAnalysis.r2 || 0.75;
         break;
 
       case 'z_score':

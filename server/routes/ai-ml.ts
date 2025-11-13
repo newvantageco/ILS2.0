@@ -9,6 +9,7 @@ import { loggers } from '../utils/logger';
 import { ClinicalDecisionSupportService } from '../services/ai-ml/ClinicalDecisionSupportService';
 import { PredictiveAnalyticsService } from '../services/ai-ml/PredictiveAnalyticsService';
 import { NLPImageAnalysisService } from '../services/ai-ml/NLPImageAnalysisService';
+import { MLModelManagementService } from '../services/ai-ml/MLModelManagementService';
 
 const router = express.Router();
 const logger = loggers.api;
@@ -450,6 +451,250 @@ router.get('/nlp/statistics', async (req, res) => {
   } catch (error) {
     logger.error({ error }, 'Get NLP statistics error');
     res.status(500).json({ success: false, error: 'Failed to get NLP statistics' });
+  }
+});
+
+// ========== ML Model Management (NEW - for ML Dashboard) ==========
+
+// Get all ML models for the company
+router.get('/ml/models', async (req, res) => {
+  try {
+    if (!req.user?.companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { modelType, algorithm, status } = req.query;
+    const filters: any = {};
+
+    if (modelType) filters.modelType = modelType;
+    if (algorithm) filters.algorithm = algorithm;
+    if (status) filters.status = status;
+
+    const models = await MLModelManagementService.getModels(req.user.companyId, filters);
+    res.json({ success: true, models });
+  } catch (error) {
+    logger.error({ error }, 'Get ML models error');
+    res.status(500).json({ success: false, error: 'Failed to get ML models' });
+  }
+});
+
+// Get a specific ML model
+router.get('/ml/models/:modelId', async (req, res) => {
+  try {
+    if (!req.user?.companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const model = await MLModelManagementService.getModel(req.params.modelId, req.user.companyId);
+    if (!model) {
+      return res.status(404).json({ success: false, error: 'Model not found' });
+    }
+    res.json({ success: true, model });
+  } catch (error) {
+    logger.error({ error }, 'Get ML model error');
+    res.status(500).json({ success: false, error: 'Failed to get ML model' });
+  }
+});
+
+// Register a new ML model
+router.post('/ml/models', async (req, res) => {
+  try {
+    if (!req.user?.companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const model = await MLModelManagementService.registerModel(req.user.companyId, req.body);
+    res.status(201).json({ success: true, model });
+  } catch (error) {
+    logger.error({ error }, 'Register ML model error');
+    res.status(500).json({ success: false, error: 'Failed to register ML model' });
+  }
+});
+
+// Update model metrics
+router.patch('/ml/models/:modelId/metrics', async (req, res) => {
+  try {
+    if (!req.user?.companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const model = await MLModelManagementService.updateModelMetrics(
+      req.params.modelId,
+      req.user.companyId,
+      req.body
+    );
+    res.json({ success: true, model });
+  } catch (error) {
+    logger.error({ error }, 'Update ML model metrics error');
+    res.status(500).json({ success: false, error: 'Failed to update ML model metrics' });
+  }
+});
+
+// Get all deployments for the company
+router.get('/ml/deployments', async (req, res) => {
+  try {
+    if (!req.user?.companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { modelVersionId, environment, status } = req.query;
+    const filters: any = {};
+
+    if (modelVersionId) filters.modelVersionId = modelVersionId;
+    if (environment) filters.environment = environment;
+    if (status) filters.status = status;
+
+    const deployments = await MLModelManagementService.getDeployments(req.user.companyId, filters);
+    res.json({ success: true, deployments });
+  } catch (error) {
+    logger.error({ error }, 'Get ML deployments error');
+    res.status(500).json({ success: false, error: 'Failed to get ML deployments' });
+  }
+});
+
+// Deploy a model
+router.post('/ml/deployments', async (req, res) => {
+  try {
+    if (!req.user?.companyId || !req.user?.id) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const deployment = await MLModelManagementService.deployModel(req.user.companyId, {
+      ...req.body,
+      deployedBy: req.user.id,
+    });
+    res.status(201).json({ success: true, deployment });
+  } catch (error) {
+    logger.error({ error }, 'Deploy ML model error');
+    res.status(500).json({ success: false, error: 'Failed to deploy ML model' });
+  }
+});
+
+// Make a prediction using a deployed model
+router.post('/ml/predict', async (req, res) => {
+  try {
+    if (!req.user?.companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { modelId, inputData } = req.body;
+    if (!modelId || !inputData) {
+      return res.status(400).json({ success: false, error: 'modelId and inputData required' });
+    }
+
+    const prediction = await MLModelManagementService.predict({
+      modelId,
+      inputData,
+      companyId: req.user.companyId,
+    });
+
+    res.json({ success: true, prediction });
+  } catch (error) {
+    logger.error({ error }, 'ML prediction error');
+    res.status(500).json({ success: false, error: 'Failed to make prediction' });
+  }
+});
+
+// Bootstrap default ML models for a company
+router.post('/ml/bootstrap', async (req, res) => {
+  try {
+    if (!req.user?.companyId || !req.user?.id) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const result = await MLModelManagementService.bootstrapDefaultModels(
+      req.user.companyId,
+      req.user.id
+    );
+    res.json({ success: true, ...result });
+  } catch (error) {
+    logger.error({ error }, 'Bootstrap ML models error');
+    res.status(500).json({ success: false, error: 'Failed to bootstrap ML models' });
+  }
+});
+
+// Get prediction statistics (for dashboard metrics)
+router.get('/ml/prediction-stats', async (req, res) => {
+  try {
+    if (!req.user?.companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    // Mock stats for now - in production, track predictions in database
+    const stats = [
+      {
+        modelId: 'model-1',
+        modelName: 'Demand Forecasting - Holt-Winters',
+        totalPredictions: 1523,
+        avgResponseTime: 45,
+        successRate: 0.982,
+        lastPrediction: new Date().toISOString(),
+      },
+      {
+        modelId: 'model-2',
+        modelName: 'Anomaly Detection - Z-Score',
+        totalPredictions: 3891,
+        avgResponseTime: 23,
+        successRate: 0.995,
+        lastPrediction: new Date().toISOString(),
+      },
+      {
+        modelId: 'model-3',
+        modelName: 'Trend Analysis - Linear Regression',
+        totalPredictions: 892,
+        avgResponseTime: 67,
+        successRate: 0.973,
+        lastPrediction: new Date().toISOString(),
+      },
+    ];
+
+    res.json({ success: true, stats });
+  } catch (error) {
+    logger.error({ error }, 'Get prediction stats error');
+    res.status(500).json({ success: false, error: 'Failed to get prediction stats' });
+  }
+});
+
+// Get training jobs
+router.get('/ml/training-jobs', async (req, res) => {
+  try {
+    if (!req.user?.companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { status, modelType, algorithm } = req.query;
+    const filters: any = {};
+
+    if (status) filters.status = status;
+    if (modelType) filters.modelType = modelType;
+    if (algorithm) filters.algorithm = algorithm;
+
+    const jobs = await MLModelManagementService.getTrainingJobs(req.user.companyId, filters);
+    res.json({ success: true, jobs });
+  } catch (error) {
+    logger.error({ error }, 'Get training jobs error');
+    res.status(500).json({ success: false, error: 'Failed to get training jobs' });
+  }
+});
+
+// Get training datasets
+router.get('/ml/datasets', async (req, res) => {
+  try {
+    if (!req.user?.companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { datasetType, status } = req.query;
+    const filters: any = {};
+
+    if (datasetType) filters.datasetType = datasetType;
+    if (status) filters.status = status;
+
+    const datasets = await MLModelManagementService.getDatasets(req.user.companyId, filters);
+    res.json({ success: true, datasets });
+  } catch (error) {
+    logger.error({ error }, 'Get training datasets error');
+    res.status(500).json({ success: false, error: 'Failed to get training datasets' });
   }
 });
 
