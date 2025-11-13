@@ -536,9 +536,9 @@ export interface IStorage {
   // ============== QUALITY IMPROVEMENT METHODS ==============
   // QI Projects
   createQIProject(project: InsertQualityImprovementProject): Promise<QualityImprovementProject>;
-  getQIProject(id: string, companyId: string): Promise<QualityImprovementProject | null>;
+  getQIProject(companyId: string, id: string): Promise<QualityImprovementProject | undefined>;
   getQIProjects(companyId: string, filters?: { status?: string }): Promise<QualityImprovementProject[]>;
-  updateQIProject(id: string, companyId: string, updates: Partial<QualityImprovementProject>): Promise<QualityImprovementProject | null>;
+  updateQIProject(companyId: string, id: string, updates: Partial<QualityImprovementProject>): Promise<QualityImprovementProject | undefined>;
 
   // ============== CHRONIC DISEASE MANAGEMENT METHODS ==============
   // Disease Registries
