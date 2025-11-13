@@ -7,13 +7,17 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useLocation } from "wouter";
-import { SiReplit } from "react-icons/si";
+import { SiReplit, SiGoogle } from "react-icons/si";
 
 export default function Login() {
   const [, setLocation] = useLocation();
 
   const handleReplitLogin = () => {
     window.location.href = "/api/login";
+  };
+
+  const handleGoogleLogin = () => {
+    window.location.href = "/api/auth/google";
   };
 
   const handleEmailLogin = () => {
@@ -57,11 +61,36 @@ export default function Login() {
 
             {/* Authentication Options */}
             <div className="space-y-4">
-              {/* Email Sign In */}
-              <Card className="border-2 hover:border-primary/40 transition-colors cursor-pointer group">
+              {/* Google Sign In - Featured */}
+              <Card className="border-2 border-primary/60 shadow-lg shadow-primary/10 hover:border-primary/80 hover:shadow-xl hover:shadow-primary/20 transition-all duration-300 cursor-pointer group">
                 <CardContent className="p-6 space-y-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-red-500 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-md">
+                      <SiGoogle className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">Sign In with Google</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Quick and secure authentication
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleGoogleLogin}
+                    className="w-full gap-2 h-11 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg transition-all duration-300"
+                    data-testid="button-google-login-page"
+                  >
+                    <SiGoogle className="h-4 w-4" />
+                    Continue with Google
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Email Sign In */}
+              <Card className="border-2 hover:border-primary/40 transition-all duration-300 cursor-pointer group">
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 group-hover:scale-105 transition-all duration-300">
                       <Mail className="h-6 w-6 text-primary" />
                     </div>
                     <div>
@@ -83,10 +112,10 @@ export default function Login() {
               </Card>
 
               {/* Replit Sign In */}
-              <Card className="border-2 hover:border-primary/40 transition-colors cursor-pointer group">
+              <Card className="border-2 hover:border-primary/40 transition-all duration-300 cursor-pointer group">
                 <CardContent className="p-6 space-y-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 group-hover:scale-105 transition-all duration-300">
                       <SiReplit className="h-6 w-6 text-primary" />
                     </div>
                     <div>
