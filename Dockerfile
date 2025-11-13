@@ -24,8 +24,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-    # Install ALL dependencies (including devDependencies for build)
-    RUN npm ci
+# Install ALL dependencies (including devDependencies for build)
+# Fix for Rollup optional dependencies issue
+RUN npm ci --include=optional || (rm -rf node_modules package-lock.json && npm install)
 
 # Copy source code
 COPY . .
