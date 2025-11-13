@@ -5,6 +5,7 @@ from typing import List, Optional
 import os
 from dotenv import load_dotenv
 from datetime import datetime
+from db_utils import get_order_trends_from_db, get_batch_report_from_db, db
 
 load_dotenv()
 
@@ -55,10 +56,18 @@ async def root():
 @app.get("/api/v1/analytics/order-trends")
 async def get_order_trends(days: int = 30):
     """
-    Analyze order trends over the past N days
+    Analyze order trends over the past N days.
+    Fetches real data from database when configured.
     """
-    # In production, fetch from database
-    # For now, returning mock data structure
+    # Try to fetch from database
+    db_data = get_order_trends_from_db(days)
+
+    # If database is configured and returns data, use it
+    if db_data:
+        return db_data
+
+    # Fallback to example data structure when database is not configured
+    # This allows the service to run in development without a database
     return {
         "period_days": days,
         "total_orders": 247,
@@ -73,7 +82,8 @@ async def get_order_trends(days: int = 30):
             {"type": "single_vision", "count": 145},
             {"type": "progressive", "count": 78},
             {"type": "bifocal", "count": 24}
-        ]
+        ],
+        "_note": "Using example data. Configure DATABASE_URL to fetch real data."
     }
 
 # Example: Production Time Prediction
@@ -149,29 +159,47 @@ class QCDataRequest(BaseModel):
 @app.post("/api/v1/qc/analyze")
 async def analyze_quality_control(request: QCDataRequest):
     """
-    Analyze quality control data and predict pass/fail
+    Analyze quality control data and predict pass/fail.
+    Uses rule-based validation. Can be enhanced with ML models.
     """
-    # Mock QC analysis (replace with actual ML model)
-    # In production: analyze measurements, check tolerances, use CV on images
-    
-    # Simple validation logic
+    # Rule-based QC analysis
+    # In production: can integrate with actual ML model for defect detection
+
     issues = []
     should_inspect = False
-    
+
     # Check if measurements exist
     if not request.measurements:
         issues.append("No measurements provided")
         should_inspect = True
-    
-    # Check for common measurement issues (example logic)
+
+    # Validate measurement ranges
     if "sphere" in request.measurements:
         sphere = request.measurements.get("sphere", 0)
         if abs(sphere) > 15:
             issues.append("Sphere power outside normal range")
             should_inspect = True
-    
+
+    if "cylinder" in request.measurements:
+        cylinder = request.measurements.get("cylinder", 0)
+        if abs(cylinder) > 6:
+            issues.append("Cylinder power outside normal range")
+            should_inspect = True
+
+    if "axis" in request.measurements:
+        axis = request.measurements.get("axis", 0)
+        if axis < 0 or axis > 180:
+            issues.append("Axis value must be between 0 and 180")
+            should_inspect = True
+
+    # Check for image-based defects if images are provided
+    if request.images and len(request.images) > 0:
+        # Placeholder for computer vision model
+        # In production: integrate with CV model for scratch/defect detection
+        pass
+
     qc_status = "pass" if len(issues) == 0 else "review_needed"
-    
+
     return {
         "order_id": request.order_id,
         "qc_status": qc_status,
@@ -182,18 +210,31 @@ async def analyze_quality_control(request: QCDataRequest):
             "No defects detected" if not issues else f"Found {len(issues)} potential issues"
         ],
         "should_inspect_manually": should_inspect,
-        "analysis_timestamp": datetime.utcnow().isoformat()
+        "analysis_timestamp": datetime.utcnow().isoformat(),
+        "_note": "Using rule-based validation. Integrate ML model for enhanced accuracy."
     }
 
 # Example: Batch Analytics
 @app.post("/api/v1/analytics/batch-report")
 async def generate_batch_report(order_ids: List[str]):
     """
-    Generate comprehensive analytics report for multiple orders
-    Uses pandas for data processing
+    Generate comprehensive analytics report for multiple orders.
+    Fetches real data from database when configured.
     """
-    # In production: fetch orders from DB, process with pandas
-    
+    # Try to fetch from database
+    db_report = get_batch_report_from_db(order_ids)
+
+    # If database is configured and returns data, use it
+    if db_report:
+        # Add generated timestamp and recommendations
+        db_report["generated_at"] = datetime.utcnow().isoformat()
+        db_report["recommendations"] = [
+            f"Analyzed {len(order_ids)} orders successfully",
+            "Review high-value orders for quality assurance"
+        ]
+        return db_report
+
+    # Fallback to example data when database is not configured
     report = {
         "total_orders": len(order_ids),
         "order_ids": order_ids,
@@ -218,9 +259,10 @@ async def generate_batch_report(order_ids: List[str]):
             "Progressive lens production time above average",
             f"Analyzed {len(order_ids)} orders successfully"
         ],
-        "generated_at": datetime.utcnow().isoformat()
+        "generated_at": datetime.utcnow().isoformat(),
+        "_note": "Using example data. Configure DATABASE_URL to fetch real data."
     }
-    
+
     return report
 
 # Example: Lens Recommendation

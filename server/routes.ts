@@ -98,6 +98,7 @@ import shopifyWebhookRoutes from "./routes/webhooks/shopify";
 import clinicalWorkflowRoutes from "./routes/clinical/workflow";
 import omaValidationRoutes from "./routes/clinical/oma-validation";
 import billingRoutes from "./routes/billing";
+import archivalRoutes from "./routes/archival";
 import v1ApiRoutes from "./routes/api/v1";
 import queryOptimizerRoutes from "./routes/query-optimizer";
 import mlModelsRoutes from "./routes/ml-models";
@@ -286,6 +287,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Audit Log routes (admin-only HIPAA compliance)
   app.use('/api/admin/audit-logs', auditLogRoutes);
+
+  // Register Archival & Data Retrieval routes (soft delete, historical data, reports)
+  app.use('/api/archival', isAuthenticated, archivalRoutes);
 
   // Register Email Tracking & Communication routes (invoices, reminders, recalls with analytics)
   app.use('/api/emails', emailRoutes);
