@@ -1,0 +1,125 @@
+# Railway Ignore File
+# Files and directories to exclude from Railway deployments
+
+# Development files
+.env
+.env.local
+.env.development
+.env.test
+*.env.example
+.env.*
+
+# Node modules (will be installed during build)
+node_modules/
+
+# Development artifacts
+.vite/
+.cache/
+
+# Test files and coverage
+test/
+tests/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+coverage/
+.nyc_output/
+jest-results/
+playwright-report/
+test-results/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+circle.yml
+.circleci/
+
+# Docker development files
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile.dev
+.dockerignore
+
+# Kubernetes files
+kubernetes/
+k8s/
+*.yaml
+*.yml
+!railway.toml
+
+# Scripts that aren't needed in production
+scripts/test-*.sh
+scripts/dev-*.sh
+scripts/setup-*.sh
+scripts/railway-deploy.sh
+
+# Archive and backup files
+.archive/
+archive/
+backup/
+*.bak
+*.backup
+
+# Log files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.Python
+
+# Development databases
+*.sqlite
+*.sqlite3
+*.db
+
+# Uploads and user-generated content (should use external storage in production)
+uploads/
+public/uploads/
+
+# Build artifacts that will be regenerated
+dist/client/
+client/dist/
+
+# Package manager lock files (Railway will use package-lock.json if present)
+# Uncomment if you want Railway to always install fresh
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
