@@ -543,29 +543,29 @@ export interface IStorage {
   // ============== CHRONIC DISEASE MANAGEMENT METHODS ==============
   // Disease Registries
   createDiseaseRegistry(registry: InsertDiseaseRegistry): Promise<DiseaseRegistry>;
-  getDiseaseRegistry(id: string, companyId: string): Promise<DiseaseRegistry | null>;
+  getDiseaseRegistry(id: string, companyId: string): Promise<DiseaseRegistry | undefined>;
   getDiseaseRegistries(companyId: string, filters?: { active?: boolean }): Promise<DiseaseRegistry[]>;
-  updateDiseaseRegistry(id: string, companyId: string, updates: Partial<DiseaseRegistry>): Promise<DiseaseRegistry | null>;
+  updateDiseaseRegistry(id: string, companyId: string, updates: Partial<DiseaseRegistry>): Promise<DiseaseRegistry | undefined>;
 
   // Registry Enrollments
   createRegistryEnrollment(enrollment: InsertRegistryEnrollment): Promise<RegistryEnrollment>;
-  getRegistryEnrollment(id: string, companyId: string): Promise<RegistryEnrollment | null>;
+  getRegistryEnrollment(id: string, companyId: string): Promise<RegistryEnrollment | undefined>;
   getRegistryEnrollmentsByPatient(patientId: string, companyId: string): Promise<RegistryEnrollment[]>;
   getRegistryEnrollmentsByRegistry(registryId: string, companyId: string): Promise<RegistryEnrollment[]>;
-  updateRegistryEnrollment(id: string, companyId: string, updates: Partial<RegistryEnrollment>): Promise<RegistryEnrollment | null>;
+  updateRegistryEnrollment(id: string, companyId: string, updates: Partial<RegistryEnrollment>): Promise<RegistryEnrollment | undefined>;
 
   // Disease Management Programs
   createDiseaseManagementProgram(program: InsertDiseaseManagementProgram): Promise<DiseaseManagementProgram>;
-  getDiseaseManagementProgram(id: string, companyId: string): Promise<DiseaseManagementProgram | null>;
+  getDiseaseManagementProgram(id: string, companyId: string): Promise<DiseaseManagementProgram | undefined>;
   getDiseaseManagementPrograms(companyId: string, filters?: { diseaseType?: string; active?: boolean }): Promise<DiseaseManagementProgram[]>;
-  updateDiseaseManagementProgram(id: string, companyId: string, updates: Partial<DiseaseManagementProgram>): Promise<DiseaseManagementProgram | null>;
+  updateDiseaseManagementProgram(id: string, companyId: string, updates: Partial<DiseaseManagementProgram>): Promise<DiseaseManagementProgram | undefined>;
 
   // Program Enrollments
   createProgramEnrollment(enrollment: InsertProgramEnrollment): Promise<ProgramEnrollment>;
-  getProgramEnrollment(id: string, companyId: string): Promise<ProgramEnrollment | null>;
+  getProgramEnrollment(id: string, companyId: string): Promise<ProgramEnrollment | undefined>;
   getProgramEnrollmentsByPatient(patientId: string, companyId: string): Promise<ProgramEnrollment[]>;
   getProgramEnrollmentsByProgram(programId: string, companyId: string): Promise<ProgramEnrollment[]>;
-  updateProgramEnrollment(id: string, companyId: string, updates: Partial<ProgramEnrollment>): Promise<ProgramEnrollment | null>;
+  updateProgramEnrollment(id: string, companyId: string, updates: Partial<ProgramEnrollment>): Promise<ProgramEnrollment | undefined>;
 
   // Clinical Metrics
   createClinicalMetric(metric: InsertClinicalMetric): Promise<ClinicalMetric>;
@@ -573,18 +573,18 @@ export interface IStorage {
 
   // Patient Engagement
   createPatientEngagement(engagement: InsertPatientEngagement): Promise<PatientEngagement>;
-  getPatientEngagement(id: string, companyId: string): Promise<PatientEngagement | null>;
+  getPatientEngagement(id: string, companyId: string): Promise<PatientEngagement | undefined>;
 
   // Outcome Tracking
   createOutcomeTracking(outcome: InsertOutcomeTracking): Promise<OutcomeTracking>;
   getOutcomeTrackingByPatient(patientId: string, companyId: string, filters?: { outcomeType?: string }): Promise<OutcomeTracking[]>;
-  updateOutcomeTracking(id: string, companyId: string, updates: Partial<OutcomeTracking>): Promise<OutcomeTracking | null>;
+  updateOutcomeTracking(id: string, companyId: string, updates: Partial<OutcomeTracking>): Promise<OutcomeTracking | undefined>;
 
   // Preventive Care Recommendations
   createPreventiveCareRecommendation(recommendation: InsertPreventiveCareRecommendation): Promise<PreventiveCareRecommendation>;
-  getPreventiveCareRecommendation(id: string, companyId: string): Promise<PreventiveCareRecommendation | null>;
+  getPreventiveCareRecommendation(id: string, companyId: string): Promise<PreventiveCareRecommendation | undefined>;
   getPreventiveCareRecommendationsByPatient(patientId: string, companyId: string, filters?: { status?: string }): Promise<PreventiveCareRecommendation[]>;
-  updatePreventiveCareRecommendation(id: string, companyId: string, updates: Partial<PreventiveCareRecommendation>): Promise<PreventiveCareRecommendation | null>;
+  updatePreventiveCareRecommendation(id: string, companyId: string, updates: Partial<PreventiveCareRecommendation>): Promise<PreventiveCareRecommendation | undefined>;
 
   // ============== RISK STRATIFICATION METHODS ==============
   // Risk Scores
@@ -4747,7 +4747,7 @@ export class DbStorage implements IStorage {
       .select()
       .from(appointmentTypes)
       .where(and(eq(appointmentTypes.id, id), eq(appointmentTypes.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getAppointmentTypes(
@@ -4777,7 +4777,7 @@ export class DbStorage implements IStorage {
       .set(data)
       .where(and(eq(appointmentTypes.id, id), eq(appointmentTypes.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   async createProviderAvailability(data: InsertProviderAvailability): Promise<ProviderAvailability> {
@@ -4817,7 +4817,7 @@ export class DbStorage implements IStorage {
       .select()
       .from(appointmentBookings)
       .where(and(eq(appointmentBookings.id, id), eq(appointmentBookings.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getPatientAppointments(
@@ -4878,7 +4878,7 @@ export class DbStorage implements IStorage {
       .set(data)
       .where(and(eq(appointmentBookings.id, id), eq(appointmentBookings.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   async getAppointmentsForReminders(
@@ -4912,7 +4912,7 @@ export class DbStorage implements IStorage {
         eq(appointmentBookings.confirmationCode, confirmationCode),
         eq(appointmentBookings.companyId, companyId)
       ));
-    return result || null;
+    return result || undefined;
   }
 
   // ========== Patient Portal Storage Methods ==========
@@ -4927,7 +4927,7 @@ export class DbStorage implements IStorage {
       .select()
       .from(medicalRecords)
       .where(and(eq(medicalRecords.id, id), eq(medicalRecords.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getMedicalRecords(
@@ -4974,7 +4974,7 @@ export class DbStorage implements IStorage {
       .select()
       .from(portalConversations)
       .where(and(eq(portalConversations.id, id), eq(portalConversations.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getPortalConversations(companyId: string, patientId: string): Promise<PortalConversation[]> {
@@ -4998,7 +4998,7 @@ export class DbStorage implements IStorage {
       .set(data)
       .where(and(eq(portalConversations.id, id), eq(portalConversations.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   async createPortalMessage(data: InsertPortalMessage): Promise<PortalMessage> {
@@ -5027,7 +5027,7 @@ export class DbStorage implements IStorage {
       .set(data)
       .where(and(eq(portalMessages.id, id), eq(portalMessages.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   async markMessagesAsRead(companyId: string, conversationId: string, recipientId: string): Promise<void> {
@@ -5052,7 +5052,7 @@ export class DbStorage implements IStorage {
       .select()
       .from(portalPayments)
       .where(and(eq(portalPayments.id, id), eq(portalPayments.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getPatientPaymentHistory(companyId: string, patientId: string): Promise<PortalPayment[]> {
@@ -5076,7 +5076,7 @@ export class DbStorage implements IStorage {
       .set(data)
       .where(and(eq(portalPayments.id, id), eq(portalPayments.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   // ============================================================================
@@ -5094,7 +5094,7 @@ export class DbStorage implements IStorage {
       .select()
       .from(carePlans)
       .where(and(eq(carePlans.id, id), eq(carePlans.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getCarePlans(
@@ -5130,7 +5130,7 @@ export class DbStorage implements IStorage {
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(carePlans.id, id), eq(carePlans.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   async deleteCarePlan(id: string, companyId: string): Promise<boolean> {
@@ -5152,7 +5152,7 @@ export class DbStorage implements IStorage {
       .select()
       .from(careTeams)
       .where(and(eq(careTeams.id, id), eq(careTeams.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getCareTeams(
@@ -5185,7 +5185,7 @@ export class DbStorage implements IStorage {
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(careTeams.id, id), eq(careTeams.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   async deleteCareTeam(id: string, companyId: string): Promise<boolean> {
@@ -5207,7 +5207,7 @@ export class DbStorage implements IStorage {
       .select()
       .from(careGaps)
       .where(and(eq(careGaps.id, id), eq(careGaps.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getCareGaps(
@@ -5246,7 +5246,7 @@ export class DbStorage implements IStorage {
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(careGaps.id, id), eq(careGaps.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   async deleteCareGap(id: string, companyId: string): Promise<boolean> {
@@ -5268,7 +5268,7 @@ export class DbStorage implements IStorage {
       .select()
       .from(transitionsOfCare)
       .where(and(eq(transitionsOfCare.id, id), eq(transitionsOfCare.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getTransitionsOfCare(
@@ -5304,7 +5304,7 @@ export class DbStorage implements IStorage {
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(transitionsOfCare.id, id), eq(transitionsOfCare.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   async deleteTransitionOfCare(id: string, companyId: string): Promise<boolean> {
@@ -5326,7 +5326,7 @@ export class DbStorage implements IStorage {
       .select()
       .from(careCoordinationTasks)
       .where(and(eq(careCoordinationTasks.id, id), eq(careCoordinationTasks.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getCareCoordinationTasks(
@@ -5374,7 +5374,7 @@ export class DbStorage implements IStorage {
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(careCoordinationTasks.id, id), eq(careCoordinationTasks.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   async deleteCareCoordinationTask(id: string, companyId: string): Promise<boolean> {
@@ -5396,7 +5396,7 @@ export class DbStorage implements IStorage {
       .select()
       .from(patientOutreach)
       .where(and(eq(patientOutreach.id, id), eq(patientOutreach.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getPatientOutreaches(
@@ -5440,7 +5440,7 @@ export class DbStorage implements IStorage {
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(patientOutreach.id, id), eq(patientOutreach.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   async deletePatientOutreach(id: string, companyId: string): Promise<boolean> {
@@ -5461,12 +5461,12 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getDiseaseRegistry(id: string, companyId: string): Promise<DiseaseRegistry | null> {
+  async getDiseaseRegistry(id: string, companyId: string): Promise<DiseaseRegistry | undefined> {
     const [result] = await db
       .select()
       .from(diseaseRegistries)
       .where(and(eq(diseaseRegistries.id, id), eq(diseaseRegistries.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getDiseaseRegistries(companyId: string, filters?: { active?: boolean }): Promise<DiseaseRegistry[]> {
@@ -5485,13 +5485,13 @@ export class DbStorage implements IStorage {
     id: string,
     companyId: string,
     data: Partial<InsertDiseaseRegistry>
-  ): Promise<DiseaseRegistry | null> {
+  ): Promise<DiseaseRegistry | undefined> {
     const [result] = await db
       .update(diseaseRegistries)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(diseaseRegistries.id, id), eq(diseaseRegistries.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   // Registry Enrollments
@@ -5500,12 +5500,12 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getRegistryEnrollment(id: string, companyId: string): Promise<RegistryEnrollment | null> {
+  async getRegistryEnrollment(id: string, companyId: string): Promise<RegistryEnrollment | undefined> {
     const [result] = await db
       .select()
       .from(registryEnrollments)
       .where(and(eq(registryEnrollments.id, id), eq(registryEnrollments.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getRegistryEnrollments(
@@ -5533,13 +5533,13 @@ export class DbStorage implements IStorage {
     id: string,
     companyId: string,
     data: Partial<InsertRegistryEnrollment>
-  ): Promise<RegistryEnrollment | null> {
+  ): Promise<RegistryEnrollment | undefined> {
     const [result] = await db
       .update(registryEnrollments)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(registryEnrollments.id, id), eq(registryEnrollments.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   // Disease Management Programs
@@ -5548,12 +5548,12 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getDiseaseManagementProgram(id: string, companyId: string): Promise<DiseaseManagementProgram | null> {
+  async getDiseaseManagementProgram(id: string, companyId: string): Promise<DiseaseManagementProgram | undefined> {
     const [result] = await db
       .select()
       .from(diseaseManagementPrograms)
       .where(and(eq(diseaseManagementPrograms.id, id), eq(diseaseManagementPrograms.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getDiseaseManagementPrograms(
@@ -5578,13 +5578,13 @@ export class DbStorage implements IStorage {
     id: string,
     companyId: string,
     data: Partial<InsertDiseaseManagementProgram>
-  ): Promise<DiseaseManagementProgram | null> {
+  ): Promise<DiseaseManagementProgram | undefined> {
     const [result] = await db
       .update(diseaseManagementPrograms)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(diseaseManagementPrograms.id, id), eq(diseaseManagementPrograms.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   // Program Enrollments
@@ -5593,12 +5593,12 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getProgramEnrollment(id: string, companyId: string): Promise<ProgramEnrollment | null> {
+  async getProgramEnrollment(id: string, companyId: string): Promise<ProgramEnrollment | undefined> {
     const [result] = await db
       .select()
       .from(programEnrollments)
       .where(and(eq(programEnrollments.id, id), eq(programEnrollments.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getProgramEnrollments(
@@ -5629,13 +5629,13 @@ export class DbStorage implements IStorage {
     id: string,
     companyId: string,
     data: Partial<InsertProgramEnrollment>
-  ): Promise<ProgramEnrollment | null> {
+  ): Promise<ProgramEnrollment | undefined> {
     const [result] = await db
       .update(programEnrollments)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(programEnrollments.id, id), eq(programEnrollments.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   // Clinical Metrics
@@ -5644,12 +5644,12 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getClinicalMetric(id: string, companyId: string): Promise<ClinicalMetric | null> {
+  async getClinicalMetric(id: string, companyId: string): Promise<ClinicalMetric | undefined> {
     const [result] = await db
       .select()
       .from(clinicalMetrics)
       .where(and(eq(clinicalMetrics.id, id), eq(clinicalMetrics.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getClinicalMetrics(
@@ -5682,12 +5682,12 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getPatientEngagementRecord(id: string, companyId: string): Promise<PatientEngagement | null> {
+  async getPatientEngagementRecord(id: string, companyId: string): Promise<PatientEngagement | undefined> {
     const [result] = await db
       .select()
       .from(patientEngagement)
       .where(and(eq(patientEngagement.id, id), eq(patientEngagement.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getPatientEngagementRecords(
@@ -5717,12 +5717,12 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getOutcomeTracking(id: string, companyId: string): Promise<OutcomeTracking | null> {
+  async getOutcomeTracking(id: string, companyId: string): Promise<OutcomeTracking | undefined> {
     const [result] = await db
       .select()
       .from(outcomeTracking)
       .where(and(eq(outcomeTracking.id, id), eq(outcomeTracking.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getOutcomeTrackings(
@@ -5753,13 +5753,13 @@ export class DbStorage implements IStorage {
     id: string,
     companyId: string,
     data: Partial<InsertOutcomeTracking>
-  ): Promise<OutcomeTracking | null> {
+  ): Promise<OutcomeTracking | undefined> {
     const [result] = await db
       .update(outcomeTracking)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(outcomeTracking.id, id), eq(outcomeTracking.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   // Preventive Care Recommendations
@@ -5768,12 +5768,12 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getPreventiveCareRecommendation(id: string, companyId: string): Promise<PreventiveCareRecommendation | null> {
+  async getPreventiveCareRecommendation(id: string, companyId: string): Promise<PreventiveCareRecommendation | undefined> {
     const [result] = await db
       .select()
       .from(preventiveCareRecommendations)
       .where(and(eq(preventiveCareRecommendations.id, id), eq(preventiveCareRecommendations.companyId, companyId)));
-    return result || null;
+    return result || undefined;
   }
 
   async getPreventiveCareRecommendations(
@@ -5801,13 +5801,13 @@ export class DbStorage implements IStorage {
     id: string,
     companyId: string,
     data: Partial<InsertPreventiveCareRecommendation>
-  ): Promise<PreventiveCareRecommendation | null> {
+  ): Promise<PreventiveCareRecommendation | undefined> {
     const [result] = await db
       .update(preventiveCareRecommendations)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(preventiveCareRecommendations.id, id), eq(preventiveCareRecommendations.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   // Wrapper methods to match interface declarations
@@ -5835,7 +5835,7 @@ export class DbStorage implements IStorage {
     return this.createPatientEngagementRecord(engagement);
   }
 
-  async getPatientEngagement(id: string, companyId: string): Promise<PatientEngagement | null> {
+  async getPatientEngagement(id: string, companyId: string): Promise<PatientEngagement | undefined> {
     return this.getPatientEngagementRecord(id, companyId);
   }
 
@@ -5924,7 +5924,7 @@ export class DbStorage implements IStorage {
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(pdsaCycles.id, id), eq(pdsaCycles.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   // Care Bundles
@@ -5967,7 +5967,7 @@ export class DbStorage implements IStorage {
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(careBundles.id, id), eq(careBundles.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   // Bundle Compliance
@@ -6038,7 +6038,7 @@ export class DbStorage implements IStorage {
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(performanceImprovements.id, id), eq(performanceImprovements.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   // Best Practices
@@ -6081,7 +6081,7 @@ export class DbStorage implements IStorage {
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(bestPractices.id, id), eq(bestPractices.companyId, companyId)))
       .returning();
-    return result || null;
+    return result || undefined;
   }
 
   // ============================================================================
