@@ -25,7 +25,8 @@ function getCompanyId(req: Request): string {
  */
 router.post('/risk-scores', async (req: Request, res: Response) => {
   try {
-    const riskScore = RiskStratificationService.calculateRiskScore(req.body);
+    const companyId = getCompanyId(req);
+    const riskScore = await RiskStratificationService.calculateRiskScore(companyId, req.body);
     res.status(201).json({
       success: true,
       data: riskScore,
@@ -46,7 +47,8 @@ router.post('/risk-scores', async (req: Request, res: Response) => {
  */
 router.get('/risk-scores/:id', async (req: Request, res: Response) => {
   try {
-    const riskScore = RiskStratificationService.getRiskScoreById(req.params.id);
+    const companyId = getCompanyId(req);
+    const riskScore = await RiskStratificationService.getRiskScoreById(companyId, req.params.id);
     if (!riskScore) {
       return res.status(404).json({
         success: false,
@@ -72,7 +74,8 @@ router.get('/risk-scores/:id', async (req: Request, res: Response) => {
  */
 router.get('/risk-scores/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const riskScores = RiskStratificationService.getRiskScoresByPatient(req.params.patientId);
+    const companyId = getCompanyId(req);
+    const riskScores = await RiskStratificationService.getRiskScoresByPatient(companyId, req.params.patientId);
     res.json({
       success: true,
       data: riskScores,
@@ -93,8 +96,10 @@ router.get('/risk-scores/patient/:patientId', async (req: Request, res: Response
  */
 router.get('/risk-scores/patient/:patientId/latest', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { scoreType } = req.query;
-    const riskScore = RiskStratificationService.getLatestRiskScore(
+    const riskScore = await RiskStratificationService.getLatestRiskScore(
+      companyId,
       req.params.patientId,
       scoreType as string | undefined
     );
@@ -123,9 +128,11 @@ router.get('/risk-scores/patient/:patientId/latest', async (req: Request, res: R
  */
 router.get('/patients/by-risk/:riskLevel', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { category } = req.query;
-    const patientIds = RiskStratificationService.getPatientsByRiskLevel(
+    const patientIds = await RiskStratificationService.getPatientsByRiskLevel(
       req.params.riskLevel as any,
+      companyId,
       category as any
     );
     res.json({
@@ -148,7 +155,8 @@ router.get('/patients/by-risk/:riskLevel', async (req: Request, res: Response) =
  */
 router.post('/health-risk-assessments', async (req: Request, res: Response) => {
   try {
-    const assessment = RiskStratificationService.createHealthRiskAssessment(req.body);
+    const companyId = getCompanyId(req);
+    const assessment = await RiskStratificationService.createHealthRiskAssessment(companyId, req.body);
     res.status(201).json({
       success: true,
       data: assessment,
@@ -169,7 +177,9 @@ router.post('/health-risk-assessments', async (req: Request, res: Response) => {
  */
 router.post('/health-risk-assessments/:id/responses', async (req: Request, res: Response) => {
   try {
-    const assessment = RiskStratificationService.recordAssessmentResponse(
+    const companyId = getCompanyId(req);
+    const assessment = await RiskStratificationService.recordAssessmentResponse(
+      companyId,
       req.params.id,
       req.body
     );
@@ -193,8 +203,10 @@ router.post('/health-risk-assessments/:id/responses', async (req: Request, res: 
  */
 router.put('/health-risk-assessments/:id/complete', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { administeredBy } = req.body;
-    const assessment = RiskStratificationService.completeHealthRiskAssessment(
+    const assessment = await RiskStratificationService.completeHealthRiskAssessment(
+      companyId,
       req.params.id,
       administeredBy
     );
@@ -218,7 +230,8 @@ router.put('/health-risk-assessments/:id/complete', async (req: Request, res: Re
  */
 router.get('/health-risk-assessments/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const assessments = RiskStratificationService.getHealthRiskAssessmentsByPatient(req.params.patientId);
+    const companyId = getCompanyId(req);
+    const assessments = await RiskStratificationService.getHealthRiskAssessmentsByPatient(companyId, req.params.patientId);
     res.json({
       success: true,
       data: assessments,
@@ -239,7 +252,8 @@ router.get('/health-risk-assessments/patient/:patientId', async (req: Request, r
  */
 router.post('/predictive-models', async (req: Request, res: Response) => {
   try {
-    const model = RiskStratificationService.createPredictiveModel(req.body);
+    const companyId = getCompanyId(req);
+    const model = await RiskStratificationService.createPredictiveModel(companyId, req.body);
     res.status(201).json({
       success: true,
       data: model,
@@ -260,8 +274,9 @@ router.post('/predictive-models', async (req: Request, res: Response) => {
  */
 router.get('/predictive-models', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { activeOnly } = req.query;
-    const models = RiskStratificationService.getPredictiveModels(activeOnly !== 'false');
+    const models = await RiskStratificationService.getPredictiveModels(companyId, activeOnly !== 'false');
     res.json({
       success: true,
       data: models,
@@ -282,7 +297,8 @@ router.get('/predictive-models', async (req: Request, res: Response) => {
  */
 router.post('/predictive-analyses', async (req: Request, res: Response) => {
   try {
-    const analysis = RiskStratificationService.runPredictiveAnalysis(req.body);
+    const companyId = getCompanyId(req);
+    const analysis = await RiskStratificationService.runPredictiveAnalysis(companyId, req.body);
     res.status(201).json({
       success: true,
       data: analysis,
@@ -303,7 +319,8 @@ router.post('/predictive-analyses', async (req: Request, res: Response) => {
  */
 router.get('/predictive-analyses/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const analyses = RiskStratificationService.getPredictiveAnalysesByPatient(req.params.patientId);
+    const companyId = getCompanyId(req);
+    const analyses = await RiskStratificationService.getPredictiveAnalysesByPatient(companyId, req.params.patientId);
     res.json({
       success: true,
       data: analyses,
@@ -324,7 +341,8 @@ router.get('/predictive-analyses/patient/:patientId', async (req: Request, res: 
  */
 router.post('/social-determinants', async (req: Request, res: Response) => {
   try {
-    const determinant = RiskStratificationService.recordSocialDeterminant(req.body);
+    const companyId = getCompanyId(req);
+    const determinant = await RiskStratificationService.recordSocialDeterminant(companyId, req.body);
     res.status(201).json({
       success: true,
       data: determinant,
@@ -345,7 +363,8 @@ router.post('/social-determinants', async (req: Request, res: Response) => {
  */
 router.put('/social-determinants/:id', async (req: Request, res: Response) => {
   try {
-    const determinant = RiskStratificationService.updateSocialDeterminant(req.params.id, req.body);
+    const companyId = getCompanyId(req);
+    const determinant = await RiskStratificationService.updateSocialDeterminant(companyId, req.params.id, req.body);
     res.json({
       success: true,
       data: determinant,
@@ -366,7 +385,8 @@ router.put('/social-determinants/:id', async (req: Request, res: Response) => {
  */
 router.get('/social-determinants/patient/:patientId', async (req: Request, res: Response) => {
   try {
-    const determinants = RiskStratificationService.getSocialDeterminantsByPatient(req.params.patientId);
+    const companyId = getCompanyId(req);
+    const determinants = await RiskStratificationService.getSocialDeterminantsByPatient(companyId, req.params.patientId);
     res.json({
       success: true,
       data: determinants,
@@ -387,7 +407,8 @@ router.get('/social-determinants/patient/:patientId', async (req: Request, res: 
  */
 router.post('/cohorts', async (req: Request, res: Response) => {
   try {
-    const cohort = RiskStratificationService.createRiskStratificationCohort(req.body);
+    const companyId = getCompanyId(req);
+    const cohort = await RiskStratificationService.createRiskStratificationCohort(companyId, req.body);
     res.status(201).json({
       success: true,
       data: cohort,
@@ -408,8 +429,9 @@ router.post('/cohorts', async (req: Request, res: Response) => {
  */
 router.get('/cohorts', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { activeOnly } = req.query;
-    const cohorts = RiskStratificationService.getCohorts(activeOnly !== 'false');
+    const cohorts = await RiskStratificationService.getCohorts(companyId, activeOnly !== 'false');
     res.json({
       success: true,
       data: cohorts,
@@ -430,8 +452,10 @@ router.get('/cohorts', async (req: Request, res: Response) => {
  */
 router.get('/risk-stratification/statistics', async (req: Request, res: Response) => {
   try {
+    const companyId = getCompanyId(req);
     const { startDate, endDate } = req.query;
-    const statistics = RiskStratificationService.getStatistics(
+    const statistics = await RiskStratificationService.getStatistics(
+      companyId,
       startDate ? new Date(startDate as string) : undefined,
       endDate ? new Date(endDate as string) : undefined
     );
@@ -1210,10 +1234,8 @@ router.get('/outreach/patient/:patientId', async (req: Request, res: Response) =
  */
 router.get('/care-coordination/statistics', async (req: Request, res: Response) => {
   try {
-    const companyId = getCompanyId(req);
     const { startDate, endDate } = req.query;
-    const statistics = await CareCoordinationService.getStatistics(
-      companyId,
+    const statistics = CareCoordinationService.getStatistics(
       startDate ? new Date(startDate as string) : undefined,
       endDate ? new Date(endDate as string) : undefined
     );
