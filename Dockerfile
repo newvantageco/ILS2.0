@@ -6,7 +6,7 @@
 # ----------------
 # Stage 1: Builder
 # ----------------
-FROM node:20-slim AS builder
+FROM node:20 AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
