@@ -20,9 +20,9 @@ import crypto from 'crypto';
 import { CommunicationsService, CommunicationChannel, MessageStatus } from './CommunicationsService.js';
 import { storage, type IStorage } from '../../storage.js';
 import type {
-  AudienceSegment as DBAudienceSegment,
-  Campaign as DBCampaign,
-  CampaignRecipient as DBCampaignRecipient
+  AudienceSegment,
+  Campaign,
+  CampaignRecipient
 } from '@shared/schema';
 
 const logger = loggers.api;
@@ -38,66 +38,6 @@ export type CampaignStatus = 'draft' | 'scheduled' | 'running' | 'paused' | 'com
  * Campaign type
  */
 export type CampaignType = 'one_time' | 'recurring' | 'triggered' | 'drip';
-
-/**
- * Audience segment
- */
-export interface AudienceSegment {
-  id: string;
-  name: string;
-  description?: string;
-  criteria: Array<{
-    field: string;
-    operator: 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'contains';
-    value: any;
-  }>;
-  size?: number;
-  createdAt: Date;
-  updatedAt?: Date;
-}
-
-/**
- * Campaign
- */
-export interface Campaign {
-  id: string;
-  name: string;
-  description?: string;
-  type: CampaignType;
-  status: CampaignStatus;
-
-  // Audience
-  segmentIds: string[];
-  estimatedReach: number;
-
-  // Content
-  channel: CommunicationChannel;
-  templateId: string;
-  variables?: Record<string, string>; // Default variable values
-
-  // Scheduling
-  startDate?: Date;
-  endDate?: Date;
-  frequency?: 'daily' | 'weekly' | 'monthly'; // For recurring campaigns
-  sendTime?: string; // HH:MM format
-
-  // Tracking
-  sentCount: number;
-  deliveredCount: number;
-  openedCount: number;
-  clickedCount: number;
-  unsubscribedCount: number;
-
-  // Settings
-  throttle?: number; // Messages per hour
-  abTestEnabled: boolean;
-  abTestVariant?: 'A' | 'B';
-
-  createdAt: Date;
-  updatedAt?: Date;
-  launchedAt?: Date;
-  completedAt?: Date;
-}
 
 /**
  * Campaign analytics
@@ -216,7 +156,7 @@ export class CampaignService {
    */
   static async createCampaign(
     companyId: string,
-    campaign: Omit<Campaign, 'id' | 'sentCount' | 'deliveredCount' | 'openedCount' | 'clickedCount' | 'unsubscribedCount' | 'createdAt'>
+    campaign: Omit<Campaign, 'id' | 'companyId' | 'sentCount' | 'deliveredCount' | 'openedCount' | 'clickedCount' | 'unsubscribedCount' | 'createdAt'>
   ): Promise<Campaign> {
     // Calculate estimated reach from segments
     let estimatedReach = 0;
@@ -332,6 +272,12 @@ export class CampaignService {
     const campaign = await this.db.getCampaign(campaignId, companyId);
 
     if (!campaign) {
+      return;
+    }
+
+    // Validate campaign has template
+    if (!campaign.templateId) {
+      logger.error({ campaignId }, 'Cannot send campaign messages: no template specified');
       return;
     }
 
@@ -589,7 +535,7 @@ export class CampaignService {
    */
   static async createABTest(
     companyId: string,
-    baseConfig: Omit<Campaign, 'id' | 'sentCount' | 'deliveredCount' | 'openedCount' | 'clickedCount' | 'unsubscribedCount' | 'createdAt' | 'abTestEnabled' | 'abTestVariant'>,
+    baseConfig: Omit<Campaign, 'id' | 'companyId' | 'sentCount' | 'deliveredCount' | 'openedCount' | 'clickedCount' | 'unsubscribedCount' | 'createdAt' | 'abTestEnabled' | 'abTestVariant'>,
     variantBTemplateId: string
   ): Promise<{ campaignA: Campaign; campaignB: Campaign }> {
     const campaignA = await this.createCampaign(companyId, {

@@ -18,30 +18,15 @@
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../utils/logger';
 import { storage, type IStorage } from '../../storage';
+import type {
+  CarePlan,
+  CareTeam,
+  CareGap,
+  TransitionOfCare,
+  PatientOutreach,
+} from '../../../shared/schema';
 
-// ============================================================================
-// Care Coordination Types
-// ============================================================================
-
-export interface CarePlan {
-  id: string;
-  patientId: string;
-  name: string;
-  description: string;
-  status: 'draft' | 'active' | 'on_hold' | 'completed' | 'cancelled';
-  category: 'chronic_disease' | 'preventive' | 'transitional' | 'behavioral_health' | 'other';
-  goals: CareGoal[];
-  interventions: CareIntervention[];
-  careTeamId?: string;
-  startDate: Date;
-  endDate?: Date;
-  reviewFrequency: 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
-  nextReviewDate: Date;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
+// Sub-types for JSON fields
 export interface CareGoal {
   id: string;
   description: string;
@@ -72,19 +57,6 @@ export interface CareIntervention {
   updatedAt: Date;
 }
 
-export interface CareTeam {
-  id: string;
-  name: string;
-  patientId: string;
-  description: string;
-  members: CareTeamMember[];
-  status: 'active' | 'inactive';
-  primaryContact?: string;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface CareTeamMember {
   id: string;
   userId: string;
@@ -100,52 +72,6 @@ export interface CareTeamMember {
   };
   joinedDate: Date;
   status: 'active' | 'inactive';
-}
-
-export interface CareGap {
-  id: string;
-  patientId: string;
-  gapType: string;
-  category: 'preventive' | 'chronic_care' | 'medication' | 'screening' | 'follow_up';
-  description: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  status: 'open' | 'in_progress' | 'closed' | 'not_applicable';
-  identifiedDate: Date;
-  dueDate: Date;
-  closedDate?: Date;
-  recommendations: string[];
-  assignedTo?: string;
-  evidence: string;
-  measure?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface TransitionOfCare {
-  id: string;
-  patientId: string;
-  transitionType:
-    | 'hospital_to_home'
-    | 'hospital_to_snf'
-    | 'snf_to_home'
-    | 'er_to_home'
-    | 'specialist_referral'
-    | 'other';
-  fromLocation: string;
-  toLocation: string;
-  status: 'planned' | 'in_progress' | 'completed' | 'failed';
-  dischargeDate?: Date;
-  admissionDate?: Date;
-  followUpRequired: boolean;
-  followUpDate?: Date;
-  followUpCompleted: boolean;
-  medications: MedicationReconciliation[];
-  careInstructions: string[];
-  riskFactors: string[];
-  responsibleProvider?: string;
-  coordinatedBy: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface MedicationReconciliation {
@@ -175,25 +101,6 @@ export interface CareCoordinationTask {
   completedDate?: Date;
   completedBy?: string;
   notes: string;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface PatientOutreach {
-  id: string;
-  patientId: string;
-  taskId?: string;
-  outreachType: 'phone' | 'email' | 'sms' | 'mail' | 'in_person' | 'portal';
-  purpose: string;
-  status: 'scheduled' | 'attempted' | 'completed' | 'failed' | 'cancelled';
-  scheduledDate?: Date;
-  attemptedDate?: Date;
-  completedDate?: Date;
-  contactResult?: 'successful' | 'no_answer' | 'left_message' | 'wrong_number' | 'declined';
-  notes: string;
-  nextSteps: string[];
-  performedBy?: string;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;

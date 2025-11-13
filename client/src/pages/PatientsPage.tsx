@@ -44,8 +44,8 @@ export default function PatientsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const { user } = useAuth();
   
-  // Check if user is optometrist (can create clinical examinations)
-  const canCreateExamination = user?.enhancedRole === 'optometrist' || user?.role === 'ecp' || user?.role === 'platform_admin' || user?.role === 'admin' || user?.role === 'company_admin';
+  // Check if user is ECP (Eye Care Professional) - can create clinical examinations
+  const canCreateExamination = user?.role === 'ecp' || user?.role === 'platform_admin' || user?.role === 'admin' || user?.role === 'company_admin';
 
   const { data: patients, isLoading } = useQuery<Patient[]>({
     queryKey: ["/api/patients"],

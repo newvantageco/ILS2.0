@@ -9,6 +9,7 @@ import { loggers } from '../utils/logger';
 import { PatientAuthService } from '../services/patient-portal/PatientAuthService';
 import { AppointmentBookingService } from '../services/patient-portal/AppointmentBookingService';
 import { PatientPortalService } from '../services/patient-portal/PatientPortalService';
+import { storage } from '../storage';
 
 const router = express.Router();
 const logger = loggers.api;
@@ -42,8 +43,20 @@ async function authenticatePatient(
       });
     }
 
-    // Attach account to request
+    // Fetch patient record to get companyId
+    const patient = await storage.getPatient(account.patientId, (account as any).companyId);
+
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        error: 'Patient record not found',
+      });
+    }
+
+    // Attach account, patient, and companyId to request
     (req as any).patientAccount = account;
+    (req as any).patient = patient;
+    (req as any).companyId = patient.companyId;
     next();
   } catch (error) {
     logger.error({ error }, 'Patient authentication error');
@@ -361,7 +374,8 @@ router.put('/auth/preferences', authenticatePatient, async (req, res) => {
  */
 router.get('/appointments/types', authenticatePatient, async (req, res) => {
   try {
-    const types = await AppointmentBookingService.getAppointmentTypes();
+    const companyId = (req as any).companyId;
+    const types = await AppointmentBookingService.getAppointmentTypes(companyId);
 
     res.json({
       success: true,
@@ -382,10 +396,11 @@ router.get('/appointments/types', authenticatePatient, async (req, res) => {
  */
 router.get('/appointments/providers', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const { appointmentTypeId } = req.query;
 
     // Note: appointmentTypeId filter not yet implemented in service
-    const providers = await AppointmentBookingService.getAvailableProviders();
+    const providers = await AppointmentBookingService.getAvailableProviders(companyId);
 
     res.json({
       success: true,
@@ -406,6 +421,7 @@ router.get('/appointments/providers', authenticatePatient, async (req, res) => {
  */
 router.get('/appointments/slots', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const { providerId, appointmentTypeId, startDate, endDate } = req.query;
 
     if (!providerId || !appointmentTypeId || !startDate || !endDate) {
@@ -416,6 +432,7 @@ router.get('/appointments/slots', authenticatePatient, async (req, res) => {
     }
 
     const slots = await AppointmentBookingService.getAvailableSlots(
+      companyId,
       providerId as string,
       appointmentTypeId as string,
       new Date(startDate as string),
@@ -441,6 +458,7 @@ router.get('/appointments/slots', authenticatePatient, async (req, res) => {
  */
 router.post('/appointments/book', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const account = (req as any).patientAccount;
     const { providerId, appointmentTypeId, date, startTime, notes } = req.body;
 
@@ -451,11 +469,11 @@ router.post('/appointments/book', authenticatePatient, async (req, res) => {
       });
     }
 
-    const result = await AppointmentBookingService.bookAppointment({
+    const result = await AppointmentBookingService.bookAppointment(companyId, {
       patientId: account.patientId,
       providerId,
       appointmentTypeId,
-      date: new Date(date),
+      date,
       startTime,
       notes,
     });
@@ -484,10 +502,12 @@ router.post('/appointments/book', authenticatePatient, async (req, res) => {
  */
 router.get('/appointments', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const account = (req as any).patientAccount;
     const { status, upcoming } = req.query;
 
     const appointments = await AppointmentBookingService.getPatientAppointments(
+      companyId,
       account.patientId,
       {
         status: status as any,
@@ -578,6 +598,7 @@ router.post('/appointments/:bookingId/cancel', authenticatePatient, async (req, 
  */
 router.post('/appointments/:bookingId/reschedule', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const account = (req as any).patientAccount;
     const { bookingId } = req.params;
     const { date, startTime } = req.body;
@@ -590,9 +611,10 @@ router.post('/appointments/:bookingId/reschedule', authenticatePatient, async (r
     }
 
     const result = await AppointmentBookingService.rescheduleAppointment(
+      companyId,
       bookingId,
       account.patientId,
-      new Date(date),
+      date,
       startTime
     );
 
@@ -651,10 +673,11 @@ router.get('/records', authenticatePatient, async (req, res) => {
  */
 router.get('/records/:recordId', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const account = (req as any).patientAccount;
     const { recordId } = req.params;
 
-    const record = await PatientPortalService.getMedicalRecord(recordId, account.patientId);
+    const record = await PatientPortalService.getMedicalRecord(companyId, recordId, account.patientId);
 
     if (!record) {
       return res.status(404).json({
@@ -682,6 +705,7 @@ router.get('/records/:recordId', authenticatePatient, async (req, res) => {
  */
 router.post('/records/download', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const account = (req as any).patientAccount;
     const { recordIds } = req.body;
 
@@ -693,6 +717,7 @@ router.post('/records/download', authenticatePatient, async (req, res) => {
     }
 
     const result = await PatientPortalService.requestRecordsDownload(
+      companyId,
       account.patientId,
       recordIds
     );
@@ -722,10 +747,12 @@ router.post('/records/download', authenticatePatient, async (req, res) => {
  */
 router.get('/prescriptions', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const account = (req as any).patientAccount;
     const { activeOnly } = req.query;
 
     const prescriptions = await PatientPortalService.getPrescriptions(
+      companyId,
       account.patientId,
       activeOnly === 'true'
     );
@@ -784,9 +811,10 @@ router.post('/prescriptions/:prescriptionId/refill', authenticatePatient, async 
  */
 router.get('/messages/conversations', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const account = (req as any).patientAccount;
 
-    const conversations = await PatientPortalService.getConversations(account.patientId);
+    const conversations = await PatientPortalService.getConversations(companyId, account.patientId);
 
     res.json({
       success: true,
@@ -807,6 +835,7 @@ router.get('/messages/conversations', authenticatePatient, async (req, res) => {
  */
 router.post('/messages/conversations', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const account = (req as any).patientAccount;
     const { providerId, subject, message } = req.body;
 
@@ -818,6 +847,7 @@ router.post('/messages/conversations', authenticatePatient, async (req, res) => 
     }
 
     const result = await PatientPortalService.startConversation(
+      companyId,
       account.patientId,
       providerId,
       subject,
@@ -847,10 +877,11 @@ router.post('/messages/conversations', authenticatePatient, async (req, res) => 
  */
 router.get('/messages/conversations/:conversationId', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const account = (req as any).patientAccount;
     const { conversationId } = req.params;
 
-    const messages = await PatientPortalService.getMessages(conversationId, account.patientId);
+    const messages = await PatientPortalService.getMessages(companyId, conversationId, account.patientId);
 
     res.json({
       success: true,
@@ -914,10 +945,11 @@ router.post('/messages/conversations/:conversationId', authenticatePatient, asyn
  */
 router.get('/bills', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const account = (req as any).patientAccount;
     const { unpaidOnly } = req.query;
 
-    const bills = await PatientPortalService.getBills(account.patientId, unpaidOnly === 'true');
+    const bills = await PatientPortalService.getBills(companyId, account.patientId, unpaidOnly === 'true');
 
     res.json({
       success: true,
@@ -938,10 +970,11 @@ router.get('/bills', authenticatePatient, async (req, res) => {
  */
 router.get('/bills/:billId', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const account = (req as any).patientAccount;
     const { billId } = req.params;
 
-    const bill = await PatientPortalService.getBill(billId, account.patientId);
+    const bill = await PatientPortalService.getBill(companyId, billId, account.patientId);
 
     if (!bill) {
       return res.status(404).json({
@@ -969,6 +1002,7 @@ router.get('/bills/:billId', authenticatePatient, async (req, res) => {
  */
 router.post('/bills/:billId/pay', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const account = (req as any).patientAccount;
     const { billId } = req.params;
     const { amount, method, paymentDetails } = req.body;
@@ -981,6 +1015,7 @@ router.post('/bills/:billId/pay', authenticatePatient, async (req, res) => {
     }
 
     const result = await PatientPortalService.makePayment(
+      companyId,
       billId,
       account.patientId,
       amount,
@@ -1012,6 +1047,7 @@ router.post('/bills/:billId/pay', authenticatePatient, async (req, res) => {
  */
 router.post('/bills/:billId/payment-plan', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const account = (req as any).patientAccount;
     const { billId } = req.params;
     const { proposedMonthlyPayment } = req.body;
@@ -1024,6 +1060,7 @@ router.post('/bills/:billId/payment-plan', authenticatePatient, async (req, res)
     }
 
     const result = await PatientPortalService.requestPaymentPlan(
+      companyId,
       billId,
       account.patientId,
       proposedMonthlyPayment
@@ -1052,9 +1089,10 @@ router.post('/bills/:billId/payment-plan', authenticatePatient, async (req, res)
  */
 router.get('/payments', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const account = (req as any).patientAccount;
 
-    const payments = await PatientPortalService.getPaymentHistory(account.patientId);
+    const payments = await PatientPortalService.getPaymentHistory(companyId, account.patientId);
 
     res.json({
       success: true,
@@ -1077,9 +1115,10 @@ router.get('/payments', authenticatePatient, async (req, res) => {
  */
 router.get('/dashboard', authenticatePatient, async (req, res) => {
   try {
+    const companyId = (req as any).companyId;
     const account = (req as any).patientAccount;
 
-    const dashboard = await PatientPortalService.getDashboard(account.patientId);
+    const dashboard = await PatientPortalService.getDashboard(companyId, account.patientId);
 
     res.json({
       success: true,
