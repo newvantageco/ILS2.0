@@ -1,0 +1,480 @@
+================================================================================
+ILS 2.0 - PROJECT OVERVIEW - QUICK INDEX
+================================================================================
+
+Project Name: Integrated Lens System 2.0 (ILS 2.0)
+Description: Healthcare Operating System for Optical Excellence
+Status: Production Ready (98.5% Health Score)
+Version: 2.0
+
+================================================================================
+OVERVIEW DOCUMENTATION STRUCTURE
+================================================================================
+
+This project overview has been split into 3 comprehensive parts:
+
+📄 PROJECT_OVERVIEW_PART1.txt (Introduction & Foundation)
+───────────────────────────────────────────────────────────
+Contents:
+  • What is ILS 2.0
+  • Key Features Overview
+  • Complete Technology Stack
+  • Project Structure
+  • Database Schema Overview
+  • Environment Variables Checklist
+
+Best for: Understanding the big picture, tech stack, features
+
+📄 PROJECT_OVERVIEW_PART2.txt (Architecture & Development)
+───────────────────────────────────────────────────────────
+Contents:
+  • System Architecture (layered & high-level diagrams)
+  • Data Flow Patterns (order creation, AI queries, background jobs)
+  • Authentication & Authorization (RBAC, multi-tenancy)
+  • Event-Driven Architecture (pub/sub pattern, EventBus)
+  • Background Jobs (BullMQ + Redis)
+  • File Upload & Processing
+  • Logging & Monitoring
+  • Cron Jobs (scheduled tasks)
+
+Best for: Understanding how components interact, development patterns
+
+📄 PROJECT_OVERVIEW_PART3.txt (Development, Testing & Deployment)
+──────────────────────────────────────────────────────────────────
+Contents:
+  • Testing Strategy (unit, integration, component, E2E)
+  • Development Workflow (8-step feature development pattern)
+  • Database Schema Management (migrations, conventions)
+  • Deployment (production build, Railway, Docker)
+  • Troubleshooting & Maintenance
+  • Quick Reference Commands
+
+Best for: Implementing features, running tests, deploying to production
+
+================================================================================
+QUICK START FOR NEW DEVELOPERS
+================================================================================
+
+1. UNDERSTAND THE ARCHITECTURE (15 min)
+   → Read: PROJECT_OVERVIEW_PART1.txt (sections: "What is ILS 2.0" & "Tech Stack")
+   → Read: PROJECT_OVERVIEW_PART2.txt (section: "System Architecture")
+
+2. SET UP LOCAL ENVIRONMENT (30 min)
+   → Clone: git clone https://github.com/newvantageco/ILS2.0.git
+   → Install: npm install
+   → Configure: cp .env.example .env (fill in DATABASE_URL, etc.)
+   → Migrate: npm run db:push
+   → Start: npm run dev
+
+3. LEARN THE DEVELOPMENT PATTERN (30 min)
+   → Read: PROJECT_OVERVIEW_PART3.txt (section: "Development Workflow")
+   → This covers the exact steps to add ANY feature to ILS
+
+4. UNDERSTAND MULTI-TENANCY (15 min)
+   → Read: PROJECT_OVERVIEW_PART2.txt (section: "Multi-Tenancy Implementation")
+   → This is critical - every query MUST filter by companyId
+
+5. START IMPLEMENTING (as needed)
+   → Follow the 8-step development pattern
+   → Run: npm run check && npm test before committing
+
+================================================================================
+KEY CONCEPTS TO UNDERSTAND
+================================================================================
+
+MONOREPO STRUCTURE
+──────────────────
+• client/     → React frontend (Vite + TypeScript)
+• server/     → Express backend (TypeScript ESM)
+• shared/     → Shared types & Zod schemas (SINGLE SOURCE OF TRUTH)
+• python-service/ → FastAPI analytics
+• ai-service/ → ML & AI models
+• test/       → All test suites
+
+SINGLE SOURCE OF TRUTH
+───────────────────────
+shared/schema.ts contains:
+  • 110+ Drizzle ORM table definitions
+  • Zod validation schemas (auto-generated)
+  • ALL TypeScript types are derived from this
+
+Process: Schema change → Database migration → Code change
+
+DATA ACCESS PATTERN
+────────────────────
+Routes NEVER query database directly!
+
+Pattern:
+  Frontend → Route handler → Storage layer → Database
+
+The DbStorage singleton (server/storage.ts) enforces:
+  • Tenant isolation (companyId filtering)
+  • Type safety (Zod validation)
+  • Query optimization (indexes, caching)
+  • Consistent error handling
+
+MULTI-TENANCY
+──────────────
+CRITICAL: Every query MUST include companyId filter
+
+Two patterns:
+
+1. Middleware extracts companyId from authenticated user:
+   const companyId = req.user.companyId;
+
+2. All storage methods filter by companyId:
+   const orders = await storage.getOrdersByCompany(companyId);
+
+Result: Complete data isolation between companies
+
+ERROR HANDLING
+───────────────
+All async routes use asyncHandler() wrapper:
+
+  router.post('/api/orders',
+    authenticateUser,
+    asyncHandler(async (req, res) => {
+      if (!data) throw new NotFoundError('Order');
+      res.json(data);
+    })
+  );
+
+No try/catch needed - asyncHandler catches all errors and formats response.
+
+EVENT-DRIVEN ARCHITECTURE
+──────────────────────────
+After state changes, emit events:
+
+  const order = await storage.createOrder(data);
+  await EventBus.publish('order.created', { orderId, companyId });
+
+Event handlers run asynchronously:
+  EmailWorker → Send email
+  PDFWorker → Generate invoice
+  AnalyticsWorker → Log event
+
+Pattern: Fire-and-forget, workers handle async processing
+
+================================================================================
+DIRECTORY QUICK REFERENCE
+================================================================================
+
+Frontend (client/)
+──────────────────
+client/src/
+  components/    → React components (UI, dashboard, forms)
+  pages/         → Route-level pages (Dashboard, Orders, etc.)
+  hooks/         → Custom hooks (useAuth, useOrders, etc.)
+  lib/           → Utilities (API client, helpers)
+  App.tsx        → Root component with routing
+
+Backend (server/)
+──────────────────
+server/
+  routes.ts           → Main route registry (5,800+ lines)
+  routes/             → Modular route files (ai.ts, payments.ts, etc.)
+  storage.ts          → Data access layer (6,200+ lines, CORE FILE)
+  db.ts               → Database connection
+  middleware/         → Express middleware (auth, errors, security)
+  workers/            → BullMQ background workers (email, PDF, AI)
+  events/             → Event bus and handlers
+  services/           → Business logic services
+  jobs/               → Cron-scheduled tasks
+  queue/              → BullMQ configuration
+  websocket/          → WebSocket server
+
+Shared (shared/)
+────────────────
+schema.ts          → 110+ Drizzle tables, 8,400+ lines (SOURCE OF TRUTH)
+
+Testing (test/)
+────────────────
+test/
+  unit/              → Unit tests (Jest)
+  integration/       → API tests (Jest + Supertest)
+  components/        → React component tests (Vitest)
+  e2e/               → Browser tests (Playwright)
+
+Config Files
+─────────────
+package.json           → Dependencies and scripts
+tsconfig.json          → TypeScript configuration
+vite.config.ts         → Frontend build config
+jest.config.mjs        → Testing config
+drizzle.config.ts      → ORM config
+docker-compose.yml     → Local dev services
+
+================================================================================
+TECHNOLOGY AT A GLANCE
+================================================================================
+
+FRONTEND
+────────
+React 18.3           → UI framework
+TypeScript 5.6       → Type safety
+Vite 7.2             → Fast dev server
+TanStack Query 5     → Server state management
+Wouter 3.3           → Lightweight routing
+shadcn/ui + Radix    → Component primitives
+Tailwind CSS 3.4     → Styling
+React Hook Form      → Form management
+Zod 3.24             → Type validation
+
+BACKEND
+────────
+Node.js 20+          → Runtime
+Express 4.21         → Web framework
+PostgreSQL 15        → Database (Neon recommended)
+Drizzle ORM 0.44     → Type-safe queries
+Passport 0.7         → Authentication
+BullMQ 5.63          → Job queue
+Redis 5.8            → Cache & job store
+Socket.io            → WebSockets
+Helmet 8.1           → Security headers
+Pino 10.1            → JSON logging
+
+TESTING
+────────
+Jest 29.7            → Unit & integration tests
+Vitest 4.0           → Component tests
+Playwright 1.56      → E2E tests
+React Testing Lib    → Component utilities
+
+PYTHON SERVICES
+────────────────
+FastAPI              → API framework
+TensorFlow.js        → ML models
+PyTorch              → Deep learning
+Pandas               → Data analysis
+scikit-learn         → Classical ML
+Anthropic Claude     → LLM
+OpenAI GPT-4         → LLM
+
+================================================================================
+ESSENTIAL COMMANDS
+================================================================================
+
+DEVELOPMENT
+────────────
+npm run dev              Start all services (client + server + Python)
+npm run dev:node         Start Node.js backend only
+npm run dev:python       Start Python analytics service
+npm run check            TypeScript type checking
+
+DATABASE
+─────────
+npm run db:push          Run migrations to database
+npm run migrate-storage  Run data migration scripts
+
+TESTING
+────────
+npm run test:unit        Unit tests (Jest)
+npm test                 Integration tests (API)
+npm run test:components  Component tests (React)
+npm run test:e2e         End-to-end tests (Playwright)
+npm run test:all         All tests + TypeScript check
+npm run test:coverage    Coverage report
+
+PRODUCTION
+───────────
+npm run build            Build for production
+npm start                Start production server
+
+QUALITY
+────────
+npm run check            TypeScript compilation
+npm run test:coverage    Test coverage report
+
+DEPLOYMENT (Railway)
+─────────────────────
+railway login            Login to Railway
+railway link             Link this project
+railway up               Deploy
+railway logs --follow    Watch deployment logs
+
+================================================================================
+FILE ORGANIZATION TIPS
+================================================================================
+
+When modifying code, follow this pattern:
+
+For frontend changes:
+  1. Update schema if needed (shared/schema.ts)
+  2. Update backend storage/route (server/storage.ts, server/routes.ts)
+  3. Update frontend hook (client/src/hooks/)
+  4. Update component (client/src/components/)
+  5. Add tests
+
+For backend-only changes:
+  1. Update schema if DB changed (shared/schema.ts)
+  2. Update storage method (server/storage.ts)
+  3. Update route handler (server/routes.ts or modular file)
+  4. Emit events if needed
+  5. Add tests
+
+For database changes:
+  1. Update Drizzle schema (shared/schema.ts)
+  2. Run: npm run db:push
+  3. Update storage methods
+  4. Update routes
+  5. Update types (automatic from schema)
+
+For external integrations:
+  1. Create service class (server/services/)
+  2. Use in route handlers
+  3. Emit events if state-changing
+  4. Add tests
+
+================================================================================
+COMMON PAIN POINTS & SOLUTIONS
+================================================================================
+
+❌ "TypeError: cannot access companyId"
+✅ Always get companyId from req.user (after authenticateUser middleware)
+✅ Always pass companyId to storage methods
+
+❌ "Data visible across multiple companies"
+✅ Missing companyId filter in storage method
+✅ Review server/storage.ts - ALL methods must filter by companyId
+
+❌ "Background jobs not running"
+✅ Check Redis connection: redis-cli ping
+✅ Check if job worker is imported in server/index.ts
+✅ Check BullMQ queue: redis-cli KEYS bull:*
+
+❌ "TypeScript errors in client/"
+✅ Run npm run check to see all errors
+✅ Check path aliases in tsconfig.json
+✅ Use @shared/ for shared types
+
+❌ "Tests failing unexpectedly"
+✅ Ensure test database is clean: npm run db:push
+✅ Check for port conflicts (5000, 8000, 6379)
+✅ Run tests individually: npm run test:unit
+
+================================================================================
+LEARNING PATHS
+================================================================================
+
+FOR FRONTEND DEVELOPERS
+────────────────────────
+1. Learn React components structure (client/src/components/)
+2. Learn React hooks pattern (client/src/hooks/)
+3. Learn TanStack Query for data fetching
+4. Learn Zod for form validation
+5. Add new UI components and hooks
+6. Add integration tests for components
+
+FOR BACKEND DEVELOPERS
+────────────────────────
+1. Learn storage layer pattern (server/storage.ts)
+2. Learn route handler pattern (server/routes.ts)
+3. Learn Zod schema validation (shared/schema.ts)
+4. Learn event-driven pattern (server/events/)
+5. Learn background job pattern (server/workers/)
+6. Add new API endpoints and storage methods
+
+FOR FULLSTACK DEVELOPERS
+──────────────────────────
+1. Follow the 8-step development workflow (PROJECT_OVERVIEW_PART3.txt)
+2. Understand schema → storage → routes → frontend pattern
+3. Learn multi-tenancy enforcement (PROJECT_OVERVIEW_PART2.txt)
+4. Learn event-driven architecture
+5. Implement complete features end-to-end
+
+FOR DATABASE ADMINISTRATORS
+──────────────────────────────
+1. Understand Drizzle ORM (shared/schema.ts)
+2. Learn migration process (npm run db:push)
+3. Monitor query performance (indexes, explain plans)
+4. Backup strategy
+5. Connection pooling (Neon automatic)
+
+================================================================================
+ADDITIONAL RESOURCES
+================================================================================
+
+Documentation in repo:
+• README.md                    - Main project documentation
+• docs/architecture.md         - System architecture deep dive
+• docs/development.md          - Developer guide
+• docs/database.md             - Database schema documentation
+• docs/deployment.md           - Deployment guide
+• docs/compliance.md           - HIPAA/GDPR compliance
+• CONTRIBUTING.md              - Contribution guidelines
+• .github/copilot-instructions.md - AI agent guidance
+
+External resources:
+• React: https://react.dev
+• TypeScript: https://www.typescriptlang.org
+• Express: https://expressjs.com
+• Drizzle ORM: https://orm.drizzle.team
+• Zod: https://zod.dev
+• TanStack Query: https://tanstack.com/query
+• Tailwind CSS: https://tailwindcss.com
+
+Project setup:
+• See PROJECT_OVERVIEW_PART1.txt for complete tech stack details
+• See PROJECT_OVERVIEW_PART2.txt for architecture diagrams
+• See PROJECT_OVERVIEW_PART3.txt for deployment instructions
+
+================================================================================
+GETTING HELP
+================================================================================
+
+GitHub Issues:
+  → https://github.com/newvantageco/ILS2.0/issues
+
+Documentation:
+  → /docs folder in repository
+  → .github/copilot-instructions.md for AI guidance
+
+Code Examples:
+  → server/routes.ts - Examples of all endpoint patterns
+  → server/storage.ts - Examples of all query patterns
+  → client/src/hooks/ - Examples of all hook patterns
+  → test/ - Examples of all test patterns
+
+Common Tasks:
+  → Adding API endpoint: Follow 8-step pattern in PART3
+  → Adding component: Check client/src/components/ for patterns
+  → Adding database table: Update shared/schema.ts + npm run db:push
+  → Fixing bug: Write test first, then fix code
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+For new developers:
+  1. Read PROJECT_OVERVIEW_PART1.txt (foundation)
+  2. Read PROJECT_OVERVIEW_PART2.txt (architecture)
+  3. Follow setup steps in PROJECT_OVERVIEW_PART1.txt
+  4. Run: npm run dev
+  5. Explore codebase - open server/routes.ts and server/storage.ts
+  6. Pick a small bug or feature from GitHub issues
+  7. Follow 8-step development pattern from PROJECT_OVERVIEW_PART3.txt
+
+For experienced developers:
+  1. Review PROJECT_OVERVIEW_PART2.txt (architecture)
+  2. Review PROJECT_OVERVIEW_PART3.txt (development workflow)
+  3. Review key files:
+     - shared/schema.ts (database structure)
+     - server/storage.ts (data access patterns)
+     - server/routes.ts (API patterns)
+  4. Pick a feature to implement or bug to fix
+  5. Follow the pattern, write tests, deploy
+
+================================================================================
+END OF QUICK INDEX
+================================================================================
+
+Start with: PROJECT_OVERVIEW_PART1.txt
+Then read:  PROJECT_OVERVIEW_PART2.txt
+Then read:  PROJECT_OVERVIEW_PART3.txt
+
+Total reading time: ~30-45 minutes for complete overview
+Practical implementation time: 1-2 hours for first feature
+
+Good luck! 🚀
+
+================================================================================

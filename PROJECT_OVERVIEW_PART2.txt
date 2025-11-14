@@ -1,0 +1,847 @@
+================================================================================
+ILS 2.0 - PROJECT OVERVIEW (PART 2 - ARCHITECTURE & DEVELOPMENT)
+================================================================================
+
+================================================================================
+SYSTEM ARCHITECTURE
+================================================================================
+
+HIGH-LEVEL ARCHITECTURE DIAGRAM
+--------------------------------
+
+┌────────────────────────────────────────────────────┐
+│          Client Applications (Web/Mobile)          │
+│    React + Vite + TypeScript + TanStack Query      │
+└────────────────────────────────────────────────────┘
+                          ▼
+┌────────────────────────────────────────────────────┐
+│     API Gateway & Middleware (Express.js)          │
+│  Authentication ◆ Rate Limiting ◆ Security         │
+└────────────────────────────────────────────────────┘
+                          ▼
+┌────────────────────────────────────────────────────┐
+│        Application Services & Route Handlers       │
+├────────────────────────────────────────────────────┤
+│ Core Services    │ AI Services    │ Integrations   │
+│ • OrderService   │ • MasterAI     │ • ShopifySync  │
+│ • PatientMgmt    │ • OphthalmicAI │ • EmailService │
+│ • Prescription   │ • VisionAI     │ • PDFService   │
+│ • Inventory      │ • RAG System   │ • PaymentSvc   │
+└────────────────────────────────────────────────────┘
+                          ▼
+┌────────────────────────────────────────────────────┐
+│           Data Access Layer (DbStorage)            │
+│    Type-safe queries, tenant isolation, caching    │
+└────────────────────────────────────────────────────┘
+                          ▼
+┌────────────────────────────────────────────────────┐
+│        Persistent Storage & External APIs          │
+├────────────────────────────────────────────────────┤
+│ PostgreSQL │ Python ML │ External APIs │ Redis Job  │
+│ (Neon)     │ Service   │ OpenAI, Claude│ Queue      │
+└────────────────────────────────────────────────────┘
+
+LAYERED ARCHITECTURE
+---------------------
+┌─────────────────────────────────────────┐
+│  Presentation Layer                     │
+│  (React Frontend + UI Components)       │
+└─────────────────────────────────────────┘
+                  ▼
+┌─────────────────────────────────────────┐
+│  API Layer                              │
+│  (Express Routes + HTTP Handlers)       │
+│  ↳ Authentication & Authorization       │
+│  ↳ Input Validation (Zod)               │
+│  ↳ Error Handling                       │
+└─────────────────────────────────────────┘
+                  ▼
+┌─────────────────────────────────────────┐
+│  Service Layer                          │
+│  (Business Logic & Domain Services)     │
+│  ↳ OrderService                         │
+│  ↳ PatientService                       │
+│  ↳ AIService                            │
+│  ↳ EmailService, etc.                   │
+└─────────────────────────────────────────┘
+                  ▼
+┌─────────────────────────────────────────┐
+│  Data Access Layer (DbStorage)          │
+│  (Type-safe ORM queries)                │
+│  ↳ Multi-tenancy enforcement            │
+│  ↳ Query optimization                   │
+│  ↳ Caching logic                        │
+└─────────────────────────────────────────┘
+                  ▼
+┌─────────────────────────────────────────┐
+│  Database Layer                         │
+│  (PostgreSQL via Drizzle ORM)           │
+│  ↳ 110+ tables                          │
+│  ↳ Row-level security                   │
+└─────────────────────────────────────────┘
+
+================================================================================
+DATA FLOW PATTERNS
+================================================================================
+
+ORDER CREATION FLOW
+--------------------
+User (ECP) creates order
+    ↓
+Frontend validates form (React Hook Form + Zod)
+    ↓
+POST /api/orders with validated data
+    ↓
+Express middleware chain:
+  • Authentication (session check)
+  • Rate limiting
+  • CORS validation
+    ↓
+Route handler:
+  • Zod validation (parseCreateOrderSchema)
+  • Extract companyId from req.user
+    ↓
+OrderService.createOrder()
+  • Generate order number
+  • Validate prescription data
+  • Check inventory availability
+    ↓
+DbStorage.createOrder()
+  • INSERT order record
+  • INSERT order_status_timeline entry
+  • Return created order
+    ↓
+Event emission:
+  EventBus.publish('order.created', 
+    { orderId, companyId, patientId, ... })
+    ↓
+Event handlers trigger:
+  • emailWorker → Send confirmation email
+  • pdfWorker → Generate invoice
+  • analyticsWorker → Log event
+    ↓
+Response sent: 201 Created + order JSON
+    ↓
+Frontend updates query cache (TanStack Query)
+    ↓
+User sees updated order list
+
+AI QUERY FLOW
+--------------
+User asks AI question in interface
+    ↓
+POST /api/master-ai/chat with { question, conversationId }
+    ↓
+MasterAI Service receives request
+    ↓
+Topic validation:
+  • Is question about optometry/eyecare?
+  • Yes → Continue
+  • No → Return rejection with message
+    ↓
+Python RAG Service:
+  • Generate embeddings for question
+  • Search knowledge base (vector DB)
+  • Retrieve top-K relevant documents
+  • Build context window
+    ↓
+LLM Selection (OpenAI GPT-4 / Claude):
+  • System prompt (optometry context)
+  • Retrieved documents (context)
+  • User question
+  • Conversation history
+    ↓
+Stream response back to client
+  • Real-time token streaming via SSE
+  • Store conversation in DB
+    ↓
+Frontend displays response to user
+
+BACKGROUND JOB FLOW
+--------------------
+State-changing operation (e.g., order created)
+    ↓
+Emit event:
+  EventBus.publish('order.created', { orderId, ... })
+    ↓
+Background job enqueued:
+  queue.add('send-email', { to, template, data })
+    ↓
+BullMQ processes job (from Redis queue)
+    ↓
+Worker handles job:
+  • emailWorker retrieves email config
+  • Renders email template
+  • Calls Resend API
+    ↓
+Job completion:
+  • Success → Remove from queue
+  • Failure → Retry (exponential backoff)
+  • Failure after max retries → Dead letter queue
+    ↓
+Graceful fallback (if Redis unavailable):
+  • Execute job immediately synchronously
+  • Return response to user
+  • Job logged for later processing
+
+================================================================================
+AUTHENTICATION & AUTHORIZATION
+================================================================================
+
+AUTHENTICATION METHODS
+-----------------------
+1. REPLIT AUTH (Primary OIDC provider)
+   • OAuth2 via Replit
+   • Automatic user provisioning
+   • Session-based authentication
+
+2. LOCAL EMAIL/PASSWORD (Fallback)
+   • Email + bcrypt password hash
+   • For standalone deployments
+   • Fallback if OIDC unavailable
+
+3. SESSION-BASED
+   • Express sessions with session store
+   • Redis store for production
+   • Memory store for development
+   • Secure, HTTP-only cookies
+   • CSRF protection via csrf-csrf library
+
+ROLE-BASED ACCESS CONTROL (RBAC)
+----------------------------------
+Role               | Permissions
+-------------------|--------------------------------------------------
+ECP                | Create orders, view own patients, track orders
+Lab Tech           | View production queue, update job status
+Engineer           | Advanced production controls, tech documentation
+Supplier           | View assigned POs, update inventory, deliveries
+Customer Service   | Support tickets, general customer data access
+Accountant         | Financial data, invoices, payment records
+Admin              | User management, platform settings, all features
+AI Admin           | Full AI platform, model training, data insights
+
+AUTHENTICATION FLOW
+--------------------
+1. User enters credentials (email/password)
+    ↓
+2. POST /api/auth/login
+    ↓
+3. Backend verifies credentials:
+   • Query users table by email
+   • Compare bcrypt password hash
+   • Check account status (active/suspended)
+    ↓
+4. On success:
+   • Create session token
+   • Set session cookie (secure, httpOnly)
+   • Store session in Redis/database
+    ↓
+5. Subsequent requests include session cookie
+    ↓
+6. authenticateUser middleware validates session
+    ↓
+7. req.user populated with user data
+    ↓
+8. All queries automatically scoped to companyId
+
+AUTHORIZATION MIDDLEWARE
+--------------------------
+app.get('/api/admin/users', 
+  authenticateUser,           // Verify session
+  requireRole(['admin']),     // Check role
+  asyncHandler(async (req, res) => {
+    // req.user is authenticated and authorized
+    const users = await storage.getAllUsers(req.user.companyId);
+    res.json(users);
+  })
+);
+
+MASTER USER PROVISIONING
+--------------------------
+If these environment variables are set:
+  MASTER_USER_EMAIL=admin@example.com
+  MASTER_USER_PASSWORD=secure_password
+  MASTER_USER_FIRST_NAME=Admin
+  MASTER_USER_LAST_NAME=User
+  MASTER_USER_ORGANIZATION=Platform Control
+
+On startup:
+1. Server checks if master user exists
+2. If not, automatically creates user:
+   • Email verified
+   • All roles assigned (platform_admin, ecp, lab_tech, etc.)
+   • Account status: ACTIVE
+   • Password: bcrypt hashed
+3. User can immediately log in with provided credentials
+
+================================================================================
+MULTI-TENANCY IMPLEMENTATION
+================================================================================
+
+TENANT ISOLATION STRATEGY
+--------------------------
+Every entity belongs to exactly ONE company (tenant).
+
+Key principle: ALL QUERIES FILTER BY companyId
+
+DATABASE LEVEL
+---------------
+Every table includes companyId column:
+
+CREATE TABLE orders (
+  id UUID PRIMARY KEY,
+  company_id UUID NOT NULL REFERENCES companies(id),
+  order_number VARCHAR NOT NULL,
+  -- other columns...
+  
+  -- Ensure foreign key relationship
+  CONSTRAINT orders_company_fk FOREIGN KEY (company_id)
+    REFERENCES companies(id) ON DELETE CASCADE
+);
+
+-- Composite unique constraint (unique per company)
+CREATE UNIQUE INDEX idx_orders_number_company 
+  ON orders(company_id, order_number);
+
+-- Performance index for common filters
+CREATE INDEX idx_orders_company_status 
+  ON orders(company_id, status);
+
+APPLICATION LEVEL
+-------------------
+All route handlers extract companyId from authenticated user:
+
+router.get('/api/orders', authenticateUser, 
+  asyncHandler(async (req, res) => {
+    const companyId = req.user.companyId;  // From session
+    
+    // DbStorage method automatically enforces tenant isolation
+    const orders = await storage.getOrdersByCompany(companyId);
+    
+    res.json(orders);
+  })
+);
+
+STORAGE LAYER ENFORCEMENT
+---------------------------
+DbStorage class always filters by companyId:
+
+class DbStorage {
+  async getOrdersByCompany(companyId: string) {
+    return await this.db.query.orders.findMany({
+      where: eq(orders.companyId, companyId),  // CRITICAL
+    });
+  }
+
+  async getPatientsByCompany(companyId: string) {
+    return await this.db.query.patients.findMany({
+      where: eq(patients.companyId, companyId),  // CRITICAL
+    });
+  }
+
+  // ❌ NEVER query without companyId filter
+  // This would expose data across all companies!
+}
+
+================================================================================
+ERROR HANDLING PATTERN
+================================================================================
+
+CENTRALIZED ERROR HANDLER
+--------------------------
+All async routes wrapped with asyncHandler():
+
+import { asyncHandler } from '@/middleware/errorHandler';
+
+router.post('/api/orders', 
+  authenticateUser,
+  asyncHandler(async (req, res) => {
+    if (!order) throw new NotFoundError('Order');      // 404
+    if (!hasPermission) throw new UnauthorizedError(); // 401
+    if (invalid) throw new BadRequestError('Data');    // 400
+    if (dbError) throw new InternalError('DB error');  // 500
+    
+    res.json(order);
+    // No try/catch needed - asyncHandler catches everything
+  })
+);
+
+ERROR RESPONSE FORMAT
+----------------------
+{
+  "success": false,
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Order not found",
+    "details": {
+      "orderId": "123"
+    }
+  }
+}
+
+ERROR CLASSES (server/utils/ApiError.ts)
+------------------------------------------
+BadRequestError(message)           → 400
+UnauthorizedError(message)         → 401
+ForbiddenError(message)            → 403
+NotFoundError(resourceName)        → 404
+ConflictError(message)             → 409
+ValidationError(message, details)  → 422
+InternalError(message)             → 500
+
+================================================================================
+VALIDATION PATTERNS
+================================================================================
+
+ZOD SCHEMA VALIDATION
+----------------------
+All API inputs validated via Zod schemas:
+
+// shared/schema.ts
+export const createOrderSchema = z.object({
+  patientId: z.string().uuid(),
+  odSphere: z.string().regex(/^[+-]\d+\.\d{2}$/),
+  odAxis: z.number().int().min(0).max(180),
+  notes: z.string().optional(),
+});
+
+// server/routes.ts
+router.post('/api/orders', 
+  authenticateUser,
+  asyncHandler(async (req, res) => {
+    // Validate & parse request body
+    const validated = createOrderSchema.parse(req.body);
+    
+    // If validation fails, ZodError thrown → asyncHandler catches
+    // → Returns 422 with validation details
+    
+    const order = await storage.createOrder(validated);
+    res.json(order);
+  })
+);
+
+AUTO-GENERATED INSERT SCHEMAS
+-------------------------------
+Zod schemas auto-generated from Drizzle table definitions:
+
+export const orders = pgTable('orders', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  orderNumber: varchar('order_number').notNull(),
+  status: orderStatusEnum('status').default('pending'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Auto-generated for API requests (omits id, createdAt, updatedAt)
+export const insertOrderSchema = createInsertSchema(orders)
+  .omit({ id: true, createdAt: true, updatedAt: true });
+
+// Usage in route
+const validated = insertOrderSchema.parse(req.body);
+
+INPUT SANITIZATION
+-------------------
+• DOMPurify in frontend for user-generated HTML
+• Drizzle ORM parameterized queries prevent SQL injection
+• Helmet middleware sets secure headers
+• Rate limiting prevents brute force attacks
+
+================================================================================
+EVENT-DRIVEN ARCHITECTURE
+================================================================================
+
+EVENT BUS (Pub/Sub Pattern)
+----------------------------
+EventBus is an event emitter that:
+• Publishes events after state changes
+• Handlers subscribe to event types
+• Handlers execute asynchronously
+• Failure-silent (errors don't crash app)
+
+PUBLISHING EVENTS
+------------------
+// After state-changing operation
+const order = await storage.createOrder(data);
+
+// Publish event with metadata
+await EventBus.publish('order.created', 
+  {  // Event data
+    orderId: order.id,
+    patientId: order.patientId,
+    status: 'pending'
+  },
+  {  // Metadata (optional)
+    companyId: req.user.companyId,  // For worker context
+    source: 'api',
+    correlationId: req.id,
+    timestamp: new Date()
+  }
+);
+
+// Route responds immediately (event is async)
+res.json(order);
+
+SUBSCRIBING TO EVENTS
+----------------------
+// server/workers/emailWorker.ts
+import { EventBus } from '@/events/EventBus';
+
+EventBus.subscribe('order.created', async (event) => {
+  try {
+    const { orderId, patientId } = event.data;
+    const { companyId } = event.metadata;
+    
+    // Fetch order details
+    const order = await storage.getOrderById(orderId, companyId);
+    const patient = await storage.getPatientById(patientId, companyId);
+    
+    // Send confirmation email
+    await emailService.sendOrderConfirmation({
+      to: patient.email,
+      orderNumber: order.orderNumber,
+      orderTotal: order.total
+    });
+    
+  } catch (error) {
+    // Log error but don't crash - handlers are fail-silent
+    logger.error('Email worker error:', error);
+  }
+});
+
+IMPORTING WORKERS
+------------------
+// server/index.ts
+import './workers/emailWorker.js';
+import './workers/pdfWorker.js';
+import './workers/analyticsWorker.js';
+import './workers/notificationWorker.js';
+
+AVAILABLE EVENTS
+-----------------
+order.created            → Order placed
+order.updated            → Order modified
+order.completed          → Order finished production
+order.shipped            → Order sent to customer
+user.registered          → New user signup
+user.approved            → Admin approved user
+payment.received         → Payment processed
+prescription.updated     → Rx modified
+patient.created          → New patient record
+notification.queued      → Notification to send
+report.generated         → Report created
+inventory.updated        → Stock changed
+ai_query.completed       → AI finished processing
+
+================================================================================
+BACKGROUND JOBS (BullMQ + Redis)
+================================================================================
+
+PURPOSE
+--------
+Async processing of long-running or non-critical tasks:
+• Email sending
+• PDF generation
+• Large data exports
+• AI inference
+• Report generation
+
+JOB QUEUE STRUCTURE
+--------------------
+Job Queue Type    | Purpose                  | Priority
+------------------|--------------------------|---------
+email             | Send transactional mail  | High
+pdf               | Generate PDFs/reports    | Medium
+notification      | Push notifications       | High
+analytics         | Process analytics data   | Low
+ai_inference      | Run ML models            | Medium
+export            | Data exports (CSV/Excel) | Low
+
+ENQUEUING A JOB
+----------------
+// In route handler or service
+import { queue } from '@/queue/config';
+
+if (redisAvailable) {
+  // Queue job in Redis
+  await queue.add('email', {
+    to: 'user@example.com',
+    subject: 'Order Confirmation',
+    template: 'order-confirmation',
+    data: { orderId, orderNumber, total }
+  }, {
+    attempts: 3,                    // Retry 3 times
+    backoff: {
+      type: 'exponential',
+      delay: 2000                   // 2s, 4s, 8s backoff
+    },
+    removeOnComplete: true          // Auto-clean on success
+  });
+} else {
+  // Graceful fallback - execute immediately
+  await emailService.sendOrderConfirmation({
+    to: 'user@example.com',
+    subject: 'Order Confirmation',
+    template: 'order-confirmation',
+    data: { orderId, orderNumber, total }
+  });
+}
+
+res.json({ success: true, orderId });
+
+PROCESSING JOBS
+----------------
+// server/workers/emailWorker.ts
+import Bull from 'bullmq';
+import { redisConnection } from '@/queue/config';
+
+const emailQueue = new Bull.Queue('email', { 
+  connection: redisConnection 
+});
+
+emailQueue.process(async (job) => {
+  try {
+    const { to, subject, template, data } = job.data;
+    
+    // Render template with data
+    const html = await renderEmailTemplate(template, data);
+    
+    // Send via Resend API
+    const response = await resend.emails.send({
+      from: 'orders@ils.example.com',
+      to,
+      subject,
+      html
+    });
+    
+    // Return result
+    return { 
+      success: true, 
+      messageId: response.id,
+      recipient: to 
+    };
+    
+  } catch (error) {
+    logger.error('Email job failed:', error);
+    throw error;  // BullMQ will retry
+  }
+});
+
+JOB LIFECYCLE
+--------------
+1. Job created and enqueued (pending state)
+2. Job moved to active state
+3. Worker processes job
+4. Job completed (success) or failed (error)
+5. On failure: Retry with exponential backoff
+6. On max retries exceeded: Move to dead letter queue
+7. On success: Remove from queue (if configured)
+
+GRACEFUL DEGRADATION
+---------------------
+If Redis is unavailable:
+
+1. Check: redisAvailable flag
+2. If false: Execute work immediately (synchronously)
+3. Store job info in database for later processing
+4. Return response to user
+5. Cron job later retries jobs from database
+6. When Redis comes back online: Process pending jobs
+
+This ensures application continues working even without Redis.
+
+================================================================================
+FILE UPLOAD & PROCESSING
+================================================================================
+
+OMA FILE UPLOAD
+----------------
+Optical file format for frame dimensions and tracing
+
+Upload flow:
+1. Frontend sends file via FormData
+2. Express multer middleware captures file
+3. File validated (MIME type, size < 50MB)
+4. File parsed (extract frame data)
+5. Frame dimensions stored in order
+6. Visualization generated for technician
+
+MULTER CONFIGURATION
+---------------------
+import multer from 'multer';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },  // 50MB
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = [
+      'application/octet-stream',
+      'image/jpeg',
+      'image/png'
+    ];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  }
+});
+
+HANDLING UPLOADS
+-----------------
+router.post('/api/orders/:id/upload-oma',
+  authenticateUser,
+  upload.single('oma'),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const file = req.file;
+    
+    // Parse OMA file
+    const frameData = parseOMAFile(file.buffer);
+    
+    // Update order with frame dimensions
+    const order = await storage.updateOrder(id, {
+      frameWidth: frameData.width,
+      frameHeight: frameData.height,
+      // ... other dimensions
+    });
+    
+    res.json(order);
+  })
+);
+
+================================================================================
+LOGGING & MONITORING
+================================================================================
+
+LOGGING CONFIGURATION
+----------------------
+Using Pino for fast JSON logging:
+
+import pino from 'pino';
+
+const logger = pino({
+  level: process.env.LOG_LEVEL || 'info',
+  transport: {
+    target: 'pino-http',
+    options: {
+      colorize: true,  // Terminal colors
+      prettyPrint: true  // Readable output in dev
+    }
+  }
+});
+
+LOG LEVELS
+-----------
+logger.error('message')    → Critical errors
+logger.warn('message')     → Warnings/deprecations
+logger.info('message')     → General information
+logger.debug('message')    → Debugging info
+logger.trace('message')    → Detailed tracing
+
+USAGE EXAMPLES
+---------------
+logger.info('Order created', { orderId, companyId });
+logger.warn('Low inventory alert', { sku, quantity });
+logger.error('Payment failed', { error: err.message, orderId });
+logger.debug('Cache hit', { key: 'orders:123' });
+
+METRICS COLLECTION (Prometheus)
+---------------------------------
+Using prom-client for metrics:
+
+const httpRequestDuration = new Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'Duration of HTTP requests',
+  labelNames: ['method', 'route', 'status']
+});
+
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = (Date.now() - start) / 1000;
+    httpRequestDuration
+      .labels(req.method, req.route, res.statusCode)
+      .observe(duration);
+  });
+  next();
+});
+
+METRICS ENDPOINT
+-----------------
+GET /metrics → Prometheus-compatible metrics
+
+Metrics exposed:
+• HTTP request count, duration, errors
+• Database query count, latency
+• Cache hit/miss rates
+• Background job queue length
+• Active connections
+
+================================================================================
+CRON JOBS (Scheduled Tasks)
+================================================================================
+
+CONFIGURED CRONS
+-----------------
+Job                        | Schedule          | Purpose
+---------------------------|-------------------|--------------------
+dailyBriefing              | Every morning 8am | Send daily reports
+inventoryMonitoring        | Every 4 hours     | Check low stock
+clinicalAnomalyDetection   | Every 6 hours     | Flag unusual patterns
+dataArchival               | Daily midnight    | Archive old data
+reportGeneration           | Weekly Monday 9am | Compute weekly reports
+subscriptionChecker        | Daily 1am         | Check expiring subs
+
+DEFINING A CRON
+----------------
+// server/jobs/dailyBriefing.ts
+import cron from 'node-cron';
+import { storage } from '@/storage';
+import { emailService } from '@/services/EmailService';
+
+// 0 8 * * * = every day at 8am UTC
+cron.schedule('0 8 * * *', async () => {
+  try {
+    logger.info('Running daily briefing cron');
+    
+    // Get all companies
+    const companies = await storage.getAllCompanies();
+    
+    // For each company
+    for (const company of companies) {
+      // Generate briefing
+      const briefing = await generateDailyBriefing(company.id);
+      
+      // Get company admins
+      const admins = await storage.getAdminsByCompany(company.id);
+      
+      // Send email to each admin
+      for (const admin of admins) {
+        await emailService.sendDailyBriefing({
+          to: admin.email,
+          briefing,
+          company: company.name
+        });
+      }
+    }
+    
+    logger.info('Daily briefing cron completed');
+  } catch (error) {
+    logger.error('Daily briefing cron failed:', error);
+  }
+});
+
+REGISTERING CRONS
+------------------
+// server/index.ts
+import './jobs/dailyBriefing.js';
+import './jobs/inventoryMonitoring.js';
+import './jobs/clinicalAnomalyDetection.js';
+// ... other crons
+
+// Crons are automatically scheduled on server startup
+
+================================================================================
+END OF PART 2
+================================================================================
+Next: See PROJECT_OVERVIEW_PART3.txt for Testing, Deployment, and Development Workflow
+================================================================================

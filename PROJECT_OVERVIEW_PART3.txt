@@ -1,0 +1,924 @@
+================================================================================
+ILS 2.0 - PROJECT OVERVIEW (PART 3 - TESTING, DEVELOPMENT & DEPLOYMENT)
+================================================================================
+
+================================================================================
+TESTING STRATEGY
+================================================================================
+
+TEST PYRAMID
+-------------
+                    ▲
+                   ╱E2E╲
+                  ╱Integration╲
+                 ╱   Unit      ╲
+                ╱________________╲
+                
+FAST FEEDBACK    : Unit tests (Jest) - run in milliseconds
+INTEGRATION      : Integration tests (Jest) - test API endpoints
+COMPONENT        : Component tests (Vitest) - test React UI
+END-TO-END       : E2E tests (Playwright) - full user workflows
+
+UNIT TESTS (Jest)
+------------------
+Tests: Individual functions, classes, services in isolation
+File Pattern: test/unit/**/*.test.ts
+Speed: ~100-500ms for full suite
+Coverage Target: 80%+
+
+Example test:
+```typescript
+import { validatePrescription } from '@/services/ValidationService';
+
+describe('ValidationService', () => {
+  it('should accept valid prescription data', () => {
+    const rx = {
+      odSphere: '+2.00',
+      odAxis: 90,
+      osAxis: 180
+    };
+    
+    expect(validatePrescription(rx)).toBe(true);
+  });
+
+  it('should reject invalid axis', () => {
+    const rx = { odSphere: '+2.00', odAxis: 361 };
+    expect(() => validatePrescription(rx))
+      .toThrow('Axis must be 0-180');
+  });
+});
+```
+
+Running unit tests:
+npm run test:unit
+
+INTEGRATION TESTS (Jest + Supertest)
+--------------------------------------
+Tests: API endpoints, database interactions, full request/response cycle
+File Pattern: test/integration/**/*.test.ts
+Speed: ~5-30 seconds for full suite
+Coverage Target: >70% API coverage
+
+Example test:
+```typescript
+import request from 'supertest';
+import app from '@/app';
+import { storage } from '@/storage';
+
+describe('POST /api/orders', () => {
+  const mockUser = { id: 'user1', companyId: 'company1' };
+
+  it('should create order with valid data', async () => {
+    const orderData = {
+      patientId: 'patient1',
+      odSphere: '+2.00',
+      odAxis: 90
+    };
+
+    const response = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${mockToken}`)
+      .send(orderData)
+      .expect(201);
+
+    expect(response.body).toHaveProperty('orderId');
+    expect(response.body.status).toBe('pending');
+  });
+
+  it('should return 422 with invalid prescription', async () => {
+    const orderData = {
+      patientId: 'patient1',
+      odAxis: 361  // Invalid: > 180
+    };
+
+    const response = await request(app)
+      .post('/api/orders')
+      .send(orderData)
+      .expect(422);
+
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+  });
+});
+```
+
+Running integration tests:
+npm test
+
+COMPONENT TESTS (Vitest + React Testing Library)
+--------------------------------------------------
+Tests: React components, hooks, user interactions
+File Pattern: test/components/**/*.test.tsx
+Speed: ~2-5 seconds for full suite
+Coverage Target: >70% component coverage
+
+Example test:
+```typescript
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { OrderForm } from '@/components/OrderForm';
+
+describe('OrderForm', () => {
+  it('should render form fields', () => {
+    render(<OrderForm onSubmit={vi.fn()} />);
+    
+    expect(screen.getByLabelText(/patient name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/sphere/i)).toBeInTheDocument();
+  });
+
+  it('should submit form with valid data', async () => {
+    const user = userEvent.setup();
+    const handleSubmit = vi.fn();
+    
+    render(<OrderForm onSubmit={handleSubmit} />);
+    
+    await user.type(screen.getByLabelText(/sphere/i), '+2.00');
+    await user.click(screen.getByRole('button', { name: /submit/i }));
+    
+    await waitFor(() => {
+      expect(handleSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ odSphere: '+2.00' })
+      );
+    });
+  });
+});
+```
+
+Running component tests:
+npm run test:components
+npm run test:components:watch
+
+E2E TESTS (Playwright)
+------------------------
+Tests: Full user workflows through the browser
+File Pattern: test/e2e/**/*.spec.ts
+Speed: ~30-60 seconds per test (full browser automation)
+Coverage Target: Critical user paths
+
+Example test:
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.describe('Order Creation Workflow', () => {
+  test('should create order from start to finish', async ({ page }) => {
+    // 1. Login
+    await page.goto('/login');
+    await page.fill('input[name=email]', 'ecp@example.com');
+    await page.fill('input[name=password]', 'password123');
+    await page.click('button[type=submit]');
+    
+    // 2. Wait for dashboard
+    await page.waitForURL('/dashboard');
+    expect(page).toHaveURL('/dashboard');
+    
+    // 3. Navigate to orders
+    await page.click('text=Orders');
+    await page.waitForURL('/orders');
+    
+    // 4. Create new order
+    await page.click('button[data-test=new-order]');
+    await page.fill('input[name=patientName]', 'John Doe');
+    await page.fill('input[name=odSphere]', '+2.00');
+    await page.click('button[type=submit]');
+    
+    // 5. Verify success
+    await page.waitForSelector('[data-test=order-confirmation]');
+    const confirmation = await page.textContent('[data-test=order-number]');
+    expect(confirmation).toMatch(/ORD-\d+/);
+  });
+});
+```
+
+Running E2E tests:
+npm run test:e2e
+npm run test:e2e:ui      # Opens Playwright UI
+npm run test:e2e:headed  # Runs with visible browser
+
+TEST EXECUTION COMMANDS
+------------------------
+npm run check              # TypeScript type checking
+npm run test:unit          # Unit tests only
+npm run test:integration   # Integration tests
+npm run test:components    # Component tests (Vitest)
+npm run test:e2e           # E2E tests (Playwright)
+npm run test:coverage      # Coverage report (Jest)
+npm run test:all           # All tests + TypeScript check (CI)
+npm test                   # Alias for integration tests
+npm run test:watch         # Watch mode (rerun on change)
+
+COVERAGE REPORT
+----------------
+npm run test:coverage generates:
+• Terminal coverage summary
+• HTML report in coverage/ directory
+• Line coverage, branch coverage, function coverage
+
+Target: >80% coverage for production code
+
+MOCKING PATTERNS
+-----------------
+Mock storage for unit tests:
+```typescript
+import { vi } from 'vitest';
+
+const mockStorage = {
+  getOrderById: vi.fn()
+    .mockResolvedValue({ id: '123', status: 'pending' }),
+  createOrder: vi.fn()
+    .mockResolvedValue({ id: '456', status: 'draft' }),
+};
+
+// In tests, substitute mockStorage for real storage
+```
+
+Mock external APIs:
+```typescript
+vi.mock('@/services/EmailService', () => ({
+  emailService: {
+    sendEmail: vi.fn().mockResolvedValue({ id: 'msg_123' })
+  }
+}));
+```
+
+================================================================================
+DEVELOPMENT WORKFLOW
+================================================================================
+
+INITIAL SETUP
+--------------
+git clone https://github.com/newvantageco/ILS2.0.git
+cd ILS2.0
+
+npm install
+
+# Create .env file
+cp .env.example .env
+
+# Update .env with your config:
+# DATABASE_URL, SESSION_SECRET, API keys, etc.
+
+# Initialize database
+npm run db:push
+
+# Start development servers
+npm run dev
+
+Servers started:
+• Frontend: http://localhost:5000 (with Vite dev server)
+• Backend: http://localhost:5000/api (Express API)
+• Python Service: http://localhost:8000 (FastAPI)
+
+ADDING A NEW FEATURE
+---------------------
+The ILS Development Pattern (applies to 99% of changes):
+
+STEP 1: Update Zod schema (shared/schema.ts)
+-----------
+export const widgets = pgTable('widgets', {
+  id: uuid('id').primaryKey(),
+  name: varchar('name').notNull(),
+  type: widgetTypeEnum('type').notNull(),
+  companyId: uuid('company_id').notNull()  // Multi-tenancy!
+});
+
+export const insertWidgetSchema = createInsertSchema(widgets)
+  .omit({ id: true, createdAt: true });
+
+STEP 2: Migrate database
+-----------
+npm run db:push
+
+This:
+• Generates migration file in migrations/
+• Runs migration against connected database
+• Updates generated SQL types
+
+STEP 3: Add storage method (server/storage.ts)
+-----------
+async createWidget(data: z.infer<typeof insertWidgetSchema>) {
+  const [widget] = await this.db
+    .insert(widgets)
+    .values(data)
+    .returning();
+  return widget;
+}
+
+async getWidgetsByCompany(companyId: string) {
+  return await this.db.query.widgets.findMany({
+    where: eq(widgets.companyId, companyId),  // TENANT ISOLATION
+  });
+}
+
+STEP 4: Add route handler (server/routes.ts or modular file)
+-----------
+router.post('/api/widgets', 
+  authenticateUser,
+  asyncHandler(async (req, res) => {
+    // Validate input
+    const validated = insertWidgetSchema.parse(req.body);
+    
+    // Create widget
+    const widget = await storage.createWidget({
+      ...validated,
+      companyId: req.user.companyId  // Always inject companyId
+    });
+    
+    // Emit event
+    await EventBus.publish('widget.created', 
+      { widgetId: widget.id, companyId: widget.companyId }
+    );
+    
+    res.status(201).json(widget);
+  })
+);
+
+router.get('/api/widgets',
+  authenticateUser,
+  asyncHandler(async (req, res) => {
+    const widgets = await storage.getWidgetsByCompany(req.user.companyId);
+    res.json(widgets);
+  })
+);
+
+STEP 5: Add client hook (client/src/hooks/useWidgets.ts)
+-----------
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+
+export function useWidgets() {
+  return useQuery({
+    queryKey: ['widgets'],
+    queryFn: async () => {
+      const res = await api.get('/widgets');
+      return res.data;
+    }
+  });
+}
+
+export function useCreateWidget() {
+  return useMutation({
+    mutationFn: async (data) => {
+      const res = await api.post('/widgets', data);
+      return res.data;
+    }
+  });
+}
+
+STEP 6: Add client component (client/src/components/WidgetForm.tsx)
+-----------
+import { useCreateWidget } from '@/hooks/useWidgets';
+import { useForm } from 'react-hook-form';
+
+export function WidgetForm() {
+  const { register, handleSubmit } = useForm();
+  const { mutate, isPending } = useCreateWidget();
+
+  return (
+    <form onSubmit={handleSubmit((data) => mutate(data))}>
+      <input {...register('name')} placeholder="Name" />
+      <select {...register('type')}>
+        <option value="type_a">Type A</option>
+        <option value="type_b">Type B</option>
+      </select>
+      <button disabled={isPending}>
+        {isPending ? 'Creating...' : 'Create Widget'}
+      </button>
+    </form>
+  );
+}
+
+STEP 7: Add tests
+-----------
+// test/integration/widgets.test.ts
+describe('POST /api/widgets', () => {
+  it('should create widget', async () => {
+    const response = await request(app)
+      .post('/api/widgets')
+      .send({ name: 'My Widget', type: 'type_a' })
+      .expect(201);
+    
+    expect(response.body).toHaveProperty('id');
+  });
+});
+
+// test/components/WidgetForm.test.tsx
+describe('WidgetForm', () => {
+  it('should submit form', async () => {
+    const user = userEvent.setup();
+    render(<WidgetForm />);
+    
+    await user.type(screen.getByPlaceholderText(/name/i), 'Test');
+    await user.click(screen.getByText(/create/i));
+    
+    await waitFor(() => {
+      expect(screen.getByText(/success/i)).toBeInTheDocument();
+    });
+  });
+});
+
+STEP 8: Test everything
+-----------
+npm run check              # TypeScript
+npm run test:unit          # Unit tests
+npm test                   # Integration tests
+npm run test:components    # Component tests
+
+All tests should pass before committing!
+
+KEY PATTERNS TO FOLLOW
+------------------------
+✅ Always use Zod for input validation
+✅ Always filter by companyId (multi-tenancy)
+✅ Always use asyncHandler() for async routes
+✅ Always emit events after state changes
+✅ Use storage layer - never query db directly from routes
+✅ Use path aliases: @/ for backend, @shared/ for types
+✅ Include 3-5 lines of context in code changes
+✅ Write tests for new features
+✅ Run npm run check before committing
+
+❌ Never skip companyId filter
+❌ Never assume Redis is available (check redisAvailable)
+❌ Never modify request validation in routes (use schemas)
+❌ Never query db directly - go through storage
+❌ Never use relative imports - use path aliases
+
+DEBUGGING TIPS
+---------------
+Enable debug logging:
+DEBUG=* npm run dev:node
+
+Check database schema:
+npm run db:push  # Shows pending migrations
+
+Inspect database directly:
+psql $DATABASE_URL
+\dt               # List tables
+\d orders;        # Describe orders table
+
+Check Redis queue status:
+redis-cli
+KEYS *            # List all keys
+HGETALL bull:*    # Inspect BullMQ data
+
+Clear test database:
+npm run db:push  # Reinitialize with test db
+
+================================================================================
+DATABASE SCHEMA MANAGEMENT
+================================================================================
+
+DATABASE MIGRATIONS
+--------------------
+Database schema is version-controlled via Drizzle Kit.
+
+Define schema in shared/schema.ts, then:
+npm run db:push
+
+This:
+1. Detects schema changes
+2. Generates migration SQL
+3. Creates migration file in migrations/
+4. Runs migration immediately
+5. Updates TypeScript types
+
+Example migration:
+```
+migrations/
+├── 0001_add_widget_table.sql
+├── 0002_add_coatings.sql
+└── 0003_add_softdeletes_columns.sql
+```
+
+SCHEMA CONVENTIONS
+-------------------
+• Table names: snake_case, lowercase
+• Column names: snake_case, lowercase
+• Primary key: always named "id"
+• Foreign keys: named "<table>_<column>", e.g., "company_id"
+• Indexes: idx_<table>_<columns>
+• Constraints: name explicitly
+
+Example:
+```sql
+CREATE TABLE orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id UUID NOT NULL REFERENCES companies(id),
+  order_number VARCHAR NOT NULL,
+  status order_status_enum DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT NOW(),
+  
+  CONSTRAINT orders_company_fk FOREIGN KEY (company_id)
+    REFERENCES companies(id) ON DELETE CASCADE,
+  
+  UNIQUE(company_id, order_number)
+);
+
+CREATE INDEX idx_orders_company_status 
+  ON orders(company_id, status);
+```
+
+COMMON MIGRATIONS
+-------------------
+Adding column:
+```typescript
+export const orders = pgTable('orders', {
+  // ... existing columns
+  notes: text('notes'),  // New column
+});
+```
+
+Adding index for performance:
+```typescript
+export const ordersIdx = index('idx_orders_company_status')
+  .on(orders.companyId, orders.status);
+```
+
+Adding soft deletes:
+```typescript
+export const orders = pgTable('orders', {
+  // ... existing columns
+  deletedAt: timestamp('deleted_at'),
+  
+  indexes: [
+    index('idx_orders_not_deleted')
+      .on(orders.deletedAt)
+      .where(isNull(orders.deletedAt))
+  ]
+});
+```
+
+================================================================================
+DEPLOYMENT
+================================================================================
+
+PRODUCTION BUILD
+-----------------
+npm run build
+
+Outputs:
+• client/dist/          → Static HTML/CSS/JS (Vite)
+• dist/                 → Bundled server (ESBuild)
+• dist/index.js         → Entry point
+
+PRODUCTION STARTUP
+-------------------
+NODE_ENV=production npm start
+
+Or directly:
+NODE_ENV=production node dist/index.js
+
+Environment variables (production):
+• DATABASE_URL → Production PostgreSQL connection
+• SESSION_SECRET → Strong random string
+• STRIPE_SECRET_KEY → Live Stripe key (not test)
+• REDIS_HOST/PORT/PASSWORD → Production Redis
+• NODE_ENV → Set to 'production'
+
+PRODUCTION CHECKLIST
+---------------------
+Database:
+  ☐ PostgreSQL 15+ running with backups
+  ☐ Database URL configured
+  ☐ All migrations applied (npm run db:push)
+  ☐ Backup strategy in place
+
+Security:
+  ☐ SESSION_SECRET set to strong random value
+  ☐ HTTPS/SSL configured (reverse proxy or load balancer)
+  ☐ CORS configured for your domain
+  ☐ Rate limiting tuned for expected traffic
+  ☐ Secrets not committed to git
+
+API Keys:
+  ☐ STRIPE_SECRET_KEY set to live keys (not test)
+  ☐ OPENAI_API_KEY configured
+  ☐ ANTHROPIC_API_KEY configured
+  ☐ RESEND_API_KEY configured
+
+Monitoring:
+  ☐ Error tracking configured (e.g., Sentry)
+  ☐ Logging aggregation setup (e.g., LogRocket)
+  ☐ Performance monitoring active (e.g., Datadog)
+  ☐ Health checks configured
+
+Infrastructure:
+  ☐ Redis configured (optional but recommended)
+  ☐ Email service configured
+  ☐ File storage configured (S3 or MinIO)
+  ☐ Auto-scaling configured (if needed)
+
+RAILWAY DEPLOYMENT (Recommended)
+---------------------------------
+Railway is the recommended platform for deploying ILS 2.0.
+
+Quick start:
+1. Install Railway CLI:
+   npm install -g @railway/cli
+
+2. Create Railway account and link project:
+   railway link
+
+3. Create services in Railway dashboard:
+   • PostgreSQL (production enabled)
+   • Redis (optional but recommended)
+   • Web (Node.js app)
+
+4. Deploy:
+   railway up
+
+5. Check deployment:
+   railway status
+   railway logs --follow
+
+6. Set custom domain:
+   railway domain add yourdomain.com
+
+Railway automatically:
+• Deploys on git push
+• Manages SSL certificates
+• Scales horizontally
+• Manages environment variables
+• Provides database backups
+
+For detailed Railway setup, see RAILWAY_DEPLOYMENT_GUIDE.md
+
+DOCKER DEPLOYMENT
+-------------------
+Multi-stage Dockerfile included:
+
+Build:
+docker build -t ils:latest .
+
+Run locally:
+docker run -p 5000:5000 \
+  -e DATABASE_URL=$DATABASE_URL \
+  -e SESSION_SECRET=$SESSION_SECRET \
+  ils:latest
+
+Docker Compose (local development):
+docker-compose up
+# Starts: PostgreSQL, Redis, app, Python service
+
+MONITORING
+-----------
+Health check endpoint:
+GET http://app/api/health
+
+Response:
+{
+  "status": "healthy",
+  "uptime": 3600,
+  "database": { "connected": true, "latency": 15 },
+  "redis": { "available": true, "latency": 2 },
+  "services": {
+    "openai": { "available": true },
+    "anthropic": { "available": true }
+  }
+}
+
+Metrics endpoint (Prometheus):
+GET http://app/metrics
+
+Exposes:
+• http_request_duration_seconds
+• http_requests_total
+• db_query_duration_seconds
+• redis_operations_total
+• job_queue_length
+• active_connections
+
+PERFORMANCE OPTIMIZATION
+--------------------------
+Database:
+• Use indexes for frequently queried columns
+• Use database replicas for read-heavy queries
+• Enable query logging for bottleneck identification
+
+Application:
+• Enable gzip compression
+• Cache static assets
+• Use CDN for images/files
+• Implement database connection pooling
+
+Redis:
+• Use for session store
+• Cache frequently accessed data (5-15 min TTL)
+• Monitor memory usage
+
+Frontend:
+• Code splitting (Vite automatic)
+• Lazy loading components
+• Image optimization
+• CSS minification (automatic)
+
+SCALING STRATEGY
+-----------------
+Vertical scaling (larger server):
+• Increase machine CPU/RAM
+• Temporary quick fix
+• Limited by hardware
+
+Horizontal scaling (more servers):
+• Multiple Node.js instances
+• Load balancer (Nginx, HAProxy)
+• Stateless application design
+• Session store in Redis
+
+Database scaling:
+• Connection pooling (Neon built-in)
+• Read replicas for analytics
+• Sharding by company (future)
+
+Background jobs:
+• BullMQ workers separate from API
+• Auto-scale workers based on queue length
+• Dead letter queue monitoring
+
+================================================================================
+TROUBLESHOOTING PRODUCTION
+================================================================================
+
+COMMON ISSUES
+--------------
+
+❌ Database connection timeout
+✅ Check DATABASE_URL
+✅ Verify network access to database host
+✅ Enable connection pooling (Neon does this automatically)
+✅ Increase connection pool size if needed
+
+❌ Memory leak causing OOM (Out of Memory)
+✅ Check for event listener leaks
+✅ Use process manager (PM2) with automatic restart
+✅ Monitor Node.js heap size: node --max-old-space-size=2048
+
+❌ Background jobs not processing
+✅ Verify Redis connection
+✅ Check BullMQ queue status: redis-cli
+✅ Look for stuck jobs: node scripts/clear-stuck-jobs.js
+✅ Check worker logs
+
+❌ API responding slowly
+✅ Check database query performance
+✅ Enable caching for frequently accessed data
+✅ Check for N+1 queries (use explain plan)
+✅ Monitor CPU/memory usage
+
+❌ High error rate
+✅ Check application logs
+✅ Review recent code changes
+✅ Check external service status (OpenAI, Stripe, etc.)
+✅ Check rate limits on external APIs
+
+LOGGING BEST PRACTICES
+------------------------
+Capture important events:
+logger.info('Request received', { method, path, userId });
+logger.warn('Rate limit approaching', { remaining, limit });
+logger.error('Payment failed', { error, orderId, reason });
+
+Avoid:
+logger.debug('Processing item', { data });  // Too verbose
+logger.log('done')  // Not descriptive
+
+Structured logging:
+Always include relevant context as second parameter:
+logger.info('User logged in', { userId, email, ipAddress });
+
+Aggregation:
+Use log aggregation service:
+• Datadog
+• LogRocket
+• ELK stack
+• CloudWatch
+
+================================================================================
+MAINTENANCE & UPDATES
+================================================================================
+
+DATABASE BACKUPS
+-----------------
+• Neon: Automatic daily backups, 7-day retention
+• Railway: Automatic backups with restoration UI
+• Self-hosted: Configure pg_dump cron job
+
+Test restoration:
+Periodically test backup restoration to ensure recoverability.
+
+DEPENDENCY UPDATES
+-------------------
+Check for updates:
+npm outdated
+
+Update dependencies:
+npm update          # Minor/patch updates
+npm install <pkg>@latest  # Major version
+
+Test after updates:
+npm run check      # TypeScript
+npm test           # Full test suite
+npm run build      # Production build
+
+SECURITY UPDATES
+-----------------
+npm audit
+
+Identifies vulnerabilities in dependencies. Fix:
+npm audit fix
+
+Regular security:
+• Update Node.js to latest LTS
+• Update all major dependencies quarterly
+• Monitor security advisories
+• Use dependabot for automated PRs
+
+PERFORMANCE MONITORING
+-----------------------
+Monitor over time:
+• API response times (target: <200ms p95)
+• Database query times (target: <100ms p95)
+• Error rates (target: <0.1%)
+• Background job queue length (target: <100)
+
+Use dashboards:
+• Prometheus + Grafana
+• Datadog
+• New Relic
+• Custom dashboards
+
+================================================================================
+DOCUMENTATION STRUCTURE
+================================================================================
+
+Key documentation files:
+/docs/architecture.md         - System design overview
+/docs/database.md             - Database schema details
+/docs/development.md          - Developer guide
+/docs/deployment.md           - Deployment instructions
+/docs/compliance.md           - HIPAA/GDPR compliance
+/docs/analytics.md            - Analytics platform guide
+/docs/api-quick-reference.md  - API endpoint reference
+
+Generated documentation:
+/API_QUICK_REFERENCE.md       - Auto-generated API docs
+/ROUTE_MAP.md                 - Route registry
+/SCHEMA_ERD.md                - Entity-relationship diagram
+
+================================================================================
+QUICK REFERENCE - COMMON COMMANDS
+================================================================================
+
+DEVELOPMENT
+-----------
+npm install              Install dependencies
+npm run dev              Start all services
+npm run dev:node         Start Node.js only
+npm run dev:python       Start Python service
+npm run check            TypeScript check
+
+DATABASE
+--------
+npm run db:push          Run migrations
+npm run migrate-storage  Data migrations
+
+TESTING
+-------
+npm run test:unit        Unit tests
+npm test                 Integration tests
+npm run test:components  Component tests
+npm run test:e2e         End-to-end tests
+npm run test:all         All tests + check
+npm run test:coverage    Coverage report
+
+PRODUCTION
+----------
+npm run build            Build for production
+npm start                Start production server
+npm run db:push          Apply migrations (prod)
+
+QUALITY
+-------
+npm run check            TypeScript errors
+npm run test:coverage    Coverage report
+npm run lint             Linting (if configured)
+
+DEPLOYMENT (Railway)
+--------------------
+railway login            Connect to Railway
+railway link             Link repository
+railway up               Deploy
+railway logs --follow    Watch logs
+railway status           Check status
+
+================================================================================
+END OF PART 3
+================================================================================
+This completes the comprehensive project overview.
+
+Files created:
+• PROJECT_OVERVIEW_PART1.txt  - Introduction, Tech Stack, Structure
+• PROJECT_OVERVIEW_PART2.txt  - Architecture, Security, Events, Development
+• PROJECT_OVERVIEW_PART3.txt  - Testing, Development, Deployment
+
+Total content: ~8,000 lines of comprehensive documentation
+================================================================================
