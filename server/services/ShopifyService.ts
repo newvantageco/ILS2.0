@@ -630,6 +630,3 @@ export const shopifyService = {
     return { synced: 0, message: 'syncCustomers not implemented in this environment' } as const;
   }
 };
-
-// Export class instance for convenience
-export const shopifyService = ShopifyService;
