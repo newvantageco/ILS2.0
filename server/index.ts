@@ -184,6 +184,20 @@ app.use(performanceMonitoring);
 // Set timeout for all requests (30 seconds default)
 app.use(requestTimeout(30000));
 
+// ============== HEALTH CHECK ENDPOINTS ==============
+// Register health checks BEFORE async initialization so Railway can check immediately
+const healthCheck = (req: Request, res: Response) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: app.get("env"),
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
+  });
+};
+app.get('/health', healthCheck);
+app.get('/api/health', healthCheck);
+
 (async () => {
   try {
     // Validate required environment variables
@@ -196,19 +210,6 @@ app.use(requestTimeout(30000));
   log("Starting server initialization...");
 
   await ensureMasterUser();
-
-    // Add health check endpoints (both /health and /api/health for Railway compatibility)
-    const healthCheck = (req: Request, res: Response) => {
-      res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        environment: app.get("env"),
-        uptime: process.uptime(),
-        memory: process.memoryUsage()
-      });
-    };
-    app.get('/health', healthCheck);
-    app.get('/api/health', healthCheck);
 
     // Metrics endpoint (optional)
     if (process.env.METRICS_ENABLED === 'true') {
