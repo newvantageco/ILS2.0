@@ -70,6 +70,9 @@ export function setupLocalAuth() {
           },
           local: true, // Flag to identify local auth users
           id: user.id,
+          // Mirror email at top-level for compatibility with Express.User augmentation
+          // Coalesce to empty string if DB value is null to satisfy express.User typing
+          email: user.email || '',
           role: user.role || undefined,
           companyId: user.companyId || undefined,
           accountStatus: user.accountStatus,

@@ -29,6 +29,7 @@
     "migrate-storage:dry-run": "tsx scripts/migrate-storage.ts migrate --dry-run",
     "migrate-storage:verify": "tsx scripts/migrate-storage.ts verify",
     "validate:env": "tsx scripts/validate-env.ts",
+    "validate:railway": "tsx scripts/validate-railway-env.ts",
     "railway:init": "railway init",
     "railway:link": "railway link",
     "railway:deploy": "railway up",

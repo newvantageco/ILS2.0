@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, jsonb, index, pgEnum, integer, decimal, numeric, boolean, date, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, jsonb, index, pgEnum, integer, decimal, numeric, real, boolean, date, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -796,8 +796,11 @@ export const aiFeedback = pgTable("ai_feedback", {
 // AI Model Versions - master AI model version tracking
 export const aiModelVersions = pgTable("ai_model_versions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
   versionNumber: varchar("version_number", { length: 50 }).notNull().unique(),
   modelName: varchar("model_name", { length: 255 }).notNull(),
+  modelType: varchar("model_type", { length: 100 }),
+  algorithm: varchar("algorithm", { length: 100 }),
   description: text("description"),
   status: varchar("status", { length: 50 }).notNull().default("draft"),
   createdBy: varchar("created_by").references(() => users.id),
@@ -818,6 +821,8 @@ export const aiModelDeployments = pgTable("ai_model_deployments", {
   modelVersionId: varchar("model_version_id").notNull().references(() => aiModelVersions.id, { onDelete: 'cascade' }),
   versionNumber: varchar("version_number", { length: 50 }).notNull(),
   deploymentStatus: varchar("deployment_status", { length: 50 }).notNull().default("active"),
+  environment: varchar("environment", { length: 50 }),
+  status: varchar("status", { length: 50 }).notNull().default("active"),
   deployedAt: timestamp("deployed_at").defaultNow().notNull(),
   deactivatedAt: timestamp("deactivated_at"),
   performanceMetrics: jsonb("performance_metrics"),
@@ -832,6 +837,8 @@ export const aiModelDeployments = pgTable("ai_model_deployments", {
 export const masterTrainingDatasets = pgTable("master_training_datasets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   modelVersionId: varchar("model_version_id").references(() => aiModelVersions.id),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  datasetType: varchar("dataset_type", { length: 100 }),
   category: varchar("category", { length: 100 }).notNull(),
   title: varchar("title", { length: 500 }).notNull(),
   content: text("content").notNull(),
@@ -888,6 +895,9 @@ export const companyAiSettings = pgTable("company_ai_settings", {
 export const aiTrainingJobs = pgTable("ai_training_jobs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   modelVersionId: varchar("model_version_id").notNull().references(() => aiModelVersions.id, { onDelete: 'cascade' }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  modelType: varchar("model_type", { length: 100 }),
+  algorithm: varchar("algorithm", { length: 100 }),
   jobType: varchar("job_type", { length: 50 }).notNull(),
   status: varchar("status", { length: 50 }).notNull().default("queued"),
   startedAt: timestamp("started_at"),
@@ -2605,6 +2615,16 @@ export type InsertAiLearningData = typeof aiLearningData.$inferInsert;
 export const insertAiFeedbackSchema = createInsertSchema(aiFeedback);
 
 export type AiFeedback = typeof aiFeedback.$inferSelect;
+
+// Backwards-compatible aliases (some server modules reference 'AI' uppercase prefixes)
+export type AIModelVersion = typeof aiModelVersions.$inferSelect;
+export type InsertAIModelVersion = typeof aiModelVersions.$inferInsert;
+export type AIModelDeployment = typeof aiModelDeployments.$inferSelect;
+export type InsertAIModelDeployment = typeof aiModelDeployments.$inferInsert;
+export type AITrainingJob = typeof aiTrainingJobs.$inferSelect;
+export type InsertAITrainingJob = typeof aiTrainingJobs.$inferInsert;
+export type MasterTrainingDataset = typeof masterTrainingDatasets.$inferSelect;
+export type InsertMasterTrainingDataset = typeof masterTrainingDatasets.$inferInsert;
 export type InsertAiFeedback = typeof aiFeedback.$inferInsert;
 
 // Permission schemas

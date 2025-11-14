@@ -1,332 +1,329 @@
-<!-- Copilot / AI agent instructions for the Integrated Lens System (ILS) --><!-- Copilot / AI agent instructions for the Integrated Lens System (ILS) -->```markdown
+# ILS 2.0 — AI Agent Guidance
 
+> Enterprise optical lab management platform. Monorepo: React + Vite frontend, Express + TypeScript backend, shared Zod/Drizzle types, Python analytics, event-driven architecture with BullMQ workers. **Keep `shared/` as the contract boundary.**
 
+## 🎯 The ILS Architecture Philosophy
 
-# ILS — Quick, actionable guidance for AI coding agents<!-- Copilot / AI agent instructions for the Integrated Lens System (ILS) -->
+ILS 2.0 is built on **strict separation of concerns**: contracts define interfaces, storage controls data, routes orchestrate, events coordinate. This enables 100+ engineers to work independently without breaking each other's code.
 
+## Architecture at a Glance
 
-
-Enterprise optical lab management platform. This monorepo contains a React + Vite client, an Express TypeScript server, shared Zod/Drizzle types, Python analytics services, background workers with BullMQ, and event-driven architecture. Focus on small, testable edits and keep `shared/` as the contract boundary.# ILS — Quick, actionable guidance for AI coding agents
-
-
-
-## Big Picture Architecture# ILS — Quick, actionable guidance for AI coding agents
-
-
-
-**Frontend**: `client/` — React + TypeScript (Vite), shadcn/ui + Radix UI components, TanStack Query for server state, Wouter routing  Enterprise optical lab management platform. This monorepo contains a React + Vite client, an Express TypeScript server, shared Zod/Drizzle types, Python analytics services, background workers with BullMQ, and event-driven architecture. Focus on small, testable edits and keep `shared/` as the contract boundary.
-
-**Backend**: `server/` — Express + TypeScript (ESM), modular route registration pattern via `registerRoutes()`, middleware-heavy (auth, rate limiting, audit)  
-
-**Shared Contract**: `shared/schema.ts` — Drizzle ORM schemas + Zod validation (single source of truth). Use `createInsertSchema()` from `drizzle-zod` for API validation  Be concise. This monorepo contains a React + Vite client, an Express TypeScript server, shared Zod/Drizzle types, and a few Python microservices. Focus on small, testable edits and keep `shared/` as the contract boundary.
-
-**Python Services**: `python-service/` (FastAPI analytics on :8000) and `ai-service/` (ML models) — independent processes  
-
-**Background Jobs**: BullMQ + Redis workers in `server/workers/` (email, PDF, notifications, AI). Graceful degradation if Redis unavailable  ## Big Picture Architecture
-
-**Events**: Event-driven pub/sub via `server/events/EventBus.ts` (Node EventEmitter). Handlers in `server/events/handlers/`  
-
-**Data Layer**: `server/storage.ts` exports singleton `storage` object (DbStorage class) — all DB access goes through this  - Big picture (quick)
-
-**Multi-tenancy**: Users belong to `companies` (via `companyId`). Most entities are tenant-scoped. Legacy `organizationId` field exists but use `companyId`
-
-**Frontend**: `client/` — React + TypeScript (Vite), shadcn/ui + Radix UI components, TanStack Query for server state, Wouter routing    - Frontend: `client/` — React + TypeScript (Vite). UI components: `client/src/components`; pages: `client/src/pages`.
+**Frontend**: `client/` — React + TypeScript (Vite), shadcn/ui + Radix UI, TanStack Query, Wouter routing  
+**Backend**: `server/` — Express + TypeScript (ESM), routes registered via `registerRoutes()` (5800+ lines in `server/routes.ts` + modular feature files in `server/routes/`)  
+**Shared Contract**: `shared/schema.ts` — Drizzle ORM tables (110+ tables, 8400+ lines) + Zod validators. Use `createInsertSchema()` for API payloads. This is the **single source of truth** for client/server types  
+**Data Layer**: `server/storage.ts` — Singleton DbStorage class (6200+ lines). **ALL DB access goes through here**, never query `db` directly in route handlers  
+**Event Bus**: `server/events/EventBus.ts` — Pub/sub + auto-persistence. Emit via `EventBus.publish('order.created', { orderId, companyId })`. Handlers are async and fail-silent  
+**Background Jobs**: BullMQ + Redis workers in `server/workers/` (email, PDF, notifications, AI, order processing). **Graceful fallback** if Redis unavailable via `*Immediate()` methods  
+**Python Services**: `python-service/` (FastAPI analytics) and `ai-service/` (ML models) — independent processes consuming REST APIs, not direct DB access  
+**Error Handling**: Centralized `ApiError` classes in `server/utils/ApiError.ts`. Routes wrapped with `asyncHandler()` from `server/middleware/errorHandler.ts`  
 
 ## Essential Workflows
 
-**Backend**: `server/` — Express + TypeScript (ESM), modular route registration pattern via `registerRoutes()`, middleware-heavy (auth, rate limiting, audit)    - Backend: `server/` — Express + TypeScript (ESM). Entry: `server/index.ts`. Dev orchestration: `start-dev.mjs` (root).
-
-**Setup**: `npm install` at repo root  
-
-**Dev mode**: `npm run dev` — runs `start-dev.mjs` which spawns Python service (:8000), then Node dev server (:3000)  **Shared Contract**: `shared/schema.ts` — Drizzle ORM schemas + Zod validation (single source of truth). Use `createInsertSchema()` from `drizzle-zod` for API validation    - Shared contract: `shared/` — Zod schemas + Drizzle types (single source of truth for payload shapes).
-
-**Server only**: `npm run dev:node` (uses tsx watch mode)  
-
-**Python only**: `npm run dev:python`  **Python Services**: `python-service/` (FastAPI analytics on :8000) and `ai-service/` (ML models) — independent processes    - Python services: `python-service/` and `ai-service/` — independent processes with their own `requirements.txt` and start scripts.
-
-**DB migrations**: `npm run db:push` (drizzle-kit push to Neon Postgres)  
-
-**Tests**:**Background Jobs**: BullMQ + Redis workers in `server/workers/` (email, PDF, notifications, AI). Graceful degradation if Redis unavailable  
-
-- Unit tests: `npm run test:unit` (Jest, server/integration only)
-
-- Integration tests: `npm run test:integration` or `npm test` (Jest)**Events**: Event-driven pub/sub via `server/events/EventBus.ts` (Node EventEmitter). Handlers in `server/events/handlers/`  - Essential workflows (concrete)
-
-- Component tests: `npm run test:components` (Vitest + jsdom for React components)
-
-- E2E tests: `npm run test:e2e` (Playwright)**Data Layer**: `server/storage.ts` exports singleton `storage` object (DbStorage class) — all DB access goes through this    - Install dependencies: run `npm install` at repo root.
-
-- Full suite: `npm run test:all` (TypeScript check + all test suites)
-
-**Multi-tenancy**: Users belong to `companies` (via `companyId`). Most entities are tenant-scoped. Legacy `organizationId` field exists but use `companyId`  - Full-stack dev: `npm run dev` — runs `start-dev.mjs` which spawns client, server and optional Python services.
-
-**Build**: `npm run build` (client via Vite, server via esbuild to `dist/`)  
-
-**Production**: `npm run start` (NODE_ENV=production node dist/index.js)  - Server-only dev: `npm run dev:node` (uses `tsx server/index.ts`).
-
-
-
-## Project Conventions to Respect## Essential Workflows  - Python service dev: `npm run dev:python` (invokes `python-service/start-service.sh`).
-
-
-
-**ESM only**: Always use `import`/`export` (package.json has `"type": "module"`)    - DB migrations: `npm run db:push` (drizzle-kit push).
-
-**Path aliases** (tsconfig):
-
-- `@/*` → `client/src/*` (or `server/*` in Jest context)**Setup**: `npm install` at repo root    - Tests: unit/integration: `npm test`; component tests: `npm run test:components` (Vitest); e2e: `npm run test:e2e` (Playwright). Use `npm run test:unit` for fast feedback.
-
-- `@shared/*` → `shared/*`
-
-**Dev mode**: `npm run dev` — runs `start-dev.mjs` which spawns Python service (:8000), then Node dev server (:5000)    - Build: `npm run build` (client via Vite, server bundled with esbuild). Production start: `npm run start`.
-
-**Shared schema workflow** (critical):
-
-1. Update Drizzle schema in `shared/schema.ts` (add/modify table columns)**Server only**: `npm run dev:node` (uses tsx watch mode)  
-
-2. Export Zod insert/update schemas using `createInsertSchema()` (see existing patterns like `insertOrderSchema`)
-
-3. Run `npm run db:push` to sync DB**Python only**: `npm run dev:python`  - Project conventions to respect
-
-4. Update `server/storage.ts` methods (storage layer)
-
-5. Update route handlers in `server/routes/` or `server/routes.ts` (use Zod validation)**DB migrations**: `npm run db:push` (drizzle-kit push to Neon Postgres)    - ESM modules only — always use `import` / `export` (package.json is \"type\": \"module\").
-
-6. Update client hooks/pages (`client/src/hooks`, `client/src/pages`)
-
-**Tests**:  - Shared types live in `shared/schema.ts` (Zod + Drizzle). Update Zod shapes first when changing APIs and follow up with migrations if DB schemas change.
-
-**Modular routes**: Large feature sets in `server/routes/` (e.g. `aiIntelligence.ts`, `bi.ts`, `payments.ts`) export `registerXXXRoutes(app: Express)` functions. Called from main `registerRoutes()` in `server/routes.ts`
-
-- Unit tests: `npm run test:unit` (Jest, server/integration only)  - Path aliases (tsconfig): `@/*` → `client/src/*`, `@shared/*` → `shared/*`. Use these aliases in imports.
-
-**Auth pattern**: Use `isAuthenticated` middleware (from `server/replitAuth.ts`) or `authenticateUser`/`requireRole()` (from `server/middleware/auth.ts`). Auth state in `req.user` (typed as `AuthenticatedUser`)
-
-- Integration tests: `npm run test:integration` or `npm test` (Jest)  - Dev TypeScript: `noEmit: true` in `tsconfig.json` — build output happens during `npm run build`.
-
-**Rate limiting**: Apply per-route or globally. Importers from `server/middleware/security.ts`: `globalRateLimiter`, `authRateLimiter`. More specialized limiters in `server/middleware/rateLimiter.ts`
-
-- Component tests: `npm run test:components` (Vitest + jsdom for React components)
-
-**Error handling**: Use `asyncHandler()` wrapper (from `server/middleware/errorHandler.ts`) to catch async errors. Throw custom errors like `BadRequestError`, `UnauthorizedError`, `NotFoundError` (defined in same file)
-
-- E2E tests: `npm run test:e2e` (Playwright)- Integration points & libraries to watch
-
-**Background jobs**: Enqueue via `addEmailJob()`, `addPDFJob()`, `addNotificationJob()` (from `server/queue/`). Workers auto-start on server boot (imported in `server/index.ts`). Check `redisAvailable` from `server/queue/config.ts` for fallback logic
-
-- Full suite: `npm run test:all` (TypeScript check + all test suites)  - Auth: Replit OIDC + Passport (look for `server/replitAuth.*`).
-
-**Event-driven**: Emit domain events via `EventBus.publish()` (from `server/events/EventBus.ts`). Subscribe in handlers (`server/events/handlers/`). Example: `order.created` event triggers LIMS, analytics, PDF generation workers
-
-  - DB: Neon Postgres via `drizzle-orm` + `drizzle-zod`. See `scripts/migrate-storage.ts` for migration examples.
-
-## Integration Points & Libraries
-
-**Build**: `npm run build` (client via Vite, server via esbuild to `dist/`)    - Email: `resend` library is used for notification flows.
-
-**Auth**: Passport.js + Replit OIDC + local email/password (see `server/replitAuth.ts`, `server/localAuth.ts`). Master user provisioning via env vars (`MASTER_USER_EMAIL`, etc.) in `server/masterUser.ts`  
-
-**DB**: Neon Postgres (serverless) via Drizzle ORM. Connection in `server/db.ts`. All queries through `storage` singleton  **Production**: `npm run start` (NODE_ENV=production node dist/index.js)  - AI/ML: `ai-service/` uses model client libraries (Anthropic, OpenAI, TFJS). Follow existing call and batching patterns there.
-
-**Email**: Resend API (via `server/emailService.ts` and `server/services/EmailService.ts`). Background jobs for async sending  
-
-**PDF**: PDFKit (via `server/pdfService.ts` and `server/services/PDFService.ts`). Background worker for generation  
-
-**AI/ML**: `ai-service/` uses Anthropic, OpenAI, TensorFlow.js. Server routes in `server/routes/aiEngine.ts`, `server/routes/proprietaryAi.ts`  
-
-**Payments**: Stripe integration in `server/routes/payments.ts`. Subscription plans in `shared/schema.ts` (subscriptionPlans table)  ## Project Conventions to Respect- Editing API surfaces (concrete contract steps)
-
-**Real-time**: WebSocket server in `server/websocket/`. Broadcast via `WebSocketBroadcaster` (event-driven broadcasts)  
-
-**Monitoring**: Prometheus metrics exported via `server/lib/metrics.ts`. Route: `/metrics` (see `server/routes/metrics.ts`)    1. Update Zod schema in `shared/schema.ts` (authoritative shape).
-
-**Cron jobs**: Node-cron scheduled tasks in `server/jobs/` (daily briefing, inventory monitoring, clinical anomaly detection, etc.). Auto-start in `server/index.ts`
-
-**ESM only**: Always use `import`/`export` (package.json has `"type": "module"`)    2. Update server validation/handlers (e.g., `server/routes.ts` or route files). Add tests.
-
-## Quick File Cheat-Sheet
-
-**Path aliases** (tsconfig):  3. Update client hooks/pages under `client/src/hooks` and `client/src/pages`.
-
-**Server entry**: `server/index.ts` (middleware setup, cron start, WebSocket init, master user provision)  
-
-**Dev orchestrator**: `start-dev.mjs` (spawns Python, then Node)  - `@/*` → `client/src/*` (or `server/*` in Jest context)  4. If DB changes are needed, add a migration and run `npm run db:push`.
-
-**Schema authority**: `shared/schema.ts` (Drizzle tables + Zod schemas)  
-
-**Route registry**: `server/routes.ts` → `registerRoutes()` function (5500+ lines, monolithic but modular via sub-registrations)  - `@shared/*` → `shared/*`
-
-**Data access layer**: `server/storage.ts` → `storage` singleton (1800+ lines, all queries)  
-
-**Event bus**: `server/events/EventBus.ts` (pub/sub, async replay, dead letter queue)  - Quick file cheat-sheet (start here)
-
-**Queue config**: `server/queue/config.ts` (Redis connection, queue init, graceful degradation)  
-
-**Workers**: `server/workers/emailWorker.ts`, `pdfWorker.ts`, `notificationWorker.ts`, `aiWorker.ts`, `OrderCreated*Worker.ts`  **Shared schema workflow** (critical):  - `server/index.ts` — server bootstrap
-
-**Middleware**: `server/middleware/auth.ts`, `security.ts`, `rateLimiter.ts`, `errorHandler.ts`, `audit.ts`, `validation.ts`  
-
-**Python entry**: `python-service/main.py` (FastAPI app)  1. Update Drizzle schema in `shared/schema.ts` (add/modify table columns)  - `start-dev.mjs` — orchestrates local dev processes
-
-**AI service**: `ai-service/` (ML training, RAG, model endpoints)  
-
-**Migration helpers**: `scripts/migrate-storage.ts` (run with `npm run migrate-storage`)2. Export Zod insert/update schemas using `createInsertSchema()` (see existing patterns like `insertOrderSchema`)  - `shared/schema.ts` — Zod + Drizzle contract
-
-
-
-## Testing Patterns3. Run `npm run db:push` to sync DB  - `server/routes.ts` — API patterns and validation
-
-
-
-**Jest** (integration/API tests): Mock `storage` object or use test DB. Setup in `test/setup.ts`. Pattern: import route handlers, spy on storage methods  4. Update `server/storage.ts` methods (storage layer)  - `scripts/migrate-storage.ts` — migration helper
-
-**Vitest** (component tests): React Testing Library + jsdom. Setup in `test/setup.vitest.ts`. Alias `@/` → `client/src/`  
-
-**Playwright** (E2E): Full browser tests in `test/e2e/`. Config in `playwright.config.ts`  5. Update route handlers in `server/routes/` or `server/routes.ts` (use Zod validation)  - `python-service/start-service.sh` — how Python services are started in dev
-
-**Coverage**: `npm run test:coverage` (Jest with coverage reporter)
-
-6. Update client hooks/pages (`client/src/hooks`, `client/src/pages`)
-
-## Validation & Quality Gates
-
-- Validation & quality gates
-
-**Pre-commit**: Run `npm run check` (tsc) + `npm run test:unit` for fast feedback  
-
-**Pre-PR**: Run `npm run test:ci` (includes coverage, integration, components)  **Modular routes**: Large feature sets in `server/routes/` (e.g. `aiIntelligence.ts`, `bi.ts`, `payments.ts`) export `registerXXXRoutes(app: Express)` functions. Called from main `registerRoutes()` in `server/routes.ts`  - Run `npm run check` (TypeScript) and targeted tests (`npm run test:unit` or `npm test`) before proposing non-trivial PRs.
-
-**Keep changes small**: When touching multiple layers (shared → server → client), prefer separate commits or PRs for clarity
-
-  - Keep changes small and self-contained. When touching multiple layers, prefer separate commits (shared → server → client).
-
-## Common Pitfalls
-
-**Auth pattern**: Use `isAuthenticated` middleware (from `server/replitAuth.ts`) or `authenticateUser`/`requireRole()` (from `server/middleware/auth.ts`). Auth state in `req.user` (typed as `AuthenticatedUser`)
-
-**Multi-tenancy**: Always filter queries by `companyId` for tenant isolation. Check existing patterns in `storage.ts`  
-
-**Redis optional**: Don't assume Redis is available. Check `redisAvailable` flag before enqueuing jobs. Workers have `*Immediate()` fallback functions (e.g., `sendEmailImmediate()`)  - Notes for cross-language changes
-
-**Async event handlers**: Event handlers in `server/events/handlers/` should be async and handle errors gracefully (events are fire-and-forget by default)  
-
-**Schema changes**: Never edit DB directly. Always update `shared/schema.ts` first, then `npm run db:push`. Drizzle migrations in `migrations/` are auto-generated  **Rate limiting**: Apply per-route or globally. Importers from `server/middleware/security.ts`: `globalRateLimiter`, `authRateLimiter`. More specialized limiters in `server/middleware/rateLimiter.ts`  - Treat `shared/` as the cross-language contract. When adding fields used by Python services, update `shared/` and notify the Python code owner or add a small adapter in `ai-service/` or `python-service/`.
-
-**Path resolution**: Use `@/` and `@shared/` aliases everywhere. Avoid relative paths like `../../../shared`  
-
-**Session management**: Uses `express-session` + Redis store (or memory store fallback). Session secret in env var `SESSION_SECRET`
-
-
-
-## Environment Variables (Critical)**Error handling**: Use `asyncHandler()` wrapper (from `server/middleware/errorHandler.ts`) to catch async errors. Throw custom errors like `BadRequestError`, `UnauthorizedError`, `NotFoundError` (defined in same file)If any section is unclear or you want file-level examples or tests added, tell me which area and I will expand with exact snippets and minimal tests.
-
-
-
-See `.env.example` for full list. Key ones:
-
-- `DATABASE_URL` (Neon Postgres connection string)
-
-- `SESSION_SECRET` (session encryption)**Background jobs**: Enqueue via `addEmailJob()`, `addPDFJob()`, `addNotificationJob()` (from `server/queue/`). Workers auto-start on server boot (imported in `server/index.ts`). Check `redisAvailable` from `server/queue/config.ts` for fallback logic```
-
-- `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` (optional, for queues/sessions)
-
-- `MASTER_USER_EMAIL`, `MASTER_USER_PASSWORD` (bootstrap admin account)
-
-- `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` (AI services)**Event-driven**: Emit domain events via `EventBus.publish()` (from `server/events/EventBus.ts`). Subscribe in handlers (`server/events/handlers/`). Example: `order.created` event triggers LIMS, analytics, PDF generation workers
-
-- `RESEND_API_KEY` (email)
-
-- `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` (payments)## Integration Points & Libraries
-
-
-
-## Cross-Language Changes**Auth**: Passport.js + Replit OIDC + local email/password (see `server/replitAuth.ts`, `server/localAuth.ts`). Master user provisioning via env vars (`MASTER_USER_EMAIL`, etc.) in `server/masterUser.ts`  
-
-**DB**: Neon Postgres (serverless) via Drizzle ORM. Connection in `server/db.ts`. All queries through `storage` singleton  
-
-Python services consume data via HTTP APIs (not direct DB access). When adding fields to orders/patients/etc.:**Email**: Resend API (via `server/emailService.ts` and `server/services/EmailService.ts`). Background jobs for async sending  
-
-1. Update `shared/schema.ts`**PDF**: PDFKit (via `server/pdfService.ts` and `server/services/PDFService.ts`). Background worker for generation  
-
-2. Update `server/storage.ts` and API routes**AI/ML**: `ai-service/` uses Anthropic, OpenAI, TensorFlow.js. Server routes in `server/routes/aiEngine.ts`, `server/routes/proprietaryAi.ts`  
-
-3. Update Python service clients (`ai-service/api/`, `python-service/`)**Payments**: Stripe integration in `server/routes/payments.ts`. Subscription plans in `shared/schema.ts` (subscriptionPlans table)  
-
-4. Consider adding adapter/mapper in Python if schema diverges**Real-time**: WebSocket server in `server/websocket/`. Broadcast via `WebSocketBroadcaster` (event-driven broadcasts)  
-
-**Monitoring**: Prometheus metrics exported via `server/lib/metrics.ts`. Route: `/metrics` (see `server/routes/metrics.ts`)  
-
-## Editing API surfaces (concrete contract steps)**Cron jobs**: Node-cron scheduled tasks in `server/jobs/` (daily briefing, inventory monitoring, clinical anomaly detection, etc.). Auto-start in `server/index.ts`
-
-
-
-1. Update Zod schema in `shared/schema.ts` (authoritative shape)## Quick File Cheat-Sheet
-
-2. Update server validation/handlers (e.g., `server/routes.ts` or route files). Add tests
-
-3. Update client hooks/pages under `client/src/hooks` and `client/src/pages`**Server entry**: `server/index.ts` (middleware setup, cron start, WebSocket init, master user provision)  
-
-4. If DB changes are needed, add a migration and run `npm run db:push`**Dev orchestrator**: `start-dev.mjs` (spawns Python, then Node)  
-
-**Schema authority**: `shared/schema.ts` (Drizzle tables + Zod schemas)  
-
-## Notes for cross-language changes**Route registry**: `server/routes.ts` → `registerRoutes()` function (5500+ lines, monolithic but modular via sub-registrations)  
-
-**Data access layer**: `server/storage.ts` → `storage` singleton (1800+ lines, all queries)  
-
-Treat `shared/` as the cross-language contract. When adding fields used by Python services, update `shared/` and notify the Python code owner or add a small adapter in `ai-service/` or `python-service/`.**Event bus**: `server/events/EventBus.ts` (pub/sub, async replay, dead letter queue)  
-
-**Queue config**: `server/queue/config.ts` (Redis connection, queue init, graceful degradation)  
-
----**Workers**: `server/workers/emailWorker.ts`, `pdfWorker.ts`, `notificationWorker.ts`, `aiWorker.ts`, `OrderCreated*Worker.ts`  
-
-**Middleware**: `server/middleware/auth.ts`, `security.ts`, `rateLimiter.ts`, `errorHandler.ts`, `audit.ts`, `validation.ts`  
-
-**Need more detail?** Ask about specific areas: auth flows, event patterns, worker implementation, testing strategies, or feature modules.**Python entry**: `python-service/main.py` (FastAPI app)  
-**AI service**: `ai-service/` (ML training, RAG, model endpoints)  
-**Migration helpers**: `scripts/migrate-storage.ts` (run with `npm run migrate-storage`)
+```bash
+npm install                  # One-time setup
+npm run dev                  # Full stack: spawns Python, Node, client (from start-dev.mjs)
+npm run dev:node             # Backend only
+npm run dev:python           # Analytics service only
+
+npm run check               # TypeScript check (fast)
+npm run test:unit          # Unit tests only (Jest)
+npm run test               # Integration tests (Jest)
+npm run test:components    # React component tests (Vitest)
+npm run test:e2e           # Playwright end-to-end
+npm run test:all           # Full suite (ci pipeline)
+
+npm run db:push            # Migrate schema changes (drizzle-kit → Neon)
+npm run build && npm start # Production build + run
+```
+
+## Adding Features: The Workflow
+
+**The ILS Development Pattern** (applies to 99% of changes):
+
+**1. Update Zod schema** in `shared/schema.ts`:
+```typescript
+export const orders = pgTable("orders", {
+  id: varchar("id").primaryKey(),
+  status: orderStatusEnum("status").default("pending"),
+  companyId: varchar("company_id").notNull().references(() => companies.id), // REQUIRED for multi-tenancy
+  // Add new columns here
+});
+
+// Export insert schema for validation (auto-generates from table)
+export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true });
+```
+
+**2. Run migration** to sync DB:
+```bash
+npm run db:push  # Creates migration, updates Neon (don't force unless absolutely necessary)
+```
+
+**3. Update `storage.ts`** — add/modify methods on `DbStorage` class (lines 1-6200):
+```typescript
+async getOrdersByCompany(companyId: string) {
+  return await this.db.query.orders.findMany({
+    where: eq(orders.companyId, companyId), // ALWAYS filter by companyId
+  });
+}
+```
+
+**4. Update route handler** in `server/routes.ts` or modular route file (e.g., `server/routes/queue.ts`):
+```typescript
+router.get("/orders", authenticateUser, asyncHandler(async (req, res) => {
+  const companyId = req.user.companyId; // Extract from auth context
+  const orders = await storage.getOrdersByCompany(companyId); // Use storage layer
+  res.json(orders); // Implicit 200 response
+}));
+```
+Key: Routes don't need explicit 200 responses. Errors throw via `asyncHandler()` which catches and formats.
+
+**5. Update client** — hooks in `client/src/hooks/` or pages in `client/src/pages/`:
+```typescript
+const { data: orders } = useQuery({
+  queryKey: ["orders"],
+  queryFn: () => api.get("/api/orders").then(r => r.data),
+});
+```
+
+**6. Emit events** after key state changes (triggers workers, analytics, etc.):
+```typescript
+const order = await storage.createOrder(data);
+await EventBus.publish("order.created", { 
+  orderId: order.id, 
+  companyId: order.companyId 
+});
+// Workers automatically pick this up from /server/events/handlers/
+```
+
+## Critical Agent Patterns
+
+### Type Safety & Validation Chain
+**All data flows through Zod → Drizzle → TypeScript**. Never skip validation:
+```typescript
+// ❌ WRONG: Trusting req.body directly
+const order = await storage.createOrder(req.body);
+
+// ✅ RIGHT: Parse through Zod first
+const parsed = insertOrderSchema.parse(req.body); // Throws ZodError if invalid
+const order = await storage.createOrder(parsed);
+```
+
+### Storage Layer Indirection
+**100% of DB queries go through `storage` singleton.** This enables:
+- Mocking in tests (spy on storage methods)
+- Tenant isolation enforcement
+- Centralized query optimization
+- Consistent error handling
+
+```typescript
+// ❌ WRONG: Direct DB query in route
+const orders = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
+
+// ✅ RIGHT: Through storage
+const orders = await storage.getOrdersByCompany(companyId);
+```
+
+### Error Handling Pattern
+**All async routes must use `asyncHandler()`**. It catches promise rejections and passes to global error handler:
+```typescript
+router.post('/orders', asyncHandler(async (req, res) => {
+  if (!order) throw new NotFoundError("Order");      // 404
+  if (!hasPermission) throw new UnauthorizedError(); // 401
+  if (invalid) throw new BadRequestError("Invalid order data");
+  res.json(order);
+  // No try/catch needed - asyncHandler catches everything
+}));
+```
+Error response format: `{ success: false, error: { code: "NOT_FOUND", message: "...", details: {} } }`
+
+### Multi-Tenancy Enforcement
+**Every query MUST filter by `companyId`.** This is non-negotiable:
+```typescript
+// ❌ WRONG: Exposes all company data
+const patient = await storage.getPatientById(patientId);
+
+// ✅ RIGHT: Scoped to tenant
+const patient = await storage.getPatientById(patientId, companyId);
+```
+Check `storage.ts` methods — they all take `companyId` as first or second parameter.
+
+## Key Files & Patterns
+
+| File | Purpose | Line Count |
+|------|---------|-----------|
+| `server/index.ts` | Bootstrap: middleware, crons, WebSocket, workers | 500 |
+| `start-dev.mjs` | Dev orchestrator: spawns Python, Node, client | — |
+| `server/routes.ts` | Main route registry + core endpoints | 5,800 |
+| `server/routes/*.ts` | Modular features (bi.ts, queue.ts, payments.ts, etc.) | varies |
+| `server/storage.ts` | DbStorage singleton — all DB queries | 6,200 |
+| `shared/schema.ts` | Drizzle tables + Zod schemas (single source of truth) | 8,400 |
+| `server/middleware/errorHandler.ts` | `asyncHandler()` wrapper + error formatting | 169 |
+| `server/events/EventBus.ts` | Pub/sub + persistence | 307 |
+| `server/workers/*.ts` | BullMQ: email, PDF, notifications, AI, order handlers | varies |
+| `client/src/hooks/useAuth.ts` | Auth state + role checking | — |
+| `jest.config.mjs` | Jest config: `@/` → `server/`, `@shared/` → `shared/` | — |
+
+## Integration Points
+
+**Auth**: Replit OIDC + Passport + local email/password (`server/replitAuth.ts`, `server/localAuth.ts`). Check `req.user` (typed: `AuthenticatedUser`)  
+**DB**: Neon Postgres (serverless). Connection via `db` singleton in `server/db.ts`. All queries through `storage` object  
+**Email**: Resend API (`server/emailService.ts`). Enqueue via `addEmailJob()`, workers auto-process  
+**PDF**: PDFKit (`server/pdfService.ts`). Enqueue via `addPDFJob()`  
+**Background Jobs**: BullMQ + Redis (`server/queue/config.ts`). Check `redisAvailable` before enqueuing. Workers have `*Immediate()` fallbacks  
+**Payments**: Stripe integration (`server/routes/payments.ts`). Subscription plans in `shared/schema.ts`  
+**Real-time**: WebSocket in `server/websocket/` — event-driven broadcasts  
+**AI/ML**: `ai-service/` uses Anthropic + OpenAI + TensorFlow.js. Routes: `server/routes/master-ai.ts`, `server/routes/ai-purchase-orders.ts`  
+**Crons**: Node-cron in `server/jobs/` (daily briefing, inventory monitoring, clinical anomaly detection)  
 
 ## Testing Patterns
 
-**Jest** (integration/API tests): Mock `storage` object or use test DB. Setup in `test/setup.ts`. Pattern: import route handlers, spy on storage methods  
-**Vitest** (component tests): React Testing Library + jsdom. Setup in `test/setup.vitest.ts`. Alias `@/` → `client/src/`  
-**Playwright** (E2E): Full browser tests in `test/e2e/`. Config in `playwright.config.ts`  
-**Coverage**: `npm run test:coverage` (Jest with coverage reporter)
+- **Jest** (integration/API): Mock `storage` or use test DB. Setup in `test/setup.ts`. Pattern: spy on storage methods
+- **Vitest** (components): React Testing Library + jsdom in browser. Setup: `test/setup.vitest.ts`
+- **Playwright** (E2E): Full browser tests in `test/e2e/`. Config: `playwright.config.ts`
 
-## Validation & Quality Gates
+```bash
+npm run test:unit           # Fast feedback on changes
+npm run test:coverage       # Jest coverage report
+npm test                    # Integration suite
+npm run test:ci             # Full CI pipeline
+```
 
-**Pre-commit**: Run `npm run check` (tsc) + `npm run test:unit` for fast feedback  
-**Pre-PR**: Run `npm run test:ci` (includes coverage, integration, components)  
-**Keep changes small**: When touching multiple layers (shared → server → client), prefer separate commits or PRs for clarity
+## Agent Development Workflow
+
+### Before Writing Code
+1. **Understand the feature boundary**: Is it frontend-only, backend-only, or full-stack?
+2. **Check for existing patterns**: Search `server/routes/*.ts` for similar endpoints
+3. **Validate schema first**: Does the data model already exist in `shared/schema.ts`?
+4. **Check event precedents**: Look in `server/events/handlers/` for similar event subscribers
+
+### Code Changes Order (Critical)
+1. **Schema changes** → `shared/schema.ts` + `npm run db:push`
+2. **Storage methods** → `server/storage.ts` 
+3. **Route handlers** → `server/routes.ts` or modular file
+4. **Event emissions** → After state-changing operations
+5. **Client code** → `client/src/hooks/` + `client/src/pages/`
+6. **Tests** → `test/integration/*.test.ts` or `test/components/*.test.tsx`
+
+**Why this order?** Schema changes are foundation; storage depends on schema; routes depend on storage; events depend on routes working.
+
+### Path Alias Usage (Always)
+- **Backend code**: `import { storage } from '@/storage'` ← imports from `server/storage.ts`
+- **Client code**: `import { useOrders } from '@/hooks/useOrders'` ← imports from `client/src/hooks/`
+- **Shared**: `import { insertOrderSchema } from '@shared/schema'` ← always `@shared/`, never relative
+
+### Testing Before Commit
+```bash
+npm run check              # Catch TypeScript errors early
+npm run test:unit         # Fast feedback loop
+npm test                  # Full integration suite
+```
+Agents should always run these before considering work complete.
 
 ## Common Pitfalls
 
-**Multi-tenancy**: Always filter queries by `companyId` for tenant isolation. Check existing patterns in `storage.ts`  
-**Redis optional**: Don't assume Redis is available. Check `redisAvailable` flag before enqueuing jobs. Workers have `*Immediate()` fallback functions (e.g., `sendEmailImmediate()`)  
-**Async event handlers**: Event handlers in `server/events/handlers/` should be async and handle errors gracefully (events are fire-and-forget by default)  
-**Schema changes**: Never edit DB directly. Always update `shared/schema.ts` first, then `npm run db:push`. Drizzle migrations in `migrations/` are auto-generated  
-**Path resolution**: Use `@/` and `@shared/` aliases everywhere. Avoid relative paths like `../../../shared`  
-**Session management**: Uses `express-session` + Redis store (or memory store fallback). Session secret in env var `SESSION_SECRET`
+❌ **Never edit DB directly** — Always: 1) Update `shared/schema.ts`, 2) `npm run db:push`, 3) Update `storage.ts` methods  
+❌ **Missing `companyId` filter** — Every query must check tenant isolation  
+❌ **Assuming Redis exists** — Check `redisAvailable` before background jobs. Use `*Immediate()` fallbacks  
+❌ **Relative imports** — Use `@/` and `@shared/` aliases always  
+❌ **Unhandled async errors** — Wrap routes with `asyncHandler()`  
+❌ **Event handlers not async** — Handlers in `server/events/handlers/` must be `async` and handle errors  
+❌ **Modifying request validation** — Change schemas in `shared/schema.ts` first, never add ad-hoc Zod in routes  
+❌ **Forgetting EventBus metadata** — Include `companyId` so workers know tenant context: `EventBus.publish('order.created', data, { companyId })`  
+❌ **Direct async/await in event handlers** — Events are fire-and-forget; handlers must not block the route response  
 
-## Environment Variables (Critical)
+## Environment Variables
 
-See `.env.example` for full list. Key ones:
-- `DATABASE_URL` (Neon Postgres connection string)
+See `.env.example`. Key production vars:
+- `DATABASE_URL` (Neon Postgres connection)
 - `SESSION_SECRET` (session encryption)
-- `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` (optional, for queues/sessions)
-- `MASTER_USER_EMAIL`, `MASTER_USER_PASSWORD` (bootstrap admin account)
+- `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` (optional)
+- `MASTER_USER_EMAIL`, `MASTER_USER_PASSWORD` (bootstrap admin)
 - `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` (AI services)
 - `RESEND_API_KEY` (email)
 - `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` (payments)
 
+## Event-Driven Architecture Patterns
+
+### Publishing Events
+Events provide loose coupling between components. Always emit after state-changing operations:
+```typescript
+// After order is created
+const order = await storage.createOrder(data);
+
+// Publish event with tenant context
+await EventBus.publish("order.created", 
+  { orderId: order.id, patientId: order.patientId }, 
+  { 
+    companyId: req.user.companyId, // REQUIRED for worker context
+    source: 'api',
+    correlationId: req.id 
+  }
+);
+// Workers pick this up automatically - no blocking
+res.json(order);
+```
+
+### Subscribing & Worker Pattern
+In `server/workers/myWorker.ts`:
+```typescript
+import { EventBus } from '@/events/EventBus';
+
+// Subscribe to event type
+EventBus.subscribe('order.created', async (event) => {
+  try {
+    const { orderId, patientId } = event.data;
+    const { companyId } = event.metadata;
+    
+    // Process with tenant isolation
+    const order = await storage.getOrderById(orderId, companyId);
+    // ... do work ...
+  } catch (error) {
+    console.error('Worker error:', error);
+    // Handlers are fail-silent - errors don't propagate
+  }
+});
+```
+
+Then import worker in `server/index.ts`:
+```typescript
+import './workers/myWorker.js';
+```
+
+### BullMQ Background Jobs
+For distributed, persistent jobs with retries:
+```typescript
+// Define job processor
+const myQueue = new Queue('myJobs', { connection: redis });
+
+myQueue.process(async (job) => {
+  const { companyId, orderId } = job.data;
+  // Heavy work here (PDF generation, ML inference, etc.)
+  return { success: true };
+});
+
+// Enqueue job (in route handler)
+if (redisAvailable) {
+  await myQueue.add('process', { companyId, orderId }, { 
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 2000 }
+  });
+} else {
+  // Immediate fallback
+  await doWorkImmediately(companyId, orderId);
+}
+```
+
 ## Cross-Language Changes
 
-Python services consume data via HTTP APIs (not direct DB access). When adding fields to orders/patients/etc.:
+When adding DB fields used by Python services:
 1. Update `shared/schema.ts`
-2. Update `server/storage.ts` and API routes
-3. Update Python service clients (`ai-service/api/`, `python-service/`)
-4. Consider adding adapter/mapper in Python if schema diverges
+2. `npm run db:push`
+3. Update `server/storage.ts` + routes
+4. Update Python clients (`ai-service/api/`, `python-service/`)
+5. Consider mapper/adapter if schema diverges
+
+Python services consume via HTTP APIs (not direct DB access).
 
 ---
 
-**Need more detail?** Ask about specific areas: auth flows, event patterns, worker implementation, testing strategies, or feature modules.
+**Questions?** Review the files above or check `server/routes/*.ts` for examples in your domain.

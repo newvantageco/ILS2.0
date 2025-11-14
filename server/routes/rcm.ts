@@ -254,12 +254,21 @@ router.post('/claims/batch', async (req: Request, res: Response) => {
  */
 router.post('/claims/:id/appeal', async (req: Request, res: Response) => {
   try {
-    const { appealReason, supportingDocuments, submittedBy } = req.body;
-    const appeal = ClaimsManagementService.fileAppeal(
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Authentication required - no companyId found' });
+    }
+
+    const { appealReason, supportingDocuments, submittedBy, notes } = req.body;
+    const appeal = await ClaimsManagementService.fileAppeal(
       req.params.id,
-      appealReason,
-      supportingDocuments,
-      submittedBy
+      companyId,
+      {
+        appealedBy: submittedBy,
+        appealReason,
+        supportingDocuments: supportingDocuments || [],
+        notes,
+      }
     );
     res.status(201).json({
       success: true,
@@ -281,7 +290,12 @@ router.post('/claims/:id/appeal', async (req: Request, res: Response) => {
  */
 router.post('/era/process', async (req: Request, res: Response) => {
   try {
-    const result = ClaimsManagementService.processERA(req.body);
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Authentication required - no companyId found' });
+    }
+
+    const result = await ClaimsManagementService.processERA(companyId, req.body);
     res.json({
       success: true,
       data: result,
@@ -302,13 +316,8 @@ router.post('/era/process', async (req: Request, res: Response) => {
  */
 router.get('/claims/statistics', async (req: Request, res: Response) => {
   try {
-    const { startDate, endDate, payerId, providerId } = req.query;
-    const statistics = ClaimsManagementService.getStatistics(
-      startDate ? new Date(startDate as string) : undefined,
-      endDate ? new Date(endDate as string) : undefined,
-      payerId as string | undefined,
-      providerId as string | undefined
-    );
+    // The service currently provides aggregate statistics without filters
+    const statistics = ClaimsManagementService.getStatistics();
     res.json({
       success: true,
       data: statistics
@@ -793,7 +802,7 @@ router.get('/payments/statistics', async (req: Request, res: Response) => {
 router.post('/charges/capture', async (req: Request, res: Response) => {
   try {
     const { encounterId, patientId, providerId, serviceDate, procedures, createdBy } = req.body;
-    const charges = BillingAutomationService.autoCaptureCharges(
+    const charges = await BillingAutomationService.autoCaptureCharges(
       encounterId,
       patientId,
       providerId,
@@ -822,7 +831,7 @@ router.post('/charges/capture', async (req: Request, res: Response) => {
  */
 router.post('/charges', async (req: Request, res: Response) => {
   try {
-    const charge = BillingAutomationService.createCharge(req.body);
+  const charge = await BillingAutomationService.createCharge(req.body);
     res.status(201).json({
       success: true,
       data: charge,
@@ -911,7 +920,7 @@ router.get('/charges/encounter/:encounterId', async (req: Request, res: Response
  */
 router.post('/charge-capture-rules', async (req: Request, res: Response) => {
   try {
-    const rule = BillingAutomationService.createChargeCaptureRule(req.body);
+  const rule = BillingAutomationService.createChargeCaptureRule(req.body);
     res.status(201).json({
       success: true,
       data: rule,

@@ -23,8 +23,10 @@ declare global {
     }
 
     interface User {
-      id?: string;
-      email?: string;
+      // Make core identity fields required to align with AuthenticatedUser
+      id: string;
+      email: string;
+      role: string;
       companyId?: string;
       isOwner?: boolean;
       permissions?: string[];
@@ -33,7 +35,6 @@ declare global {
       subscriptionPlan?: string;
       // Legacy fields (still needed for old code)
       local?: boolean;
-      role?: string;
       expires_at?: number;
       claims?: {
         id?: string;

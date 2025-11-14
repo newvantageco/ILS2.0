@@ -6,6 +6,21 @@
 
 import { loggers } from '../../utils/logger.js';
 import crypto from 'crypto';
+// Minimal storage adapter: attempt to delegate to the repo's `storage` when available.
+// We'll lazily resolve the storage adapter when needed inside async methods.
+let storageAdapter: any = null;
+
+async function resolveStorageAdapter() {
+  if (storageAdapter) return storageAdapter;
+  try {
+    const st = await import('../../storage.js').catch(() => null);
+    storageAdapter = st?.storage ?? null;
+    return storageAdapter;
+  } catch (err) {
+    storageAdapter = null;
+    return null;
+  }
+}
 
 const logger = loggers.api;
 
@@ -325,10 +340,17 @@ export class BillingAutomationService {
   /**
    * Create charge
    */
-  static createCharge(
+  /**
+   * Create charge (async-ready). Returns a Promise to ease migration to DB-backed storage.
+   */
+  static async createCharge(
     chargeData: Omit<Charge, 'id' | 'chargeNumber' | 'status' | 'createdAt'>
-  ): Charge {
-    const chargeNumber = `CHG-${this.chargeCounter++}`;
+  ): Promise<Charge> {
+    // More robust human-readable charge number: date + timestamp + low-scope counter
+    const ts = Date.now();
+    const datePart = new Date(ts).toISOString().slice(0, 10).replace(/-/g, '');
+    const short = (this.chargeCounter++ & 0xffff).toString(16).toUpperCase();
+    const chargeNumber = `CHG-${datePart}-${ts}-${short}`;
 
     const charge: Charge = {
       id: crypto.randomUUID(),
@@ -337,6 +359,18 @@ export class BillingAutomationService {
       ...chargeData,
       createdAt: new Date(),
     };
+
+  // Resolve storage adapter lazily and, if available, delegate to it.
+  await resolveStorageAdapter();
+  if (storageAdapter && typeof storageAdapter.createCharge === 'function') {
+      try {
+        const persisted = await storageAdapter.createCharge(charge);
+        logger.info({ chargeId: persisted.id, chargeNumber: persisted.chargeNumber, amount: persisted.chargeAmount }, 'Charge created (storage)');
+        return persisted;
+      } catch (err) {
+        logger.warn({ err }, 'Storage adapter failed — falling back to in-memory');
+      }
+    }
 
     this.charges.set(charge.id, charge);
 
@@ -348,7 +382,10 @@ export class BillingAutomationService {
   /**
    * Auto-capture charges from encounter
    */
-  static autoCaptureCharges(
+  /**
+   * Auto-capture charges (async-ready). Returns Promise<Charge[]>
+   */
+  static async autoCaptureCharges(
     encounterId: string,
     patientId: string,
     providerId: string,
@@ -359,13 +396,13 @@ export class BillingAutomationService {
       diagnosisCodes: string[];
     }[],
     createdBy: string
-  ): Charge[] {
+  ): Promise<Charge[]> {
     const charges: Charge[] = [];
 
     // Get default fee schedule
     const feeSchedule = Array.from(this.feeSchedules.values()).find((fs) => fs.active);
 
-    procedures.forEach((procedure) => {
+    for (const procedure of procedures) {
       // Lookup charge amount from fee schedule
       let chargeAmount = 0;
       if (feeSchedule) {
@@ -383,7 +420,7 @@ export class BillingAutomationService {
         chargeAmount = 10000; // Default $100
       }
 
-      const charge = this.createCharge({
+      const charge = await this.createCharge({
         patientId,
         encounterId,
         providerId,
@@ -396,7 +433,7 @@ export class BillingAutomationService {
       });
 
       charges.push(charge);
-    });
+    }
 
     logger.info({ encounterId, chargeCount: charges.length }, 'Charges auto-captured');
 
@@ -870,7 +907,13 @@ export class BillingAutomationService {
     caseId: string,
     activity: Omit<CollectionsActivity, 'id' | 'caseId' | 'activityDate'>
   ): CollectionsActivity {
-    return this.recordCollectionsActivity(caseId, activity);
+    // ensure activityDate is provided
+    const payload = {
+      ...activity,
+      activityDate: new Date(),
+    } as Omit<CollectionsActivity, 'id' | 'caseId'>;
+
+    return this.recordCollectionsActivity(caseId, payload);
   }
 
   /**

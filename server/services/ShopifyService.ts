@@ -605,5 +605,31 @@ export class ShopifyService {
   }
 }
 
+// Backwards-compatible service object used by routes via dynamic import
+export const shopifyService = {
+  async getSyncStatus(companyId: string) {
+    const stores = await ShopifyService.getStores(companyId);
+    return {
+      storeCount: stores.length,
+      stores: stores.map((s: any) => ({ id: s.id, shopifyDomain: s.shopifyDomain, status: s.status })),
+    };
+  },
+
+  async verifyConnection(opts: { shopUrl: string; accessToken: string; apiVersion?: string }) {
+    try {
+      await ShopifyService.makeShopifyRequest({ storeDomain: opts.shopUrl, accessToken: opts.accessToken, apiVersion: opts.apiVersion }, 'GET', '/admin/api/shop.json');
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || String(err) };
+    }
+  },
+
+  async syncCustomers(companyId: string, user: any) {
+    // Minimal placeholder implementation: caller should implement full sync logic.
+    // For now, return a safe, typed response indicating no-op.
+    return { synced: 0, message: 'syncCustomers not implemented in this environment' } as const;
+  }
+};
+
 // Export class instance for convenience
 export const shopifyService = ShopifyService;

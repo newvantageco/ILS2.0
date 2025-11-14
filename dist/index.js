@@ -525,7 +525,7 @@ __export(schema_exports, {
   workflows: () => workflows
 });
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, jsonb, index, pgEnum, integer, decimal, numeric, boolean, date, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, jsonb, index, pgEnum, integer, decimal, numeric, real, boolean, date, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 var roleEnum, subscriptionPlanEnum, sessions, accountStatusEnum, orderStatusEnum, analyticsEventTypeEnum, emailTypeEnum, emailStatusEnum, emailEventTypeEnum, qualityIssueTypeEnum, claimStatusEnum, claimTypeEnum, servicePlaceEnum, payerTypeEnum, claimSubmissionMethodEnum, batchStatusEnum, appealStatusEnum, measureTypeEnum, measureDomainEnum, analyticsEvents, qualityIssues, returns, createReturnSchema, updateReturnStatusSchema, nonAdapts, createNonAdaptSchema, updateNonAdaptStatusSchema, poStatusEnum, documentTypeEnum, consultPriorityEnum, examinationStatusEnum, equipmentStatusEnum, maintenanceTypeEnum, equipment, orderTimeline, dicomReadings, invoiceStatusEnum, paymentMethodEnum, productTypeEnum, notificationTypeEnum, notificationSeverityEnum, notificationTargetTypeEnum, notifications, companyTypeEnum, companyStatusEnum, companies, subscriptionPlans, stripePaymentIntents, subscriptionHistory, dispenseRecords, companySupplierRelationships, aiConversationStatusEnum, aiMessageRoleEnum, aiConversations, aiMessages, aiKnowledgeBase, aiLearningData, aiFeedback, aiModelVersions, aiModelDeployments, masterTrainingDatasets, trainingDataAnalytics, companyAiSettings, aiTrainingJobs, aiDeploymentQueue, users, userRoles, permissions, rolePermissions, userCustomPermissions, dynamicRoles, dynamicRolePermissions, userDynamicRoles, roleChangeAudit, auditEventTypeEnum, auditLogs, patients, orders, consultLogs, patientActivityTypeEnum, patientActivityLog, purchaseOrders, poLineItems, technicalDocuments, organizationSettings, userPreferences, eyeExaminations, prescriptions, testRooms, testRoomBookings, calibrationRecords, remoteSessions, gocComplianceChecks, prescriptionTemplates, clinicalProtocols, products, invoices, invoiceLineItems, adaptAlertSeverityEnum, rxFrameLensAnalytics, prescriptionAlerts, eciProductSalesAnalytics, biRecommendations, upsertUserSchema, insertPatientSchema, insertOrderSchema, updateOrderStatusSchema, insertConsultLogSchema, insertPatientActivityLogSchema, insertPurchaseOrderSchema, insertPOLineItemSchema, insertTechnicalDocumentSchema, updatePOStatusSchema, insertSupplierSchema, updateSupplierSchema, updateOrganizationSettingsSchema, updateUserPreferencesSchema, insertEyeExaminationSchema, insertPrescriptionSchema, insertProductSchema, insertInvoiceSchema, insertInvoiceLineItemSchema, createPrescriptionAlertSchema, updatePrescriptionAlertSchema, createBIRecommendationSchema, updateBIRecommendationSchema, nlpIntentTagEnum, limsClinicalAnalytics, nlpClinicalAnalysis, ecpCatalogData, aiDispensingRecommendations, prescriptionDataSchema, clinicalNotesInputSchema, ecpCatalogUploadSchema, aiAnalysisRequestSchema, recommendationTierSchema, aiRecommendationResponseSchema, insertCompanySchema, updateCompanySchema, insertCompanySupplierRelationshipSchema, insertAiConversationSchema, updateAiConversationSchema, insertAiMessageSchema, insertAiKnowledgeBaseSchema, updateAiKnowledgeBaseSchema, insertAiLearningDataSchema, updateAiLearningDataSchema, insertAiFeedbackSchema, insertPermissionSchema, updatePermissionSchema, insertRolePermissionSchema, insertUserCustomPermissionSchema, insertDynamicRoleSchema, updateDynamicRoleSchema, insertDynamicRolePermissionSchema, insertUserDynamicRoleSchema, insertRoleChangeAuditSchema, insertAuditLogSchema, insertTestRoomSchema, updateTestRoomSchema, insertTestRoomBookingSchema, updateTestRoomBookingSchema, insertGocComplianceCheckSchema, updateGocComplianceCheckSchema, insertPrescriptionTemplateSchema, updatePrescriptionTemplateSchema, insertClinicalProtocolSchema, updateClinicalProtocolSchema, posTransactions, posTransactionItems, pdfTemplates, insertPosTransactionSchema, updatePosTransactionSchema, insertPosTransactionItemSchema, insertPdfTemplateSchema, updatePdfTemplateSchema, movementTypeEnum, inventoryMovements, productVariants, lowStockAlerts, emailTemplates, emailLogs, emailTrackingEvents, insertInventoryMovementSchema, insertProductVariantSchema, updateProductVariantSchema, insertLowStockAlertSchema, insertEmailTemplateSchema, updateEmailTemplateSchema, insertEmailLogSchema, insertEmailTrackingEventSchema, aiNotificationTypeEnum, aiNotificationPriorityEnum, aiNotifications, insertAiNotificationSchema, updateAiNotificationSchema, aiPoStatusEnum, aiPurchaseOrders, aiPurchaseOrderItems, insertAiPurchaseOrderSchema, insertAiPurchaseOrderItemSchema, forecastHorizonEnum, forecastMethodEnum, demandForecasts, seasonalPatterns, forecastAccuracyMetrics, insertDemandForecastSchema, insertSeasonalPatternSchema, insertForecastAccuracyMetricSchema, relationshipTypeEnum, connectionStatusEnum, companyRelationships, connectionRequests, companyProfiles, insertCompanyRelationshipSchema, insertConnectionRequestSchema, insertCompanyProfileSchema, marketInsights, platformStatistics, aggregatedMetrics, eventLog, webhookSubscriptions, webhookDeliveries, faceShapeEnum, frameStyleEnum, frameMaterialEnum, patientFaceAnalysis, frameCharacteristics, frameRecommendations, frameRecommendationAnalytics, createFaceAnalysisSchema, createFrameCharacteristicsSchema, insertMarketInsightSchema, insertPlatformStatisticSchema, insertAggregatedMetricSchema, insertEventLogSchema, insertWebhookSubscriptionSchema, insertWebhookDeliverySchema, nhsGosClaimTypeEnum, nhsClaimStatusEnum, nhsVoucherTypeEnum, nhsExemptionReasonEnum, nhsPractitioners, nhsContractDetails, nhsClaims, nhsVouchers, nhsPatientExemptions, nhsPayments, createNhsPractitionerSchema, createNhsClaimSchema, createNhsVoucherSchema, clWearingScheduleEnum, clReplacementScheduleEnum, clLensTypeEnum, clDesignEnum, clFitAssessmentEnum, clAftercareStatusEnum, contactLensAssessments, contactLensFittings, contactLensPrescriptions, contactLensAftercare, contactLensInventory, contactLensOrders, shopifyStoreStatusEnum, shopifyStores, shopifyOrderSyncStatusEnum, shopifyOrders, prescriptionVerificationStatusEnum, prescriptionUploads, shopifyProducts, shopifyWebhooks, insurancePayers, insuranceClaims, claimLineItems, claimBatches, claimAppeals, claimERAs, qualityMeasures, measureCalculations, starRatings, qualityGapAnalyses, qualityDashboards, insertPayerSchema, updatePayerSchema, insertClaimSchema, updateClaimSchema, insertClaimLineItemSchema, updateClaimLineItemSchema, insertClaimBatchSchema, updateClaimBatchSchema, insertClaimAppealSchema, updateClaimAppealSchema, insertClaimERASchema, updateClaimERASchema, insertQualityMeasureSchema, updateQualityMeasureSchema, insertMeasureCalculationSchema, updateMeasureCalculationSchema, insertStarRatingSchema, updateStarRatingSchema, insertQualityGapAnalysisSchema, updateQualityGapAnalysisSchema, insertQualityDashboardSchema, updateQualityDashboardSchema, riskLevelEnum, riskCategoryEnum, assessmentStatusEnum, socialDeterminantCategoryEnum, socialDeterminantStatusEnum, severityEnum, riskScores, healthRiskAssessments, predictiveModels, predictiveAnalyses, socialDeterminants, riskStratificationCohorts, insertRiskScoreSchema, insertHealthRiskAssessmentSchema, insertPredictiveModelSchema, insertPredictiveAnalysisSchema, insertSocialDeterminantSchema, insertRiskStratificationCohortSchema, communicationChannelEnum, messageStatusEnum, messagePriorityEnum, messageCategoryEnum, recipientTypeEnum, messageTemplates, messages, unsubscribes, insertMessageTemplateSchema, insertMessageSchema, insertUnsubscribeSchema, campaignStatusEnum, campaignTypeEnum, campaignFrequencyEnum, abTestVariantEnum, segmentOperatorEnum, audienceSegments, campaigns, campaignRecipients, insertAudienceSegmentSchema, insertCampaignSchema, insertCampaignRecipientSchema, alertSeverityEnum, interactionSeverityEnum, confidenceLevelEnum, clinicalAlertTypeEnum, recommendationStrengthEnum, evidenceQualityEnum, labStatusEnum, diagnosticUrgencyEnum, drugs, drugInteractions, clinicalGuidelines, clinicalAlerts, treatmentRecommendations, diagnosticSuggestions, insertDrugSchema, insertDrugInteractionSchema, insertClinicalGuidelineSchema, insertClinicalAlertSchema, insertTreatmentRecommendationSchema, insertDiagnosticSuggestionSchema, workflowTriggerEnum, workflowActionTypeEnum, workflowStatusEnum, workflowInstanceStatusEnum, workflows, workflowInstances, workflowRunCounts, insertWorkflowSchema, insertWorkflowInstanceSchema, insertWorkflowRunCountSchema, predictionConfidenceEnum, mlModelTypeEnum, mlModelStatusEnum, riskTypeEnum, readmissionTimeframeEnum, mlModels, riskStratifications, readmissionPredictions, noShowPredictions, diseaseProgressionPredictions, treatmentOutcomePredictions, insertMlModelSchema, insertRiskStratificationSchema, insertReadmissionPredictionSchema, insertNoShowPredictionSchema, insertDiseaseProgressionPredictionSchema, insertTreatmentOutcomePredictionSchema, appointmentStatusEnum, cancelledByEnum, appointmentTypes, providerAvailability, appointmentBookings, insertAppointmentTypeSchema, insertProviderAvailabilitySchema, insertAppointmentBookingSchema, medicalRecordTypeEnum, conversationStatusEnum, messageSenderTypeEnum, portalPaymentStatusEnum, medicalRecords, portalConversations, portalMessages, portalPayments, insertMedicalRecordSchema, insertPortalConversationSchema, insertPortalMessageSchema, insertPortalPaymentSchema, carePlanStatusEnum, carePlanCategoryEnum, careGoalStatusEnum, careInterventionTypeEnum, careInterventionStatusEnum, reviewFrequencyEnum, careTeamStatusEnum, careTeamMemberStatusEnum, careGapCategoryEnum, careGapSeverityEnum, careGapStatusEnum, transitionTypeEnum, transitionStatusEnum, medicationActionEnum, coordinationTaskTypeEnum, coordinationTaskPriorityEnum, coordinationTaskStatusEnum, outreachTypeEnum, outreachStatusEnum, outreachContactResultEnum, carePlans, careTeams, careGaps, transitionsOfCare, careCoordinationTasks, patientOutreach, insertCarePlanSchema, insertCareTeamSchema, insertCareGapSchema, insertTransitionOfCareSchema, insertCareCoordinationTaskSchema, insertPatientOutreachSchema, registryCriteriaTypeEnum, criteriaOperatorEnum, registryEnrollmentStatusEnum, programCriteriaTypeEnum, programInterventionTypeEnum, interventionDeliveryMethodEnum, measurementFrequencyEnum, programEnrollmentStatusEnum, engagementTypeEnum, outcomeTypeEnum, preventiveCareTypeEnum, preventiveCareStatusEnum, preventiveCareImportanceEnum, diseaseRegistries, registryEnrollments, diseaseManagementPrograms, programEnrollments, clinicalMetrics, patientEngagement, outcomeTracking, preventiveCareRecommendations, insertDiseaseRegistrySchema, insertRegistryEnrollmentSchema, insertDiseaseManagementProgramSchema, insertProgramEnrollmentSchema, insertClinicalMetricSchema, insertPatientEngagementSchema, insertOutcomeTrackingSchema, insertPreventiveCareRecommendationSchema, qiProjectStatusEnum, qiPriorityEnum, qiInterventionTypeEnum, qiInterventionStatusEnum, qiImpactEnum, pdsaCycleStatusEnum, pdsaDecisionEnum, piTrendEnum, piStatusEnum, evidenceLevelEnum, adoptionStatusEnum, qualityImprovementProjects, pdsaCycles, careBundles, bundleCompliance, performanceImprovements, bestPractices, insertQualityImprovementProjectSchema, insertPDSACycleSchema, insertCareBundleSchema, insertBundleComplianceSchema, insertPerformanceImprovementSchema, insertBestPracticeSchema;
@@ -61106,9 +61106,9 @@ var IntegrationMonitoring = class {
    */
   static async checkHealth(integration, recentJobs) {
     const now = /* @__PURE__ */ new Date();
-    let healthCheck = this.healthChecks.get(integration.id);
-    if (!healthCheck) {
-      healthCheck = {
+    let healthCheck2 = this.healthChecks.get(integration.id);
+    if (!healthCheck2) {
+      healthCheck2 = {
         integrationId: integration.id,
         integrationName: integration.name,
         status: "unknown",
@@ -61122,20 +61122,20 @@ var IntegrationMonitoring = class {
         issues: []
       };
     }
-    healthCheck.lastCheckedAt = now;
-    healthCheck.issues = [];
+    healthCheck2.lastCheckedAt = now;
+    healthCheck2.issues = [];
     if (integration.status !== "active") {
-      healthCheck.status = "unhealthy";
-      healthCheck.issues.push(`Integration is ${integration.status}`);
-      this.healthChecks.set(integration.id, healthCheck);
-      return healthCheck;
+      healthCheck2.status = "unhealthy";
+      healthCheck2.issues.push(`Integration is ${integration.status}`);
+      this.healthChecks.set(integration.id, healthCheck2);
+      return healthCheck2;
     }
     const completedJobs = recentJobs.filter((j) => j.status === "completed" || j.status === "failed");
     if (completedJobs.length === 0) {
-      healthCheck.status = "unknown";
-      healthCheck.issues.push("No recent sync activity");
-      this.healthChecks.set(integration.id, healthCheck);
-      return healthCheck;
+      healthCheck2.status = "unknown";
+      healthCheck2.issues.push("No recent sync activity");
+      this.healthChecks.set(integration.id, healthCheck2);
+      return healthCheck2;
     }
     const totalJobs = completedJobs.length;
     const failedJobs = completedJobs.filter((j) => j.status === "failed");
@@ -61144,7 +61144,7 @@ var IntegrationMonitoring = class {
     const uptime = successfulJobs.length / totalJobs * 100;
     const durations = completedJobs.filter((j) => j.duration).map((j) => j.duration);
     const avgResponseTime = durations.length > 0 ? durations.reduce((sum5, d) => sum5 + d, 0) / durations.length : 0;
-    healthCheck.metrics = {
+    healthCheck2.metrics = {
       uptime,
       avgResponseTime,
       errorRate,
@@ -61153,28 +61153,28 @@ var IntegrationMonitoring = class {
     const lastJob = recentJobs[0];
     if (lastJob) {
       if (lastJob.status === "completed") {
-        healthCheck.lastSuccessAt = lastJob.completedAt;
-        healthCheck.consecutiveFailures = 0;
+        healthCheck2.lastSuccessAt = lastJob.completedAt;
+        healthCheck2.consecutiveFailures = 0;
       } else if (lastJob.status === "failed") {
-        healthCheck.lastFailureAt = lastJob.completedAt;
-        healthCheck.consecutiveFailures++;
+        healthCheck2.lastFailureAt = lastJob.completedAt;
+        healthCheck2.consecutiveFailures++;
       }
     }
-    if (healthCheck.consecutiveFailures >= this.THRESHOLDS.CONSECUTIVE_FAILURES) {
-      healthCheck.status = "unhealthy";
-      healthCheck.issues.push(
-        `${healthCheck.consecutiveFailures} consecutive failures`
+    if (healthCheck2.consecutiveFailures >= this.THRESHOLDS.CONSECUTIVE_FAILURES) {
+      healthCheck2.status = "unhealthy";
+      healthCheck2.issues.push(
+        `${healthCheck2.consecutiveFailures} consecutive failures`
       );
       await this.createAlert({
         integrationId: integration.id,
         severity: "critical",
         type: "sync_failed",
-        message: `Integration has failed ${healthCheck.consecutiveFailures} times consecutively`,
-        details: { consecutiveFailures: healthCheck.consecutiveFailures }
+        message: `Integration has failed ${healthCheck2.consecutiveFailures} times consecutively`,
+        details: { consecutiveFailures: healthCheck2.consecutiveFailures }
       });
     } else if (errorRate >= this.THRESHOLDS.ERROR_RATE_CRITICAL) {
-      healthCheck.status = "unhealthy";
-      healthCheck.issues.push(`High error rate: ${errorRate.toFixed(1)}%`);
+      healthCheck2.status = "unhealthy";
+      healthCheck2.issues.push(`High error rate: ${errorRate.toFixed(1)}%`);
       await this.createAlert({
         integrationId: integration.id,
         severity: "critical",
@@ -61183,8 +61183,8 @@ var IntegrationMonitoring = class {
         details: { errorRate }
       });
     } else if (errorRate >= this.THRESHOLDS.ERROR_RATE_WARNING) {
-      healthCheck.status = "degraded";
-      healthCheck.issues.push(`Elevated error rate: ${errorRate.toFixed(1)}%`);
+      healthCheck2.status = "degraded";
+      healthCheck2.issues.push(`Elevated error rate: ${errorRate.toFixed(1)}%`);
       await this.createAlert({
         integrationId: integration.id,
         severity: "warning",
@@ -61193,8 +61193,8 @@ var IntegrationMonitoring = class {
         details: { errorRate }
       });
     } else if (avgResponseTime > this.THRESHOLDS.SLOW_RESPONSE_MS) {
-      healthCheck.status = "degraded";
-      healthCheck.issues.push(
+      healthCheck2.status = "degraded";
+      healthCheck2.issues.push(
         `Slow response time: ${avgResponseTime.toFixed(0)}ms`
       );
       await this.createAlert({
@@ -61205,22 +61205,22 @@ var IntegrationMonitoring = class {
         details: { avgResponseTime }
       });
     } else if (uptime < this.THRESHOLDS.UPTIME_WARNING) {
-      healthCheck.status = "degraded";
-      healthCheck.issues.push(`Low uptime: ${uptime.toFixed(1)}%`);
+      healthCheck2.status = "degraded";
+      healthCheck2.issues.push(`Low uptime: ${uptime.toFixed(1)}%`);
     } else {
-      healthCheck.status = "healthy";
+      healthCheck2.status = "healthy";
     }
-    this.healthChecks.set(integration.id, healthCheck);
+    this.healthChecks.set(integration.id, healthCheck2);
     logger31.info(
       {
         integrationId: integration.id,
-        status: healthCheck.status,
+        status: healthCheck2.status,
         uptime,
         errorRate
       },
       "Health check completed"
     );
-    return healthCheck;
+    return healthCheck2;
   }
   /**
    * Get health check for an integration
@@ -61822,8 +61822,8 @@ router42.post("/hl7/parse", authenticateUser, async (req, res) => {
 router42.get("/:integrationId/health", authenticateUser, async (req, res) => {
   try {
     const { integrationId } = req.params;
-    const healthCheck = IntegrationMonitoring.getHealthCheck(integrationId);
-    if (!healthCheck) {
+    const healthCheck2 = IntegrationMonitoring.getHealthCheck(integrationId);
+    if (!healthCheck2) {
       return res.status(404).json({
         success: false,
         error: "Health check not found"
@@ -61831,7 +61831,7 @@ router42.get("/:integrationId/health", authenticateUser, async (req, res) => {
     }
     res.json({
       success: true,
-      healthCheck
+      healthCheck: healthCheck2
     });
   } catch (error) {
     logger32.error({ error, integrationId: req.params.integrationId }, "Failed to get health check");
@@ -82457,6 +82457,17 @@ if (process.env.NODE_ENV === "development") {
 app.use("/api", auditMiddleware);
 app.use(performanceMonitoring);
 app.use(requestTimeout(3e4));
+var healthCheck = (req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+    environment: app.get("env"),
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
+  });
+};
+app.get("/health", healthCheck);
+app.get("/api/health", healthCheck);
 (async () => {
   try {
     if (!process.env.DATABASE_URL) {
@@ -82466,17 +82477,6 @@ app.use(requestTimeout(3e4));
     }
     log("Starting server initialization...");
     await ensureMasterUser();
-    const healthCheck = (req, res) => {
-      res.json({
-        status: "ok",
-        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-        environment: app.get("env"),
-        uptime: process.uptime(),
-        memory: process.memoryUsage()
-      });
-    };
-    app.get("/health", healthCheck);
-    app.get("/api/health", healthCheck);
     if (process.env.METRICS_ENABLED === "true") {
       app.get("/metrics", metricsHandler);
       console.log("\u2705 Metrics endpoint enabled at /metrics");

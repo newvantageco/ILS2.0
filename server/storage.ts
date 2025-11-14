@@ -434,6 +434,43 @@ export interface IStorage {
   getAiFeedbackByMessage(messageId: string): Promise<AiFeedback[]>;
   getAiFeedbackByCompany(companyId: string): Promise<AiFeedback[]>;
 
+  // ============== AI/ML MODEL MANAGEMENT METHODS ==============
+  // Model versions
+  createAIModelVersion(data: InsertAIModelVersion): Promise<AIModelVersion>;
+  getAIModelVersion(id: string, companyId: string): Promise<AIModelVersion | undefined>;
+  getAIModelVersions(companyId: string, filters?: any): Promise<AIModelVersion[]>;
+  updateAIModelVersion(id: string, companyId: string, data: Partial<AIModelVersion>): Promise<AIModelVersion | undefined>;
+
+  // Model deployments
+  createAIModelDeployment(data: InsertAIModelDeployment): Promise<AIModelDeployment>;
+  getAIModelDeployment(id: string, companyId: string): Promise<AIModelDeployment | undefined>;
+  getAIModelDeployments(companyId: string, filters?: any): Promise<AIModelDeployment[]>;
+  updateAIModelDeployment(id: string, companyId: string, data: Partial<AIModelDeployment>): Promise<AIModelDeployment | undefined>;
+
+  // Training jobs
+  createAITrainingJob(data: InsertAITrainingJob): Promise<AITrainingJob>;
+  getAITrainingJob(id: string, companyId: string): Promise<AITrainingJob | undefined>;
+  getAITrainingJobs(companyId: string, filters?: any): Promise<AITrainingJob[]>;
+  updateAITrainingJob(id: string, companyId: string, data: Partial<AITrainingJob>): Promise<AITrainingJob | undefined>;
+
+  // Master training datasets
+  createMasterTrainingDataset(data: InsertMasterTrainingDataset): Promise<MasterTrainingDataset>;
+  getMasterTrainingDataset(id: string, companyId: string): Promise<MasterTrainingDataset | undefined>;
+  getMasterTrainingDatasets(companyId: string, filters?: any): Promise<MasterTrainingDataset[]>;
+  updateMasterTrainingDataset(id: string, companyId: string, data: Partial<MasterTrainingDataset>): Promise<MasterTrainingDataset | undefined>;
+
+  // ============== CLINICAL DECISION SUPPORT - storage helpers ==============
+  getDrug(id: string, companyId: string): Promise<Drug | undefined>;
+  getDrugs(companyId: string): Promise<Drug[]>;
+  getDrugInteractions(companyId: string, filters?: any): Promise<DrugInteraction[]>;
+
+  getClinicalGuideline(id: string, companyId: string): Promise<ClinicalGuideline | undefined>;
+  createTreatmentRecommendation(recommendation: InsertTreatmentRecommendation): Promise<TreatmentRecommendation>;
+
+  createClinicalAlert(alert: InsertClinicalAlert): Promise<ClinicalAlert>;
+  getClinicalAlerts(companyId: string, filters?: any): Promise<ClinicalAlert[]>;
+  updateClinicalAlert(id: string, companyId: string, data: Partial<ClinicalAlert>): Promise<ClinicalAlert | undefined>;
+
   // ============== RCM (REVENUE CYCLE MANAGEMENT) METHODS ==============
   // Insurance Payers
   createInsurancePayer(payer: InsertInsurancePayer): Promise<InsurancePayer>;
@@ -650,7 +687,7 @@ export interface IStorage {
   // Audience Segments
   createAudienceSegment(segment: InsertAudienceSegment): Promise<AudienceSegment>;
   getAudienceSegment(id: string, companyId: string): Promise<AudienceSegment | undefined>;
-  getAudienceSegments(companyId: string, filters?: { type?: string; active?: boolean }): Promise<AudienceSegment[]>;
+  getAudienceSegments(companyId: string, filters?: { name?: string; type?: string; active?: boolean }): Promise<AudienceSegment[]>;
   updateAudienceSegment(id: string, companyId: string, updates: Partial<AudienceSegment>): Promise<AudienceSegment | undefined>;
 
   // Campaigns

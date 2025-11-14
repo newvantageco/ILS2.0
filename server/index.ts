@@ -245,8 +245,10 @@ app.get('/api/health', healthCheck);
     app.use(errorHandler);
 
     // Initialize server configuration
-    const port = parseInt(process.env.PORT || '3000', 10);
-    const host = process.env.HOST || '127.0.0.1';
+    // Railway sets $PORT automatically; default to 5000 for local development
+    const port = parseInt(process.env.PORT || '5000', 10);
+    // Listen on 0.0.0.0 for Railway compatibility; defaults to localhost for dev
+    const host = process.env.HOST || (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1');
     
     // Initialize Redis before starting server
     const redisConnected = await initializeRedis();

@@ -815,6 +815,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sub: newUser.id,
           id: newUser.id
         },
+        // Top-level email for compatibility with session/user typing
+        email: newUser.email || '',
         local: true,
       }, (err) => {
         if (err) {

@@ -158,6 +158,8 @@ router.post('/signup', async (req: Request, res: Response) => {
         sub: newUser.id,
         id: newUser.id,
       },
+      // Top-level email for compatibility with session/user typing
+      email: newUser.email || '',
       local: true,
     }, (err) => {
       if (err) {

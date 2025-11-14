@@ -9,6 +9,9 @@ import Redis from 'ioredis';
  */
 
 // Redis connection configuration
+// Railway provides REDIS_URL if Redis plugin is enabled
+// Format: redis://user:password@host:port/db or rediss:// for TLS
+const REDIS_URL = process.env.REDIS_URL;
 const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
 const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379');
 const REDIS_PASSWORD = process.env.REDIS_PASSWORD;
@@ -22,28 +25,29 @@ let redisAvailable = false;
  */
 export async function initializeRedis(): Promise<boolean> {
   try {
-    redisConnection = new Redis({
-      host: REDIS_HOST,
-      port: REDIS_PORT,
-      password: REDIS_PASSWORD,
-      db: REDIS_DB,
-      maxRetriesPerRequest: null,
-      enableReadyCheck: false,
-      retryStrategy: (times) => {
-        // Stop retrying after 3 attempts
-        if (times > 3) {
-          console.warn('Redis connection failed after 3 attempts. Queue system will operate in fallback mode.');
-          return null;
+    // Use REDIS_URL from Railway if available, otherwise use individual config
+    const redisConfig = REDIS_URL
+      ? { 
+          url: REDIS_URL,
+          maxRetriesPerRequest: null,
+          enableReadyCheck: false,
         }
-        // Exponential backoff: 50ms, 100ms, 200ms
-        return Math.min(times * 50, 200);
-      },
-    });
+      : {
+          host: REDIS_HOST,
+          port: REDIS_PORT,
+          password: REDIS_PASSWORD,
+          db: REDIS_DB,
+          maxRetriesPerRequest: null,
+          enableReadyCheck: false,
+        };
+
+    redisConnection = new Redis(redisConfig as any);
+    redisConnection.setMaxListeners(100);
 
     // Test connection
     await redisConnection.ping();
     redisAvailable = true;
-    console.log('✅ Redis connected successfully');
+    console.log('✅ Redis connected successfully', REDIS_URL ? '(from REDIS_URL)' : '(from REDIS_HOST/PORT)');
     
     // Initialize queues after successful connection
     initializeQueues();
