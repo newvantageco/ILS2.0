@@ -334,10 +334,10 @@ app.get('/api/health', healthCheck);
             if (typeof eventBus.reclaimAndProcess === 'function') {
               setInterval(() => {
                 for (const s of reclaimStreams) {
-                  eventBus.reclaimAndProcess(s, idleMs).catch((err: any) => logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Reclaim error'););
+                  eventBus.reclaimAndProcess(s, idleMs).catch((err: any) => logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Reclaim error'));
                 }
               }, intervalMs);
-              logger.info({}, '✅ Redis Streams reclaimer scheduled for streams: ${reclaimStreams.join(', ')}');
+              logger.info({}, `✅ Redis Streams reclaimer scheduled for streams: ${reclaimStreams.join(', ')}`);
             } else {
               logger.info({}, 'ℹ️  Redis Streams event bus does not expose reclaimAndProcess; skipping reclaimer scheduling');
             }

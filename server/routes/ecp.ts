@@ -5,6 +5,7 @@
 
 import { Router, type Request, type Response } from "express";
 import { db } from "../../db";
+import logger from "../utils/logger";
 import { 
   testRooms, 
   testRoomBookings,
@@ -58,7 +59,7 @@ router.get('/test-rooms', isAuthenticated, async (req: any, res: Response) => {
 
     res.json(rooms);
   } catch (error) {
-    console.error("Error fetching test rooms:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error fetching test rooms");
     res.status(500).json({ message: "Failed to fetch test rooms" });
   }
 });
@@ -96,7 +97,7 @@ router.post('/test-rooms', isAuthenticated, async (req: any, res: Response) => {
     const [room] = await db.insert(testRooms).values(validation.data).returning();
     res.status(201).json(room);
   } catch (error) {
-    console.error("Error creating test room:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error creating test room");
     res.status(500).json({ message: "Failed to create test room" });
   }
 });
@@ -137,7 +138,7 @@ router.put('/test-rooms/:id', isAuthenticated, async (req: any, res: Response) =
 
     res.json(room);
   } catch (error) {
-    console.error("Error updating test room:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error updating test room");
     res.status(500).json({ message: "Failed to update test room" });
   }
 });
@@ -178,7 +179,7 @@ router.delete('/test-rooms/:id', isAuthenticated, async (req: any, res: Response
 
     res.json({ message: "Test room deactivated", room });
   } catch (error) {
-    console.error("Error deleting test room:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error deleting test room");
     res.status(500).json({ message: "Failed to delete test room" });
   }
 });
@@ -213,7 +214,7 @@ router.get('/test-room-bookings', isAuthenticated, async (req: any, res: Respons
 
     res.json(bookings);
   } catch (error) {
-    console.error("Error fetching test room bookings:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error fetching test room bookings");
     res.status(500).json({ message: "Failed to fetch test room bookings" });
   }
 });
@@ -249,7 +250,7 @@ router.get('/test-room-bookings/date/:date/room/:roomId', isAuthenticated, async
 
     res.json(bookings);
   } catch (error) {
-    console.error("Error fetching bookings for date:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error fetching bookings for date");
     res.status(500).json({ message: "Failed to fetch bookings" });
   }
 });
@@ -257,29 +258,28 @@ router.get('/test-room-bookings/date/:date/room/:roomId', isAuthenticated, async
 // Create test room booking
 router.post('/test-room-bookings', isAuthenticated, async (req: any, res: Response) => {
   try {
-    console.log('=== Booking Creation Request ===');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    logger.info({ body: req.body }, "Booking creation request");
     
     const userId = req.user?.claims?.sub;
     if (!userId) {
-      console.log('Error: No userId found');
+      logger.info({}, "Error: No userId found");
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!user.length || !user[0].companyId) {
-      console.log('Error: User not found or no companyId');
+      logger.info({}, "Error: User not found or no companyId");
       return res.status(403).json({ message: "User must belong to a company" });
     }
 
     // Check for booking conflicts
     const { testRoomId, startTime, endTime, bookingDate, appointmentType, patientId } = req.body;
     
-    console.log('Extracted fields:', { testRoomId, startTime, endTime, bookingDate, appointmentType, patientId });
+    logger.info({ testRoomId, startTime, endTime, bookingDate, appointmentType, patientId }, "Extracted fields");
     
     // Validate required fields
     if (!testRoomId || !startTime || !endTime || !bookingDate) {
-      console.log('Error: Missing required fields');
+      logger.info({}, "Error: Missing required fields");
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -296,17 +296,17 @@ router.post('/test-room-bookings', isAuthenticated, async (req: any, res: Respon
         )
       );
 
-    console.log('Conflicts found:', conflicts.length);
+    logger.info({ conflictCount: conflicts.length }, "Conflicts found");
 
     if (conflicts.length > 0) {
-      console.log('Conflict details:', conflicts);
+      logger.info({ conflicts }, "Conflict details");
       return res.status(409).json({ 
         message: "Booking conflict detected", 
         conflicts 
       });
     }
 
-    console.log('Creating booking with values:', {
+    logger.info({
       testRoomId,
       bookingDate: new Date(bookingDate),
       startTime: new Date(startTime),
@@ -316,7 +316,7 @@ router.post('/test-room-bookings', isAuthenticated, async (req: any, res: Respon
       userId,
       status: 'scheduled',
       isRemoteSession: false,
-    });
+    }, "Creating booking with values");
 
     const [booking] = await db
       .insert(testRoomBookings)
@@ -333,12 +333,13 @@ router.post('/test-room-bookings', isAuthenticated, async (req: any, res: Respon
       })
       .returning();
 
-    console.log('Booking created successfully:', booking.id);
+    logger.info({ bookingId: booking.id }, "Booking created successfully");
     res.status(201).json(booking);
   } catch (error) {
-    console.error("=== Error creating booking ===");
-    console.error("Error details:", error);
-    console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+    logger.error({ 
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : 'No stack trace'
+    }, "Error creating booking");
     res.status(500).json({ 
       message: "Failed to create booking", 
       error: error instanceof Error ? error.message : String(error) 
@@ -367,7 +368,7 @@ router.patch('/test-room-bookings/:id/status', isAuthenticated, async (req: any,
 
     res.json(booking);
   } catch (error) {
-    console.error("Error updating booking status:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error updating booking status");
     res.status(500).json({ message: "Failed to update booking status" });
   }
 });
@@ -386,7 +387,7 @@ router.delete('/test-room-bookings/:id', isAuthenticated, async (req: any, res: 
 
     res.json({ message: "Booking deleted" });
   } catch (error) {
-    console.error("Error deleting booking:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error deleting booking");
     res.status(500).json({ message: "Failed to delete booking" });
   }
 });
@@ -414,7 +415,7 @@ router.get('/equipment', isAuthenticated, async (req: any, res: Response) => {
 
     res.json(equipmentList);
   } catch (error) {
-    console.error("Error fetching equipment:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error fetching equipment");
     res.status(500).json({ message: "Failed to fetch equipment" });
   }
 });
@@ -444,7 +445,7 @@ router.get('/calibration-records', isAuthenticated, async (req: any, res: Respon
 
     res.json(records);
   } catch (error) {
-    console.error("Error fetching calibration records:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error fetching calibration records");
     res.status(500).json({ message: "Failed to fetch calibration records" });
   }
 });
@@ -467,7 +468,7 @@ router.post('/calibration-records', isAuthenticated, async (req: any, res: Respo
 
     res.status(201).json(record);
   } catch (error) {
-    console.error("Error recording calibration:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error recording calibration");
     res.status(500).json({ message: "Failed to record calibration" });
   }
 });
@@ -501,7 +502,7 @@ router.get('/remote-sessions', isAuthenticated, async (req: any, res: Response) 
 
     res.json(sessions);
   } catch (error) {
-    console.error("Error fetching remote sessions:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error fetching remote sessions");
     res.status(500).json({ message: "Failed to fetch remote sessions" });
   }
 });
@@ -535,7 +536,7 @@ router.post('/remote-sessions', isAuthenticated, async (req: any, res: Response)
 
     res.status(201).json(session);
   } catch (error) {
-    console.error("Error creating remote session:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error creating remote session");
     res.status(500).json({ message: "Failed to create remote session" });
   }
 });
@@ -570,7 +571,7 @@ router.patch('/remote-sessions/:id/status', isAuthenticated, async (req: any, re
 
     res.json(session);
   } catch (error) {
-    console.error("Error updating session status:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error updating session status");
     res.status(500).json({ message: "Failed to update session status" });
   }
 });
@@ -599,7 +600,7 @@ router.get('/goc-compliance', isAuthenticated, async (req: any, res: Response) =
 
     res.json(checks);
   } catch (error) {
-    console.error("Error fetching GOC compliance checks:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error fetching GOC compliance checks");
     res.status(500).json({ message: "Failed to fetch GOC compliance checks" });
   }
 });
@@ -632,7 +633,7 @@ router.post('/goc-compliance', isAuthenticated, async (req: any, res: Response) 
     const [check] = await db.insert(gocComplianceChecks).values(validation.data).returning();
     res.status(201).json(check);
   } catch (error) {
-    console.error("Error creating GOC compliance check:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error creating GOC compliance check");
     res.status(500).json({ message: "Failed to create GOC compliance check" });
   }
 });
@@ -663,7 +664,7 @@ router.get('/prescription-templates', isAuthenticated, async (req: any, res: Res
 
     res.json(templates);
   } catch (error) {
-    console.error("Error fetching prescription templates:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error fetching prescription templates");
     res.status(500).json({ message: "Failed to fetch prescription templates" });
   }
 });
@@ -702,7 +703,7 @@ router.post('/prescription-templates', isAuthenticated, async (req: any, res: Re
     const [template] = await db.insert(prescriptionTemplates).values(validation.data).returning();
     res.status(201).json(template);
   } catch (error) {
-    console.error("Error creating prescription template:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error creating prescription template");
     res.status(500).json({ message: "Failed to create prescription template" });
   }
 });
@@ -738,7 +739,7 @@ router.put('/prescription-templates/:id', isAuthenticated, async (req: any, res:
 
     res.json(template);
   } catch (error) {
-    console.error("Error updating prescription template:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error updating prescription template");
     res.status(500).json({ message: "Failed to update prescription template" });
   }
 });
@@ -773,7 +774,7 @@ router.post('/prescription-templates/:id/use', isAuthenticated, async (req: any,
 
     res.json(template);
   } catch (error) {
-    console.error("Error updating template usage:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error updating template usage");
     res.status(500).json({ message: "Failed to update template usage" });
   }
 });
@@ -801,7 +802,7 @@ router.get('/clinical-protocols', isAuthenticated, async (req: any, res: Respons
 
     res.json(protocols);
   } catch (error) {
-    console.error("Error fetching clinical protocols:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error fetching clinical protocols");
     res.status(500).json({ message: "Failed to fetch clinical protocols" });
   }
 });

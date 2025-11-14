@@ -162,7 +162,7 @@ class QueueService {
 
       this.queueEvents.set(queueType, queueEvents);
 
-      logger.info({}, '  ✓ Queue '${queueType}' created');
+      logger.info({}, `  ✓ Queue '${queueType}' created`);
     } catch (error) {
       logger.error({ queue: queueType, error: error instanceof Error ? error.message : String(error) }, 'Failed to create queue');
     }
@@ -463,7 +463,7 @@ class QueueService {
     }
 
     await queue.pause();
-    logger.info({}, 'Queue '${queueType}' paused');
+    logger.info({}, `Queue '${queueType}' paused`);
   }
 
   /**
@@ -480,7 +480,7 @@ class QueueService {
     }
 
     await queue.resume();
-    logger.info({}, 'Queue '${queueType}' resumed');
+    logger.info({}, `Queue '${queueType}' resumed`);
   }
 
   /**
@@ -501,7 +501,7 @@ class QueueService {
     }
 
     const cleaned = await queue.clean(grace, 1000, status);
-    logger.info({}, 'Cleaned ${cleaned.length} ${status} jobs from '${queueType}' queue');
+    logger.info({}, `Cleaned ${cleaned.length} ${status} jobs from '${queueType}' queue`);
     
     return cleaned.length;
   }
@@ -515,19 +515,19 @@ class QueueService {
     // Close all workers
     for (const [queueType, worker] of Array.from(this.workers.entries())) {
       await worker.close();
-      logger.info({}, '  ✓ Worker '${queueType}' closed');
+      logger.info({}, `  ✓ Worker '${queueType}' closed`);
     }
 
     // Close all queue event listeners
     for (const [queueType, events] of Array.from(this.queueEvents.entries())) {
       await events.close();
-      logger.info({}, '  ✓ Queue events '${queueType}' closed');
+      logger.info({}, `  ✓ Queue events '${queueType}' closed`);
     }
 
     // Close all queues
     for (const [queueType, queue] of Array.from(this.queues.entries())) {
       await queue.close();
-      logger.info({}, '  ✓ Queue '${queueType}' closed');
+      logger.info({}, `  ✓ Queue '${queueType}' closed`);
     }
 
     logger.info({}, '✓ All job queues shut down');
