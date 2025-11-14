@@ -206,7 +206,7 @@ export function responseTimeMiddleware(
     }
 
     // Call original end
-    return originalEnd.apply(this, args);
+    return originalEnd.apply(this, args as Parameters<typeof originalEnd>);
   };
 
   next();

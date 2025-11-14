@@ -3,7 +3,7 @@
  * Endpoints for data export, deletion, and privacy rights
  */
 
-import { Router, Response } from 'express';
+import { Router, Response, RequestHandler } from 'express';
 import { isAuthenticated, AuthenticatedRequest } from '../middleware/auth';
 import { gdprService } from '../services/GDPRService';
 import { z } from 'zod';
@@ -26,7 +26,7 @@ const deletionSchema = z.object({
  * GET /api/gdpr/export
  * Export all user data (GDPR Article 20 - Right to Data Portability)
  */
-router.get('/export', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/export', isAuthenticated, (async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
 
@@ -41,13 +41,13 @@ router.get('/export', isAuthenticated, async (req: AuthenticatedRequest, res: Re
     console.error('GDPR export error:', error);
     res.status(500).json({ error: 'Failed to export user data' });
   }
-});
+}) as RequestHandler);
 
 /**
  * POST /api/gdpr/delete
  * Request data deletion (GDPR Article 17 - Right to Erasure)
  */
-router.post('/delete', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/delete', isAuthenticated, (async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
 
@@ -78,13 +78,13 @@ router.post('/delete', isAuthenticated, async (req: AuthenticatedRequest, res: R
     console.error('GDPR deletion error:', error);
     res.status(500).json({ error: 'Failed to delete user data' });
   }
-});
+}) as RequestHandler);
 
 /**
  * GET /api/gdpr/consent
  * Get current consent settings
  */
-router.get('/consent', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/consent', isAuthenticated, (async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
 
@@ -95,13 +95,13 @@ router.get('/consent', isAuthenticated, async (req: AuthenticatedRequest, res: R
     console.error('Get consent error:', error);
     res.status(500).json({ error: 'Failed to get consent status' });
   }
-});
+}) as RequestHandler);
 
 /**
  * POST /api/gdpr/consent
  * Update consent settings (GDPR Article 7 - Conditions for consent)
  */
-router.post('/consent', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/consent', isAuthenticated, (async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
 
@@ -124,7 +124,7 @@ router.post('/consent', isAuthenticated, async (req: AuthenticatedRequest, res: 
     console.error('Update consent error:', error);
     res.status(500).json({ error: 'Failed to update consent' });
   }
-});
+}) as RequestHandler);
 
 /**
  * GET /api/gdpr/compliance-report

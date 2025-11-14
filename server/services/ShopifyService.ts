@@ -604,3 +604,6 @@ export class ShopifyService {
     return webhook;
   }
 }
+
+// Export class instance for convenience
+export const shopifyService = ShopifyService;

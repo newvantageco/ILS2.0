@@ -56,7 +56,7 @@ export function apiAnalyticsMiddleware(
     }
 
     // Call original end
-    return originalEnd.apply(res, [chunk, ...args]);
+    return originalEnd.apply(res, [chunk, ...args] as Parameters<typeof originalEnd>);
   };
 
   next();

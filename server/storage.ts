@@ -641,10 +641,10 @@ export interface IStorage {
   updateMessage(id: string, companyId: string, updates: Partial<Message>): Promise<Message | undefined>;
 
   // Unsubscribes
-  createUnsubscribe(companyId: string, unsubscribe: { recipientId: string; channel: string; category?: string; reason?: string }): Promise<void>;
+  createUnsubscribe(unsubscribe: InsertUnsubscribe): Promise<Unsubscribe>;
   isUnsubscribed(companyId: string, recipientId: string, channel: string, category?: string): Promise<boolean>;
-  getUnsubscribes(companyId: string, filters?: { recipientId?: string; channel?: string }): Promise<any[]>;
-  deleteUnsubscribe(companyId: string, recipientId: string, channel: string, category?: string): Promise<void>;
+  getUnsubscribes(companyId: string, filters?: { recipientId?: string; channel?: string }): Promise<Unsubscribe[]>;
+  deleteUnsubscribe(id: string, companyId: string): Promise<boolean>;
 
   // ============== CAMPAIGN METHODS ==============
   // Audience Segments
@@ -2301,29 +2301,7 @@ export class DbStorage implements IStorage {
       .orderBy(desc(aiModelDeployments.deployedAt));
   }
 
-  async createMasterTrainingDataset(dataset: any) {
-    const [created] = await db
-      .insert(masterTrainingDatasets)
-      .values(dataset)
-      .returning();
-    return created;
-  }
-
-  async getMasterTrainingDatasets(filters: any) {
-    let query = db.select().from(masterTrainingDatasets);
-
-    if (filters.category) {
-      query = query.where(eq(masterTrainingDatasets.category, filters.category)) as any;
-    }
-    if (filters.status) {
-      query = query.where(eq(masterTrainingDatasets.status, filters.status)) as any;
-    }
-    if (filters.modelVersionId) {
-      query = query.where(eq(masterTrainingDatasets.modelVersionId, filters.modelVersionId)) as any;
-    }
-
-    return await query.orderBy(desc(masterTrainingDatasets.createdAt));
-  }
+  // Removed duplicate methods - newer versions with proper types exist below
 
   async getMasterTrainingDataByVersion(versionId: string) {
     return await db
@@ -2331,15 +2309,6 @@ export class DbStorage implements IStorage {
       .from(masterTrainingDatasets)
       .where(eq(masterTrainingDatasets.modelVersionId, versionId))
       .orderBy(desc(masterTrainingDatasets.createdAt));
-  }
-
-  async updateMasterTrainingDataset(id: string, updates: any) {
-    const [updated] = await db
-      .update(masterTrainingDatasets)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(masterTrainingDatasets.id, id))
-      .returning();
-    return updated;
   }
 
   async deleteMasterTrainingDataset(id: string) {

@@ -198,7 +198,7 @@ app.use(requestTimeout(30000));
   await ensureMasterUser();
 
     // Add health check endpoints (both /health and /api/health for Railway compatibility)
-    const healthCheck = (req, res) => {
+    const healthCheck = (req: Request, res: Response) => {
       res.json({
         status: 'ok',
         timestamp: new Date().toISOString(),
