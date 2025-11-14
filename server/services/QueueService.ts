@@ -5,6 +5,7 @@
  */
 
 import { cacheService } from './CacheService';
+import logger from '../utils/logger';
 
 // Optional Bull dependency - gracefully handles if not installed
 let Queue: any;
@@ -17,7 +18,7 @@ try {
   Worker = BullMQ.Worker;
   QueueEvents = BullMQ.QueueEvents;
 } catch (e) {
-  console.warn('bullmq not installed. Job queues unavailable.');
+  logger.warn({}, 'bullmq not installed. Job queues unavailable.');
 }
 
 interface JobData {
@@ -74,8 +75,8 @@ class QueueService {
   private initializeQueues(): void {
     // Check if BullMQ is available
     if (!Queue) {
-      console.log('⚠️  BullMQ not available - job queues disabled');
-      console.log('   Install with: npm install bullmq');
+      logger.info({}, '⚠️  BullMQ not available - job queues disabled');
+      logger.info({}, '   Install with: npm install bullmq');
       return;
     }
 
@@ -100,10 +101,10 @@ class QueueService {
       }
 
       this.isEnabled = true;
-      console.log('✓ Job queues initialized successfully');
+      logger.info({}, '✓ Job queues initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize job queues:', error);
-      console.log('⚠️  Job queues disabled - operations will run synchronously');
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Failed to initialize job queues:');
+      logger.info({}, '⚠️  Job queues disabled - operations will run synchronously');
     }
   }
 
@@ -145,11 +146,11 @@ class QueueService {
 
       // Set up error handling
       worker.on('failed', (job: any, error: Error) => {
-        console.error(`Job ${job.id} in queue ${queueType} failed:`, error);
+        logger.error({ jobId: job.id, queue: queueType, error: error instanceof Error ? error.message : String(error) }, 'Job failed');
       });
 
       worker.on('completed', (job: any) => {
-        console.log(`Job ${job.id} in queue ${queueType} completed`);
+        logger.info({}, 'Job ${job.id} in queue ${queueType} completed');
       });
 
       this.workers.set(queueType, worker);
@@ -161,9 +162,9 @@ class QueueService {
 
       this.queueEvents.set(queueType, queueEvents);
 
-      console.log(`  ✓ Queue '${queueType}' created`);
+      logger.info({}, '  ✓ Queue '${queueType}' created');
     } catch (error) {
-      console.error(`Failed to create queue '${queueType}':`, error);
+      logger.error({ queue: queueType, error: error instanceof Error ? error.message : String(error) }, 'Failed to create queue');
     }
   }
 
@@ -193,7 +194,7 @@ class QueueService {
   private async processJob(queueType: JobType, job: any): Promise<any> {
     const data = job.data;
 
-    console.log(`Processing ${queueType} job ${job.id} for company ${data.companyId}`);
+    logger.info({}, 'Processing ${queueType} job ${job.id} for company ${data.companyId}');
 
     switch (queueType) {
       case 'email':
@@ -219,7 +220,7 @@ class QueueService {
   private async processEmailJob(data: EmailJobData): Promise<void> {
     // Import email service dynamically to avoid circular dependencies
     // In production, you'd have an EmailService
-    console.log(`Sending email to ${data.to}: ${data.subject}`);
+    logger.info({}, 'Sending email to ${data.to}: ${data.subject}');
     
     // Simulate email sending
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -233,7 +234,7 @@ class QueueService {
    * Process report generation job
    */
   private async processReportJob(data: ReportJobData): Promise<string> {
-    console.log(`Generating ${data.reportType} report for company ${data.companyId}`);
+    logger.info({}, 'Generating ${data.reportType} report for company ${data.companyId}');
     
     // Simulate report generation
     await new Promise(resolve => setTimeout(resolve, 5000));
@@ -246,7 +247,7 @@ class QueueService {
    * Process AI operation job
    */
   private async processAIJob(data: AIJobData): Promise<any> {
-    console.log(`Running AI operation: ${data.operation} for company ${data.companyId}`);
+    logger.info({}, 'Running AI operation: ${data.operation} for company ${data.companyId}');
     
     // Simulate AI processing
     await new Promise(resolve => setTimeout(resolve, 3000));
@@ -259,7 +260,7 @@ class QueueService {
    * Process data export job
    */
   private async processExportJob(data: ExportJobData): Promise<string> {
-    console.log(`Exporting ${data.exportType} for company ${data.companyId}`);
+    logger.info({}, 'Exporting ${data.exportType} for company ${data.companyId}');
     
     // Simulate export
     await new Promise(resolve => setTimeout(resolve, 10000));
@@ -272,7 +273,7 @@ class QueueService {
    * Process notification job
    */
   private async processNotificationJob(data: NotificationJobData): Promise<void> {
-    console.log(`Sending ${data.type} notification to ${data.recipient}`);
+    logger.info({}, 'Sending ${data.type} notification to ${data.recipient}');
     
     // Simulate notification sending
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -282,7 +283,7 @@ class QueueService {
    * Process cleanup job
    */
   private async processCleanupJob(data: JobData): Promise<void> {
-    console.log(`Running cleanup for company ${data.companyId}`);
+    logger.info({}, 'Running cleanup for company ${data.companyId}');
     
     // Cleanup old temp files, expired cache, etc.
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -302,7 +303,7 @@ class QueueService {
   ): Promise<string> {
     if (!this.isEnabled) {
       // If queues disabled, run synchronously (fallback)
-      console.warn(`Queue disabled - running ${queueType} job synchronously`);
+      logger.warn({ queueType }, 'Queue disabled - running job synchronously');
       await this.processJob(queueType, { data, id: 'sync' });
       return 'sync';
     }
@@ -330,7 +331,7 @@ class QueueService {
     pattern: string // Cron pattern, e.g., '0 * * * *' for every hour
   ): Promise<void> {
     if (!this.isEnabled) {
-      console.warn('Queues disabled - cannot schedule recurring jobs');
+      logger.warn({}, 'Queues disabled - cannot schedule recurring jobs');
       return;
     }
 
@@ -345,7 +346,7 @@ class QueueService {
       },
     });
 
-    console.log(`Scheduled recurring ${queueType} job: ${pattern}`);
+    logger.info({}, 'Scheduled recurring ${queueType} job: ${pattern}');
   }
 
   /**
@@ -462,7 +463,7 @@ class QueueService {
     }
 
     await queue.pause();
-    console.log(`Queue '${queueType}' paused`);
+    logger.info({}, 'Queue '${queueType}' paused');
   }
 
   /**
@@ -479,7 +480,7 @@ class QueueService {
     }
 
     await queue.resume();
-    console.log(`Queue '${queueType}' resumed`);
+    logger.info({}, 'Queue '${queueType}' resumed');
   }
 
   /**
@@ -500,7 +501,7 @@ class QueueService {
     }
 
     const cleaned = await queue.clean(grace, 1000, status);
-    console.log(`Cleaned ${cleaned.length} ${status} jobs from '${queueType}' queue`);
+    logger.info({}, 'Cleaned ${cleaned.length} ${status} jobs from '${queueType}' queue');
     
     return cleaned.length;
   }
@@ -509,27 +510,27 @@ class QueueService {
    * Graceful shutdown
    */
   async shutdown(): Promise<void> {
-    console.log('Shutting down job queues...');
+    logger.info({}, 'Shutting down job queues...');
 
     // Close all workers
     for (const [queueType, worker] of Array.from(this.workers.entries())) {
       await worker.close();
-      console.log(`  ✓ Worker '${queueType}' closed`);
+      logger.info({}, '  ✓ Worker '${queueType}' closed');
     }
 
     // Close all queue event listeners
     for (const [queueType, events] of Array.from(this.queueEvents.entries())) {
       await events.close();
-      console.log(`  ✓ Queue events '${queueType}' closed`);
+      logger.info({}, '  ✓ Queue events '${queueType}' closed');
     }
 
     // Close all queues
     for (const [queueType, queue] of Array.from(this.queues.entries())) {
       await queue.close();
-      console.log(`  ✓ Queue '${queueType}' closed`);
+      logger.info({}, '  ✓ Queue '${queueType}' closed');
     }
 
-    console.log('✓ All job queues shut down');
+    logger.info({}, '✓ All job queues shut down');
   }
 
   /**

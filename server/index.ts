@@ -39,6 +39,7 @@ import "./workers/notificationWorker";
 import "./workers/aiWorker";
 import { initializeRedis, getRedisConnection } from "./queue/config";
 import { storage } from "./storage";
+import logger from "./utils/logger";
 // Order-created workers (Strangler refactor) - register explicitly below
 import { registerOrderCreatedLimsWorker } from "./workers/OrderCreatedLimsWorker";
 import { registerOrderCreatedPdfWorker } from "./workers/OrderCreatedPdfWorker";
@@ -202,8 +203,8 @@ app.get('/api/health', healthCheck);
   try {
     // Validate required environment variables
     if (!process.env.DATABASE_URL) {
-      console.error("FATAL ERROR: DATABASE_URL environment variable is not set");
-      console.error("Please configure DATABASE_URL in your deployment secrets");
+      logger.error({}, 'FATAL ERROR: DATABASE_URL environment variable is not set');
+      logger.error({}, 'Please configure DATABASE_URL in your deployment secrets');
       process.exit(1);
     }
 
@@ -214,7 +215,7 @@ app.get('/api/health', healthCheck);
     // Metrics endpoint (optional)
     if (process.env.METRICS_ENABLED === 'true') {
       app.get('/metrics', metricsHandler);
-      console.log('✅ Metrics endpoint enabled at /metrics');
+      logger.info({}, '✅ Metrics endpoint enabled at /metrics');
     }
 
     // Routes will be registered, then static files served at the end
@@ -278,9 +279,9 @@ app.get('/api/health', healthCheck);
             apiKey: process.env.LIMS_API_KEY,
             webhookSecret: process.env.LIMS_WEBHOOK_SECRET || "",
           });
-          console.log("✅ LIMS client initialized for background workers");
+          logger.info({}, '✅ LIMS client initialized for background workers');
         } else {
-          console.log("ℹ️  LIMS integration disabled (optional - configure LIMS_API_BASE_URL and LIMS_API_KEY in .env to enable)");
+          logger.info({}, 'ℹ️  LIMS integration disabled (optional - configure LIMS_API_BASE_URL and LIMS_API_KEY in .env to enable)');
         }
 
         // Register order-created workers. Pass storage + limsClient where required.
@@ -306,14 +307,14 @@ app.get('/api/health', healthCheck);
                   body: JSON.stringify(payload),
                 });
               } catch (err) {
-                console.error('Analytics POST failed', err);
+                logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Analytics POST failed');
                 throw err;
               }
             },
           };
-          console.log('✅ Analytics webhook client configured');
+          logger.info({}, '✅ Analytics webhook client configured');
         } else {
-          console.log('ℹ️  No analytics webhook configured; analytics will be logged locally');
+          logger.info({}, 'ℹ️  No analytics webhook configured; analytics will be logged locally');
         }
 
         registerOrderCreatedAnalyticsWorker(storage, { analyticsClient });
@@ -333,12 +334,12 @@ app.get('/api/health', healthCheck);
             if (typeof eventBus.reclaimAndProcess === 'function') {
               setInterval(() => {
                 for (const s of reclaimStreams) {
-                  eventBus.reclaimAndProcess(s, idleMs).catch((err: any) => console.error('Reclaim error', err));
+                  eventBus.reclaimAndProcess(s, idleMs).catch((err: any) => logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Reclaim error'););
                 }
               }, intervalMs);
-              console.log(`✅ Redis Streams reclaimer scheduled for streams: ${reclaimStreams.join(', ')}`);
+              logger.info({}, '✅ Redis Streams reclaimer scheduled for streams: ${reclaimStreams.join(', ')}');
             } else {
-              console.log('ℹ️  Redis Streams event bus does not expose reclaimAndProcess; skipping reclaimer scheduling');
+              logger.info({}, 'ℹ️  Redis Streams event bus does not expose reclaimAndProcess; skipping reclaimer scheduling');
             }
             // Start periodic PEL sampler if metrics are enabled
             if (process.env.METRICS_ENABLED === 'true') {
@@ -348,25 +349,25 @@ app.get('/api/health', healthCheck);
                 if (redisClient) {
                   const pelInterval = Number(process.env.REDIS_STREAMS_PEL_SAMPLER_INTERVAL_MS || '60000');
                   startPelSampler(redisClient, reclaimStreams, process.env.REDIS_STREAMS_GROUP || 'ils_group', pelInterval);
-                  console.log('✅ Redis Streams PEL sampler started');
+                  logger.info({}, '✅ Redis Streams PEL sampler started');
                 } else {
-                  console.log('⚠️  Redis client not available for PEL sampler');
+                  logger.info({}, '⚠️  Redis client not available for PEL sampler');
                 }
               } catch (err) {
-                console.error('Failed to start PEL sampler', err);
+                logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Failed to start PEL sampler');
               }
             }
           } catch (err) {
-            console.error('Failed to schedule Redis Streams reclaimer', err);
+            logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Failed to schedule Redis Streams reclaimer');
           }
         }
 
-        console.log("✅ Order-created background workers registered");
+        logger.info({}, '✅ Order-created background workers registered');
       } catch (err) {
-        console.error("Failed to register order background workers:", err);
+        logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Failed to register order background workers:');
       }
     } else {
-      console.log("ℹ️  Background workers are disabled via WORKERS_ENABLED=false");
+      logger.info({}, 'ℹ️  Background workers are disabled via WORKERS_ENABLED=false');
     }
     
     // Initialize WebSocket server for real-time lab dashboard
@@ -431,9 +432,9 @@ app.get('/api/health', healthCheck);
 
     // Handle server errors
     server.on('error', (error: NodeJS.ErrnoException) => {
-      console.error("Server error:", error);
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Server error:');
       if (error.code === 'EADDRINUSE') {
-        console.error(`Port ${port} is already in use`);
+        logger.error({ port }, 'Port is already in use');
       }
       process.exit(1);
     });
@@ -467,14 +468,14 @@ app.get('/api/health', healthCheck);
           log('Graceful shutdown completed');
           process.exit(0);
         } catch (error) {
-          console.error('Error during graceful shutdown:', error);
+          logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error during graceful shutdown:');
           process.exit(1);
         }
       });
 
       // Force close after 10 seconds if graceful shutdown fails
       setTimeout(() => {
-        console.error('Forced shutdown after timeout');
+        logger.error({}, 'Forced shutdown after timeout');
         process.exit(1);
       }, 10000);
     };
@@ -483,16 +484,16 @@ app.get('/api/health', healthCheck);
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
   } catch (error) {
-    console.error("FATAL ERROR during server initialization:");
-    console.error(error);
+    logger.error({}, 'FATAL ERROR during server initialization:');
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Initialization error');
     
     // Provide helpful error messages based on error type
     if (error instanceof Error) {
-      console.error("Error message:", error.message);
-      console.error("Error stack:", error.stack);
+      logger.error({ message: error.message }, 'Error message');
+      logger.error({ stack: error.stack }, 'Error stack');
       
       if (error.message.includes("DATABASE_URL")) {
-        console.error("\nPlease ensure DATABASE_URL is configured in deployment secrets");
+        logger.error({}, '\nPlease ensure DATABASE_URL is configured in deployment secrets');
       }
     }
     

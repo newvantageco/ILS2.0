@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { storage } from '../storage';
 import { EventBus } from '../events/EventBus';
 import crypto from 'crypto';
+import logger from '../utils/logger';
 
 /**
  * AI Job Data Types
@@ -62,14 +63,14 @@ export function createAIWorker() {
   const connection = getRedisConnection();
   
   if (!connection) {
-    console.warn('⚠️  AI worker not started - Redis not available');
+    logger.warn({ error: 'Redis not available' }, 'AI worker not started');
     return null;
   }
 
   const worker = new Worker<AIJobData>(
     'ai-processing',
     async (job: Job<AIJobData>) => {
-      console.log(`🤖 Processing AI job ${job.id}: ${job.data.type}`);
+      logger.info({ jobId: job.id, jobType: job.data.type }, 'Processing AI job');
       
       try {
         let result;
@@ -99,10 +100,10 @@ export function createAIWorker() {
             throw new Error(`Unknown AI job type: ${(job.data as any).type}`);
         }
         
-        console.log(`✅ AI job ${job.id} completed successfully`);
+        logger.info({ jobId: job.id }, 'AI job completed successfully');
         return { success: true, result, completedAt: new Date().toISOString() };
       } catch (error) {
-        console.error(`❌ AI job ${job.id} failed:`, error);
+        logger.error({ jobId: job.id, error: error instanceof Error ? error.message : String(error) }, 'AI job failed');
         throw error;
       }
     },
@@ -119,18 +120,18 @@ export function createAIWorker() {
 
   // Worker event handlers
   worker.on('completed', (job) => {
-    console.log(`✅ AI job ${job.id} completed`);
+    logger.info({ jobId: job?.id }, 'AI job completed');
   });
 
   worker.on('failed', (job, err) => {
-    console.error(`❌ AI job ${job?.id} failed:`, err.message);
+    logger.error({ error: err instanceof Error ? err.message : String(err) }, 'AI job failed');
   });
 
   worker.on('error', (err) => {
-    console.error('AI worker error:', err);
+    logger.error({ error: err instanceof Error ? err.message : String(err) }, 'AI worker error');
   });
 
-  console.log('✅ AI worker started');
+  logger.info({}, 'AI worker started');
   return worker;
 }
 
@@ -150,7 +151,7 @@ async function processDailyBriefing(data: DailyBriefingJobData): Promise<any> {
     throw new Error(`Company ${companyId} not found`);
   }
 
-  console.log(`📊 Generating daily briefing for ${company.name} on ${date}`);
+  logger.info({ company: company.name, date }, 'Generating daily briefing');
 
   try {
     // Get actual daily metrics from storage
@@ -282,10 +283,10 @@ ${metrics.completedOrders} completed | ${metrics.ordersInProduction} in producti
       }
     }
 
-    console.log(`✅ Daily briefing generated for ${company.name}: ${highlights.length} highlights, ${recommendations.length} recommendations`);
+    logger.info({ company: company.name, highlightCount: highlights.length, recommendationCount: recommendations.length }, 'Daily briefing generated');
     return briefing;
   } catch (error) {
-    console.error(`❌ Error generating daily briefing: ${error}`);
+    logger.error({ company: company.name, error: error instanceof Error ? error.message : String(error) }, 'Error generating daily briefing');
     throw error;
   }
 }
@@ -305,7 +306,7 @@ async function processDemandForecast(data: DemandForecastJobData): Promise<any> 
     throw new Error(`Company ${companyId} not found`);
   }
 
-  console.log(`📈 Generating ${forecastDays}-day demand forecast for ${company.name}`);
+  logger.info({ company: company.name, forecastDays }, 'Generating demand forecast');
 
   try {
     // Get inventory data
@@ -403,10 +404,10 @@ async function processDemandForecast(data: DemandForecastJobData): Promise<any> 
       }
     }
 
-    console.log(`✅ Demand forecast generated for ${company.name}: ${predictions.length} products analyzed`);
+    logger.info({ company: company.name, productCount: predictions.length }, 'Demand forecast generated');
     return forecast;
   } catch (error) {
-    console.error(`❌ Error generating demand forecast: ${error}`);
+    logger.error({ company: company.name, error: error instanceof Error ? error.message : String(error) }, 'Error generating demand forecast');
     throw error;
   }
 }
@@ -426,7 +427,7 @@ async function processAnomalyDetection(data: AnomalyDetectionJobData): Promise<a
     throw new Error(`Company ${companyId} not found`);
   }
 
-  console.log(`🔍 Running anomaly detection for ${company.name}: ${metricType} (${timeRange})`);
+  logger.info({ company: company.name, metricType, timeRange }, 'Running anomaly detection');
 
   try {
     let timeSeries: Array<{ date: string; value: number }> = [];
@@ -535,10 +536,10 @@ async function processAnomalyDetection(data: AnomalyDetectionJobData): Promise<a
       }
     }
 
-    console.log(`✅ Anomaly detection completed for ${company.name}: ${anomalies.length} anomalies found`);
+    logger.info({ company: company.name, anomalyCount: anomalies.length }, 'Anomaly detection completed');
     return results;
   } catch (error) {
-    console.error(`❌ Error in anomaly detection: ${error}`);
+    logger.error({ company: company.name, error: error instanceof Error ? error.message : String(error) }, 'Error in anomaly detection');
     throw error;
   }
 }
@@ -558,8 +559,7 @@ async function processInsightGeneration(data: InsightGenerationJobData): Promise
     throw new Error(`Company ${companyId} not found`);
   }
 
-  console.log(`💡 Generating ${insightType} insights for ${company.name}`);
-  console.log(`   Period: ${periodStart} to ${periodEnd}`);
+  logger.info({ company: company.name, insightType, periodStart, periodEnd }, 'Generating insights');
 
   try {
     const periodMetrics = await storage.getPeriodMetrics(companyId, periodStart, periodEnd);
@@ -714,10 +714,10 @@ async function processInsightGeneration(data: InsightGenerationJobData): Promise
       }
     }
 
-    console.log(`✅ Insights generated for ${company.name}: ${insights.length} insights`);
+    logger.info({ company: company.name, insightCount: insights.length }, 'Insights generated');
     return result;
   } catch (error) {
-    console.error(`❌ Error generating insights: ${error}`);
+    logger.error({ company: company.name, error: error instanceof Error ? error.message : String(error) }, 'Error generating insights');
     throw error;
   }
 }
@@ -741,8 +741,7 @@ async function processChatResponse(data: ChatResponseJobData): Promise<any> {
     throw new Error('User or company not found');
   }
 
-  console.log(`💬 Processing chat response for ${user.email} (${company.name})`);
-  console.log(`   Message: ${message.substring(0, 50)}...`);
+  logger.info({ userEmail: user.email, company: company.name }, 'Processing chat response');
 
   try {
     // Get conversation context
@@ -787,10 +786,10 @@ async function processChatResponse(data: ChatResponseJobData): Promise<any> {
       metadata: JSON.stringify({ confidence: 0.85, model: 'contextual-responder' }),
     } as any);
 
-    console.log(`✅ Chat response generated for ${user.email}`);
+    logger.info({ userEmail: user.email }, 'Chat response generated');
     return chatResponse;
   } catch (error) {
-    console.error(`❌ Error generating chat response: ${error}`);
+    logger.error({ userEmail: user.email, error: error instanceof Error ? error.message : String(error) }, 'Error generating chat response');
     throw error;
   }
 }
@@ -848,7 +847,7 @@ function generateContextualResponse(message: string, context: any): string {
  * Useful for development or when Redis is unavailable
  */
 export async function processAIImmediate(data: AIJobData): Promise<any> {
-  console.log(`⚠️  [FALLBACK] Processing AI job immediately: ${data.type}`);
+  logger.info({ jobType: data.type }, '[FALLBACK] Processing AI job immediately');
   
   switch (data.type) {
     case 'daily-briefing':

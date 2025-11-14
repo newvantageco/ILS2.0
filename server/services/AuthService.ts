@@ -108,10 +108,10 @@ export class AuthService {
     this.jwksUrl = config.jwksUrl;
     this.audience = config.audience;
 
-    this.logger.info("Auth service initialized", {
-      provider: this.provider,
-      issuer: this.issuer,
-    });
+    this.logger.info(
+      { provider: this.provider, issuer: this.issuer },
+      'Auth service initialized'
+    );
   }
 
   /**
@@ -146,7 +146,7 @@ export class AuthService {
 
       return keys;
     } catch (error) {
-      this.logger.error("Failed to fetch JWKS", error as Error);
+      this.logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Failed to fetch JWKS');
       throw error;
     }
   }
@@ -169,9 +169,10 @@ export class AuthService {
 
       return payload;
     } catch (error) {
-      this.logger.warn("Token decoding failed", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      this.logger.warn(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Token decoding failed'
+      );
       throw error;
     }
   }
@@ -217,10 +218,13 @@ export class AuthService {
 
       return claims;
     } catch (error) {
-      this.logger.warn("Token verification failed", {
-        error: error instanceof Error ? error.message : String(error),
-        provider: this.provider,
-      });
+      this.logger.warn(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          provider: this.provider,
+        },
+        'Token verification failed'
+      );
       throw error;
     }
   }
@@ -299,12 +303,93 @@ export class AuthService {
 
         next();
       } catch (error) {
-        this.logger.warn("Token verification middleware failed", {
-          error: error instanceof Error ? error.message : String(error),
-        });
+        this.logger.warn(
+          { error: error instanceof Error ? error.message : String(error) },
+          'Token verification middleware failed'
+        );
         return res.status(401).json({ error: "Invalid token" });
       }
     };
+  }
+
+  /**
+   * Refresh token using AWS Cognito token endpoint
+   */
+  private async refreshCognitoToken(
+    refreshToken: string
+  ): Promise<{ token: string; refreshToken?: string } | null> {
+    try {
+      const tokenEndpoint = `${this.issuer}/oauth2/token`;
+      
+      const response = await fetch(tokenEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          client_id: this.clientId,
+          client_secret: this.clientSecret || '',
+          refresh_token: refreshToken,
+        }).toString(),
+      });
+
+      if (!response.ok) {
+        this.logger.error({ status: response.status }, `Cognito token refresh failed`);
+        return null;
+      }
+
+      const data = await response.json();
+      this.logger.info({ provider: 'cognito' }, 'Token refreshed successfully');
+      return {
+        token: data.access_token,
+        refreshToken: data.refresh_token || refreshToken,
+      };
+    } catch (error) {
+      this.logger.error({ error: error instanceof Error ? error.message : String(error), provider: 'cognito' }, 'Cognito token refresh error');
+      return null;
+    }
+  }
+
+  /**
+   * Refresh token using Auth0 token endpoint
+   */
+  private async refreshAuth0Token(
+    refreshToken: string
+  ): Promise<{ token: string; refreshToken?: string } | null> {
+    try {
+      // Auth0 token endpoint is typically at: https://{domain}/oauth/token
+      const tokenEndpoint = `${this.issuer}/oauth/token`;
+      
+      const response = await fetch(tokenEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: this.clientId,
+          client_secret: this.clientSecret,
+          audience: this.audience,
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+        }),
+      });
+
+      if (!response.ok) {
+        this.logger.error({ status: response.status }, `Auth0 token refresh failed`);
+        return null;
+      }
+
+      const data = await response.json();
+      this.logger.info({ provider: 'auth0' }, 'Token refreshed successfully');
+      return {
+        token: data.access_token,
+        refreshToken: data.refresh_token || refreshToken,
+      };
+    } catch (error) {
+      this.logger.error({ error: error instanceof Error ? error.message : String(error), provider: 'auth0' }, 'Auth0 token refresh error');
+      return null;
+    }
   }
 
   /**
@@ -326,31 +411,35 @@ export class AuthService {
         return null;
       }
 
-      this.logger.info("Token refresh needed", {
-        provider: this.provider,
-        expiresIn,
-      });
+      this.logger.info({ provider: this.provider, expiresIn }, 'Token refresh needed');
 
       // For Cognito/Auth0, refresh token endpoint should be called at provider level
       // This is a signal to the application that refresh is needed
       if (!refreshToken) {
         // No refresh token available - client should re-authenticate
+        this.logger.warn({ provider: this.provider }, 'No refresh token available');
         return null;
       }
 
-      // TODO: Implement provider-specific token refresh
-      // This would involve calling:
-      // - Cognito: token endpoint with refresh_token grant
-      // - Auth0: /oauth/token with refresh_token grant
-      
-      // For now, return null to indicate refresh needed via provider
-      this.logger.warn("Token refresh requested - client should refresh via provider", {
-        provider: this.provider,
-      });
-      
-      return null;
+      // Implement provider-specific token refresh
+      switch (this.provider) {
+        case "cognito": {
+          return await this.refreshCognitoToken(refreshToken);
+        }
+        case "auth0": {
+          return await this.refreshAuth0Token(refreshToken);
+        }
+        case "local": {
+          // Local auth doesn't need refresh
+          return null;
+        }
+        default: {
+          this.logger.warn({ provider: this.provider }, 'Unknown auth provider for token refresh');
+          return null;
+        }
+      }
     } catch (error) {
-      this.logger.error("Token refresh check failed", error as Error);
+      this.logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Token refresh check failed');
       return null;
     }
   }
@@ -368,9 +457,10 @@ export class AuthService {
       await this.getJwks();
       return true;
     } catch (error) {
-      this.logger.warn("Auth provider health check failed", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      this.logger.warn(
+        { error: error instanceof Error ? error.message : String(error), provider: this.provider },
+        'Auth provider health check failed'
+      );
       return false;
     }
   }
