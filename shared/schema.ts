@@ -8432,3 +8432,102 @@ export type BestPractice = typeof bestPractices.$inferSelect;
 export type InsertBestPractice = typeof bestPractices.$inferInsert;
 
 // ========== End Quality Improvement Tables ==========
+
+// ========== User Feedback & NPS Tables ==========
+
+// Feedback type enum
+export const feedbackTypeEnum = pgEnum("feedback_type", [
+  "general",
+  "feature",
+  "bug",
+  "improvement"
+]);
+
+// Feedback status enum
+export const feedbackStatusEnum = pgEnum("feedback_status", [
+  "new",
+  "reviewed",
+  "in_progress",
+  "resolved",
+  "ignored"
+]);
+
+// NPS category enum
+export const npsCategoryEnum = pgEnum("nps_category", [
+  "promoter",
+  "passive",
+  "detractor"
+]);
+
+// User Feedback table
+export const feedback = pgTable(
+  "feedback",
+  {
+    id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+    type: feedbackTypeEnum("type").notNull(),
+    message: text("message").notNull(),
+    contactEmail: text("contact_email"),
+    context: text("context"), // Page URL or context where feedback was given
+    userAgent: text("user_agent"), // Browser/device info
+    status: feedbackStatusEnum("status").notNull().default("new"),
+    adminNotes: text("admin_notes"), // Internal notes from admin review
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedBy: text("resolved_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdIdx: index("feedback_user_id_idx").on(table.userId),
+    typeIdx: index("feedback_type_idx").on(table.type),
+    statusIdx: index("feedback_status_idx").on(table.status),
+    createdAtIdx: index("feedback_created_at_idx").on(table.createdAt),
+  })
+);
+
+// NPS Surveys table
+export const npsSurveys = pgTable(
+  "nps_surveys",
+  {
+    id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    score: integer("score").notNull(), // 0-10
+    category: npsCategoryEnum("category").notNull(), // Auto-categorized based on score
+    feedback: text("feedback"), // Optional text feedback
+    trigger: text("trigger"), // What triggered this survey (e.g., "10-orders", "30-days")
+    context: text("context"), // Page/feature context
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdIdx: index("nps_user_id_idx").on(table.userId),
+    categoryIdx: index("nps_category_idx").on(table.category),
+    scoreIdx: index("nps_score_idx").on(table.score),
+    createdAtIdx: index("nps_created_at_idx").on(table.createdAt),
+    triggerIdx: index("nps_trigger_idx").on(table.trigger),
+  })
+);
+
+// Zod validation schemas
+export const insertFeedbackSchema = createInsertSchema(feedback).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  resolvedAt: true,
+  resolvedBy: true,
+  adminNotes: true,
+});
+
+export const updateFeedbackSchema = insertFeedbackSchema.partial();
+
+export const insertNPSSurveySchema = createInsertSchema(npsSurveys).omit({
+  id: true,
+  createdAt: true,
+});
+
+// TypeScript types
+export type Feedback = typeof feedback.$inferSelect;
+export type InsertFeedback = typeof feedback.$inferInsert;
+export type NPSSurvey = typeof npsSurveys.$inferSelect;
+export type InsertNPSSurvey = typeof npsSurveys.$inferInsert;
+
+// ========== End User Feedback & NPS Tables ==========

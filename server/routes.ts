@@ -144,11 +144,12 @@ import { registerPaymentRoutes } from "./routes/payments";
 import aiMLRoutes from "./routes/ai-ml";
 import ophthalamicAIRoutes from "./routes/ophthalamicAI";
 import orderTrackingRoutes from "./routes/orderTracking";
-import { 
-  publicApiLimiter, 
-  authLimiter, 
-  signupLimiter, 
-  webhookLimiter, 
+import feedbackRoutes from "./routes/feedback";
+import {
+  publicApiLimiter,
+  authLimiter,
+  signupLimiter,
+  webhookLimiter,
   aiQueryLimiter,
   passwordResetLimiter,
   generalLimiter
@@ -448,6 +449,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Order Tracking routes
   app.use('/api/order-tracking', orderTrackingRoutes);
+
+  // User Feedback & NPS routes
+  app.use('/api', feedbackRoutes);
 
   const FULL_PLAN = "full" as const;
   const FREE_ECP_PLAN = "free_ecp" as const;
