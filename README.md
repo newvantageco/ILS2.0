@@ -38,12 +38,12 @@ While others focus on one piece of the puzzle, ILS 2.0 unifies your entire opera
 ### 🚀 **Production-Ready Capabilities**
 
 #### **Order Management & Production Workflow**
-- ✅ Comprehensive order lifecycle management (draft → submitted → in-production → completed)
-- ✅ Real-time production queue with drag-and-drop job prioritization
-- ✅ Multi-stage quality control checkpoints with automated validation
+- ✅ Comprehensive order lifecycle management (pending → in_production → quality_check → shipped → completed)
+- ✅ Real-time production queue with job prioritization
+- ✅ Quality issue tracking and resolution workflows
 - ✅ Patient record management with prescription tracking
-- ✅ OMA file upload and parsing for digital frame tracing
 - ✅ Consult logging system with technical documentation library
+- ✅ Order timeline tracking with status history
 
 #### **AI & Analytics Platform**
 - ✅ **AI Intelligence Dashboard**: Real-time insights, predictive analytics, anomaly detection
@@ -54,15 +54,10 @@ While others focus on one piece of the puzzle, ILS 2.0 unifies your entire opera
 - ✅ **Python Real Data Integration**: All Python services use live database instead of mock data
 - ✅ **Multi-tenant RAG Queries**: Secure, isolated database queries for AI services
 
-#### **Storage & Archival System** ⭐ NEW
-- ✅ **Soft Deletes**: Archive records instead of permanent deletion - nothing is ever lost
-- ✅ **Historical Snapshots**: Point-in-time data capture for time-travel queries
-- ✅ **Report Archives**: Store expensive reports for instant retrieval
-- ✅ **Comprehensive Audit Trail**: Complete history of all CRUD operations
-- ✅ **Data Export Tracking**: GDPR/HIPAA compliant export logging
-- ✅ **Retention Policies**: Configurable data retention rules (7yr for financial records)
-- ✅ **Full Recovery**: Restore any deleted record, view data at any point in time
-- ✅ **Compliance Ready**: HIPAA, GDPR, SOC 2, ISO 27001 compliant
+#### **Audit & Compliance**
+- ✅ **Comprehensive Audit Trail**: Complete history of all CRUD operations tracked in audit logs
+- ✅ **Retention Policies**: Configurable data retention rules (7yr for financial/clinical records)
+- ✅ **GDPR Support**: Data export capabilities and privacy controls
 
 #### **Supplier & Purchase Order Management**
 - ✅ Full CRUD operations for supplier/vendor management
@@ -82,6 +77,7 @@ While others focus on one piece of the puzzle, ILS 2.0 unifies your entire opera
 - ✅ Tiered subscription plans (Free, Pro, Premium, Enterprise)
 - ✅ Feature-based access control tied to subscription levels
 - ✅ Usage tracking and billing automation
+- ✅ Subscription history and lifecycle management
 
 #### **Background Jobs & Event-Driven Architecture**
 - ✅ BullMQ + Redis for reliable job queuing (email, PDF, notifications, AI tasks)
@@ -127,7 +123,7 @@ While others focus on one piece of the puzzle, ILS 2.0 unifies your entire opera
 | **Drizzle ORM** + **Drizzle-Zod** | Type-safe queries with automatic validation schemas |
 | **Passport.js** | Authentication middleware (OIDC + local strategies) |
 | **BullMQ** + **Redis** | Reliable background job processing |
-| **Socket.io** | WebSocket server for real-time features |
+| **WebSocket (ws)** | Real-time bidirectional communication |
 | **Helmet** + **CORS** | Security middleware |
 | **Express Rate Limit** | DDoS protection and rate limiting |
 
@@ -135,15 +131,20 @@ While others focus on one piece of the puzzle, ILS 2.0 unifies your entire opera
 | Technology | Purpose |
 |------------|---------|
 | **FastAPI** | High-performance async API framework |
-| **TensorFlow.js** / **PyTorch** | Machine learning model training and inference |
 | **Pandas** + **NumPy** | Data analysis and numerical computing |
-| **scikit-learn** | Classical ML algorithms |
-| **Anthropic Claude** / **OpenAI** | LLM integration for AI features |
+| **scikit-learn** | Classical ML algorithms for analytics |
+| **PostgreSQL (psycopg2)** | Direct database access for real-time data |
+
+### **AI/ML Services** (Node.js)
+| Technology | Purpose |
+|------------|---------|
+| **TensorFlow.js** | Machine learning model inference in Node.js |
+| **Anthropic Claude** | LLM integration for AI chat and insights |
+| **OpenAI GPT** | Alternative LLM for AI features |
 
 ### **Infrastructure & DevOps**
 | Technology | Purpose |
 |------------|---------|
-| **npm workspaces** | Monorepo management |
 | **Jest** + **Vitest** | Unit and integration testing |
 | **Playwright** | End-to-end browser testing |
 | **ESBuild** | Fast production bundling |
@@ -152,7 +153,7 @@ While others focus on one piece of the puzzle, ILS 2.0 unifies your entire opera
 | **Node-cron** | Scheduled background tasks |
 
 ### **Shared Contract** (`shared/`)
-- **Drizzle Schema** (90+ tables): Single source of truth for database structure
+- **Drizzle Schema** (176 tables): Single source of truth for database structure
 - **Zod Validation Schemas**: Runtime type validation for API payloads
 - **TypeScript Types**: Shared interfaces across client/server boundaries
 
@@ -344,8 +345,10 @@ IntegratedLensSystem/
 | **🔬 Lab Tech** | View production queue, update job status, quality checks |
 | **🛠️ Engineer** | Advanced production controls, technical documentation access |
 | **📦 Supplier** | View assigned POs, update inventory, manage deliveries |
-| **👔 Admin** | User management, platform settings, analytics access |
-| **🤖 AI Admin** | Full AI platform access, model training, data insights |
+| **🏢 Company Admin** | Company-level user management and settings |
+| **⚙️ Platform Admin** | Platform-wide administration and configuration |
+| **👔 Admin** | General administrative access |
+| **🛒 Dispenser** | POS and dispensing operations |
 
 ### **Master User Provisioning**
 
@@ -363,7 +366,7 @@ On startup, the server:
 1. Hashes the password securely (bcrypt)
 2. Creates the user if it doesn't exist
 3. Marks the account as **active** and **verified**
-4. Assigns **all available roles** (admin, ecp, lab_tech, engineer, supplier, ai_admin)
+4. Assigns **all available roles** (admin, ecp, lab_tech, engineer, supplier, platform_admin, company_admin, dispenser)
 
 Leave these variables empty to skip master user creation.
 
@@ -403,10 +406,10 @@ npm run test:coverage
 ```
 
 ### **Current Test Coverage**
-- ✅ **Integration Tests**: 8/8 passing (100%)
-- ✅ **Component Tests**: 19/19 passing (100%)
-- ✅ **TypeScript Compilation**: 0 errors
-- ✅ **Codebase Health**: 98.5% (production-ready)
+- ✅ **Integration Tests**: 112 test cases passing (4/5 suites passing - 1 suite has TypeScript errors)
+- ✅ **Component Tests**: 83/88 test cases passing (94.3%), 10/15 suites passing
+- ⚠️ **TypeScript Compilation**: Clean (1 test file has type errors)
+- ✅ **Production-Ready**: Core features tested and functional
 
 ---
 

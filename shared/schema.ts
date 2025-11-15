@@ -5,7 +5,7 @@ import { z } from "zod";
 
 // Enums
 export const roleEnum = pgEnum("role", ["ecp", "admin", "lab_tech", "engineer", "supplier", "platform_admin", "company_admin", "dispenser"]);
-export const subscriptionPlanEnum = pgEnum("subscription_plan", ["full", "free_ecp"]);
+export const subscriptionPlanEnum = pgEnum("subscription_plan", ["free", "pro", "premium", "enterprise", "full", "free_ecp"]); // Legacy: full, free_ecp
 
 // Session storage table for Replit Auth
 export const sessions = pgTable(
@@ -1264,11 +1264,15 @@ export const patients = pgTable("patients", {
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  
+
   // Audit Trail
   createdBy: varchar("created_by", { length: 255 }),
   updatedBy: varchar("updated_by", { length: 255 }),
   changeHistory: jsonb("change_history").default(sql`'[]'::jsonb`),
+
+  // Soft Delete
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by", { length: 255 }),
 });
 
 export const orders = pgTable("orders", {
@@ -1325,6 +1329,10 @@ export const orders = pgTable("orders", {
   createdBy: varchar("created_by", { length: 255 }),
   updatedBy: varchar("updated_by", { length: 255 }),
   changeHistory: jsonb("change_history").default(sql`'[]'::jsonb`),
+
+  // Soft Delete
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by", { length: 255 }),
 });
 
 export const consultLogs = pgTable("consult_logs", {

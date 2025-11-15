@@ -533,7 +533,7 @@ var init_schema = __esm({
   "shared/schema.ts"() {
     "use strict";
     roleEnum = pgEnum("role", ["ecp", "admin", "lab_tech", "engineer", "supplier", "platform_admin", "company_admin", "dispenser"]);
-    subscriptionPlanEnum = pgEnum("subscription_plan", ["full", "free_ecp"]);
+    subscriptionPlanEnum = pgEnum("subscription_plan", ["free", "pro", "premium", "enterprise", "full", "free_ecp"]);
     sessions = pgTable(
       "sessions",
       {
@@ -1644,7 +1644,10 @@ var init_schema = __esm({
       // Audit Trail
       createdBy: varchar("created_by", { length: 255 }),
       updatedBy: varchar("updated_by", { length: 255 }),
-      changeHistory: jsonb("change_history").default(sql`'[]'::jsonb`)
+      changeHistory: jsonb("change_history").default(sql`'[]'::jsonb`),
+      // Soft Delete
+      deletedAt: timestamp("deleted_at"),
+      deletedBy: varchar("deleted_by", { length: 255 })
     });
     orders = pgTable("orders", {
       id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1691,7 +1694,10 @@ var init_schema = __esm({
       // Timestamp tracking
       createdBy: varchar("created_by", { length: 255 }),
       updatedBy: varchar("updated_by", { length: 255 }),
-      changeHistory: jsonb("change_history").default(sql`'[]'::jsonb`)
+      changeHistory: jsonb("change_history").default(sql`'[]'::jsonb`),
+      // Soft Delete
+      deletedAt: timestamp("deleted_at"),
+      deletedBy: varchar("deleted_by", { length: 255 })
     });
     consultLogs = pgTable("consult_logs", {
       id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
