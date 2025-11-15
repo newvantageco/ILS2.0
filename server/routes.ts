@@ -145,6 +145,7 @@ import aiMLRoutes from "./routes/ai-ml";
 import ophthalamicAIRoutes from "./routes/ophthalamicAI";
 import orderTrackingRoutes from "./routes/orderTracking";
 import feedbackRoutes from "./routes/feedback";
+import { saasMetricsRouter } from "./routes/saas-metrics";
 import {
   publicApiLimiter,
   authLimiter,
@@ -278,6 +279,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Analytics routes (Shopify-style dashboard and reports)
   app.use('/api/analytics', isAuthenticated, analyticsRoutes);
+
+  // Register SaaS Metrics routes (MRR, ARR, CAC, CLV, churn, health scores)
+  app.use('/api/saas', isAuthenticated, saasMetricsRouter);
 
   // Register PDF Generation routes (receipts, invoices, labels, templates)
   app.use('/api/pdf', isAuthenticated, pdfGenerationRoutes);

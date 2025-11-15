@@ -50,6 +50,7 @@ import LimsClient from "../packages/lims-client/src/LimsClient";
 
 // Import event system
 import { initializeEventSystem } from "./events";
+import "./events/handlers/subscriptionEvents"; // Load subscription event handlers
 import { metricsHandler } from "./lib/metrics";
 
 // Import Redis session store (Chunk 10)

@@ -52,5 +52,6 @@ export const AISettingsPage = lazy(() => import("@/pages/AISettingsPage"));
 export const CompanyManagementPage = lazy(() => import("@/pages/admin/CompanyManagementPage"));
 export const BIDashboardPage = lazy(() => import("@/pages/BIDashboardPage"));
 export const AnalyticsDashboard = lazy(() => import("@/pages/AnalyticsDashboard"));
+export const SaaSMetricsDashboard = lazy(() => import("@/pages/SaaSMetricsDashboard"));
 export const GitHubPushPage = lazy(() => import("@/pages/github-push"));
 export const NotFound = lazy(() => import("@/pages/not-found"));

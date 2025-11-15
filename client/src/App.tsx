@@ -85,6 +85,7 @@ const AIPurchaseOrdersPage = lazy(() => import("@/pages/AIPurchaseOrdersPage"));
 const BIDashboardPage = lazy(() => import("@/pages/BIDashboardPage"));
 const CompanyManagementPage = lazy(() => import("@/pages/admin/CompanyManagementPage"));
 const AnalyticsDashboard = lazy(() => import("@/pages/AnalyticsDashboard"));
+const SaaSMetricsDashboard = lazy(() => import("@/pages/SaaSMetricsDashboard"));
 const BusinessAnalyticsPage = lazy(() => import("@/pages/BusinessAnalyticsPage"));
 
 // BI Dashboard Components
@@ -647,6 +648,9 @@ function AuthenticatedApp() {
         {/* Email System Routes - Common for all roles */}
         <Route path="/email-analytics" component={EmailAnalyticsPage} />
         <Route path="/email-templates" component={EmailTemplatesPage} />
+        
+        {/* SaaS Metrics Dashboard - Platform Admin */}
+        <Route path="/platform-admin/saas-metrics" component={SaaSMetricsDashboard} />
         
         {/* Marketplace Routes - Common for all roles (Chunk 6) */}
         <Route path="/marketplace" component={MarketplacePage} />

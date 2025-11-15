@@ -70,6 +70,13 @@ import {
   workflows,
   workflowInstances,
   workflowRunCounts,
+  featureUsageMetrics,
+  customerHealthScores,
+  churnPredictions,
+  customerAcquisitionSources,
+  customerCohorts,
+  usageEvents,
+  monthlyRecurringRevenue,
   type UpsertUser, 
   type User, 
   type UserWithRoles,
@@ -6569,6 +6576,810 @@ export class DbStorage implements IStorage {
       role: msg.role === 'user' ? 'user' : 'assistant',
       content: msg.content,
     }));
+  }
+
+  // ============================================================================
+  // SAAS METRICS STORAGE METHODS
+  // ============================================================================
+
+  /**
+   * Get all subscriptions for a company (for MRR calculation)
+   */
+  async getCompanySubscriptions(companyId: string, month?: Date) {
+    const query = db
+      .select()
+      .from(subscriptionHistory)
+      .where(eq(subscriptionHistory.companyId, companyId));
+
+    const results = await query;
+    return results || [];
+  }
+
+  /**
+   * Get company's monthly recurring revenue data
+   */
+  async getMonthlyRecurringRevenue(companyId: string, year: number, month: number) {
+    const result = await db
+      .select()
+      .from(monthlyRecurringRevenue)
+      .where(
+        and(
+          eq(monthlyRecurringRevenue.companyId, companyId),
+          eq(monthlyRecurringRevenue.year, year),
+          eq(monthlyRecurringRevenue.month, month)
+        )
+      )
+      .limit(1);
+
+    return result[0] || null;
+  }
+
+  /**
+   * Upsert monthly recurring revenue data
+   */
+  async upsertMonthlyRecurringRevenue(companyId: string, data: any) {
+    const { year, month, totalMRR, arr, breakdown, newMRR, expansionMRR, contractionMRR, churnMRR, momGrowth } = data;
+
+    // First try to find existing record
+    const existing = await db
+      .select()
+      .from(monthlyRecurringRevenue)
+      .where(
+        and(
+          eq(monthlyRecurringRevenue.companyId, companyId),
+          eq(monthlyRecurringRevenue.year, year),
+          eq(monthlyRecurringRevenue.month, month)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      // Update existing
+      await db
+        .update(monthlyRecurringRevenue)
+        .set({
+          totalMRR,
+          arr,
+          breakdown,
+          newMRR,
+          expansionMRR,
+          contractionMRR,
+          churnMRR,
+          momGrowth,
+          updatedAt: new Date(),
+        })
+        .where(eq(monthlyRecurringRevenue.id, existing[0].id));
+    } else {
+      // Insert new
+      await db.insert(monthlyRecurringRevenue).values({
+        companyId,
+        year,
+        month,
+        totalMRR,
+        arr,
+        breakdown,
+        newMRR,
+        expansionMRR,
+        contractionMRR,
+        churnMRR,
+        momGrowth,
+      });
+    }
+  }
+
+  /**
+   * Get customer health score
+   */
+  async getCustomerHealthScore(companyId: string) {
+    const result = await db
+      .select()
+      .from(customerHealthScores)
+      .where(eq(customerHealthScores.companyId, companyId))
+      .orderBy(desc(customerHealthScores.updatedAt))
+      .limit(1);
+
+    return result[0] || null;
+  }
+
+  /**
+   * Upsert customer health score
+   */
+  async upsertCustomerHealthScore(companyId: string, data: any) {
+    const {
+      overallScore,
+      engagementScore,
+      adoptionScore,
+      satisfactionScore,
+      scoreHistory,
+      trend,
+      riskLevel,
+      calculatedBy,
+    } = data;
+
+    const existing = await db
+      .select()
+      .from(customerHealthScores)
+      .where(eq(customerHealthScores.companyId, companyId))
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .update(customerHealthScores)
+        .set({
+          overallScore,
+          engagementScore,
+          adoptionScore,
+          satisfactionScore,
+          scoreHistory,
+          trend,
+          riskLevel,
+          calculatedBy,
+          lastCalculatedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(customerHealthScores.id, existing[0].id));
+    } else {
+      await db.insert(customerHealthScores).values({
+        companyId,
+        overallScore,
+        engagementScore,
+        adoptionScore,
+        satisfactionScore,
+        scoreHistory,
+        trend,
+        riskLevel,
+        calculatedBy,
+        lastCalculatedAt: new Date(),
+      });
+    }
+  }
+
+  /**
+   * Get all health scores for segmentation
+   */
+  async getAllCustomerHealthScores() {
+    return await db.select().from(customerHealthScores);
+  }
+
+  /**
+   * Get churn prediction for a company
+   */
+  async getChurnPrediction(companyId: string) {
+    const result = await db
+      .select()
+      .from(churnPredictions)
+      .where(eq(churnPredictions.companyId, companyId))
+      .orderBy(desc(churnPredictions.updatedAt))
+      .limit(1);
+
+    return result[0] || null;
+  }
+
+  /**
+   * Upsert churn prediction
+   */
+  async upsertChurnPrediction(companyId: string, data: any) {
+    const {
+      churnProbability,
+      riskFactors,
+      recommendedActions,
+      modelVersion,
+      predictionScore,
+      predictedChurnDate,
+    } = data;
+
+    const existing = await db
+      .select()
+      .from(churnPredictions)
+      .where(eq(churnPredictions.companyId, companyId))
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .update(churnPredictions)
+        .set({
+          churnProbability,
+          riskFactors,
+          recommendedActions,
+          modelVersion,
+          predictionScore,
+          predictedChurnDate,
+          updatedAt: new Date(),
+        })
+        .where(eq(churnPredictions.id, existing[0].id));
+    } else {
+      await db.insert(churnPredictions).values({
+        companyId,
+        churnProbability,
+        riskFactors,
+        recommendedActions,
+        modelVersion,
+        predictionScore,
+        predictedChurnDate,
+      });
+    }
+  }
+
+  /**
+   * Get all churn predictions (admin view)
+   */
+  async getAllChurnPredictions() {
+    return await db.select().from(churnPredictions).orderBy(desc(churnPredictions.churnProbability));
+  }
+
+  /**
+   * Get feature usage metrics for a company
+   */
+  async getCompanyFeatureUsage(companyId: string) {
+    return await db
+      .select()
+      .from(featureUsageMetrics)
+      .where(eq(featureUsageMetrics.companyId, companyId));
+  }
+
+  /**
+   * Get specific feature usage
+   */
+  async getFeatureUsage(companyId: string, featureName: string) {
+    const result = await db
+      .select()
+      .from(featureUsageMetrics)
+      .where(
+        and(
+          eq(featureUsageMetrics.companyId, companyId),
+          eq(featureUsageMetrics.featureName, featureName)
+        )
+      )
+      .limit(1);
+
+    return result[0] || null;
+  }
+
+  /**
+   * Track feature usage (increment counters)
+   */
+  async trackFeatureUsage(companyId: string, featureName: string, userId?: string, metadata?: any) {
+    const existing = await this.getFeatureUsage(companyId, featureName);
+
+    if (existing) {
+      await db
+        .update(featureUsageMetrics)
+        .set({
+          usageCount: (existing.usageCount || 0) + 1,
+          lastUsedAt: new Date(),
+          metadata,
+          updatedAt: new Date(),
+        })
+        .where(eq(featureUsageMetrics.id, existing.id));
+    } else {
+      await db.insert(featureUsageMetrics).values({
+        companyId,
+        featureName,
+        usageCount: 1,
+        lastUsedAt: new Date(),
+        metadata,
+      });
+    }
+
+    // Also log to usage events
+    if (userId) {
+      await db.insert(usageEvents).values({
+        companyId,
+        userId,
+        eventType: 'feature_used',
+        eventName: featureName,
+        properties: metadata,
+      });
+    }
+  }
+
+  /**
+   * Get customer acquisition source data
+   */
+  async getCustomerAcquisitionSources(companyId: string) {
+    return await db
+      .select()
+      .from(customerAcquisitionSources)
+      .where(eq(customerAcquisitionSources.companyId, companyId))
+      .orderBy(desc(customerAcquisitionSources.createdAt));
+  }
+
+  /**
+   * Record customer acquisition source
+   */
+  async recordCustomerAcquisitionSource(companyId: string, data: any) {
+    const {
+      source,
+      campaign,
+      medium,
+      content,
+      totalCost,
+      customersAcquired,
+      revenueGenerated,
+      avgLifetimeValue,
+      avgMonthlyRetention,
+      avgChurnRate,
+      cac,
+      roi,
+      period,
+      periodStart,
+      periodEnd,
+    } = data;
+
+    await db.insert(customerAcquisitionSources).values({
+      companyId,
+      source,
+      campaign,
+      medium,
+      content,
+      totalCost,
+      customersAcquired,
+      revenueGenerated,
+      avgLifetimeValue,
+      avgMonthlyRetention,
+      avgChurnRate,
+      cac,
+      roi,
+      period,
+      periodStart,
+      periodEnd,
+    });
+  }
+
+  /**
+   * Get cohort data
+   */
+  async getCustomerCohort(companyId: string, cohortName: string) {
+    const result = await db
+      .select()
+      .from(customerCohorts)
+      .where(
+        and(
+          eq(customerCohorts.companyId, companyId),
+          eq(customerCohorts.cohortName, cohortName)
+        )
+      )
+      .limit(1);
+
+    return result[0] || null;
+  }
+
+  /**
+   * Get all cohorts for a company
+   */
+  async getCompanyCohorts(companyId: string) {
+    return await db
+      .select()
+      .from(customerCohorts)
+      .where(eq(customerCohorts.companyId, companyId))
+      .orderBy(desc(customerCohorts.periodStart));
+  }
+
+  /**
+   * Create or update cohort
+   */
+  async upsertCustomerCohort(companyId: string, data: any) {
+    const {
+      cohortName,
+      cohortPeriod,
+      periodStart,
+      periodEnd,
+      totalCustomers,
+      segment,
+      retentionData, // { month0: 100, month1: 85, month2: 78, ... }
+      avgRetentionRate,
+      lifetimeRetention,
+    } = data;
+
+    const existing = await this.getCustomerCohort(companyId, cohortName);
+
+    const updateData = {
+      month0Retention: retentionData?.month0 || 100,
+      month1Retention: retentionData?.month1,
+      month2Retention: retentionData?.month2,
+      month3Retention: retentionData?.month3,
+      month4Retention: retentionData?.month4,
+      month5Retention: retentionData?.month5,
+      month6Retention: retentionData?.month6,
+      month7Retention: retentionData?.month7,
+      month8Retention: retentionData?.month8,
+      month9Retention: retentionData?.month9,
+      month10Retention: retentionData?.month10,
+      month11Retention: retentionData?.month11,
+      month12Retention: retentionData?.month12,
+      avgRetentionRate,
+      lifetimeRetention,
+      updatedAt: new Date(),
+    };
+
+    if (existing) {
+      await db.update(customerCohorts).set(updateData).where(eq(customerCohorts.id, existing.id));
+    } else {
+      await db.insert(customerCohorts).values({
+        companyId,
+        cohortName,
+        cohortPeriod,
+        periodStart,
+        periodEnd,
+        totalCustomers,
+        segment,
+        ...updateData,
+      });
+    }
+  }
+
+  /**
+   * Log usage event
+   */
+  async logUsageEvent(companyId: string, data: any) {
+    const {
+      userId,
+      eventType,
+      eventName,
+      properties,
+      metadata,
+      revenueImpact,
+    } = data;
+
+    await db.insert(usageEvents).values({
+      companyId,
+      userId,
+      eventType,
+      eventName,
+      properties,
+      metadata,
+      revenueImpact,
+    });
+  }
+
+  /**
+   * Get usage events for analytics
+   */
+  async getUsageEvents(companyId: string, limit: number = 100) {
+    return await db
+      .select()
+      .from(usageEvents)
+      .where(eq(usageEvents.companyId, companyId))
+      .orderBy(desc(usageEvents.createdAt))
+      .limit(limit);
+  }
+
+  /**
+   * Get usage events by type
+   */
+  async getUsageEventsByType(companyId: string, eventType: string, limit: number = 100) {
+    return await db
+      .select()
+      .from(usageEvents)
+      .where(
+        and(
+          eq(usageEvents.companyId, companyId),
+          eq(usageEvents.eventType, eventType)
+        )
+      )
+      .orderBy(desc(usageEvents.createdAt))
+      .limit(limit);
+  }
+
+  // ============================================================================
+  // SUBSCRIPTION & SAAS STORAGE METHODS
+  // ============================================================================
+
+  /**
+   * Get subscription by company ID
+   */
+  async getSubscriptionByCompanyId(companyId: string) {
+    const result = await db
+      .select()
+      .from(subscriptionHistory)
+      .where(
+        and(
+          eq(subscriptionHistory.companyId, companyId),
+          eq(subscriptionHistory.status, 'active')
+        )
+      )
+      .orderBy(desc(subscriptionHistory.createdAt))
+      .limit(1);
+    
+    return result[0] || null;
+  }
+
+  /**
+   * Get customer health segmentation distribution
+   */
+  async getCustomerHealthSegmentation(companyId: string) {
+    const result = await db
+      .select({
+        riskLevel: customerHealthScores.riskLevel,
+        count: sql`COUNT(*)`
+      })
+      .from(customerHealthScores)
+      .where(eq(customerHealthScores.companyId, companyId))
+      .groupBy(customerHealthScores.riskLevel);
+
+    const distribution = {
+      excellent: 0,
+      good: 0,
+      at_risk: 0,
+      critical: 0
+    };
+
+    result.forEach((row: any) => {
+      const level = row.riskLevel || 'good';
+      if (level in distribution) {
+        distribution[level as keyof typeof distribution] = Number(row.count);
+      }
+    });
+
+    return distribution;
+  }
+
+  /**
+   * Get churn risk report for company
+   */
+  async getChurnRiskReport(companyId: string) {
+    const predictions = await db
+      .select()
+      .from(churnPredictions)
+      .where(eq(churnPredictions.companyId, companyId))
+      .orderBy(desc(churnPredictions.churnProbability))
+      .limit(100);
+
+    const totalCustomers = await db
+      .select({ count: sql`COUNT(*)` })
+      .from(subscriptionHistory)
+      .where(
+        and(
+          eq(subscriptionHistory.companyId, companyId),
+          eq(subscriptionHistory.status, 'active')
+        )
+      );
+
+    const counts = {
+      lowRisk: 0,
+      mediumRisk: 0,
+      highRisk: 0,
+      criticalRisk: 0
+    };
+
+    predictions.forEach((pred: any) => {
+      const prob = pred.churnProbability || 0;
+      if (prob > 0.75) counts.criticalRisk++;
+      else if (prob > 0.5) counts.highRisk++;
+      else if (prob > 0.25) counts.mediumRisk++;
+      else counts.lowRisk++;
+    });
+
+    return {
+      totalCustomers: Number(totalCustomers[0]?.count || 0),
+      lowRisk: counts.lowRisk,
+      mediumRisk: counts.mediumRisk,
+      highRisk: counts.highRisk,
+      criticalRisk: counts.criticalRisk,
+      topRiskCompanies: predictions.slice(0, 10).map((p: any) => ({
+        companyId: p.companyId,
+        probability: p.churnProbability,
+        riskLevel: p.riskLevel,
+        topSignals: p.topSignals || []
+      }))
+    };
+  }
+
+  /**
+   * Get customer health score for a specific customer
+   */
+  async getCustomerHealthScore(companyId: string, customerId: string) {
+    const records = await db
+      .select()
+      .from(customerMetrics)
+      .where(
+        and(
+          eq(customerMetrics.companyId, companyId),
+          eq(customerMetrics.customerId, customerId)
+        )
+      )
+      .limit(1);
+
+    if (records.length > 0) {
+      return records[0];
+    }
+
+    return { healthScore: 75, healthTrend: 'stable' };
+  }
+
+  /**
+   * Get top customers by MRR
+   */
+  async getTopCustomersByMRR(companyId: string, limit: number = 10) {
+    return await db
+      .select()
+      .from(customerMetrics)
+      .where(eq(customerMetrics.companyId, companyId))
+      .orderBy(desc(customerMetrics.mrr))
+      .limit(limit);
+  }
+
+  /**
+   * Get revenue breakdown for a specific month
+   */
+  async getRevenueBreakdown(companyId: string, month: string) {
+    const record = await db
+      .select()
+      .from(monthlyRecurringRevenue)
+      .where(
+        and(
+          eq(monthlyRecurringRevenue.companyId, companyId),
+          eq(monthlyRecurringRevenue.month, month)
+        )
+      )
+      .limit(1);
+
+    if (record.length > 0) {
+      return {
+        newCustomers: record[0].newMRR || 0,
+        expansion: record[0].expansionMRR || 0,
+        churn: record[0].churnedMRR || 0,
+        total: record[0].mrr || 0
+      };
+    }
+
+    return { newCustomers: 0, expansion: 0, churn: 0, total: 0 };
+  }
+
+  /**
+   * Get trend analytics for a metric
+   */
+  async getTrendAnalytics(companyId: string, metric: string, months: number = 6) {
+    if (metric === 'mrr') {
+      const records = await db
+        .select()
+        .from(monthlyRecurringRevenue)
+        .where(eq(monthlyRecurringRevenue.companyId, companyId))
+        .orderBy(desc(monthlyRecurringRevenue.month))
+        .limit(months);
+
+      return records.map(r => ({
+        month: r.month,
+        value: r.mrr,
+        growth: r.growthRate
+      }));
+    }
+
+    if (metric === 'churn') {
+      const records = await db
+        .select()
+        .from(churnPredictions)
+        .where(eq(churnPredictions.companyId, companyId))
+        .orderBy(desc(churnPredictions.createdAt))
+        .limit(months);
+
+      return records.map(r => ({
+        month: new Date(r.createdAt).toISOString().slice(0, 7),
+        value: r.probability
+      }));
+    }
+
+    return [];
+  }
+
+  /**
+   * Get customer cohort analytics
+   */
+  async getCustomerCohortAnalytics(companyId: string, cohortId?: string) {
+    let query = db
+      .select()
+      .from(customerCohortAnalytics)
+      .where(eq(customerCohortAnalytics.companyId, companyId));
+
+    if (cohortId) {
+      query = query.where(eq(customerCohortAnalytics.cohortId, cohortId));
+    }
+
+    return await query.orderBy(desc(customerCohortAnalytics.createdAt));
+  }
+
+  /**
+   * Update customer health score
+   */
+  async updateCustomerHealthScore(companyId: string, customerId: string, score: number) {
+    const existing = await db
+      .select()
+      .from(customerMetrics)
+      .where(
+        and(
+          eq(customerMetrics.companyId, companyId),
+          eq(customerMetrics.customerId, customerId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .update(customerMetrics)
+        .set({
+          healthScore: score,
+          updatedAt: new Date()
+        })
+        .where(eq(customerMetrics.id, existing[0].id));
+    } else {
+      await db.insert(customerMetrics).values({
+        id: crypto.randomUUID(),
+        companyId,
+        customerId,
+        healthScore: score,
+        healthTrend: 'stable'
+      });
+    }
+  }
+
+  /**
+   * Get customer acquisition metrics for a period
+   */
+  async getCustomerAcquisitionMetrics(companyId: string, startDate: Date, endDate: Date) {
+    return await db
+      .select()
+      .from(customerAcquisitionData)
+      .where(
+        and(
+          eq(customerAcquisitionData.companyId, companyId),
+          gte(customerAcquisitionData.createdAt, startDate),
+          lte(customerAcquisitionData.createdAt, endDate)
+        )
+      )
+      .orderBy(desc(customerAcquisitionData.createdAt));
+  }
+
+  /**
+   * Get expansion metrics (upgrades, add-ons, seat growth)
+   */
+  async getExpansionMetrics(companyId: string) {
+    const records = await db
+      .select()
+      .from(customerMetrics)
+      .where(eq(customerMetrics.companyId, companyId))
+      .orderBy(desc(customerMetrics.updatedAt));
+
+    const totalExpansion = records.reduce((sum, r) => sum + (r.expansionMRR || 0), 0);
+    const contractedCustomers = records.filter(r => (r.contractionMRR || 0) > 0).length;
+
+    return {
+      totalExpansionMRR: totalExpansion,
+      contractedCustomerCount: contractedCustomers,
+      expansionRate: records.length > 0 ? (totalExpansion / records.length) : 0
+    };
+  }
+
+  /**
+   * Get forecasted metrics for upcoming period
+   */
+  async getForecastedMetrics(companyId: string) {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const lastRecords = await db
+      .select()
+      .from(monthlyRecurringRevenue)
+      .where(eq(monthlyRecurringRevenue.companyId, companyId))
+      .orderBy(desc(monthlyRecurringRevenue.month))
+      .limit(3);
+
+    if (lastRecords.length === 0) {
+      return { nextMonth: 0, nextQuarter: 0, annual: 0 };
+    }
+
+    const avgGrowth = lastRecords.length > 1
+      ? lastRecords.reduce((sum, r) => sum + (r.growthRate || 0), 0) / lastRecords.length
+      : 0;
+
+    const currentMRR = lastRecords[0].mrr || 0;
+    const nextMonth = currentMRR * (1 + (avgGrowth || 0.05) / 100);
+    const nextQuarter = nextMonth * 3;
+    const annual = nextMonth * 12;
+
+    return {
+      nextMonthForecast: Math.round(nextMonth),
+      nextQuarterForecast: Math.round(nextQuarter),
+      annualForecast: Math.round(annual),
+      assumedGrowthRate: avgGrowth
+    };
   }
 
   // ============================================================================

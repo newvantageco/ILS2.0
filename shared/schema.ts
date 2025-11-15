@@ -8452,6 +8452,239 @@ export const feedbackStatusEnum = pgEnum("feedback_status", [
   "ignored"
 ]);
 
+// ============== SaaS-SPECIFIC TABLES ==============
+
+// Pricing model enum - supports flexible SaaS pricing strategies
+export const pricingModelEnum = pgEnum("pricing_model", [
+  "flat_rate",        // Single fixed price
+  "per_user",         // Price per active user
+  "tiered",           // Multiple tiers with feature sets
+  "usage_based",      // Pay as you go
+  "freemium",         // Free + paid features
+  "hybrid"            // Combination of per-user and usage
+]);
+
+// Subscription status enum
+export const subscriptionStatusEnum = pgEnum("subscription_status", [
+  "trial",            // In free trial
+  "active",           // Active subscription
+  "past_due",         // Payment overdue
+  "paused",           // Temporarily paused
+  "cancelled",        // Cancelled (churned)
+  "expired",          // Trial expired
+  "downgraded"        // Plan downgraded
+]);
+
+// Feature usage tracking table
+export const featureUsageMetrics = pgTable("feature_usage_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  featureName: varchar("feature_name").notNull(), // e.g., "ai_recommendations", "advanced_reporting"
+  usageCount: integer("usage_count").default(0), // Total uses
+  activeUsers: integer("active_users").default(0), // Unique users using feature
+  lastUsedAt: timestamp("last_used_at"),
+  tier: varchar("tier", { length: 50 }), // Which pricing tier this feature is in
+  metadata: jsonb("metadata"), // Custom metrics per feature
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_feature_usage_company").on(table.companyId),
+  index("idx_feature_usage_name").on(table.featureName),
+  index("idx_feature_usage_tier").on(table.tier),
+  uniqueIndex("idx_feature_usage_unique").on(table.companyId, table.featureName),
+]);
+
+// Customer health score table
+export const customerHealthScores = pgTable("customer_health_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  
+  // Core health metrics (0-100)
+  overallScore: integer("overall_score").notNull(), // 0-100
+  engagementScore: integer("engagement_score").notNull(),
+  adoptionScore: integer("adoption_score").notNull(),
+  satisfactionScore: integer("satisfaction_score").notNull(),
+  
+  // Trend data
+  scoreHistory: jsonb("score_history"), // Last 12 months of scores
+  trend: varchar("trend", { length: 20 }), // 'improving', 'declining', 'stable'
+  riskLevel: varchar("risk_level", { length: 20 }), // 'low', 'medium', 'high', 'critical'
+  
+  // Last calculated
+  lastCalculatedAt: timestamp("last_calculated_at"),
+  calculatedBy: varchar("calculated_by"), // Service name that calculated
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_health_scores_company").on(table.companyId),
+  index("idx_health_scores_risk").on(table.riskLevel),
+]);
+
+// Churn prediction table - ML model outputs
+export const churnPredictions = pgTable("churn_predictions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  
+  // Prediction data
+  churnProbability: decimal("churn_probability", { precision: 5, scale: 4 }), // 0.0000 to 1.0000
+  riskFactors: jsonb("risk_factors"), // Top factors contributing to churn risk
+  recommendedActions: jsonb("recommended_actions"), // System-recommended retention actions
+  
+  // Prediction details
+  modelVersion: varchar("model_version"),
+  predictionScore: integer("prediction_score"), // 0-100 confidence
+  predictedChurnDate: timestamp("predicted_churn_date"), // When they might churn
+  
+  // Tracking
+  isPredictionAccurate: boolean("is_prediction_accurate"), // Updated after churn event occurs
+  actualChurnDate: timestamp("actual_churn_date"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_churn_predictions_company").on(table.companyId),
+  index("idx_churn_predictions_probability").on(table.churnProbability),
+  index("idx_churn_predictions_risk").on(table.predictedChurnDate),
+]);
+
+// Customer acquisition source tracking
+export const customerAcquisitionSources = pgTable("customer_acquisition_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  
+  // Source details
+  source: varchar("source").notNull(), // 'google_ads', 'organic', 'referral', 'sales', 'partnership', etc.
+  campaign: varchar("campaign"), // Campaign name
+  medium: varchar("medium"), // utm_medium: 'email', 'social', 'direct', etc.
+  content: varchar("content"), // utm_content
+  
+  // Attribution data
+  totalCost: decimal("total_cost", { precision: 12, scale: 2 }).default("0"),
+  customersAcquired: integer("customers_acquired").default(0),
+  revenueGenerated: decimal("revenue_generated", { precision: 14, scale: 2 }).default("0"),
+  
+  // Lifecycle metrics
+  avgLifetimeValue: decimal("avg_lifetime_value", { precision: 12, scale: 2 }),
+  avgMonthlyRetention: decimal("avg_monthly_retention", { precision: 5, scale: 4 }), // 0-1 (60% = 0.60)
+  avgChurnRate: decimal("avg_churn_rate", { precision: 5, scale: 4 }), // 0-1
+  
+  // ROI calculations
+  cac: decimal("cac", { precision: 10, scale: 2 }), // Customer Acquisition Cost
+  roi: decimal("roi", { precision: 8, scale: 4 }), // (revenue - cost) / cost
+  
+  period: varchar("period"), // 'monthly', 'quarterly', 'yearly'
+  periodStart: timestamp("period_start"),
+  periodEnd: timestamp("period_end"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_acq_source_company").on(table.companyId),
+  index("idx_acq_source_name").on(table.source),
+  index("idx_acq_source_period").on(table.periodStart),
+]);
+
+// Cohort analysis tracking
+export const customerCohorts = pgTable("customer_cohorts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  
+  // Cohort definition
+  cohortName: varchar("cohort_name").notNull(), // e.g., "2024-Q1-Enterprise"
+  cohortPeriod: varchar("cohort_period").notNull(), // 'monthly', 'quarterly', 'yearly'
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  
+  // Size and segment
+  totalCustomers: integer("total_customers").notNull(),
+  segment: varchar("segment"), // 'free', 'pro', 'enterprise', 'customer_source', etc.
+  
+  // Retention curve (month 0, 1, 2, etc.)
+  month0Retention: decimal("month_0_retention", { precision: 5, scale: 2 }), // 100% by definition
+  month1Retention: decimal("month_1_retention", { precision: 5, scale: 2 }),
+  month2Retention: decimal("month_2_retention", { precision: 5, scale: 2 }),
+  month3Retention: decimal("month_3_retention", { precision: 5, scale: 2 }),
+  month4Retention: decimal("month_4_retention", { precision: 5, scale: 2 }),
+  month5Retention: decimal("month_5_retention", { precision: 5, scale: 2 }),
+  month6Retention: decimal("month_6_retention", { precision: 5, scale: 2 }),
+  month7Retention: decimal("month_7_retention", { precision: 5, scale: 2 }),
+  month8Retention: decimal("month_8_retention", { precision: 5, scale: 2 }),
+  month9Retention: decimal("month_9_retention", { precision: 5, scale: 2 }),
+  month10Retention: decimal("month_10_retention", { precision: 5, scale: 2 }),
+  month11Retention: decimal("month_11_retention", { precision: 5, scale: 2 }),
+  month12Retention: decimal("month_12_retention", { precision: 5, scale: 2 }),
+  
+  // Analysis
+  avgRetentionRate: decimal("avg_retention_rate", { precision: 5, scale: 2 }),
+  lifetimeRetention: decimal("lifetime_retention", { precision: 5, scale: 2 }),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_cohorts_company").on(table.companyId),
+  index("idx_cohorts_period").on(table.periodStart),
+  index("idx_cohorts_segment").on(table.segment),
+]);
+
+// Usage events for analytics
+export const usageEvents = pgTable("usage_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }),
+  
+  // Event details
+  eventType: varchar("event_type").notNull(), // 'feature_used', 'order_created', 'api_call', etc.
+  eventName: varchar("event_name").notNull(), // Specific action
+  
+  // Event data
+  properties: jsonb("properties"), // Custom event properties
+  metadata: jsonb("metadata"), // Additional context
+  
+  // Revenue impact (if applicable)
+  revenueImpact: decimal("revenue_impact", { precision: 12, scale: 2 }), // How much revenue this event contributed
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_usage_events_company").on(table.companyId),
+  index("idx_usage_events_type").on(table.eventType),
+  index("idx_usage_events_user").on(table.userId),
+  index("idx_usage_events_created").on(table.createdAt),
+]);
+
+// Monthly revenue tracking for MRR/ARR calculations
+export const monthlyRecurringRevenue = pgTable("monthly_recurring_revenue", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  
+  // Period
+  year: integer("year").notNull(),
+  month: integer("month").notNull(), // 1-12
+  
+  // Revenue breakdown by tier
+  breakdown: jsonb("breakdown"), // { 'free': 0, 'pro': 5000, 'premium': 8000, 'enterprise': 15000 }
+  
+  // Totals
+  totalMRR: decimal("total_mrr", { precision: 14, scale: 2 }).notNull(),
+  arr: decimal("arr", { precision: 14, scale: 2 }).notNull(), // Annual recurring revenue
+  
+  // Movement metrics
+  newMRR: decimal("new_mrr", { precision: 14, scale: 2 }), // From new customers
+  expansionMRR: decimal("expansion_mrr", { precision: 14, scale: 2 }), // From upgrades
+  contractionMRR: decimal("contraction_mrr", { precision: 14, scale: 2 }), // From downgrades
+  churnMRR: decimal("churn_mrr", { precision: 14, scale: 2 }), // Lost to churn
+  
+  // Growth rate
+  momGrowth: decimal("mom_growth", { precision: 8, scale: 4 }), // Month-over-month growth %
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_mrr_company").on(table.companyId),
+  index("idx_mrr_period").on(table.year, table.month),
+  uniqueIndex("idx_mrr_unique").on(table.companyId, table.year, table.month),
+]);
+
 // NPS category enum
 export const npsCategoryEnum = pgEnum("nps_category", [
   "promoter",

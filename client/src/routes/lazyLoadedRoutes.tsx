@@ -64,6 +64,7 @@ export const AIAssistantPage = lazy(() => import("@/pages/AIAssistantPage"));
 export const BIDashboardPage = lazy(() => import("@/pages/BIDashboardPage"));
 export const CompanyManagementPage = lazy(() => import("@/pages/admin/CompanyManagementPage"));
 export const AnalyticsDashboard = lazy(() => import("@/pages/AnalyticsDashboard"));
+export const SaaSMetricsDashboard = lazy(() => import("@/pages/SaaSMetricsDashboard"));
 export const BusinessAnalyticsPage = lazy(() => import("@/pages/BusinessAnalyticsPage"));
 
 // Admin pages
