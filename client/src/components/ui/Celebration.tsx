@@ -339,9 +339,9 @@ export function useMilestoneTracker() {
   const milestones = {
     'orders-created': [
       { value: 1, message: '🎉 First Order!', subMessage: 'Great start!' },
-      { value: 10, message: '🌟 10 Orders!', subMessage: 'You're on a roll!' },
+      { value: 10, message: '🌟 10 Orders!', subMessage: 'You are on a roll!' },
       { value: 50, message: '🏆 50 Orders!', subMessage: 'Incredible milestone!' },
-      { value: 100, message: '🚀 100 Orders!', subMessage: 'You're a pro!' },
+      { value: 100, message: '🚀 100 Orders!', subMessage: 'You are a pro!' },
     ],
     'prescriptions-uploaded': [
       { value: 1, message: '📄 First Prescription!', subMessage: 'Well done!' },
