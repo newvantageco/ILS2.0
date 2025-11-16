@@ -19,8 +19,10 @@ import { companies, users } from '../../shared/schema';
 import { eq, and, ilike, sql } from 'drizzle-orm';
 import { hashPassword } from '../localAuth';
 import { normalizeEmail } from '../utils/normalizeEmail';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('onboarding');
 
 // Validation schemas
 const signupWithCompanySchema = z.object({
@@ -163,7 +165,7 @@ router.post('/signup', async (req: Request, res: Response) => {
       local: true,
     }, (err) => {
       if (err) {
-        console.error('Session creation error:', err);
+        logger.error({ error: err, userId: newUser.id }, 'Session creation error');
         return res.status(500).json({ error: 'Failed to create session' });
       }
 
@@ -190,7 +192,7 @@ router.post('/signup', async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error('Onboarding signup error:', error);
+    logger.error({ error }, 'Onboarding signup error');
     res.status(500).json({
       error: 'Signup failed',
       message: error instanceof Error ? error.message : 'An unexpected error occurred',
@@ -294,7 +296,7 @@ router.post('/join', async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error('Onboarding join error:', error);
+    logger.error({ error, companyId }, 'Onboarding join error');
     res.status(500).json({
       error: 'Join request failed',
       message: error instanceof Error ? error.message : 'An unexpected error occurred',
@@ -343,7 +345,7 @@ router.get('/company-check', async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error('Company check error:', error);
+    logger.error({ error, companyName: name }, 'Company check error');
     res.status(500).json({
       error: 'Failed to check company name',
     });
@@ -465,7 +467,7 @@ router.post('/complete', async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error('Complete onboarding error:', error);
+    logger.error({ error, userId }, 'Complete onboarding error');
     res.status(500).json({
       error: 'Failed to complete onboarding',
       message: error instanceof Error ? error.message : 'An unexpected error occurred',
@@ -519,7 +521,7 @@ router.get('/companies/search', async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error('Company search error:', error);
+    logger.error({ error, query }, 'Company search error');
     res.status(500).json({
       error: 'Failed to search companies',
     });

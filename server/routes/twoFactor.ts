@@ -7,8 +7,10 @@ import { Router, Request, Response } from 'express';
 import { isAuthenticated, AuthenticatedRequest } from '../middleware/auth';
 import { twoFactorAuthService } from '../services/TwoFactorAuthService';
 import { z } from 'zod';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('twoFactor');
 
 // Validation schemas
 const setupVerifySchema = z.object({
@@ -48,7 +50,7 @@ router.post('/setup', isAuthenticated, async (req: AuthenticatedRequest, res: Re
       message: 'Scan the QR code with your authenticator app, then verify with a code to enable 2FA',
     });
   } catch (error) {
-    console.error('2FA setup error:', error);
+    logger.error({ error, userId: user.id }, '2FA setup error');
     res.status(500).json({ error: 'Failed to set up 2FA' });
   }
 });
@@ -86,7 +88,7 @@ router.post('/enable', isAuthenticated, async (req: AuthenticatedRequest, res: R
       message: '2FA has been enabled successfully. Save your backup codes in a secure location.',
     });
   } catch (error) {
-    console.error('2FA enable error:', error);
+    logger.error({ error, userId: user.id }, '2FA enable error');
     res.status(500).json({ error: 'Failed to enable 2FA' });
   }
 });
@@ -128,7 +130,7 @@ router.post('/disable', isAuthenticated, async (req: AuthenticatedRequest, res: 
       message: '2FA has been disabled',
     });
   } catch (error) {
-    console.error('2FA disable error:', error);
+    logger.error({ error, userId: user.id }, '2FA disable error');
     res.status(500).json({ error: 'Failed to disable 2FA' });
   }
 });
@@ -170,7 +172,7 @@ router.post('/verify', isAuthenticated, async (req: AuthenticatedRequest, res: R
       message: '2FA verification successful',
     });
   } catch (error) {
-    console.error('2FA verification error:', error);
+    logger.error({ error, userId: user.id }, '2FA verification error');
     res.status(500).json({ error: 'Failed to verify 2FA' });
   }
 });
@@ -191,7 +193,7 @@ router.get('/status', isAuthenticated, async (req: AuthenticatedRequest, res: Re
       backupCodesRemaining: backupCodesCount,
     });
   } catch (error) {
-    console.error('2FA status error:', error);
+    logger.error({ error, userId: user.id }, '2FA status error');
     res.status(500).json({ error: 'Failed to get 2FA status' });
   }
 });
@@ -229,7 +231,7 @@ router.post('/backup-codes/regenerate', isAuthenticated, async (req: Authenticat
       message: 'New backup codes generated. Save them in a secure location.',
     });
   } catch (error) {
-    console.error('Backup codes regeneration error:', error);
+    logger.error({ error, userId: user.id }, 'Backup codes regeneration error');
     res.status(500).json({ error: 'Failed to regenerate backup codes' });
   }
 });

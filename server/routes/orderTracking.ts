@@ -5,8 +5,10 @@ import * as schema from '@shared/schema';
 import { authenticateUser, requireRole } from '../middleware/auth';
 import orderTrackingService from '../services/OrderTrackingService';
 import { storage } from '../storage';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('orderTracking');
 
 // Get detailed order status
 router.get(
@@ -24,7 +26,7 @@ router.get(
 
       res.json(order);
     } catch (error) {
-      console.error('Error fetching order status:', error);
+      logger.error({ error, orderId }, 'Error fetching order status');
       res.status(500).json({ error: 'Failed to fetch order status' });
     }
   }
@@ -43,7 +45,7 @@ router.post(
       const update = await orderTrackingService.updateOrderStatus(orderId, status, details, req);
       res.json(update);
     } catch (error) {
-      console.error('Error updating order status:', error);
+      logger.error({ error, orderId, status }, 'Error updating order status');
       res.status(500).json({ error: 'Failed to update order status' });
     }
   }
@@ -65,7 +67,7 @@ router.get(
 
       res.json(timeline);
     } catch (error) {
-      console.error('Error fetching order timeline:', error);
+      logger.error({ error, orderId }, 'Error fetching order timeline');
       res.status(500).json({ error: 'Failed to fetch order timeline' });
     }
   }
