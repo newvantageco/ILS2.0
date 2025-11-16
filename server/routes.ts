@@ -75,7 +75,6 @@ import { registerAutonomousPORoutes } from "./routes/ai-purchase-orders";
 import { registerDemandForecastingRoutes } from "./routes/demand-forecasting";
 import { registerMarketplaceRoutes } from "./routes/marketplace";
 import { registerQueueRoutes } from "./routes/queue";
-// import { registerPlatformAIRoutes } from "./routes/platform-ai"; // Disabled - schema issues
 import platformAdminRoutes from "./routes/platform-admin";
 import systemAdminRoutes from "./routes/system-admin";
 import { registerPermissionRoutes } from "./routes/permissions";
@@ -132,7 +131,6 @@ import integrationsRoutes from "./routes/integrations";
 import communicationsRoutes from "./routes/communications";
 import monitoringRoutes from "./routes/monitoring";
 import observabilityRoutes from "./routes/observability";
-// import bookingRoutes from "./routes/booking"; // TEMPORARILY DISABLED: missing appointments schema
 import contactLensRoutes from "./routes/contactLens";
 import clinicalReportingRoutes from "./routes/clinical-reporting";
 import faceAnalysisRoutes from "./routes/faceAnalysis";
@@ -239,9 +237,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // System Admin: Configuration, monitoring, and operations
   app.use('/api/system-admin', systemAdminRoutes);
 
-  // Platform AI: Python ML analytics & predictions (DISABLED - schema issues)
-  // registerPlatformAIRoutes(app);
-  
   // =============================================================================
   
   // Register Metrics Dashboard routes
@@ -383,9 +378,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Patient Portal routes (public and authenticated)
   app.use('/api/patient-portal', patientPortalRoutes);
-
-  // Online Booking routes (public) - TEMPORARILY DISABLED: missing appointments schema
-  // app.use('/api/booking', bookingRoutes);
 
   // ============================================================================
   // SECURITY & COMPLIANCE ROUTES - NOW CONNECTED!
