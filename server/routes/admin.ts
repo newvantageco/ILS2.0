@@ -9,8 +9,10 @@ import { Router, Request, Response } from "express";
 import { storage } from "../storage";
 import { z } from "zod";
 import type { User } from "@shared/schema";
+import { createLogger } from "../utils/logger";
 
 const router = Router();
+const logger = createLogger('admin');
 
 /**
  * Middleware to check if user is platform admin
@@ -128,7 +130,7 @@ router.post("/companies", isPlatformAdmin, async (req: any, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error("Error creating company:", error);
+    logger.error({ error }, 'Error creating company');
     res.status(500).json({ 
       error: "Failed to create company",
       message: error.message,
@@ -176,7 +178,7 @@ router.put("/companies/:companyId/subscription-exemption", isPlatformAdmin, asyn
         : "Subscription exemption revoked",
     });
   } catch (error: any) {
-    console.error("Error updating subscription exemption:", error);
+    logger.error({ error, companyId }, 'Error updating subscription exemption');
     res.status(500).json({ error: "Failed to update subscription exemption" });
   }
 });
@@ -211,7 +213,7 @@ router.get("/companies", isPlatformAdmin, async (req: any, res: Response) => {
       })),
     });
   } catch (error: any) {
-    console.error("Error fetching companies:", error);
+    logger.error({ error }, 'Error fetching companies');
     res.status(500).json({ error: "Failed to fetch companies" });
   }
 });
@@ -241,7 +243,7 @@ router.get("/subscription-stats", isPlatformAdmin, async (req: any, res: Respons
 
     res.json({ success: true, stats });
   } catch (error: any) {
-    console.error("Error fetching subscription stats:", error);
+    logger.error({ error }, 'Error fetching subscription stats');
     res.status(500).json({ error: "Failed to fetch subscription stats" });
   }
 });
@@ -284,7 +286,7 @@ router.put("/companies/:companyId/subscription", isPlatformAdmin, async (req: an
       message: "Subscription plan updated",
     });
   } catch (error: any) {
-    console.error("Error updating subscription plan:", error);
+    logger.error({ error, companyId, plan }, 'Error updating subscription plan');
     res.status(500).json({ error: "Failed to update subscription plan" });
   }
 });
@@ -343,7 +345,7 @@ router.put("/users/:userId/subscription", isPlatformAdmin, async (req: any, res:
       }
     });
   } catch (error: any) {
-    console.error("Error updating user subscription:", error);
+    logger.error({ error, userId, plan }, 'Error updating user subscription');
     res.status(500).json({ 
       error: "Failed to update user subscription",
       message: error.message
@@ -418,7 +420,7 @@ router.post("/users/subscription/by-email", isPlatformAdmin, async (req: any, re
       }
     });
   } catch (error: any) {
-    console.error("Error assigning subscription by email:", error);
+    logger.error({ error, email, plan }, 'Error assigning subscription by email');
     res.status(500).json({ 
       error: "Failed to assign subscription",
       message: error.message
@@ -517,7 +519,7 @@ router.post("/users/subscription/bulk", isPlatformAdmin, async (req: any, res: R
       }
     });
   } catch (error: any) {
-    console.error("Error bulk assigning subscriptions:", error);
+    logger.error({ error, emailCount: emails?.length, plan }, 'Error bulk assigning subscriptions');
     res.status(500).json({ 
       error: "Failed to bulk assign subscriptions",
       message: error.message
@@ -570,7 +572,7 @@ router.get("/users/search", isPlatformAdmin, async (req: any, res: Response) => 
       }
     });
   } catch (error: any) {
-    console.error("Error searching users:", error);
+    logger.error({ error, query }, 'Error searching users');
     res.status(500).json({ 
       error: "Failed to search users",
       message: error.message

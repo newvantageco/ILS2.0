@@ -10,8 +10,10 @@ import orderEmailService from "../services/OrderEmailService";
 import { db } from "../db";
 import { orders } from "../../shared/schema";
 import { eq } from "drizzle-orm";
+import { createLogger } from "../utils/logger";
 
 const router = Router();
+const logger = createLogger('order-emails');
 
 /**
  * Send order confirmation email
@@ -23,7 +25,7 @@ router.post("/confirmation/:orderId", authenticateUser, async (req: Request, res
     await orderEmailService.sendOrderConfirmationEmail(orderId);
     res.json({ success: true, message: "Order confirmation email sent" });
   } catch (error: any) {
-    console.error("Error sending order confirmation email:", error);
+    logger.error({ error, orderId }, 'Error sending order confirmation email');
     res.status(500).json({ error: error.message });
   }
 });
@@ -38,7 +40,7 @@ router.post("/production/:orderId", authenticateUser, async (req: Request, res: 
     await orderEmailService.sendProductionStartedEmail(orderId);
     res.json({ success: true, message: "Production started email sent" });
   } catch (error: any) {
-    console.error("Error sending production email:", error);
+    logger.error({ error, orderId }, 'Error sending production email');
     res.status(500).json({ error: error.message });
   }
 });
@@ -53,7 +55,7 @@ router.post("/quality-check/:orderId", authenticateUser, async (req: Request, re
     await orderEmailService.sendQualityCheckEmail(orderId);
     res.json({ success: true, message: "Quality check email sent" });
   } catch (error: any) {
-    console.error("Error sending quality check email:", error);
+    logger.error({ error, orderId }, 'Error sending quality check email');
     res.status(500).json({ error: error.message });
   }
 });
@@ -68,7 +70,7 @@ router.post("/ready/:orderId", authenticateUser, async (req: Request, res: Respo
     await orderEmailService.sendReadyForCollectionEmail(orderId);
     res.json({ success: true, message: "Ready for collection email sent" });
   } catch (error: any) {
-    console.error("Error sending ready for collection email:", error);
+    logger.error({ error, orderId }, 'Error sending ready for collection email');
     res.status(500).json({ error: error.message });
   }
 });
@@ -83,7 +85,7 @@ router.post("/completed/:orderId", authenticateUser, async (req: Request, res: R
     await orderEmailService.sendOrderCompletedEmail(orderId);
     res.json({ success: true, message: "Order completed email sent" });
   } catch (error: any) {
-    console.error("Error sending completed email:", error);
+    logger.error({ error, orderId }, 'Error sending completed email');
     res.status(500).json({ error: error.message });
   }
 });
@@ -98,7 +100,7 @@ router.get("/history/:orderId", authenticateUser, async (req: Request, res: Resp
     const history = await orderEmailService.getOrderEmailHistory(orderId);
     res.json(history);
   } catch (error: any) {
-    console.error("Error fetching order email history:", error);
+    logger.error({ error, orderId }, 'Error fetching order email history');
     res.status(500).json({ error: error.message });
   }
 });
@@ -113,7 +115,7 @@ router.get("/stats/:orderId", authenticateUser, async (req: Request, res: Respon
     const stats = await orderEmailService.getOrderEmailStats(orderId);
     res.json(stats);
   } catch (error: any) {
-    console.error("Error fetching order email stats:", error);
+    logger.error({ error }, 'Error fetching order email stats');
     res.status(500).json({ error: error.message });
   }
 });
@@ -147,7 +149,7 @@ router.patch("/update-status/:orderId", authenticateUser, async (req: Request, r
       message: `Order status updated to ${status} and email sent` 
     });
   } catch (error: any) {
-    console.error("Error updating order status:", error);
+    logger.error({ error, orderId, status }, 'Error updating order status');
     res.status(500).json({ error: error.message });
   }
 });

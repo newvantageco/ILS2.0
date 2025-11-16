@@ -3,8 +3,10 @@ import { eq, and, gte, lte, desc } from 'drizzle-orm';
 import { db } from '../db';
 import { marketInsights, platformStatistics, aggregatedMetrics } from '../../shared/schema.js';
 import { platformAnalyticsService } from '../services/PlatformAnalyticsService.js';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('platform-admin');
 
 // Middleware to check platform admin access
 const requirePlatformAdmin = (req: any, res: any, next: any) => {
@@ -47,7 +49,7 @@ router.get('/insights', async (req, res) => {
       count: insights.length
     });
   } catch (error) {
-    console.error('Error fetching insights:', error);
+    logger.error({ error }, 'Error fetching insights');
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch insights',
@@ -82,7 +84,7 @@ router.get('/insights/:id', async (req, res) => {
       insight
     });
   } catch (error) {
-    console.error('Error fetching insight:', error);
+    logger.error({ error, insightId: id }, 'Error fetching insight');
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch insight',
@@ -120,7 +122,7 @@ router.get('/insights/:id/export', async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="insight-${id}.csv"`);
     res.send(csvContent);
   } catch (error) {
-    console.error('Error exporting insight:', error);
+    logger.error({ error, insightId: id }, 'Error exporting insight');
     res.status(500).json({ 
       success: false, 
       error: 'Failed to export insight',
@@ -188,7 +190,7 @@ router.post('/insights/generate', async (req, res) => {
       message: 'Insight generated successfully'
     });
   } catch (error) {
-    console.error('Error generating insight:', error);
+    logger.error({ error }, 'Error generating insight');
     res.status(500).json({ 
       success: false, 
       error: 'Failed to generate insight',
@@ -228,7 +230,7 @@ router.get('/statistics', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching statistics:', error);
+    logger.error({ error }, 'Error fetching statistics');
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch statistics',
@@ -271,7 +273,7 @@ router.post('/statistics/generate', async (req, res) => {
       message: 'Statistics generated successfully'
     });
   } catch (error) {
-    console.error('Error generating statistics:', error);
+    logger.error({ error }, 'Error generating statistics');
     res.status(500).json({ 
       success: false, 
       error: 'Failed to generate statistics',
@@ -303,7 +305,7 @@ router.post('/metrics/refresh', async (req, res) => {
       metrics
     });
   } catch (error) {
-    console.error('Error refreshing metrics:', error);
+    logger.error({ error }, 'Error refreshing metrics');
     res.status(500).json({ 
       success: false, 
       error: 'Failed to refresh metrics',
@@ -345,7 +347,7 @@ router.get('/metrics', async (req, res) => {
       count: metrics.length
     });
   } catch (error) {
-    console.error('Error fetching metrics:', error);
+    logger.error({ error }, 'Error fetching metrics');
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch metrics',
@@ -397,7 +399,7 @@ router.get('/dashboard', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
+    logger.error({ error }, 'Error fetching dashboard data');
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch dashboard data',
