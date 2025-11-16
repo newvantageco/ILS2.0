@@ -12,8 +12,10 @@ import { db } from '../../db';
 import { auditLogs, users } from '../../shared/schema';
 import { eq, and, desc, gte, lte, like, sql, or } from 'drizzle-orm';
 import { z } from 'zod';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('auditLogs');
 
 // Validation schemas
 const auditQuerySchema = z.object({
@@ -152,7 +154,7 @@ router.get('/', requireAdmin, async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    console.error('Error fetching audit logs:', error);
+    logger.error({ error }, 'Error fetching audit logs');
     res.status(500).json({
       error: 'Failed to fetch audit logs',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -257,7 +259,7 @@ router.get('/stats', requireAdmin, async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    console.error('Error fetching audit stats:', error);
+    logger.error({ error }, 'Error fetching audit stats');
     res.status(500).json({
       error: 'Failed to fetch audit statistics',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -292,7 +294,7 @@ router.get('/:id', requireAdmin, async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    console.error('Error fetching audit log:', error);
+    logger.error({ error, auditLogId: id }, 'Error fetching audit log');
     res.status(500).json({
       error: 'Failed to fetch audit log',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -336,7 +338,7 @@ router.get('/user/:userId', requireAdmin, async (req: Request, res: Response) =>
     });
     
   } catch (error) {
-    console.error('Error fetching user audit logs:', error);
+    logger.error({ error, userId }, 'Error fetching user audit logs');
     res.status(500).json({
       error: 'Failed to fetch user audit logs',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -372,7 +374,7 @@ router.get('/resource/:resourceType/:resourceId', requireAdmin, async (req: Requ
     });
     
   } catch (error) {
-    console.error('Error fetching resource audit logs:', error);
+    logger.error({ error, resourceType, resourceId }, 'Error fetching resource audit logs');
     res.status(500).json({
       error: 'Failed to fetch resource audit logs',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -427,7 +429,7 @@ router.get('/phi-access/all', requireAdmin, async (req: Request, res: Response) 
     });
     
   } catch (error) {
-    console.error('Error fetching PHI access logs:', error);
+    logger.error({ error }, 'Error fetching PHI access logs');
     res.status(500).json({
       error: 'Failed to fetch PHI access logs',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -506,7 +508,7 @@ router.post('/export', requireAdmin, async (req: Request, res: Response) => {
     res.send(csv);
     
   } catch (error) {
-    console.error('Error exporting audit logs:', error);
+    logger.error({ error, format }, 'Error exporting audit logs');
     res.status(500).json({
       error: 'Failed to export audit logs',
       message: error instanceof Error ? error.message : 'Unknown error',
