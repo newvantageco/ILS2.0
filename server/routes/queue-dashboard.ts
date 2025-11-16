@@ -6,8 +6,10 @@
 
 import { Router } from 'express';
 import { queueService } from '../services/QueueService';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('queue-dashboard');
 
 // Optional Bull Board - gracefully handles if not installed
 let createBullBoard: any;
@@ -23,7 +25,7 @@ try {
   BullMQAdapter = bullMQAdapter.BullMQAdapter;
   ExpressAdapter = bullBoard.ExpressAdapter;
 } catch (e) {
-  console.warn('@bull-board packages not installed. Queue dashboard unavailable.');
+  logger.warn('@bull-board packages not installed. Queue dashboard unavailable.');
 }
 
 /**
@@ -31,8 +33,8 @@ try {
  */
 export function initializeQueueDashboard(): Router {
   if (!createBullBoard || !BullMQAdapter || !ExpressAdapter) {
-    console.log('⚠️  Queue dashboard unavailable');
-    console.log('   Install with: npm install @bull-board/express @bull-board/api @bull-board/ui');
+    logger.info('Queue dashboard unavailable - @bull-board packages not installed');
+    logger.info('Install with: npm install @bull-board/express @bull-board/api @bull-board/ui');
     
     // Return empty router
     const emptyRouter = Router();
@@ -47,9 +49,10 @@ export function initializeQueueDashboard(): Router {
 
   // Get all queues from service
   const queues = (queueService as any).queues;
-  
+
+
   if (!queues || queues.size === 0) {
-    console.log('⚠️  No queues available for dashboard');
+    logger.warn('No queues available for dashboard');
     const emptyRouter = Router();
     emptyRouter.get('/', (req, res) => {
       res.status(503).json({
@@ -73,7 +76,7 @@ export function initializeQueueDashboard(): Router {
     serverAdapter,
   });
 
-  console.log('✓ Queue dashboard initialized at /admin/queues');
+  logger.info('Queue dashboard initialized at /admin/queues');
 
   return serverAdapter.getRouter();
 }

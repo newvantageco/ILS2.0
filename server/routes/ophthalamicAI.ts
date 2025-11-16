@@ -13,8 +13,10 @@
 import { Router, Request } from "express";
 import { OphthalamicAIService } from "../services/OphthalamicAIService.js";
 import { requireAuth } from "../middleware/auth.js";
+import { createLogger } from "../utils/logger.js";
 
 const router = Router();
+const logger = createLogger('ophthalamicAI');
 
 // Helper to get and validate companyId from request
 const getCompanyId = (req: Request): string => {
@@ -102,7 +104,7 @@ router.post("/query", requireAuth, async (req, res) => {
 
     res.json(response);
   } catch (error: any) {
-    console.error("AI Query Error:", error);
+    logger.error({ error, question, companyId }, 'AI Query Error');
     res.status(500).json({ error: error.message });
   }
 });
@@ -207,7 +209,7 @@ router.post("/lens-recommendations", requireAuth, async (req, res) => {
 
     res.json(recommendations);
   } catch (error: any) {
-    console.error("Lens Recommendations Error:", error);
+    logger.error({ error, prescriptionId, companyId }, 'Lens Recommendations Error');
     res.status(500).json({ error: error.message });
   }
 });
@@ -289,7 +291,7 @@ router.post("/contact-lens-recommendations", requireAuth, async (req, res) => {
 
     res.json(recommendations);
   } catch (error: any) {
-    console.error("Contact Lens Recommendations Error:", error);
+    logger.error({ error, patientId, companyId }, 'Contact Lens Recommendations Error');
     res.status(500).json({ error: error.message });
   }
 });
@@ -354,7 +356,7 @@ router.get("/explain-prescription/:prescriptionId", requireAuth, async (req, res
 
     res.json(explanation);
   } catch (error: any) {
-    console.error("Prescription Explanation Error:", error);
+    logger.error({ error, prescriptionId, companyId }, 'Prescription Explanation Error');
     res.status(500).json({ error: error.message });
   }
 });
@@ -424,7 +426,7 @@ router.get("/nhs-guidance/:patientId", requireAuth, async (req, res) => {
 
     res.json(guidance);
   } catch (error: any) {
-    console.error("NHS Guidance Error:", error);
+    logger.error({ error, patientId, companyId }, 'NHS Guidance Error');
     res.status(500).json({ error: error.message });
   }
 });
@@ -504,7 +506,7 @@ router.post("/business-insights", requireAuth, async (req, res) => {
 
     res.json(insights);
   } catch (error: any) {
-    console.error("Business Insights Error:", error);
+    logger.error({ error, companyId, query }, 'Business Insights Error');
     res.status(500).json({ error: error.message });
   }
 });

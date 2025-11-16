@@ -1,6 +1,9 @@
 import type { Express } from "express";
 import { getQueueStats } from "../queue/helpers";
 import { getQueueHealth } from "../queue/config";
+import { createLogger } from "../utils/logger";
+
+const logger = createLogger('queue');
 
 /**
  * Queue Monitoring Routes
@@ -27,8 +30,8 @@ export function registerQueueRoutes(app: Express) {
       const stats = await getQueueStats();
       res.json(stats);
     } catch (error) {
-      console.error("Error fetching queue stats:", error);
-      res.status(500).json({ 
+      logger.error({ error }, 'Error fetching queue stats');
+      res.status(500).json({
         error: "Failed to fetch queue statistics",
         message: error instanceof Error ? error.message : "Unknown error"
       });
@@ -54,8 +57,8 @@ export function registerQueueRoutes(app: Express) {
       const health = await getQueueHealth();
       res.json(health);
     } catch (error) {
-      console.error("Error fetching queue health:", error);
-      res.status(500).json({ 
+      logger.error({ error }, 'Error fetching queue health');
+      res.status(500).json({
         error: "Failed to fetch queue health",
         message: error instanceof Error ? error.message : "Unknown error"
       });
@@ -118,8 +121,8 @@ export function registerQueueRoutes(app: Express) {
 
       res.json(info);
     } catch (error) {
-      console.error("Error fetching queue info:", error);
-      res.status(500).json({ 
+      logger.error({ error }, 'Error fetching queue info');
+      res.status(500).json({
         error: "Failed to fetch queue information",
         message: error instanceof Error ? error.message : "Unknown error"
       });
