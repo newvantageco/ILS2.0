@@ -13,8 +13,10 @@ import {
   getPrometheusMetrics,
   clearOldMetrics,
 } from '../middleware/performance';
+import { createLogger } from '../utils/logger';
 
 const router = express.Router();
+const logger = createLogger('monitoring');
 
 /**
  * @openapi
@@ -48,7 +50,7 @@ router.get('/health', (req, res) => {
     const statusCode = health.status === 'healthy' ? 200 : 503;
     res.status(statusCode).json(health);
   } catch (error) {
-    console.error('Health check failed:', error);
+    logger.error({ error }, 'Health check failed');
     res.status(500).json({
       status: 'unhealthy',
       error: 'Health check failed',
@@ -83,7 +85,7 @@ router.get('/metrics', authenticateUser, (req, res) => {
       metrics: stats,
     });
   } catch (error) {
-    console.error('Failed to get metrics:', error);
+    logger.error({ error }, 'Failed to get metrics');
     res.status(500).json({ error: 'Failed to retrieve metrics' });
   }
 });
@@ -124,7 +126,7 @@ router.get('/metrics/recent', authenticateUser, (req, res) => {
       metrics,
     });
   } catch (error) {
-    console.error('Failed to get recent metrics:', error);
+    logger.error({ error, minutes }, 'Failed to get recent metrics');
     res.status(500).json({ error: 'Failed to retrieve recent metrics' });
   }
 });
@@ -155,7 +157,7 @@ router.get('/memory', authenticateUser, (req, res) => {
       memory,
     });
   } catch (error) {
-    console.error('Failed to get memory usage:', error);
+    logger.error({ error }, 'Failed to get memory usage');
     res.status(500).json({ error: 'Failed to retrieve memory usage' });
   }
 });
@@ -181,7 +183,7 @@ router.get('/prometheus', (req, res) => {
     res.set('Content-Type', 'text/plain');
     res.send(metrics);
   } catch (error) {
-    console.error('Failed to generate Prometheus metrics:', error);
+    logger.error({ error }, 'Failed to generate Prometheus metrics');
     res.status(500).send('# Error generating metrics');
   }
 });
@@ -224,7 +226,7 @@ router.post('/cleanup', authenticateUser, (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Failed to cleanup metrics:', error);
+    logger.error({ error, hoursAgo }, 'Failed to cleanup metrics');
     res.status(500).json({ error: 'Failed to cleanup metrics' });
   }
 });
