@@ -4,6 +4,9 @@ import { storage } from "../storage";
 import { isAuthenticated } from "../replitAuth";
 
 const router = Router();
+import { createLogger } from "../utils/logger";
+
+const logger = createLogger('shopify');
 
 // Validation schemas
 const configureShopifySchema = z.object({
@@ -64,7 +67,7 @@ router.get("/config", async (req, res) => {
 
     res.json(config);
   } catch (error) {
-    console.error("Error fetching Shopify config:", error);
+    logger.error({ error, userId }, 'Error fetching Shopify config');
     res.status(500).json({ message: "Failed to fetch Shopify configuration" });
   }
 });
@@ -109,7 +112,7 @@ router.post("/configure", async (req, res) => {
 
     res.json(config);
   } catch (error) {
-    console.error("Error configuring Shopify:", error);
+    logger.error({ error, shopUrl: configData?.shopUrl }, 'Error configuring Shopify');
     res.status(500).json({ message: "Failed to configure Shopify integration" });
   }
 });
@@ -130,7 +133,7 @@ router.post("/disconnect", async (req, res) => {
       disconnectedAt: new Date()
     });
   } catch (error) {
-    console.error("Error disconnecting Shopify:", error);
+    logger.error({ error }, 'Error disconnecting Shopify');
     res.status(500).json({ message: "Failed to disconnect Shopify" });
   }
 });
@@ -163,7 +166,7 @@ router.post("/sync", async (req, res) => {
 
     res.json(syncJob);
   } catch (error) {
-    console.error("Error starting sync:", error);
+    logger.error({ error, options }, 'Error starting sync');
     res.status(500).json({ message: "Failed to start sync" });
   }
 });
@@ -190,7 +193,7 @@ router.get("/sync/status", async (req, res) => {
 
     res.json(status);
   } catch (error) {
-    console.error("Error fetching sync status:", error);
+    logger.error({ error }, 'Error fetching sync status');
     res.status(500).json({ message: "Failed to fetch sync status" });
   }
 });
@@ -271,7 +274,7 @@ router.get("/products", async (req, res) => {
       offset: offsetNum,
     });
   } catch (error) {
-    console.error("Error fetching products:", error);
+    logger.error({ error, limit, offset, search, status }, 'Error fetching products');
     res.status(500).json({ message: "Failed to fetch products" });
   }
 });
@@ -333,7 +336,7 @@ router.get("/orders", async (req, res) => {
       offset: offsetNum,
     });
   } catch (error) {
-    console.error("Error fetching orders:", error);
+    logger.error({ error, limit, offset, status }, 'Error fetching orders');
     res.status(500).json({ message: "Failed to fetch orders" });
   }
 });
@@ -405,7 +408,7 @@ router.get("/sync/history", async (req, res) => {
       offset: offsetNum,
     });
   } catch (error) {
-    console.error("Error fetching sync history:", error);
+    logger.error({ error, limit, offset }, 'Error fetching sync history');
     res.status(500).json({ message: "Failed to fetch sync history" });
   }
 });
@@ -450,7 +453,7 @@ router.get("/webhooks", async (req, res) => {
 
     res.json({ webhooks });
   } catch (error) {
-    console.error("Error fetching webhooks:", error);
+    logger.error({ error }, 'Error fetching webhooks');
     res.status(500).json({ message: "Failed to fetch webhooks" });
   }
 });
@@ -489,7 +492,7 @@ router.get("/stats", async (req, res) => {
 
     res.json(stats);
   } catch (error) {
-    console.error("Error fetching stats:", error);
+    logger.error({ error }, 'Error fetching stats');
     res.status(500).json({ message: "Failed to fetch statistics" });
   }
 });

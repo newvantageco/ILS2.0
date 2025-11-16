@@ -1003,7 +1003,7 @@ router.post('/clinical-protocols', isAuthenticated, async (req: any, res: Respon
     const [protocol] = await db.insert(clinicalProtocols).values(validation.data).returning();
     res.status(201).json(protocol);
   } catch (error) {
-    console.error("Error creating clinical protocol:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error), companyId: user[0]?.companyId, userId }, 'Error creating clinical protocol');
     res.status(500).json({ message: "Failed to create clinical protocol" });
   }
 });
@@ -1053,7 +1053,7 @@ router.put('/clinical-protocols/:id', isAuthenticated, async (req: any, res: Res
 
     res.json(protocol);
   } catch (error) {
-    console.error("Error updating clinical protocol:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error), protocolId: req.params.id, companyId: user[0]?.companyId }, 'Error updating clinical protocol');
     res.status(500).json({ message: "Failed to update clinical protocol" });
   }
 });
@@ -1145,7 +1145,7 @@ router.get('/goc-status', isAuthenticated, async (req: any, res: Response) => {
 
     res.json(statusReport);
   } catch (error) {
-    console.error("Error fetching GOC status:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error), companyId: user[0]?.companyId }, 'Error fetching GOC status');
     res.status(500).json({ message: "Failed to fetch GOC status" });
   }
 });

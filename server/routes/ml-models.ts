@@ -4,6 +4,9 @@ import { storage } from "../storage";
 import { isAuthenticated } from "../replitAuth";
 
 const router = Router();
+import { createLogger } from "../utils/logger";
+
+const logger = createLogger('ml-models');
 
 // Validation schemas
 const createModelSchema = z.object({
@@ -154,7 +157,7 @@ router.get("/", async (req: any, res) => {
       offset: offsetNum,
     });
   } catch (error) {
-    console.error("Error fetching ML models:", error);
+    logger.error({ error, status, modelType, framework, search, limit, offset }, 'Error fetching ML models');
     res.status(500).json({ message: "Failed to fetch ML models" });
   }
 });
@@ -217,7 +220,7 @@ router.get("/:id", async (req: any, res) => {
 
     res.json(model);
   } catch (error) {
-    console.error("Error fetching ML model:", error);
+    logger.error({ error, modelId: id }, 'Error fetching ML model');
     res.status(500).json({ message: "Failed to fetch ML model" });
   }
 });
@@ -256,7 +259,7 @@ router.post("/", async (req: any, res) => {
 
     res.status(201).json(newModel);
   } catch (error) {
-    console.error("Error creating ML model:", error);
+    logger.error({ error, name: modelData?.name, modelType: modelData?.modelType }, 'Error creating ML model');
     res.status(500).json({ message: "Failed to create ML model" });
   }
 });
@@ -288,7 +291,7 @@ router.patch("/:id", async (req, res) => {
 
     res.json(updatedModel);
   } catch (error) {
-    console.error("Error updating ML model:", error);
+    logger.error({ error, modelId: id, updates: validation.data }, 'Error updating ML model');
     res.status(500).json({ message: "Failed to update ML model" });
   }
 });
@@ -307,7 +310,7 @@ router.delete("/:id", async (req, res) => {
     
     res.json({ message: "Model deleted successfully", id });
   } catch (error) {
-    console.error("Error deleting ML model:", error);
+    logger.error({ error, modelId: id }, 'Error deleting ML model');
     res.status(500).json({ message: "Failed to delete ML model" });
   }
 });
@@ -349,7 +352,7 @@ router.post("/:id/train", async (req, res) => {
       job: trainingJob,
     });
   } catch (error) {
-    console.error("Error starting model training:", error);
+    logger.error({ error, modelId: id, trainingConfig }, 'Error starting model training');
     res.status(500).json({ message: "Failed to start model training" });
   }
 });
@@ -382,7 +385,7 @@ router.post("/:id/deploy", async (req, res) => {
       deployment,
     });
   } catch (error) {
-    console.error("Error deploying model:", error);
+    logger.error({ error, modelId: id, environment }, 'Error deploying model');
     res.status(500).json({ message: "Failed to deploy model" });
   }
 });
@@ -405,7 +408,7 @@ router.post("/:id/stop", async (req, res) => {
       stoppedAt: new Date(),
     });
   } catch (error) {
-    console.error("Error stopping model:", error);
+    logger.error({ error, modelId: id }, 'Error stopping model');
     res.status(500).json({ message: "Failed to stop model" });
   }
 });
@@ -446,7 +449,7 @@ router.get("/:id/metrics", async (req, res) => {
 
     res.json(metrics);
   } catch (error) {
-    console.error("Error fetching model metrics:", error);
+    logger.error({ error, modelId: id, timeRange }, 'Error fetching model metrics');
     res.status(500).json({ message: "Failed to fetch model metrics" });
   }
 });
@@ -482,7 +485,7 @@ router.post("/:id/predict", async (req, res) => {
 
     res.json(prediction);
   } catch (error) {
-    console.error("Error making prediction:", error);
+    logger.error({ error, modelId: id, input }, 'Error making prediction');
     res.status(500).json({ message: "Failed to make prediction" });
   }
 });
