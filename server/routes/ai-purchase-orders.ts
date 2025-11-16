@@ -85,20 +85,33 @@ export function registerAutonomousPORoutes(app: Express) {
         .limit(parseInt(limit as string))
         .offset(parseInt(offset as string));
 
-      // Get items for each PO
-      const posWithItems = await Promise.all(
-        draftPOs.map(async (po) => {
-          const items = await db
+      // PERFORMANCE: Fetch all items in a single query instead of N+1 queries
+      // Get all PO IDs
+      const poIds = draftPOs.map(po => po.id);
+
+      // Fetch all items for these POs in one query
+      const allItems = poIds.length > 0
+        ? await db
             .select()
             .from(aiPurchaseOrderItems)
-            .where(eq(aiPurchaseOrderItems.aiPoId, po.id));
-          
-          return {
-            ...po,
-            items,
-          };
-        })
-      );
+            .where(inArray(aiPurchaseOrderItems.aiPoId, poIds))
+        : [];
+
+      // Group items by PO ID
+      const itemsByPoId = new Map<string, typeof allItems>();
+      for (const item of allItems) {
+        const poId = item.aiPoId;
+        if (!itemsByPoId.has(poId)) {
+          itemsByPoId.set(poId, []);
+        }
+        itemsByPoId.get(poId)!.push(item);
+      }
+
+      // Combine POs with their items
+      const posWithItems = draftPOs.map(po => ({
+        ...po,
+        items: itemsByPoId.get(po.id) || [],
+      }));
 
       // Get total count
       const totalResult = await db

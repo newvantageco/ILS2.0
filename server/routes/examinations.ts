@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { eyeExaminations, patients, users } from '../../shared/schema';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, gte, lt } from 'drizzle-orm';
 import { authenticateUser } from '../middleware/auth';
 import { z } from 'zod';
 
@@ -107,11 +107,47 @@ router.get('/', async (req, res) => {
     }
     const { status, date, patientId } = req.query;
 
-    // Admin can see all companies' data, others see only their company
-    const whereClause = (user?.role === 'platform_admin' || user?.role === 'admin')
-      ? undefined
-      : eq(eyeExaminations.companyId, companyId as string);
+    // PERFORMANCE: Build WHERE conditions in SQL instead of filtering in memory
+    const whereConditions = [];
 
+    // Admin can see all companies' data, others see only their company
+    if (!(user?.role === 'platform_admin' || user?.role === 'admin')) {
+      whereConditions.push(eq(eyeExaminations.companyId, companyId as string));
+    }
+
+    // Filter by patientId
+    if (patientId) {
+      whereConditions.push(eq(eyeExaminations.patientId, patientId as string));
+    }
+
+    // Filter by status
+    if (status && status !== 'all') {
+      whereConditions.push(eq(eyeExaminations.status, status as any));
+    }
+
+    // Filter by date range
+    if (date && date !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      if (date === 'today') {
+        const tomorrow = new Date(today.getTime() + 86400000);
+        whereConditions.push(
+          and(
+            gte(eyeExaminations.examinationDate, today),
+            lt(eyeExaminations.examinationDate, tomorrow)
+          )!
+        );
+      } else if (date === 'week') {
+        const weekStart = new Date(today.getTime() - (today.getDay() * 86400000));
+        whereConditions.push(gte(eyeExaminations.examinationDate, weekStart));
+      } else if (date === 'month') {
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        whereConditions.push(gte(eyeExaminations.examinationDate, monthStart));
+      }
+    }
+
+    // Build query with all WHERE conditions applied in SQL
     let query = db
       .select({
         id: eyeExaminations.id,
@@ -129,49 +165,14 @@ router.get('/', async (req, res) => {
       .leftJoin(users, eq(eyeExaminations.ecpId, users.id))
       .orderBy(desc(eyeExaminations.examinationDate));
 
-    // Apply company filter for non-admin users
-    if (whereClause) {
-      query = query.where(whereClause) as any;
+    // Apply all WHERE conditions
+    if (whereConditions.length > 0) {
+      query = query.where(and(...whereConditions)!) as any;
     }
 
     const results = await query;
 
-    // Apply filters
-    let filtered = results;
-    
-    if (patientId) {
-      filtered = filtered.filter(exam => exam.patientId === patientId);
-    }
-    
-    if (status && status !== 'all') {
-      filtered = filtered.filter(exam => exam.status === status);
-    }
-
-    if (date && date !== 'all') {
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
-      if (date === 'today') {
-        filtered = filtered.filter(exam => {
-          const examDate = new Date(exam.examinationDate);
-          return examDate >= today && examDate < new Date(today.getTime() + 86400000);
-        });
-      } else if (date === 'week') {
-        const weekStart = new Date(today.getTime() - (today.getDay() * 86400000));
-        filtered = filtered.filter(exam => {
-          const examDate = new Date(exam.examinationDate);
-          return examDate >= weekStart;
-        });
-      } else if (date === 'month') {
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        filtered = filtered.filter(exam => {
-          const examDate = new Date(exam.examinationDate);
-          return examDate >= monthStart;
-        });
-      }
-    }
-
-    res.json(filtered);
+    res.json(results);
   } catch (error) {
     console.error('Error fetching examinations:', error);
     res.status(500).json({ error: 'Failed to fetch examinations' });

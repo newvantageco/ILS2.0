@@ -53,9 +53,12 @@ export const queryClient = new QueryClient({
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      // PERFORMANCE: Allow data to become stale and refresh automatically
+      // Healthcare data should be reasonably fresh, not cached forever
+      refetchOnWindowFocus: true, // Refresh when user returns to tab
+      staleTime: 5 * 60 * 1000, // 5 minutes - data becomes stale after this time
+      gcTime: 10 * 60 * 1000, // 10 minutes - cache is garbage collected after this time
+      retry: 1, // Retry failed queries once
     },
     mutations: {
       retry: false,
