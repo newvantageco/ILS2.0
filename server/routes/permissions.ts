@@ -4,6 +4,9 @@ import { requireOwner, requirePermission } from "../middleware/permissions";
 import { PermissionService } from "../services/PermissionService";
 import { storage } from "../storage";
 import { z } from "zod";
+import { createLogger } from "../utils/logger";
+
+const logger = createLogger('permissions');
 
 const updateRolePermissionsSchema = z.object({
   role: z.string(),
@@ -34,7 +37,7 @@ export function registerPermissionRoutes(app: Express) {
         data: permissions,
       });
     } catch (error: any) {
-      console.error("Error getting permissions:", error);
+      logger.error({ error }, 'Error getting permissions');
       res.status(500).json({
         error: "Failed to get permissions",
         message: error.message,
@@ -69,7 +72,7 @@ export function registerPermissionRoutes(app: Express) {
         data: permissions,
       });
     } catch (error: any) {
-      console.error("Error getting user permissions:", error);
+      logger.error({ error, userId }, 'Error getting user permissions');
       res.status(500).json({
         error: "Failed to get user permissions",
         message: error.message,
@@ -102,7 +105,7 @@ export function registerPermissionRoutes(app: Express) {
         data: permissions,
       });
     } catch (error: any) {
-      console.error("Error getting role permissions:", error);
+      logger.error({ error, companyId, role }, 'Error getting role permissions');
       res.status(500).json({
         error: "Failed to get role permissions",
         message: error.message,
@@ -160,7 +163,7 @@ export function registerPermissionRoutes(app: Express) {
         message: `Updated permissions for ${role}`,
       });
     } catch (error: any) {
-      console.error("Error updating role permissions:", error);
+      logger.error({ error, companyId, role, permissionCount: permissionKeys?.length }, 'Error updating role permissions');
       res.status(500).json({
         error: "Failed to update role permissions",
         message: error.message,
@@ -208,7 +211,7 @@ export function registerPermissionRoutes(app: Express) {
         message: `Granted ${permissionKey} to user`,
       });
     } catch (error: any) {
-      console.error("Error granting permission:", error);
+      logger.error({ error, userId, permissionKey }, 'Error granting permission');
       res.status(500).json({
         error: "Failed to grant permission",
         message: error.message,
@@ -256,7 +259,7 @@ export function registerPermissionRoutes(app: Express) {
         message: `Revoked ${permissionKey} from user`,
       });
     } catch (error: any) {
-      console.error("Error revoking permission:", error);
+      logger.error({ error, userId, permissionKey }, 'Error revoking permission');
       res.status(500).json({
         error: "Failed to revoke permission",
         message: error.message,
@@ -278,7 +281,7 @@ export function registerPermissionRoutes(app: Express) {
         data: permissions,
       });
     } catch (error: any) {
-      console.error("Error getting current user permissions:", error);
+      logger.error({ error, userId }, 'Error getting current user permissions');
       res.status(500).json({
         error: "Failed to get permissions",
         message: error.message,

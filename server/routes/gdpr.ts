@@ -7,8 +7,10 @@ import { Router, Response, RequestHandler } from 'express';
 import { isAuthenticated, AuthenticatedRequest } from '../middleware/auth';
 import { gdprService } from '../services/GDPRService';
 import { z } from 'zod';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('gdpr');
 
 // Validation schemas
 const consentSchema = z.object({
@@ -38,7 +40,7 @@ router.get('/export', isAuthenticated, (async (req: AuthenticatedRequest, res: R
 
     res.json(exportData);
   } catch (error) {
-    console.error('GDPR export error:', error);
+    logger.error({ error, userId }, 'GDPR export error');
     res.status(500).json({ error: 'Failed to export user data' });
   }
 }) as RequestHandler);
@@ -75,7 +77,7 @@ router.post('/delete', isAuthenticated, (async (req: AuthenticatedRequest, res: 
 
     // TODO: Invalidate user session after deletion
   } catch (error) {
-    console.error('GDPR deletion error:', error);
+    logger.error({ error, userId, retainClinicalData }, 'GDPR deletion error');
     res.status(500).json({ error: 'Failed to delete user data' });
   }
 }) as RequestHandler);
@@ -92,7 +94,7 @@ router.get('/consent', isAuthenticated, (async (req: AuthenticatedRequest, res: 
 
     res.json(consent);
   } catch (error) {
-    console.error('Get consent error:', error);
+    logger.error({ error, userId }, 'Get consent error');
     res.status(500).json({ error: 'Failed to get consent status' });
   }
 }) as RequestHandler);
@@ -121,7 +123,7 @@ router.post('/consent', isAuthenticated, (async (req: AuthenticatedRequest, res:
       message: 'Consent preferences updated successfully',
     });
   } catch (error) {
-    console.error('Update consent error:', error);
+    logger.error({ error, userId, consent: result.data }, 'Update consent error');
     res.status(500).json({ error: 'Failed to update consent' });
   }
 }) as RequestHandler);
@@ -142,7 +144,7 @@ router.get('/compliance-report', isAuthenticated, async (req: AuthenticatedReque
       message: 'This report shows all data we hold about you and our legal basis for processing it.',
     });
   } catch (error) {
-    console.error('Compliance report error:', error);
+    logger.error({ error, userId }, 'Compliance report error');
     res.status(500).json({ error: 'Failed to generate compliance report' });
   }
 });

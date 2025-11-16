@@ -16,8 +16,10 @@ import {
 } from '@shared/schema';
 import { eq, and, desc, gte, lte, sql, between } from 'drizzle-orm';
 import { validateBody, validateQuery, validateParams } from '../middleware/zodValidation';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('pos');
 
 // ============================================
 // Product Management for POS
@@ -81,7 +83,7 @@ router.get('/products',
         count: productList.length,
       });
     } catch (error) {
-      console.error('Failed to fetch products:', error);
+      logger.error({ error, category, search, inStock }, 'Failed to fetch products');
       res.status(500).json({ error: 'Failed to fetch products' });
     }
   }
@@ -118,7 +120,7 @@ router.get('/products/barcode/:barcode',
 
       res.json(product);
     } catch (error) {
-      console.error('Failed to find product:', error);
+      logger.error({ error, barcode }, 'Failed to find product');
       res.status(500).json({ error: 'Failed to find product' });
     }
   }
@@ -274,8 +276,8 @@ router.post('/transactions',
         items: result.items,
       });
     } catch (error: any) {
-      console.error('Failed to create transaction:', error);
-      res.status(500).json({ 
+      logger.error({ error, itemCount: items?.length, paymentMethod }, 'Failed to create transaction');
+      res.status(500).json({
         error: 'Failed to create transaction',
         message: error.message,
       });
@@ -341,7 +343,7 @@ router.get('/transactions/:id',
         items,
       });
     } catch (error) {
-      console.error('Failed to fetch transaction:', error);
+      logger.error({ error, transactionId: id }, 'Failed to fetch transaction');
       res.status(500).json({ error: 'Failed to fetch transaction' });
     }
   }
@@ -412,7 +414,7 @@ router.get('/transactions',
         offset,
       });
     } catch (error) {
-      console.error('Failed to fetch transactions:', error);
+      logger.error({ error, startDate, endDate, staffId, paymentMethod, status }, 'Failed to fetch transactions');
       res.status(500).json({ error: 'Failed to fetch transactions' });
     }
   }
@@ -505,8 +507,8 @@ router.post('/transactions/:id/refund',
         transaction: result,
       });
     } catch (error: any) {
-      console.error('Failed to refund transaction:', error);
-      res.status(500).json({ 
+      logger.error({ error, transactionId: id, reason, restoreStock }, 'Failed to refund transaction');
+      res.status(500).json({
         error: 'Failed to refund transaction',
         message: error.message,
       });
@@ -559,7 +561,7 @@ router.get('/reports/daily-summary',
         ...summary,
       });
     } catch (error) {
-      console.error('Failed to generate report:', error);
+      logger.error({ error, date }, 'Failed to generate report');
       res.status(500).json({ error: 'Failed to generate report' });
     }
   }
@@ -598,7 +600,7 @@ router.get('/reports/staff-performance',
 
       res.json(performance);
     } catch (error) {
-      console.error('Failed to generate staff performance:', error);
+      logger.error({ error, startDate, endDate }, 'Failed to generate staff performance');
       res.status(500).json({ error: 'Failed to generate staff performance' });
     }
   }
