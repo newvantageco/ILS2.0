@@ -19,7 +19,9 @@ import type { Express, Request, Response } from "express";
 import { isAuthenticated } from "../replitAuth";
 import { MetricsDashboardService } from "../services/MetricsDashboardService";
 import { storage } from "../storage";
+import { createLogger } from "../utils/logger";
 
+const logger = createLogger('metrics');
 let metricsDashboardService: MetricsDashboardService;
 
 export function registerMetricsRoutes(app: Express): void {
@@ -50,7 +52,7 @@ export function registerMetricsRoutes(app: Express): void {
         data: metrics,
       });
     } catch (error: any) {
-      console.error("Error getting dashboard metrics:", error);
+      logger.error({ error, timeRange, organizationId }, 'Error getting dashboard metrics');
       res.status(500).json({
         error: "Dashboard metrics retrieval failed",
         message: error.message || "Failed to get dashboard metrics",
@@ -72,7 +74,7 @@ export function registerMetricsRoutes(app: Express): void {
         data: kpis,
       });
     } catch (error: any) {
-      console.error("Error getting production KPIs:", error);
+      logger.error({ error }, 'Error getting production KPIs');
       res.status(500).json({
         error: "Production KPIs retrieval failed",
         message: error.message || "Failed to get production KPIs",
@@ -94,7 +96,7 @@ export function registerMetricsRoutes(app: Express): void {
         data: costs,
       });
     } catch (error: any) {
-      console.error("Error getting cost metrics:", error);
+      logger.error({ error }, 'Error getting cost metrics');
       res.status(500).json({
         error: "Cost metrics retrieval failed",
         message: error.message || "Failed to get cost metrics",
@@ -116,7 +118,7 @@ export function registerMetricsRoutes(app: Express): void {
         data: revenue,
       });
     } catch (error: any) {
-      console.error("Error getting revenue analytics:", error);
+      logger.error({ error }, 'Error getting revenue analytics');
       res.status(500).json({
         error: "Revenue analytics retrieval failed",
         message: error.message || "Failed to get revenue analytics",
@@ -138,7 +140,7 @@ export function registerMetricsRoutes(app: Express): void {
         data: snapshot,
       });
     } catch (error: any) {
-      console.error("Error getting realtime snapshot:", error);
+      logger.error({ error }, 'Error getting realtime snapshot');
       res.status(500).json({
         error: "Realtime snapshot retrieval failed",
         message: error.message || "Failed to get realtime snapshot",
@@ -169,7 +171,7 @@ export function registerMetricsRoutes(app: Express): void {
         },
       });
     } catch (error: any) {
-      console.error("Error getting overview:", error);
+      logger.error({ error, organizationId }, 'Error getting overview');
       res.status(500).json({
         error: "Overview retrieval failed",
         message: error.message || "Failed to get overview",

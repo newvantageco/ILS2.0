@@ -9,15 +9,17 @@ import { Router, Request, Response } from "express";
 import Stripe from "stripe";
 import { storage } from "../storage";
 import { asyncHandler } from "../middleware/errorHandler";
-import { 
+import {
   BadRequestError,
   UnauthorizedError,
   NotFoundError,
-  StripeError 
+  StripeError
 } from "../utils/ApiError";
 import { withTransaction } from "../utils/transaction";
+import { createLogger } from "../utils/logger";
 
 const router = Router();
+const logger = createLogger('payments');
 
 // Initialize Stripe
 // CRITICAL: STRIPE_SECRET_KEY must be set in production
@@ -34,11 +36,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 });
 
 if (!process.env.STRIPE_WEBHOOK_SECRET) {
-  console.warn(
-    "WARNING: STRIPE_WEBHOOK_SECRET is not set. " +
-    "Webhook signature verification will fail. " +
-    "This is required for production deployments."
-  );
+  logger.warn('STRIPE_WEBHOOK_SECRET is not set - webhook signature verification will fail');
 }
 
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
@@ -184,7 +182,7 @@ router.post("/create-portal-session", isAuthenticated, async (req: any, res: Res
 
     res.json({ success: true, url: session.url });
   } catch (error: any) {
-    console.error("Error creating portal session:", error);
+    logger.error({ error, userId, companyId: user?.companyId }, 'Error creating portal session');
     res.status(500).json({ error: "Failed to create portal session" });
   }
 });
@@ -224,7 +222,7 @@ router.get("/subscription-status", isAuthenticated, async (req: any, res: Respon
       history,
     });
   } catch (error: any) {
-    console.error("Error fetching subscription status:", error);
+    logger.error({ error, userId, companyId: user?.companyId }, 'Error fetching subscription status');
     res.status(500).json({ error: "Failed to fetch subscription status" });
   }
 });
@@ -245,7 +243,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
   } catch (err: any) {
-    console.error("Webhook signature verification failed:", err.message);
+    logger.error({ error: err }, 'Webhook signature verification failed');
     return res.status(400).json({ error: `Webhook Error: ${err.message}` });
   }
 
@@ -270,12 +268,12 @@ router.post("/webhook", async (req: Request, res: Response) => {
         break;
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        logger.info({ eventType: event.type }, 'Unhandled webhook event type');
     }
 
     res.json({ received: true });
   } catch (error: any) {
-    console.error("Error handling webhook:", error);
+    logger.error({ error, eventType: event.type }, 'Error handling webhook');
     res.status(500).json({ error: "Webhook handler failed" });
   }
 });
@@ -285,9 +283,9 @@ router.post("/webhook", async (req: Request, res: Response) => {
  */
 async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   const companyId = subscription.metadata.companyId;
-  
+
   if (!companyId) {
-    console.error("No companyId in subscription metadata");
+    logger.error({ subscriptionId: subscription.id }, 'No companyId in subscription metadata');
     return;
   }
 

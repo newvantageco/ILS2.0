@@ -4,8 +4,10 @@ import EquipmentDiscoveryService from '../services/EquipmentDiscoveryService';
 import { db } from '../db';
 import { eq } from 'drizzle-orm';
 import { equipment } from '@shared/schema';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('equipment');
 const equipmentService = EquipmentDiscoveryService.getInstance();
 
 // Start equipment discovery
@@ -18,7 +20,7 @@ router.post(
       equipmentService.startDiscovery();
       res.json({ message: 'Equipment discovery started' });
     } catch (error) {
-      console.error('Error starting discovery:', error);
+      logger.error({ error }, 'Error starting discovery');
       res.status(500).json({ error: 'Failed to start equipment discovery' });
     }
   }
@@ -34,7 +36,7 @@ router.post(
       equipmentService.stopDiscovery();
       res.json({ message: 'Equipment discovery stopped' });
     } catch (error) {
-      console.error('Error stopping discovery:', error);
+      logger.error({ error }, 'Error stopping discovery');
       res.status(500).json({ error: 'Failed to stop equipment discovery' });
     }
   }
@@ -50,7 +52,7 @@ router.get(
       const equipment = await equipmentService.getKnownEquipment();
       res.json(equipment);
     } catch (error) {
-      console.error('Error fetching equipment:', error);
+      logger.error({ error }, 'Error fetching equipment');
       res.status(500).json({ error: 'Failed to fetch equipment list' });
     }
   }
@@ -69,7 +71,7 @@ router.get(
       }
       res.json(equipment);
     } catch (error) {
-      console.error('Error fetching equipment:', error);
+      logger.error({ error, equipmentId: req.params.id }, 'Error fetching equipment');
       res.status(500).json({ error: 'Failed to fetch equipment details' });
     }
   }
@@ -99,7 +101,7 @@ router.post(
 
       res.json({ message: 'Equipment configuration updated' });
     } catch (error) {
-      console.error('Error configuring equipment:', error);
+      logger.error({ error, equipmentId: id }, 'Error configuring equipment');
       res.status(500).json({ error: 'Failed to update equipment configuration' });
     }
   }
@@ -121,7 +123,7 @@ router.post(
       const testResult = await testEquipmentConnection(equipment);
       res.json(testResult);
     } catch (error) {
-      console.error('Error testing equipment:', error);
+      logger.error({ error, equipmentId: req.params.id }, 'Error testing equipment');
       res.status(500).json({ error: 'Failed to test equipment connection' });
     }
   }
