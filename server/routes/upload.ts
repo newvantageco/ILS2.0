@@ -158,13 +158,22 @@ router.delete('/image',
       if (!filename) {
         return res.status(400).json({ error: 'Filename is required' });
       }
-      
+
       if (!companyId) {
         return res.status(401).json({ error: 'Company ID not found' });
       }
 
+      // SECURITY: Prevent path traversal attacks
+      // Only allow filenames without directory components
+      const sanitizedFilename = path.basename(filename);
+      if (sanitizedFilename !== filename || filename.includes('..')) {
+        return res.status(400).json({
+          error: 'Invalid filename. Filename must not contain directory traversal characters.'
+        });
+      }
+
       const dir = getCompanyDirectory(companyId, uploadType || 'product');
-      const filePath = path.join(dir, filename);
+      const filePath = path.join(dir, sanitizedFilename);
 
       // Check if file exists
       if (!fs.existsSync(filePath)) {
