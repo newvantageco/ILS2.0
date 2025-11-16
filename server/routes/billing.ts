@@ -6,8 +6,10 @@
 
 import { Router } from "express";
 import { MeteredBillingService, PRICING } from "../services/MeteredBillingService";
+import { createLogger } from "../utils/logger";
 
 const router = Router();
+const logger = createLogger('billing');
 const billingService = new MeteredBillingService();
 
 /**
@@ -28,7 +30,7 @@ router.get("/usage/current", async (req, res) => {
       usage,
     });
   } catch (error) {
-    console.error("Failed to get current usage:", error);
+    logger.error({ error, companyId }, 'Failed to get current usage');
     res.status(500).json({
       error: "Failed to retrieve usage",
       message: error instanceof Error ? error.message : "Unknown error",
@@ -73,7 +75,7 @@ router.get("/usage/range", async (req, res) => {
       usage,
     });
   } catch (error) {
-    console.error("Failed to get usage range:", error);
+    logger.error({ error, companyId, startDate, endDate }, 'Failed to get usage range');
     res.status(500).json({
       error: "Failed to retrieve usage",
       message: error instanceof Error ? error.message : "Unknown error",
@@ -99,7 +101,7 @@ router.get("/analytics", async (req, res) => {
       analytics,
     });
   } catch (error) {
-    console.error("Failed to get analytics:", error);
+    logger.error({ error, companyId }, 'Failed to get analytics');
     res.status(500).json({
       error: "Failed to retrieve analytics",
       message: error instanceof Error ? error.message : "Unknown error",
@@ -138,7 +140,7 @@ router.post("/track/:metric", async (req, res) => {
       message: `Tracked ${quantity} ${metric}(s)`,
     });
   } catch (error) {
-    console.error("Failed to track usage:", error);
+    logger.error({ error, companyId, metricType, quantity }, 'Failed to track usage');
     res.status(500).json({
       error: "Failed to track usage",
       message: error instanceof Error ? error.message : "Unknown error",
@@ -187,7 +189,7 @@ router.post("/calculate-storage", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Failed to calculate storage:", error);
+    logger.error({ error, companyId }, 'Failed to calculate storage');
     res.status(500).json({
       error: "Failed to calculate storage",
       message: error instanceof Error ? error.message : "Unknown error",
@@ -216,7 +218,7 @@ router.post("/report-to-stripe", async (req, res) => {
       message: `Reported usage for ${result.successful} companies, ${result.failed} failed`,
     });
   } catch (error) {
-    console.error("Failed to report to Stripe:", error);
+    logger.error({ error, companyId }, 'Failed to report to Stripe');
     res.status(500).json({
       error: "Failed to report usage to Stripe",
       message: error instanceof Error ? error.message : "Unknown error",

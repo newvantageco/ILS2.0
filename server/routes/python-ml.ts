@@ -4,6 +4,9 @@ import { storage } from "../storage";
 import { isAuthenticated } from "../replitAuth";
 
 const router = Router();
+import { createLogger } from "../utils/logger";
+
+const logger = createLogger('python-ml');
 
 // Validation schemas
 const executeCodeSchema = z.object({
@@ -62,7 +65,7 @@ router.get("/health", async (req, res) => {
 
     res.json(health);
   } catch (error) {
-    console.error("Error checking Python ML health:", error);
+    logger.error({ error }, 'Error checking Python ML health');
     res.status(500).json({ message: "Failed to check service health" });
   }
 });
@@ -135,7 +138,7 @@ router.get("/predictions", async (req, res) => {
       offset: offsetNum,
     });
   } catch (error) {
-    console.error("Error fetching predictions:", error);
+    logger.error({ error, limit, offset, status, modelId }, 'Error fetching predictions');
     res.status(500).json({ message: "Failed to fetch predictions" });
   }
 });
@@ -208,7 +211,7 @@ router.get("/jobs", async (req, res) => {
       offset: offsetNum,
     });
   } catch (error) {
-    console.error("Error fetching jobs:", error);
+    logger.error({ error, status, jobType, limit, offset }, 'Error fetching jobs');
     res.status(500).json({ message: "Failed to fetch jobs" });
   }
 });
@@ -244,7 +247,7 @@ router.post("/jobs", async (req, res) => {
 
     res.status(201).json(newJob);
   } catch (error) {
-    console.error("Error creating job:", error);
+    logger.error({ error, jobType: jobData?.jobType }, 'Error creating job');
     res.status(500).json({ message: "Failed to create job" });
   }
 });
@@ -284,7 +287,7 @@ router.get("/jobs/:id", async (req, res) => {
 
     res.json(job);
   } catch (error) {
-    console.error("Error fetching job:", error);
+    logger.error({ error, jobId: id }, 'Error fetching job');
     res.status(500).json({ message: "Failed to fetch job" });
   }
 });
@@ -304,7 +307,7 @@ router.delete("/jobs/:id", async (req, res) => {
       cancelledAt: new Date()
     });
   } catch (error) {
-    console.error("Error cancelling job:", error);
+    logger.error({ error, jobId: id }, 'Error cancelling job');
     res.status(500).json({ message: "Failed to cancel job" });
   }
 });
@@ -339,7 +342,7 @@ router.post("/execute", async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error("Error executing code:", error);
+    logger.error({ error, codeLength: code?.length }, 'Error executing code');
     res.status(500).json({ message: "Failed to execute code" });
   }
 });
@@ -384,7 +387,7 @@ router.get("/metrics", async (req, res) => {
 
     res.json(metrics);
   } catch (error) {
-    console.error("Error fetching metrics:", error);
+    logger.error({ error, timeRange }, 'Error fetching metrics');
     res.status(500).json({ message: "Failed to fetch metrics" });
   }
 });
@@ -402,7 +405,7 @@ router.post("/restart", async (req, res) => {
       restartedAt: new Date()
     });
   } catch (error) {
-    console.error("Error restarting service:", error);
+    logger.error({ error }, 'Error restarting service');
     res.status(500).json({ message: "Failed to restart service" });
   }
 });

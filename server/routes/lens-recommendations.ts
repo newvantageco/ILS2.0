@@ -5,8 +5,10 @@
 import express from "express";
 import { intelligentLensRecommendationService } from "../services/recommendations/IntelligentLensRecommendationService.js";
 import { authenticateUser } from "../middleware/auth.js";
+import { createLogger } from "../utils/logger.js";
 
 const router = express.Router();
+const logger = createLogger('lens-recommendations');
 
 /**
  * Get lens recommendations for a patient
@@ -22,7 +24,7 @@ router.get("/:patientId", authenticateUser, async (req, res) => {
 
     res.json({ recommendations });
   } catch (error: any) {
-    console.error("Error generating recommendations:", error);
+    logger.error({ error }, 'Error generating recommendations');
     res.status(500).json({ error: error.message || "Failed to generate recommendations" });
   }
 });
@@ -48,7 +50,7 @@ router.post("/generate", authenticateUser, async (req, res) => {
 
     res.json({ recommendations });
   } catch (error: any) {
-    console.error("Error generating recommendations:", error);
+    logger.error({ error }, 'Error generating recommendations');
     res.status(500).json({ error: error.message || "Failed to generate recommendations" });
   }
 });

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,7 +49,8 @@ interface TonometryTabProps {
   readonly?: boolean;
 }
 
-export default function TonometryTab({ data, onChange, readonly = false }: TonometryTabProps) {
+// PERFORMANCE: Memoize to prevent unnecessary re-renders
+const TonometryTab = memo(function TonometryTab({ data, onChange, readonly = false }: TonometryTabProps) {
   const updateField = (path: string[], value: any) => {
     const newData = JSON.parse(JSON.stringify(data)); // Deep clone to avoid mutation
     let current: any = newData;
@@ -489,4 +491,6 @@ export default function TonometryTab({ data, onChange, readonly = false }: Tonom
       </Card>
     </div>
   );
-}
+});
+
+export default TonometryTab;

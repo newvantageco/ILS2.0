@@ -9,8 +9,10 @@ import { db } from '../db';
 import { products, insertProductSchema, inventoryMovements } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { validateBody, validateQuery, validateParams } from '../middleware/zodValidation';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('inventory');
 
 // ============================================
 // Product CRUD Operations
@@ -99,7 +101,7 @@ router.post('/products',
         product: newProduct,
       });
     } catch (error: any) {
-      console.error('Failed to create product:', error);
+      logger.error({ error }, 'Failed to create product');
       res.status(500).json({ 
         error: 'Failed to create product',
         message: error.message,
@@ -166,7 +168,7 @@ router.put('/products/:id',
         product: updatedProduct,
       });
     } catch (error: any) {
-      console.error('Failed to update product:', error);
+      logger.error({ error, productId }, 'Failed to update product');
       res.status(500).json({ 
         error: 'Failed to update product',
         message: error.message,
@@ -213,7 +215,7 @@ router.delete('/products/:id',
         message: 'Product deleted successfully',
       });
     } catch (error: any) {
-      console.error('Failed to delete product:', error);
+      logger.error({ error, productId }, 'Failed to delete product');
       res.status(500).json({ 
         error: 'Failed to delete product',
         message: error.message,
@@ -306,7 +308,7 @@ router.post('/products/:id/adjust',
         },
       });
     } catch (error: any) {
-      console.error('Failed to adjust stock:', error);
+      logger.error({ error, productId, quantity, adjustmentType }, 'Failed to adjust stock');
       res.status(500).json({ 
         error: 'Failed to adjust stock',
         message: error.message,
@@ -342,7 +344,7 @@ router.get('/low-stock',
         count: lowStockProducts.length,
       });
     } catch (error) {
-      console.error('Failed to fetch low stock products:', error);
+      logger.error({ error, threshold }, 'Failed to fetch low stock products');
       res.status(500).json({ error: 'Failed to fetch low stock products' });
     }
   }
@@ -375,7 +377,7 @@ router.get('/out-of-stock',
         count: outOfStockProducts.length,
       });
     } catch (error) {
-      console.error('Failed to fetch out of stock products:', error);
+      logger.error({ error }, 'Failed to fetch out of stock products');
       res.status(500).json({ error: 'Failed to fetch out of stock products' });
     }
   }
@@ -453,7 +455,7 @@ router.post('/bulk-stock-update',
         errorCount: errors.length,
       });
     } catch (error: any) {
-      console.error('Failed to process bulk stock update:', error);
+      logger.error({ error, updateCount: updates?.length }, 'Failed to process bulk stock update');
       res.status(500).json({ 
         error: 'Failed to process bulk stock update',
         message: error.message,
@@ -528,7 +530,7 @@ router.get('/products/:id/movements',
         },
       });
     } catch (error: any) {
-      console.error('Failed to fetch inventory movements:', error);
+      logger.error({ error }, 'Failed to fetch inventory movements');
       res.status(500).json({ 
         error: 'Failed to fetch inventory movements',
         message: error.message,
@@ -618,7 +620,7 @@ router.get('/movements',
         offset,
       });
     } catch (error: any) {
-      console.error('Failed to fetch inventory movements:', error);
+      logger.error({ error }, 'Failed to fetch inventory movements');
       res.status(500).json({ 
         error: 'Failed to fetch inventory movements',
         message: error.message,

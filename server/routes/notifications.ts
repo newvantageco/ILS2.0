@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { authenticateUser } from '../middleware/auth';
 import NotificationService from '../services/NotificationService';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('notifications');
 const notificationService = NotificationService.getInstance();
 
 // Get user notifications
@@ -16,7 +18,7 @@ router.get(
       const notifications = await notificationService.getUserNotifications(userId, limit);
       res.json(notifications);
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      logger.error({ error, userId, limit }, 'Error fetching notifications');
       res.status(500).json({ error: 'Failed to fetch notifications' });
     }
   }
@@ -34,7 +36,7 @@ router.post(
 
       res.json({ message: 'Notification marked as read' });
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      logger.error({ error, notificationId: id }, 'Error marking notification as read');
       res.status(500).json({ error: 'Failed to update notification' });
     }
   }
@@ -52,7 +54,7 @@ router.post(
 
       res.json({ message: 'All notifications marked as read' });
     } catch (error) {
-      console.error('Error marking notifications as read:', error);
+      logger.error({ error, userId }, 'Error marking notifications as read');
       res.status(500).json({ error: 'Failed to update notifications' });
     }
   }
@@ -70,7 +72,7 @@ router.delete(
 
       res.json({ message: 'Notification deleted' });
     } catch (error) {
-      console.error('Error deleting notification:', error);
+      logger.error({ error, notificationId: id }, 'Error deleting notification');
       res.status(500).json({ error: 'Failed to delete notification' });
     }
   }
@@ -88,7 +90,7 @@ router.delete(
 
       res.json({ message: 'All notifications cleared' });
     } catch (error) {
-      console.error('Error clearing notifications:', error);
+      logger.error({ error, userId }, 'Error clearing notifications');
       res.status(500).json({ error: 'Failed to clear notifications' });
     }
   }

@@ -75,36 +75,38 @@ export function registerDemandForecastingRoutes(app: Express) {
       // Generate forecasts using AI service
       const forecasts = await forecastingService.generateForecast(daysAhead);
 
-      // Store forecasts in database
-      const storedForecasts = await Promise.all(
-        forecasts.map(async (forecast) => {
-          const forecastId = `FC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          
-          const forecastRecord = {
-            id: forecastId,
-            companyId,
-            productId: productId || null,
-            forecastDate: new Date(forecast.date),
-            predictedDemand: forecast.predictedOrderVolume,
-            confidenceInterval: forecast.confidence.toString(),
-            forecastMethod: "ai_ml" as const,
-            horizon: "week" as const,
-            historicalAverage: null,
-            trendFactor: (forecast.trend === "increasing" ? "1.10" : forecast.trend === "decreasing" ? "0.90" : "1.00"),
-            seasonalityFactor: "1.00", // Will be enhanced later
-            actualDemand: null,
-            accuracyScore: null,
-            modelVersion: "v1.0",
-            confidence: forecast.confidence.toString(),
-            generatedAt: new Date(),
-            updatedAt: new Date(),
-          };
+      // PERFORMANCE: Bulk insert all forecasts in a single query
+      // Prepare all forecast records
+      const forecastRecords = forecasts.map((forecast) => {
+        const forecastId = `FC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-          await db.insert(demandForecasts).values(forecastRecord);
-          
-          return forecastRecord;
-        })
-      );
+        return {
+          id: forecastId,
+          companyId,
+          productId: productId || null,
+          forecastDate: new Date(forecast.date),
+          predictedDemand: forecast.predictedOrderVolume,
+          confidenceInterval: forecast.confidence.toString(),
+          forecastMethod: "ai_ml" as const,
+          horizon: "week" as const,
+          historicalAverage: null,
+          trendFactor: (forecast.trend === "increasing" ? "1.10" : forecast.trend === "decreasing" ? "0.90" : "1.00"),
+          seasonalityFactor: "1.00", // Will be enhanced later
+          actualDemand: null,
+          accuracyScore: null,
+          modelVersion: "v1.0",
+          confidence: forecast.confidence.toString(),
+          generatedAt: new Date(),
+          updatedAt: new Date(),
+        };
+      });
+
+      // Bulk insert all records at once
+      if (forecastRecords.length > 0) {
+        await db.insert(demandForecasts).values(forecastRecords);
+      }
+
+      const storedForecasts = forecastRecords;
 
       logger.info({ count: storedForecasts.length }, "Forecasts generated and stored");
 
@@ -213,24 +215,24 @@ export function registerDemandForecastingRoutes(app: Express) {
       // Analyze patterns using service
       const patterns = await forecastingService.analyzeSeasonalPatterns();
 
-      // Store patterns in database if they don't exist
-      for (const pattern of patterns) {
-        const patternId = `PAT-${Date.now()}-${pattern.month}`;
-        
+      // PERFORMANCE: Bulk insert all patterns in a single query
+      if (patterns.length > 0) {
+        const patternRecords = patterns.map(pattern => ({
+          companyId,
+          productId: productId as string || null,
+          patternType: "seasonal" as const,
+          patternName: `Month ${pattern.month + 1} Pattern`,
+          peakPeriod: pattern.peakDays.join(","),
+          demandMultiplier: pattern.averageVolume.toString(),
+          confidence: "75.00",
+          observationCount: 30,
+          firstObserved: new Date(new Date().setMonth(pattern.month)),
+          lastObserved: new Date(),
+          isActive: true,
+        }));
+
         await db.insert(seasonalPatterns)
-          .values({
-            companyId,
-            productId: productId as string || null,
-            patternType: "seasonal",
-            patternName: `Month ${pattern.month + 1} Pattern`,
-            peakPeriod: pattern.peakDays.join(","),
-            demandMultiplier: pattern.averageVolume.toString(),
-            confidence: "75.00",
-            observationCount: 30,
-            firstObserved: new Date(new Date().setMonth(pattern.month)),
-            lastObserved: new Date(),
-            isActive: true,
-          })
+          .values(patternRecords)
           .onConflictDoNothing();
       }
 

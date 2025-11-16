@@ -8,8 +8,10 @@
 import { Router } from "express";
 import { OMAValidationService } from "../services/OMAValidationService";
 import { storage } from "../storage";
+import { createLogger } from "../utils/logger";
 
 const router = Router();
+const logger = createLogger('oma-validation');
 const omaValidationService = new OMAValidationService();
 
 /**
@@ -56,7 +58,7 @@ router.post("/validate/:orderId", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("OMA validation error:", error);
+    logger.error({ error, orderId }, 'OMA validation error');
     res.status(500).json({
       error: "Validation failed",
       message: error instanceof Error ? error.message : "Unknown error",
@@ -78,7 +80,7 @@ router.post("/batch", async (req, res) => {
       message: `Processed ${stats.processed} orders, ${stats.autoApproved} auto-approved, ${stats.needsReview} need review`,
     });
   } catch (error) {
-    console.error("Batch validation error:", error);
+    logger.error({ error, orderCount: orderIds?.length }, 'Batch validation error');
     res.status(500).json({
       error: "Batch validation failed",
       message: error instanceof Error ? error.message : "Unknown error",
@@ -100,7 +102,7 @@ router.get("/statistics", async (req, res) => {
       statistics: stats,
     });
   } catch (error) {
-    console.error("Statistics retrieval error:", error);
+    logger.error({ error }, 'Statistics retrieval error');
     res.status(500).json({
       error: "Failed to retrieve statistics",
       message: error instanceof Error ? error.message : "Unknown error",
@@ -132,7 +134,7 @@ router.get("/queue/:queueType", async (req, res) => {
       count: 0,
     });
   } catch (error) {
-    console.error("Queue retrieval error:", error);
+    logger.error({ error }, 'Queue retrieval error');
     res.status(500).json({
       error: "Failed to retrieve queue",
       message: error instanceof Error ? error.message : "Unknown error",

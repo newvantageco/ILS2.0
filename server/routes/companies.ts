@@ -2,8 +2,10 @@ import { Router, Request, Response } from 'express';
 import { db } from '../../db';
 import { companies, users } from '../../shared/schema';
 import { eq, and, like, sql, isNull } from 'drizzle-orm';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('companies');
 
 /**
  * GET /api/companies/available
@@ -32,7 +34,7 @@ router.get('/available', async (req: Request, res: Response) => {
 
     res.json(companiesList);
   } catch (error) {
-    console.error('Error fetching available companies:', error);
+    logger.error({ error }, 'Error fetching available companies');
     res.status(500).json({ error: 'Failed to fetch companies' });
   }
 });
@@ -66,7 +68,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       memberCount: memberInfo?.count || 0,
     });
   } catch (error) {
-    console.error('Error fetching company:', error);
+    logger.error({ error, companyId: id }, 'Error fetching company');
     res.status(500).json({ error: 'Failed to fetch company' });
   }
 });
@@ -133,7 +135,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     res.json(newCompany);
   } catch (error) {
-    console.error('Error creating company:', error);
+    logger.error({ error, companyName: name }, 'Error creating company');
     res.status(500).json({ error: 'Failed to create company' });
   }
 });
@@ -188,7 +190,7 @@ router.post('/join', async (req: Request, res: Response) => {
 
     res.json({ message: 'Join request submitted successfully' });
   } catch (error) {
-    console.error('Error joining company:', error);
+    logger.error({ error, companyId, userId }, 'Error joining company');
     res.status(500).json({ error: 'Failed to join company' });
   }
 });
@@ -239,7 +241,7 @@ router.get('/:id/members', async (req: Request, res: Response) => {
 
     res.json(members);
   } catch (error) {
-    console.error('Error fetching company members:', error);
+    logger.error({ error, companyId: id }, 'Error fetching company members');
     res.status(500).json({ error: 'Failed to fetch members' });
   }
 });
@@ -287,7 +289,7 @@ router.post('/:id/members/:memberId/approve', async (req: Request, res: Response
 
     res.json({ message: 'Member approved successfully' });
   } catch (error) {
-    console.error('Error approving member:', error);
+    logger.error({ error, userId, companyId }, 'Error approving member');
     res.status(500).json({ error: 'Failed to approve member' });
   }
 });
@@ -333,7 +335,7 @@ router.post('/:id/members/:memberId/reject', async (req: Request, res: Response)
 
     res.json({ message: 'Member request rejected' });
   } catch (error) {
-    console.error('Error rejecting member:', error);
+    logger.error({ error, userId, companyId }, 'Error rejecting member');
     res.status(500).json({ error: 'Failed to reject member' });
   }
 });

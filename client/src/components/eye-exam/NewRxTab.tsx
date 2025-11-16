@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,7 +52,8 @@ interface NewRxTabProps {
   readonly?: boolean;
 }
 
-export default function NewRxTab({ data, onChange, readonly = false }: NewRxTabProps) {
+// PERFORMANCE: Memoize to prevent unnecessary re-renders when parent updates
+const NewRxTab = memo(function NewRxTab({ data, onChange, readonly = false }: NewRxTabProps) {
   const updateField = (path: string[], value: any) => {
     const newData = JSON.parse(JSON.stringify(data)); // Deep clone to avoid mutation
     let current: any = newData;
@@ -805,4 +807,6 @@ export default function NewRxTab({ data, onChange, readonly = false }: NewRxTabP
       </div>
     </div>
   );
-}
+});
+
+export default NewRxTab;

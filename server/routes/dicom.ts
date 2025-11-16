@@ -5,8 +5,10 @@ import { db } from '../db';
 import { eyeExaminations } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { authenticateUser, requireRole } from '../middleware/auth';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('dicom');
 const upload = multer({ storage: multer.memoryStorage() });
 const dicomService = DicomService.getInstance();
 
@@ -47,7 +49,7 @@ router.post(
         readingId: dicomReading.imageInstanceUID
       });
     } catch (error) {
-      console.error('Error processing DICOM data:', error);
+      logger.error({ error, examinationId }, 'Error processing DICOM data');
       res.status(500).json({ error: 'Failed to process DICOM data' });
     }
   }
@@ -73,10 +75,11 @@ router.get(
       }
 
       const readings = await dicomService.getReadings(examinationId);
-      
+
+
       res.json(readings);
     } catch (error) {
-      console.error('Error fetching DICOM readings:', error);
+      logger.error({ error, examinationId }, 'Error fetching DICOM readings');
       res.status(500).json({ error: 'Failed to fetch DICOM readings' });
     }
   }

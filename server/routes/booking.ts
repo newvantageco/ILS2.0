@@ -7,8 +7,10 @@
 import express from "express";
 import { advancedBookingService } from "../services/booking/AdvancedBookingService.js";
 import { authenticateUser } from "../middleware/auth.js";
+import { createLogger } from "../utils/logger.js";
 
 const router = express.Router();
+const logger = createLogger('booking');
 
 /**
  * Get available time slots
@@ -32,7 +34,7 @@ router.get("/slots", async (req, res) => {
 
     res.json({ slots });
   } catch (error: any) {
-    console.error("Error fetching available slots:", error);
+    logger.error({ error, practitionerId, date }, 'Error fetching available slots');
     res.status(500).json({ error: error.message || "Failed to fetch available slots" });
   }
 });
@@ -71,7 +73,7 @@ router.post("/create", async (req, res) => {
 
     res.status(201).json({ appointment });
   } catch (error: any) {
-    console.error("Error creating booking:", error);
+    logger.error({ error, patientId, practitionerId, slotTime }, 'Error creating booking');
     res.status(500).json({ error: error.message || "Failed to create booking" });
   }
 });
@@ -89,7 +91,7 @@ router.post("/:id/cancel", authenticateUser, async (req, res) => {
 
     res.json({ message: "Appointment cancelled successfully" });
   } catch (error: any) {
-    console.error("Error cancelling appointment:", error);
+    logger.error({ error, appointmentId }, 'Error cancelling appointment');
     res.status(500).json({ error: error.message || "Failed to cancel appointment" });
   }
 });
@@ -106,7 +108,7 @@ router.post("/:id/no-show", authenticateUser, async (req, res) => {
 
     res.json({ message: "Appointment marked as no-show" });
   } catch (error: any) {
-    console.error("Error marking no-show:", error);
+    logger.error({ error, appointmentId }, 'Error marking no-show');
     res.status(500).json({ error: error.message || "Failed to mark no-show" });
   }
 });
@@ -124,7 +126,7 @@ router.post("/:id/confirm", authenticateUser, async (req, res) => {
 
     res.json({ message: "Confirmation sent successfully" });
   } catch (error: any) {
-    console.error("Error sending confirmation:", error);
+    logger.error({ error, appointmentId }, 'Error sending confirmation');
     res.status(500).json({ error: error.message || "Failed to send confirmation" });
   }
 });
@@ -154,7 +156,7 @@ router.get("/stats", authenticateUser, async (req, res) => {
 
     res.json({ stats });
   } catch (error: any) {
-    console.error("Error fetching booking stats:", error);
+    logger.error({ error }, 'Error fetching booking stats');
     res.status(500).json({ error: error.message || "Failed to fetch statistics" });
   }
 });
@@ -186,7 +188,7 @@ router.get("/utilization/:providerId", authenticateUser, async (req, res) => {
 
     res.json({ utilization });
   } catch (error: any) {
-    console.error("Error fetching utilization:", error);
+    logger.error({ error }, 'Error fetching utilization');
     res.status(500).json({ error: error.message || "Failed to fetch utilization" });
   }
 });

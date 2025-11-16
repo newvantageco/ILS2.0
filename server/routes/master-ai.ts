@@ -15,6 +15,9 @@ import { isAuthenticated } from "../replitAuth";
 import { MasterAIService, type MasterAIQuery } from "../services/MasterAIService";
 import { db } from "../../db";
 import type { IStorage } from "../storage";
+import { createLogger } from "../utils/logger";
+
+const logger = createLogger('master-ai');
 
 let masterAIService: MasterAIService;
 
@@ -137,7 +140,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
 
       res.json(response);
     } catch (error: any) {
-      console.error("Master AI chat error:", error);
+      logger.error({ error, query, companyId, userId }, 'Master AI chat error');
       res.status(500).json({
         error: "Failed to process query",
         message: error.message,
@@ -212,7 +215,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
 
       res.json(conversations);
     } catch (error: any) {
-      console.error("Get conversations error:", error);
+      logger.error({ error, userId, companyId, limit }, 'Get conversations error');
       res.status(500).json({
         error: "Failed to retrieve conversations",
         message: error.message,
@@ -290,7 +293,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
 
       res.json(conversation);
     } catch (error: any) {
-      console.error("Get conversation error:", error);
+      logger.error({ error, conversationId: id, companyId }, 'Get conversation error');
       res.status(500).json({
         error: "Failed to retrieve conversation",
         message: error.message,
@@ -385,7 +388,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
 
       res.status(201).json(document);
     } catch (error: any) {
-      console.error("Document upload error:", error);
+      logger.error({ error, fileName, companyId, uploadedBy }, 'Document upload error');
       res.status(500).json({
         error: "Failed to upload document",
         message: error.message,
@@ -445,7 +448,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
 
       res.json(documents);
     } catch (error: any) {
-      console.error("Get knowledge base error:", error);
+      logger.error({ error, companyId, limit }, 'Get knowledge base error');
       res.status(500).json({
         error: "Failed to retrieve knowledge base",
         message: error.message,
@@ -513,7 +516,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
 
       res.json(stats);
     } catch (error: any) {
-      console.error("Get stats error:", error);
+      logger.error({ error, companyId, startDate, endDate }, 'Get stats error');
       res.status(500).json({
         error: "Failed to retrieve statistics",
         message: error.message,
@@ -600,14 +603,14 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
 
       // TODO: Store feedback - requires new storage methods
       // For now, just acknowledge the feedback
-      console.log("Feedback received", { messageId, rating, companyId });
+      logger.info({ messageId, rating, companyId, userId, feedback }, 'Feedback received');
 
       res.json({
         success: true,
         message: "Feedback recorded successfully",
       });
     } catch (error: any) {
-      console.error("Feedback submission error:", error);
+      logger.error({ error, messageId, rating, companyId, userId }, 'Feedback submission error');
       res.status(500).json({
         error: "Failed to submit feedback",
         message: error.message,

@@ -69,8 +69,17 @@ declare module 'http' {
 app.use(securityHeaders);
 
 // Configure CORS
+// SECURITY: Validate CORS_ORIGIN is set in production
+const corsOrigin = process.env.CORS_ORIGIN;
+if (!corsOrigin && process.env.NODE_ENV === 'production') {
+  throw new Error(
+    '❌ CORS_ORIGIN must be set in production for security.\n' +
+    'Add to .env file: CORS_ORIGIN=https://your-frontend-domain.com'
+  );
+}
+
 app.use((req, res, next) => {
-  const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
+  const allowedOrigin = corsOrigin || 'http://localhost:3000';
   res.header('Access-Control-Allow-Origin', allowedOrigin);
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');

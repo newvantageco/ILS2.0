@@ -2,6 +2,8 @@
  * System Admin API Routes
  *
  * Routes for platform administration and system management
+ *
+ * SECURITY: All routes require platform_admin role
  */
 
 import express from 'express';
@@ -9,9 +11,15 @@ import { loggers } from '../utils/logger';
 import { SystemMonitoringService } from '../services/admin/SystemMonitoringService';
 import { ConfigurationService } from '../services/admin/ConfigurationService';
 import { AdminOperationsService } from '../services/admin/AdminOperationsService';
+import { requireAuth, requireRole } from '../middleware/auth';
 
 const router = express.Router();
 const logger = loggers.api;
+
+// ========== SECURITY MIDDLEWARE ==========
+// Apply authentication and authorization to ALL system admin routes
+router.use(requireAuth);
+router.use(requireRole(['platform_admin']));
 
 // ========== System Monitoring ==========
 

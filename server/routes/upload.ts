@@ -8,8 +8,10 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { z } from 'zod';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('upload');
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(process.cwd(), 'uploads');
@@ -101,7 +103,7 @@ router.post('/image',
         mimetype: req.file.mimetype,
       });
     } catch (error: any) {
-      console.error('File upload error:', error);
+      logger.error({ error, filename: req.file?.filename }, 'File upload error');
       res.status(500).json({ 
         error: 'Failed to upload file',
         message: error.message,
@@ -137,7 +139,7 @@ router.post('/images',
         count: uploadedFiles.length,
       });
     } catch (error: any) {
-      console.error('Multiple file upload error:', error);
+      logger.error({ error, fileCount: req.files?.length }, 'Multiple file upload error');
       res.status(500).json({ 
         error: 'Failed to upload files',
         message: error.message,
@@ -158,13 +160,22 @@ router.delete('/image',
       if (!filename) {
         return res.status(400).json({ error: 'Filename is required' });
       }
-      
+
       if (!companyId) {
         return res.status(401).json({ error: 'Company ID not found' });
       }
 
+      // SECURITY: Prevent path traversal attacks
+      // Only allow filenames without directory components
+      const sanitizedFilename = path.basename(filename);
+      if (sanitizedFilename !== filename || filename.includes('..')) {
+        return res.status(400).json({
+          error: 'Invalid filename. Filename must not contain directory traversal characters.'
+        });
+      }
+
       const dir = getCompanyDirectory(companyId, uploadType || 'product');
-      const filePath = path.join(dir, filename);
+      const filePath = path.join(dir, sanitizedFilename);
 
       // Check if file exists
       if (!fs.existsSync(filePath)) {
@@ -179,7 +190,7 @@ router.delete('/image',
         message: 'File deleted successfully',
       });
     } catch (error: any) {
-      console.error('File deletion error:', error);
+      logger.error({ error, filename: req.body.filename }, 'File deletion error');
       res.status(500).json({ 
         error: 'Failed to delete file',
         message: error.message,
@@ -219,8 +230,8 @@ router.get('/image/:filename',
         url: `/uploads/${companyId}/${uploadType === 'profile' ? 'profiles' : 'products'}/${filename}`,
       });
     } catch (error: any) {
-      console.error('File info error:', error);
-      res.status(500).json({ 
+      logger.error({ error, filename }, 'File info error');
+      res.status(500).json({
         error: 'Failed to get file info',
         message: error.message,
       });

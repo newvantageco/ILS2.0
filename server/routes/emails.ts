@@ -4,8 +4,10 @@ import { emailLogs, emailTemplates, emailTrackingEvents } from "../../shared/sch
 import { eq, and, desc, sql } from "drizzle-orm";
 import { emailTrackingService } from "../services/EmailTrackingService";
 import { authenticateUser, type AuthenticatedRequest } from "../middleware/auth";
+import { createLogger } from "../utils/logger";
 
 const router = Router();
+const logger = createLogger('emails');
 
 // ============================================
 // Email Sending Routes
@@ -54,7 +56,7 @@ router.post("/send", authenticateUser, async (req: Request, res: Response) => {
 
     res.json(emailLog);
   } catch (error: any) {
-    console.error("Error sending email:", error);
+    logger.error({ error, to, subject }, 'Error sending email');
     res.status(500).json({ error: error.message });
   }
 });
@@ -100,7 +102,7 @@ router.post("/send-template", authenticateUser, async (req: Request, res: Respon
 
     res.json(emailLog);
   } catch (error: any) {
-    console.error("Error sending template email:", error);
+    logger.error({ error, templateId, to }, 'Error sending template email');
     res.status(500).json({ error: error.message });
   }
 });
@@ -114,7 +116,7 @@ router.post("/:id/retry", authenticateUser, async (req: Request, res: Response) 
     const emailLog = await emailTrackingService.retryEmail(req.params.id);
     res.json(emailLog);
   } catch (error: any) {
-    console.error("Error retrying email:", error);
+    logger.error({ error, emailLogId }, 'Error retrying email');
     res.status(500).json({ error: error.message });
   }
 });
@@ -149,7 +151,7 @@ router.get("/track/open/:trackingId", async (req: Request, res: Response) => {
     });
     res.end(pixel);
   } catch (error) {
-    console.error("Error tracking email open:", error);
+    logger.error({ error, emailLogId, trackingId }, 'Error tracking email open');
     // Still return the pixel even if tracking fails
     const pixel = Buffer.from(
       "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
@@ -188,7 +190,7 @@ router.get("/track/click/:trackingId", async (req: Request, res: Response) => {
     // Redirect to the original URL
     res.redirect(url as string);
   } catch (error) {
-    console.error("Error tracking email click:", error);
+    logger.error({ error, emailLogId, trackingId, url }, 'Error tracking email click');
     // Redirect anyway even if tracking fails
     const { url } = req.query;
     if (url) {
@@ -224,7 +226,7 @@ router.get("/analytics", authenticateUser, async (req: Request, res: Response) =
 
     res.json(analytics);
   } catch (error: any) {
-    console.error("Error fetching email analytics:", error);
+    logger.error({ error }, 'Error fetching email analytics');
     res.status(500).json({ error: error.message });
   }
 });
@@ -262,7 +264,7 @@ router.get("/logs", authenticateUser, async (req: Request, res: Response) => {
 
     res.json(logs);
   } catch (error: any) {
-    console.error("Error fetching email logs:", error);
+    logger.error({ error }, 'Error fetching email logs');
     res.status(500).json({ error: error.message });
   }
 });
@@ -295,7 +297,7 @@ router.get("/logs/:id", authenticateUser, async (req: Request, res: Response) =>
       events,
     });
   } catch (error: any) {
-    console.error("Error fetching email log:", error);
+    logger.error({ error, emailLogId: id }, 'Error fetching email log');
     res.status(500).json({ error: error.message });
   }
 });
@@ -314,7 +316,7 @@ router.get("/patient/:patientId", authenticateUser, async (req: Request, res: Re
 
     res.json(history);
   } catch (error: any) {
-    console.error("Error fetching patient email history:", error);
+    logger.error({ error, patientId }, 'Error fetching patient email history');
     res.status(500).json({ error: error.message });
   }
 });
@@ -350,7 +352,7 @@ router.get("/templates", authenticateUser, async (req: Request, res: Response) =
 
     res.json(templates);
   } catch (error: any) {
-    console.error("Error fetching email templates:", error);
+    logger.error({ error }, 'Error fetching email templates');
     res.status(500).json({ error: error.message });
   }
 });
@@ -378,7 +380,7 @@ router.get("/templates/:id", authenticateUser, async (req: Request, res: Respons
 
     res.json(template);
   } catch (error: any) {
-    console.error("Error fetching email template:", error);
+    logger.error({ error, templateId: id }, 'Error fetching email template');
     res.status(500).json({ error: error.message });
   }
 });
@@ -427,7 +429,7 @@ router.post("/templates", authenticateUser, async (req: Request, res: Response) 
 
     res.status(201).json(template);
   } catch (error: any) {
-    console.error("Error creating email template:", error);
+    logger.error({ error, templateName: name }, 'Error creating email template');
     res.status(500).json({ error: error.message });
   }
 });
@@ -477,7 +479,7 @@ router.patch("/templates/:id", authenticateUser, async (req: Request, res: Respo
 
     res.json(template);
   } catch (error: any) {
-    console.error("Error updating email template:", error);
+    logger.error({ error, templateId: id }, 'Error updating email template');
     res.status(500).json({ error: error.message });
   }
 });
@@ -505,7 +507,7 @@ router.delete("/templates/:id", authenticateUser, async (req: Request, res: Resp
 
     res.json({ message: "Template deleted successfully" });
   } catch (error: any) {
-    console.error("Error deleting email template:", error);
+    logger.error({ error, templateId: id }, 'Error deleting email template');
     res.status(500).json({ error: error.message });
   }
 });

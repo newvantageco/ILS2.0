@@ -9,8 +9,10 @@ import { EventBus } from '../events/EventBus';
 import { WebhookManager } from '../events/webhooks/WebhookManager';
 import { WebSocketBroadcaster } from '../events/websocket/WebSocketBroadcaster';
 import { z } from 'zod';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('events');
 
 /**
  * Validation schemas
@@ -60,7 +62,7 @@ router.get('/', async (req, res) => {
       events,
     });
   } catch (error) {
-    console.error('Failed to query events:', error);
+    logger.error({ error, types: query.types, companyId: query.companyId }, 'Failed to query events');
     res.status(500).json({
       success: false,
       error: 'Failed to query events',
@@ -94,7 +96,7 @@ router.get('/stats', async (req, res) => {
       total: Object.values(stats).reduce((sum, count) => sum + count, 0),
     });
   } catch (error) {
-    console.error('Failed to get event stats:', error);
+    logger.error({ error, startDate, endDate }, 'Failed to get event stats');
     res.status(500).json({
       success: false,
       error: 'Failed to get event stats',
@@ -129,7 +131,7 @@ router.post('/replay', async (req, res) => {
       message: `Replayed ${eventIds.length} events`,
     });
   } catch (error) {
-    console.error('Failed to replay events:', error);
+    logger.error({ error, eventCount: eventIds?.length }, 'Failed to replay events');
     res.status(500).json({
       success: false,
       error: 'Failed to replay events',
@@ -160,7 +162,7 @@ router.get('/webhooks', async (req, res) => {
       })),
     });
   } catch (error) {
-    console.error('Failed to get webhook subscriptions:', error);
+    logger.error({ error, companyId }, 'Failed to get webhook subscriptions');
     res.status(500).json({
       success: false,
       error: 'Failed to get webhook subscriptions',
@@ -192,7 +194,7 @@ router.post('/webhooks', async (req, res) => {
       message: 'Webhook registered successfully',
     });
   } catch (error) {
-    console.error('Failed to register webhook:', error);
+    logger.error({ error, companyId, url: data?.url, eventCount: data?.events?.length }, 'Failed to register webhook');
     res.status(500).json({
       success: false,
       error: 'Failed to register webhook',
@@ -215,7 +217,7 @@ router.delete('/webhooks/:id', async (req, res) => {
       message: 'Webhook unregistered successfully',
     });
   } catch (error) {
-    console.error('Failed to unregister webhook:', error);
+    logger.error({ error, subscriptionId }, 'Failed to unregister webhook');
     res.status(500).json({
       success: false,
       error: 'Failed to unregister webhook',
@@ -236,7 +238,7 @@ router.get('/websocket/stats', (req, res) => {
       totalConnections,
     });
   } catch (error) {
-    console.error('Failed to get WebSocket stats:', error);
+    logger.error({ error }, 'Failed to get WebSocket stats');
     res.status(500).json({
       success: false,
       error: 'Failed to get WebSocket stats',

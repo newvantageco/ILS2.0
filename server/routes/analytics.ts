@@ -1,18 +1,20 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { 
-  orders, 
-  posTransactions, 
+import {
+  orders,
+  posTransactions,
   posTransactionItems,
-  products, 
+  products,
   users,
   analyticsEvents,
   companies
 } from '../../shared/schema';
 import { and, eq, gte, lte, sql, desc, count, sum, avg, between } from 'drizzle-orm';
 import { z } from 'zod';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('analytics');
 
 // Validation schemas
 const dateRangeSchema = z.object({
@@ -148,7 +150,7 @@ router.get('/overview', async (req: Request, res: Response) => {
       paymentMethods,
     });
   } catch (error) {
-    console.error('Error fetching analytics overview:', error);
+    logger.error({ error }, 'Error fetching analytics overview');
     res.status(500).json({ error: 'Failed to fetch analytics overview' });
   }
 });
@@ -212,7 +214,7 @@ router.get('/sales-trends', async (req: Request, res: Response) => {
       })),
     });
   } catch (error) {
-    console.error('Error fetching sales trends:', error);
+    logger.error({ error }, 'Error fetching sales trends');
     res.status(500).json({ error: 'Failed to fetch sales trends' });
   }
 });
@@ -267,7 +269,7 @@ router.get('/product-performance', async (req: Request, res: Response) => {
       })),
     });
   } catch (error) {
-    console.error('Error fetching product performance:', error);
+    logger.error({ error }, 'Error fetching product performance');
     res.status(500).json({ error: 'Failed to fetch product performance' });
   }
 });
@@ -318,7 +320,7 @@ router.get('/category-breakdown', async (req: Request, res: Response) => {
       totalRevenue,
     });
   } catch (error) {
-    console.error('Error fetching category breakdown:', error);
+    logger.error({ error }, 'Error fetching category breakdown');
     res.status(500).json({ error: 'Failed to fetch category breakdown' });
   }
 });
@@ -366,7 +368,7 @@ router.get('/staff-performance', async (req: Request, res: Response) => {
       })),
     });
   } catch (error) {
-    console.error('Error fetching staff performance:', error);
+    logger.error({ error }, 'Error fetching staff performance');
     res.status(500).json({ error: 'Failed to fetch staff performance' });
   }
 });
@@ -462,7 +464,7 @@ router.get('/customer-insights', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching customer insights:', error);
+    logger.error({ error }, 'Error fetching customer insights');
     res.status(500).json({ error: 'Failed to fetch customer insights' });
   }
 });
@@ -517,7 +519,7 @@ router.get('/real-time', async (req: Request, res: Response) => {
       recentTransactions,
     });
   } catch (error) {
-    console.error('Error fetching real-time metrics:', error);
+    logger.error({ error }, 'Error fetching real-time metrics');
     res.status(500).json({ error: 'Failed to fetch real-time metrics' });
   }
 });
@@ -542,7 +544,7 @@ router.get('/customer-lifetime-value', async (req: Request, res: Response) => {
     const clvData = await advancedAnalytics.getCustomerLifetimeValue(companyId, limit);
     res.json(clvData);
   } catch (error) {
-    console.error('Error fetching CLV:', error);
+    logger.error({ error }, 'Error fetching CLV');
     res.status(500).json({ error: 'Failed to fetch customer lifetime value' });
   }
 });
@@ -561,7 +563,7 @@ router.get('/product-affinity', async (req: Request, res: Response) => {
     const affinityData = await advancedAnalytics.getProductAffinity(companyId as string, minOccurrences);
     res.json(affinityData);
   } catch (error) {
-    console.error('Error fetching product affinity:', error);
+    logger.error({ error }, 'Error fetching product affinity');
     res.status(500).json({ error: 'Failed to fetch product affinity' });
   }
 });
@@ -581,7 +583,7 @@ router.get('/revenue-by-hour', async (req: Request, res: Response) => {
     const hourlyData = await advancedAnalytics.getRevenueByHourOfDay(companyId as string, start, end);
     res.json(hourlyData);
   } catch (error) {
-    console.error('Error fetching hourly revenue:', error);
+    logger.error({ error }, 'Error fetching hourly revenue');
     res.status(500).json({ error: 'Failed to fetch hourly revenue' });
   }
 });
@@ -601,7 +603,7 @@ router.get('/revenue-by-day-of-week', async (req: Request, res: Response) => {
     const weekdayData = await advancedAnalytics.getRevenueByDayOfWeek(companyId as string, start, end);
     res.json(weekdayData);
   } catch (error) {
-    console.error('Error fetching weekday revenue:', error);
+    logger.error({ error }, 'Error fetching weekday revenue');
     res.status(500).json({ error: 'Failed to fetch weekday revenue' });
   }
 });
@@ -620,7 +622,7 @@ router.get('/inventory-turnover', async (req: Request, res: Response) => {
     const turnoverData = await advancedAnalytics.getInventoryTurnover(companyId as string, days);
     res.json(turnoverData);
   } catch (error) {
-    console.error('Error fetching inventory turnover:', error);
+    logger.error({ error }, 'Error fetching inventory turnover');
     res.status(500).json({ error: 'Failed to fetch inventory turnover' });
   }
 });
@@ -640,7 +642,7 @@ router.get('/peak-hours', async (req: Request, res: Response) => {
     const peakData = await advancedAnalytics.getPeakSalesHours(companyId as string, start, end);
     res.json(peakData);
   } catch (error) {
-    console.error('Error fetching peak hours:', error);
+    logger.error({ error }, 'Error fetching peak hours');
     res.status(500).json({ error: 'Failed to fetch peak hours' });
   }
 });
@@ -660,7 +662,7 @@ router.get('/abandonment-funnel', async (req: Request, res: Response) => {
     const funnelData = await advancedAnalytics.getAbandonmentAnalysis(companyId as string, start, end);
     res.json(funnelData);
   } catch (error) {
-    console.error('Error fetching abandonment funnel:', error);
+    logger.error({ error }, 'Error fetching abandonment funnel');
     res.status(500).json({ error: 'Failed to fetch abandonment funnel' });
   }
 });

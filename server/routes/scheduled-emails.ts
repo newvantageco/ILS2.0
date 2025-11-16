@@ -1,8 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { scheduledEmailService } from '../services/ScheduledEmailService';
 import { authenticateUser } from '../middleware/auth';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('scheduled-emails');
 
 /**
  * Manual trigger for prescription reminders (admin only)
@@ -23,7 +25,7 @@ router.post('/trigger/prescription-reminders', authenticateUser, async (req: Req
       ...result
     });
   } catch (error: any) {
-    console.error('Error triggering prescription reminders:', error);
+    logger.error({ error }, 'Error triggering prescription reminders');
     res.status(500).json({ message: error.message });
   }
 });
@@ -47,7 +49,7 @@ router.post('/trigger/recall-notifications', authenticateUser, async (req: Reque
       ...result
     });
   } catch (error: any) {
-    console.error('Error triggering recall notifications:', error);
+    logger.error({ error }, 'Error triggering recall notifications');
     res.status(500).json({ message: error.message });
   }
 });

@@ -5,8 +5,10 @@ import { db } from '../db';
 import { pdfTemplates } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('pdfGeneration');
 const pdfService = AdvancedPDFService.getInstance();
 const professionalPdfService = ProfessionalPDFService.getInstance();
 
@@ -28,7 +30,7 @@ router.post('/receipt/:transactionId', async (req: Request, res: Response) => {
     res.setHeader('Content-Disposition', `attachment; filename=receipt_${transactionId}.pdf`);
     res.send(pdfBuffer);
   } catch (error) {
-    console.error('Error generating receipt PDF:', error);
+    logger.error({ error, transactionId }, 'Error generating receipt PDF');
     res.status(500).json({ error: 'Failed to generate receipt PDF' });
   }
 });
@@ -75,7 +77,7 @@ router.post('/invoice', async (req: Request, res: Response) => {
     res.setHeader('Content-Disposition', `attachment; filename=invoice_${invoiceData.invoiceNumber}.pdf`);
     res.send(pdfBuffer);
   } catch (error) {
-    console.error('Error generating invoice PDF:', error);
+    logger.error({ error }, 'Error generating invoice PDF');
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Invalid invoice data', details: error.errors });
     } else {
@@ -102,7 +104,7 @@ router.post('/order/:orderId', async (req: Request, res: Response) => {
     res.setHeader('Content-Disposition', `attachment; filename=order_${orderId}.pdf`);
     res.send(pdfBuffer);
   } catch (error) {
-    console.error('Error generating order PDF:', error);
+    logger.error({ error }, 'Error generating order PDF');
     res.status(500).json({ error: 'Failed to generate order PDF' });
   }
 });
@@ -132,7 +134,7 @@ router.post('/label', async (req: Request, res: Response) => {
     res.setHeader('Content-Disposition', `attachment; filename=label_${labelData.type}.pdf`);
     res.send(pdfBuffer);
   } catch (error) {
-    console.error('Error generating label PDF:', error);
+    logger.error({ error }, 'Error generating label PDF');
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Invalid label data', details: error.errors });
     } else {
@@ -159,7 +161,7 @@ router.get('/templates', async (req: Request, res: Response) => {
 
     res.json(templates);
   } catch (error) {
-    console.error('Error fetching templates:', error);
+    logger.error({ error }, 'Error fetching templates');
     res.status(500).json({ error: 'Failed to fetch templates' });
   }
 });
@@ -201,7 +203,7 @@ router.post('/templates', async (req: Request, res: Response) => {
 
     res.status(201).json(newTemplate);
   } catch (error) {
-    console.error('Error creating template:', error);
+    logger.error({ error }, 'Error creating template');
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Invalid template data', details: error.errors });
     } else {
@@ -257,7 +259,7 @@ router.put('/templates/:id', async (req: Request, res: Response) => {
 
     res.json(updatedTemplate);
   } catch (error) {
-    console.error('Error updating template:', error);
+    logger.error({ error, templateId }, 'Error updating template');
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Invalid template data', details: error.errors });
     } else {
@@ -294,7 +296,7 @@ router.delete('/templates/:id', async (req: Request, res: Response) => {
 
     res.json({ message: 'Template deleted successfully' });
   } catch (error) {
-    console.error('Error deleting template:', error);
+    logger.error({ error, templateId }, 'Error deleting template');
     res.status(500).json({ error: 'Failed to delete template' });
   }
 });
@@ -313,7 +315,7 @@ router.post('/prescription/:prescriptionId', async (req: Request, res: Response)
     res.setHeader('Content-Disposition', `attachment; filename=prescription_${prescriptionId.substring(0, 8)}.pdf`);
     res.send(pdfBuffer);
   } catch (error) {
-    console.error('Error generating prescription PDF:', error);
+    logger.error({ error, prescriptionId }, 'Error generating prescription PDF');
     res.status(500).json({ 
       error: 'Failed to generate prescription PDF',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -335,7 +337,7 @@ router.post('/order-slip/:orderId', async (req: Request, res: Response) => {
     res.setHeader('Content-Disposition', `attachment; filename=order_slip_${orderId.substring(0, 8)}.pdf`);
     res.send(pdfBuffer);
   } catch (error) {
-    console.error('Error generating order slip PDF:', error);
+    logger.error({ error, orderId }, 'Error generating order slip PDF');
     res.status(500).json({ 
       error: 'Failed to generate order slip PDF',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -357,7 +359,7 @@ router.post('/customer-info/:patientId', async (req: Request, res: Response) => 
     res.setHeader('Content-Disposition', `attachment; filename=patient_info_${patientId.substring(0, 8)}.pdf`);
     res.send(pdfBuffer);
   } catch (error) {
-    console.error('Error generating customer info PDF:', error);
+    logger.error({ error, patientId }, 'Error generating customer info PDF');
     res.status(500).json({ 
       error: 'Failed to generate customer info PDF',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -379,7 +381,7 @@ router.get('/preview/prescription/:prescriptionId', async (req: Request, res: Re
     res.setHeader('Content-Disposition', `inline; filename=prescription_${prescriptionId.substring(0, 8)}.pdf`);
     res.send(pdfBuffer);
   } catch (error) {
-    console.error('Error previewing prescription PDF:', error);
+    logger.error({ error, prescriptionId }, 'Error previewing prescription PDF');
     res.status(500).json({ error: 'Failed to preview prescription PDF' });
   }
 });
@@ -398,7 +400,7 @@ router.get('/preview/order-slip/:orderId', async (req: Request, res: Response) =
     res.setHeader('Content-Disposition', `inline; filename=order_slip_${orderId.substring(0, 8)}.pdf`);
     res.send(pdfBuffer);
   } catch (error) {
-    console.error('Error previewing order slip PDF:', error);
+    logger.error({ error, orderId }, 'Error previewing order slip PDF');
     res.status(500).json({ error: 'Failed to preview order slip PDF' });
   }
 });
@@ -417,7 +419,7 @@ router.get('/preview/customer-info/:patientId', async (req: Request, res: Respon
     res.setHeader('Content-Disposition', `inline; filename=patient_info_${patientId.substring(0, 8)}.pdf`);
     res.send(pdfBuffer);
   } catch (error) {
-    console.error('Error previewing customer info PDF:', error);
+    logger.error({ error, patientId }, 'Error previewing customer info PDF');
     res.status(500).json({ error: 'Failed to preview customer info PDF' });
   }
 });

@@ -14,6 +14,9 @@ import { isAuthenticated } from "../replitAuth";
 import { BiAnalyticsService } from "../services/BiAnalyticsService";
 import { db } from "../../db";
 import { z } from "zod";
+import { createLogger } from "../utils/logger";
+
+const logger = createLogger('bi');
 
 const dateRangeSchema = z.object({
   startDate: z.string(),
@@ -64,7 +67,7 @@ export function registerBiRoutes(app: Express): void {
         },
       });
     } catch (error: any) {
-      console.error("Error getting Practice Pulse dashboard:", error);
+      logger.error({ error, startDate, endDate, companyId: effectiveCompanyId }, 'Error getting Practice Pulse dashboard');
       res.status(500).json({
         error: "Practice Pulse dashboard retrieval failed",
         message: error.message || "Failed to get Practice Pulse dashboard",
@@ -109,7 +112,7 @@ export function registerBiRoutes(app: Express): void {
         },
       });
     } catch (error: any) {
-      console.error("Error getting Financial dashboard:", error);
+      logger.error({ error, startDate, endDate, companyId: effectiveCompanyId }, 'Error getting Financial dashboard');
       res.status(500).json({
         error: "Financial dashboard retrieval failed",
         message: error.message || "Failed to get Financial dashboard",
@@ -154,7 +157,7 @@ export function registerBiRoutes(app: Express): void {
         },
       });
     } catch (error: any) {
-      console.error("Error getting Operational dashboard:", error);
+      logger.error({ error, startDate, endDate, companyId: effectiveCompanyId }, 'Error getting Operational dashboard');
       res.status(500).json({
         error: "Operational dashboard retrieval failed",
         message: error.message || "Failed to get Operational dashboard",
@@ -199,7 +202,7 @@ export function registerBiRoutes(app: Express): void {
         },
       });
     } catch (error: any) {
-      console.error("Error getting Patient dashboard:", error);
+      logger.error({ error, startDate, endDate, companyId: effectiveCompanyId }, 'Error getting Patient dashboard');
       res.status(500).json({
         error: "Patient dashboard retrieval failed",
         message: error.message || "Failed to get Patient dashboard",
@@ -252,7 +255,7 @@ export function registerBiRoutes(app: Express): void {
         },
       });
     } catch (error: any) {
-      console.error("Error getting platform comparison:", error);
+      logger.error({ error, startDate, endDate }, 'Error getting platform comparison');
       res.status(500).json({
         error: "Platform comparison retrieval failed",
         message: error.message || "Failed to get platform comparison",
@@ -281,7 +284,7 @@ export function registerBiRoutes(app: Express): void {
         data: alerts,
       });
     } catch (error: any) {
-      console.error("Error getting KPI alerts:", error);
+      logger.error({ error, companyId: effectiveCompanyId }, 'Error getting KPI alerts');
       res.status(500).json({
         error: "KPI alerts retrieval failed",
         message: error.message || "Failed to get KPI alerts",
@@ -339,7 +342,7 @@ export function registerBiRoutes(app: Express): void {
         },
       });
     } catch (error: any) {
-      console.error("Error getting BI summary:", error);
+      logger.error({ error, companyId: effectiveCompanyId }, 'Error getting BI summary');
       res.status(500).json({
         error: "BI summary retrieval failed",
         message: error.message || "Failed to get BI summary",
@@ -379,7 +382,7 @@ export function registerBiRoutes(app: Express): void {
         message: "Alert acknowledged successfully",
       });
     } catch (error: any) {
-      console.error("Error acknowledging alert:", error);
+      logger.error({ error, alertId }, 'Error acknowledging alert');
       res.status(500).json({
         error: "Alert acknowledgement failed",
         message: error.message || "Failed to acknowledge alert",
@@ -448,7 +451,7 @@ export function registerBiRoutes(app: Express): void {
         },
       });
     } catch (error: any) {
-      console.error("Error exporting dashboard:", error);
+      logger.error({ error, dashboardType, format }, 'Error exporting dashboard');
       res.status(500).json({
         error: "Dashboard export failed",
         message: error.message || "Failed to export dashboard",

@@ -43,7 +43,16 @@ router.get('/test-rooms', isAuthenticated, async (req: any, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -72,7 +81,16 @@ router.post('/test-rooms', isAuthenticated, async (req: any, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -110,7 +128,16 @@ router.put('/test-rooms/:id', isAuthenticated, async (req: any, res: Response) =
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -151,7 +178,16 @@ router.delete('/test-rooms/:id', isAuthenticated, async (req: any, res: Response
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -194,7 +230,16 @@ router.get('/test-room-bookings', isAuthenticated, async (req: any, res: Respons
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -266,7 +311,16 @@ router.post('/test-room-bookings', isAuthenticated, async (req: any, res: Respon
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       logger.info({}, "Error: User not found or no companyId");
       return res.status(403).json({ message: "User must belong to a company" });
@@ -402,7 +456,16 @@ router.get('/equipment', isAuthenticated, async (req: any, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -428,7 +491,16 @@ router.get('/calibration-records', isAuthenticated, async (req: any, res: Respon
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -483,7 +555,16 @@ router.get('/remote-sessions', isAuthenticated, async (req: any, res: Response) 
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -515,7 +596,16 @@ router.post('/remote-sessions', isAuthenticated, async (req: any, res: Response)
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -586,7 +676,16 @@ router.get('/goc-compliance', isAuthenticated, async (req: any, res: Response) =
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -613,7 +712,16 @@ router.post('/goc-compliance', isAuthenticated, async (req: any, res: Response) 
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -648,7 +756,16 @@ router.get('/prescription-templates', isAuthenticated, async (req: any, res: Res
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -677,7 +794,16 @@ router.post('/prescription-templates', isAuthenticated, async (req: any, res: Re
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -716,7 +842,16 @@ router.put('/prescription-templates/:id', isAuthenticated, async (req: any, res:
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -752,7 +887,16 @@ router.post('/prescription-templates/:id/use', isAuthenticated, async (req: any,
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -789,7 +933,16 @@ router.get('/clinical-protocols', isAuthenticated, async (req: any, res: Respons
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -815,7 +968,16 @@ router.post('/clinical-protocols', isAuthenticated, async (req: any, res: Respon
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -841,7 +1003,7 @@ router.post('/clinical-protocols', isAuthenticated, async (req: any, res: Respon
     const [protocol] = await db.insert(clinicalProtocols).values(validation.data).returning();
     res.status(201).json(protocol);
   } catch (error) {
-    console.error("Error creating clinical protocol:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error), companyId: user[0]?.companyId, userId }, 'Error creating clinical protocol');
     res.status(500).json({ message: "Failed to create clinical protocol" });
   }
 });
@@ -854,7 +1016,16 @@ router.put('/clinical-protocols/:id', isAuthenticated, async (req: any, res: Res
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -882,7 +1053,7 @@ router.put('/clinical-protocols/:id', isAuthenticated, async (req: any, res: Res
 
     res.json(protocol);
   } catch (error) {
-    console.error("Error updating clinical protocol:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error), protocolId: req.params.id, companyId: user[0]?.companyId }, 'Error updating clinical protocol');
     res.status(500).json({ message: "Failed to update clinical protocol" });
   }
 });
@@ -897,7 +1068,16 @@ router.get('/goc-status', isAuthenticated, async (req: any, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // PERFORMANCE: Only fetch needed columns instead of all user data
+    const user = await db
+      .select({
+        id: users.id,
+        companyId: users.companyId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user.length || !user[0].companyId) {
       return res.status(403).json({ message: "User must belong to a company" });
     }
@@ -965,7 +1145,7 @@ router.get('/goc-status', isAuthenticated, async (req: any, res: Response) => {
 
     res.json(statusReport);
   } catch (error) {
-    console.error("Error fetching GOC status:", error);
+    logger.error({ error: error instanceof Error ? error.message : String(error), companyId: user[0]?.companyId }, 'Error fetching GOC status');
     res.status(500).json({ message: "Failed to fetch GOC status" });
   }
 });

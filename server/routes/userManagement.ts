@@ -10,14 +10,14 @@ import { Router } from 'express';
 import { db } from '../db';
 import { users, companies } from '../../shared/schema';
 import { eq, and, inArray } from 'drizzle-orm';
-import { 
-  enforceCompanyIsolation, 
+import {
+  enforceCompanyIsolation,
   requireCompanyOrPlatformAdmin,
-  requirePlatformAdmin 
+  requirePlatformAdmin
 } from '../middleware/companyIsolation';
-import { 
-  canViewUsers, 
-  canManageUsers, 
+import {
+  canViewUsers,
+  canManageUsers,
   getAllowedRolesForCreation,
   canChangeRole,
   isPlatformAdmin,
@@ -25,8 +25,10 @@ import {
 } from '../utils/rbac';
 import { hashPassword } from '../localAuth';
 import { z } from 'zod';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('userManagement');
 
 // Apply company isolation to all routes
 router.use(enforceCompanyIsolation);
@@ -107,7 +109,7 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching users:', error);
+    logger.error({ error, userRole, userCompanyId }, 'Error fetching users');
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
@@ -148,7 +150,7 @@ router.get('/:id', async (req, res) => {
       data: userWithoutPassword
     });
   } catch (error) {
-    console.error('Error fetching user:', error);
+    logger.error({ error, userId: id }, 'Error fetching user');
     res.status(500).json({ error: 'Failed to fetch user' });
   }
 });
@@ -250,7 +252,7 @@ router.post('/', requireCompanyOrPlatformAdmin, async (req, res) => {
       message: 'User created successfully'
     });
   } catch (error) {
-    console.error('Error creating user:', error);
+    logger.error({ error, email, role, companyId: targetCompanyId }, 'Error creating user');
     res.status(500).json({ error: 'Failed to create user' });
   }
 });
@@ -358,7 +360,7 @@ router.put('/:id', requireCompanyOrPlatformAdmin, async (req, res) => {
       message: 'User updated successfully'
     });
   } catch (error) {
-    console.error('Error updating user:', error);
+    logger.error({ error, userId: id, updates }, 'Error updating user');
     res.status(500).json({ error: 'Failed to update user' });
   }
 });
@@ -415,7 +417,7 @@ router.delete('/:id', requireCompanyOrPlatformAdmin, async (req, res) => {
       message: 'User deactivated successfully'
     });
   } catch (error) {
-    console.error('Error deleting user:', error);
+    logger.error({ error, userId: id }, 'Error deleting user');
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });

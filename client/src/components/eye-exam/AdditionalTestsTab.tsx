@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,7 +52,8 @@ interface AdditionalTestsTabProps {
   readonly?: boolean;
 }
 
-export default function AdditionalTestsTab({ data, onChange, readonly = false }: AdditionalTestsTabProps) {
+// PERFORMANCE: Memoize to prevent unnecessary re-renders
+const AdditionalTestsTab = memo(function AdditionalTestsTab({ data, onChange, readonly = false }: AdditionalTestsTabProps) {
   const updateField = (path: string[], value: any) => {
     const newData = JSON.parse(JSON.stringify(data)); // Deep clone to avoid mutation
     let current: any = newData;
@@ -529,4 +531,6 @@ export default function AdditionalTestsTab({ data, onChange, readonly = false }:
       </Card>
     </div>
   );
-}
+});
+
+export default AdditionalTestsTab;
