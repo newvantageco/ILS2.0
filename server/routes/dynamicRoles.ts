@@ -10,10 +10,12 @@ import { sql } from 'drizzle-orm';
 import { requirePermission, requireOwner, AuthRequest } from '../middleware/dynamicPermissions';
 import { DynamicPermissionService } from '../services/DynamicPermissionService';
 import { cloneRole, updateRolePermissions } from '../services/DefaultRolesService';
+import { createLogger } from '../utils/logger';
 
-console.log('🔧 Dynamic Roles router loading...');
+const logger = createLogger('dynamicRoles');
+logger.info({}, 'Dynamic Roles router loading');
 const router = Router();
-console.log('✅ Dynamic Roles router created successfully');
+logger.info({}, 'Dynamic Roles router created successfully');
 
 // =====================================================
 // ROLES MANAGEMENT
@@ -53,7 +55,7 @@ router.get('/', requirePermission('users:view'), async (req, res) => {
 
     return res.json({ roles: rolesResult.rows });
   } catch (error) {
-    console.error('Error fetching roles:', error);
+    logger.error({ error, companyId }, 'Error fetching roles');
     return res.status(500).json({ error: 'Failed to fetch roles' });
   }
 });
@@ -125,7 +127,7 @@ router.get('/:roleId', requirePermission('users:view'), async (req, res) => {
       users: usersResult.rows
     });
   } catch (error) {
-    console.error('Error fetching role details:', error);
+    logger.error({ error, roleId }, 'Error fetching role details');
     return res.status(500).json({ error: 'Failed to fetch role details' });
   }
 });
@@ -189,12 +191,12 @@ router.post('/', requirePermission('users:manage_roles'), async (req, res) => {
       message: 'Role created successfully'
     });
   } catch (error: any) {
-    console.error('Error creating role:', error);
-    
+    logger.error({ error, name, companyId, permissionCount: permissionIds?.length }, 'Error creating role');
+
     if (error.code === '23505') { // Unique constraint violation
       return res.status(409).json({ error: 'A role with this name already exists' });
     }
-    
+
     return res.status(500).json({ error: 'Failed to create role' });
   }
 });
@@ -290,12 +292,12 @@ router.put('/:roleId', requirePermission('users:manage_roles'), async (req, res)
       message: 'Role updated successfully'
     });
   } catch (error: any) {
-    console.error('Error updating role:', error);
-    
+    logger.error({ error, roleId, name, permissionCount: permissionIds?.length }, 'Error updating role');
+
     if (error.code === '23505') {
       return res.status(409).json({ error: 'A role with this name already exists' });
     }
-    
+
     return res.status(500).json({ error: 'Failed to update role' });
   }
 });
@@ -328,7 +330,7 @@ router.post('/:roleId/clone', requirePermission('users:manage_roles'), async (re
       message: `Role cloned as "${newName}"`
     });
   } catch (error) {
-    console.error('Error cloning role:', error);
+    logger.error({ error, roleId, newName, companyId }, 'Error cloning role');
     return res.status(500).json({ error: 'Failed to clone role' });
   }
 });
@@ -374,7 +376,7 @@ router.post('/:roleId/permissions', requirePermission('users:manage_roles'), asy
       removed: removePermissions.length
     });
   } catch (error) {
-    console.error('Error updating role permissions:', error);
+    logger.error({ error, roleId, added: addPermissions?.length, removed: removePermissions?.length }, 'Error updating role permissions');
     return res.status(500).json({ error: 'Failed to update role permissions' });
   }
 });
@@ -452,7 +454,7 @@ router.delete('/:roleId', requirePermission('users:manage_roles'), async (req, r
       message: 'Role deleted successfully'
     });
   } catch (error) {
-    console.error('Error deleting role:', error);
+    logger.error({ error, roleId, companyId }, 'Error deleting role');
     return res.status(500).json({ error: 'Failed to delete role' });
   }
 });
@@ -525,7 +527,7 @@ router.get('/my/permissions', async (req, res) => {
       isOwner,
     });
   } catch (error) {
-    console.error('Error fetching user permissions:', error);
+    logger.error({ error, userId, companyId }, 'Error fetching user permissions');
     return res.status(500).json({ error: 'Failed to fetch permissions' });
   }
 });
@@ -583,7 +585,7 @@ router.get('/permissions/all', requirePermission('users:view'), async (req, res)
       categories: Object.values(grouped).sort((a, b) => a.displayOrder - b.displayOrder)
     });
   } catch (error) {
-    console.error('Error fetching permissions:', error);
+    logger.error({ error }, 'Error fetching permissions');
     return res.status(500).json({ error: 'Failed to fetch permissions' });
   }
 });
@@ -632,7 +634,7 @@ router.post('/users/:userId/assign', requirePermission('users:manage_roles'), as
       message: 'Roles assigned successfully'
     });
   } catch (error) {
-    console.error('Error assigning roles:', error);
+    logger.error({ error, userId, roleCount: roleIds?.length, companyId }, 'Error assigning roles');
     return res.status(500).json({ error: 'Failed to assign roles' });
   }
 });
@@ -664,7 +666,7 @@ router.delete('/users/:userId/remove/:roleId', requirePermission('users:manage_r
       message: 'Role removed successfully'
     });
   } catch (error) {
-    console.error('Error removing role:', error);
+    logger.error({ error, userId, roleId, companyId }, 'Error removing role');
     return res.status(500).json({ error: 'Failed to remove role' });
   }
 });
@@ -694,7 +696,7 @@ router.get('/users/:userId', requirePermission('users:view'), async (req, res) =
 
     return res.json({ roles: rolesResult.rows });
   } catch (error) {
-    console.error('Error fetching user roles:', error);
+    logger.error({ error, userId, companyId }, 'Error fetching user roles');
     return res.status(500).json({ error: 'Failed to fetch user roles' });
   }
 });
@@ -773,7 +775,7 @@ router.get('/audit', requirePermission('users:view'), async (req, res) => {
       offset: Number(offset)
     });
   } catch (error) {
-    console.error('Error fetching audit logs:', error);
+    logger.error({ error, companyId, roleId, limit, offset }, 'Error fetching audit logs');
     return res.status(500).json({ error: 'Failed to fetch audit logs' });
   }
 });
@@ -812,7 +814,7 @@ router.get('/:roleId/audit', requirePermission('users:view'), async (req, res) =
 
     return res.json({ logs: auditResult.rows });
   } catch (error) {
-    console.error('Error fetching role audit logs:', error);
+    logger.error({ error, roleId, companyId, limit }, 'Error fetching role audit logs');
     return res.status(500).json({ error: 'Failed to fetch audit logs' });
   }
 });
