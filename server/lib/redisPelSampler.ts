@@ -22,7 +22,11 @@ export function startPelSampler(redisClient: any, streams: string[], groupName =
         } else if (res && typeof res === 'object' && 'count' in res) {
           pendingCount = Number((res as any).count) || 0;
         }
-        try { setPelSize(streamKey, groupName, pendingCount); } catch (_) {}
+        try {
+          setPelSize(streamKey, groupName, pendingCount);
+        } catch (error) {
+          logger.debug({ stream: streamKey, error }, 'Failed to set PEL size metric');
+        }
       } catch (err) {
         logger.debug({ stream: s, group: groupName, err }, 'Failed to sample XPENDING for stream');
       }
