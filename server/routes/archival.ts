@@ -12,8 +12,10 @@ import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { archivalService } from "../services/ArchivalService";
 import { isAuthenticated } from "../replitAuth";
+import { createLogger } from "../utils/logger";
 
 const router = Router();
+const logger = createLogger('archival');
 
 // Apply authentication to all routes
 router.use(isAuthenticated);
@@ -54,7 +56,7 @@ router.get("/records", async (req: Request, res: Response) => {
 
     res.json(result);
   } catch (error: any) {
-    console.error("Error fetching archived records:", error);
+    logger.error({ error, tableName: req.query.tableName }, 'Error fetching archived records');
     res.status(500).json({ message: "Failed to fetch archived records", error: error.message });
   }
 });
@@ -80,7 +82,7 @@ router.post("/records/:id/restore", async (req: Request, res: Response) => {
       record: restored,
     });
   } catch (error: any) {
-    console.error("Error restoring record:", error);
+    logger.error({ error, recordId: req.params.id }, 'Error restoring record');
     res.status(500).json({ message: "Failed to restore record", error: error.message });
   }
 });
@@ -123,7 +125,7 @@ router.get("/reports", async (req: Request, res: Response) => {
 
     res.json(result);
   } catch (error: any) {
-    console.error("Error fetching archived reports:", error);
+    logger.error({ error }, 'Error fetching archived reports');
     res.status(500).json({ message: "Failed to fetch archived reports", error: error.message });
   }
 });
@@ -144,7 +146,7 @@ router.get("/reports/:id", async (req: Request, res: Response) => {
 
     res.json(report);
   } catch (error: any) {
-    console.error("Error fetching report:", error);
+    logger.error({ error, reportId: req.params.id }, 'Error fetching report');
     res.status(500).json({ message: "Failed to fetch report", error: error.message });
   }
 });
@@ -187,7 +189,7 @@ router.post("/reports", async (req: Request, res: Response) => {
 
     res.status(201).json(report);
   } catch (error: any) {
-    console.error("Error archiving report:", error);
+    logger.error({ error }, 'Error archiving report');
     res.status(500).json({ message: "Failed to archive report", error: error.message });
   }
 });
@@ -215,7 +217,7 @@ router.get("/history/:entityType/:entityId", async (req: Request, res: Response)
 
     res.json({ snapshots, total: snapshots.length });
   } catch (error: any) {
-    console.error("Error fetching historical snapshots:", error);
+    logger.error({ error, entityType: req.params.entityType, entityId: req.params.entityId }, 'Error fetching historical snapshots');
     res.status(500).json({ message: "Failed to fetch historical data", error: error.message });
   }
 });
@@ -237,7 +239,7 @@ router.get("/history/:entityType/:entityId/at/:timestamp", async (req: Request, 
 
     res.json(snapshot);
   } catch (error: any) {
-    console.error("Error fetching historical snapshot:", error);
+    logger.error({ error, entityType: req.params.entityType, entityId: req.params.entityId, timestamp: req.params.timestamp }, 'Error fetching historical snapshot');
     res.status(500).json({ message: "Failed to fetch historical data", error: error.message });
   }
 });
@@ -271,7 +273,7 @@ router.post("/history", async (req: Request, res: Response) => {
 
     res.status(201).json(snapshot);
   } catch (error: any) {
-    console.error("Error creating snapshot:", error);
+    logger.error({ error }, 'Error creating snapshot');
     res.status(500).json({ message: "Failed to create snapshot", error: error.message });
   }
 });
@@ -300,7 +302,7 @@ router.get("/exports", async (req: Request, res: Response) => {
 
     res.json(result);
   } catch (error: any) {
-    console.error("Error fetching export history:", error);
+    logger.error({ error }, 'Error fetching export history');
     res.status(500).json({ message: "Failed to fetch export history", error: error.message });
   }
 });
@@ -341,7 +343,7 @@ router.post("/exports", async (req: Request, res: Response) => {
 
     res.status(201).json(exportLog);
   } catch (error: any) {
-    console.error("Error logging export:", error);
+    logger.error({ error }, 'Error logging export');
     res.status(500).json({ message: "Failed to log export", error: error.message });
   }
 });
@@ -358,7 +360,7 @@ router.post("/exports/:id/download", async (req: Request, res: Response) => {
 
     res.json({ message: "Download tracked successfully" });
   } catch (error: any) {
-    console.error("Error tracking download:", error);
+    logger.error({ error, exportId: req.params.id }, 'Error tracking download');
     res.status(500).json({ message: "Failed to track download", error: error.message });
   }
 });
@@ -386,7 +388,7 @@ router.get("/audit/:entityType/:entityId", async (req: Request, res: Response) =
 
     res.json({ trail, total: trail.length });
   } catch (error: any) {
-    console.error("Error fetching audit trail:", error);
+    logger.error({ error, entityType: req.params.entityType, entityId: req.params.entityId }, 'Error fetching audit trail');
     res.status(500).json({ message: "Failed to fetch audit trail", error: error.message });
   }
 });
@@ -425,7 +427,7 @@ router.get("/audit", async (req: Request, res: Response) => {
 
     res.json(result);
   } catch (error: any) {
-    console.error("Error fetching audit trail:", error);
+    logger.error({ error }, 'Error fetching audit trail');
     res.status(500).json({ message: "Failed to fetch audit trail", error: error.message });
   }
 });
