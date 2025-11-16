@@ -21,11 +21,13 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import { createLogger } from "../utils/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
+const logger = createLogger('faceAnalysis');
 
 // Configure multer for photo uploads
 const storage = multer.diskStorage({
@@ -125,7 +127,7 @@ router.post(
         recommendations,
       });
     } catch (error: any) {
-      console.error("Face analysis error:", error);
+      logger.error({ error, patientId }, 'Face analysis error');
       res.status(500).json({ error: error.message || "Failed to analyze face" });
     }
   }
@@ -149,7 +151,7 @@ router.get("/:patientId", requireAuth, async (req: Request, res: Response) => {
 
     res.json(analysis);
   } catch (error: any) {
-    console.error("Get analysis error:", error);
+    logger.error({ error, patientId }, 'Get analysis error');
     res.status(500).json({ error: error.message || "Failed to get analysis" });
   }
 });
@@ -168,7 +170,7 @@ router.get("/:patientId/history", requireAuth, async (req: Request, res: Respons
 
     res.json(history);
   } catch (error: any) {
-    console.error("Get history error:", error);
+    logger.error({ error, patientId }, 'Get history error');
     res.status(500).json({ error: error.message || "Failed to get history" });
   }
 });
@@ -187,7 +189,7 @@ router.delete("/:analysisId", requireAuth, async (req: Request, res: Response) =
 
     res.json({ message: "Analysis deleted successfully" });
   } catch (error: any) {
-    console.error("Delete analysis error:", error);
+    logger.error({ error, analysisId }, 'Delete analysis error');
     res.status(500).json({ error: error.message || "Failed to delete analysis" });
   }
 });
@@ -216,7 +218,7 @@ router.post("/recommendations/generate", requireAuth, async (req: Request, res: 
 
     res.json(recommendations);
   } catch (error: any) {
-    console.error("Generate recommendations error:", error);
+    logger.error({ error, faceAnalysisId }, 'Generate recommendations error');
     res.status(500).json({ error: error.message || "Failed to generate recommendations" });
   }
 });
@@ -238,7 +240,7 @@ router.get("/recommendations/:faceAnalysisId", requireAuth, async (req: Request,
 
     res.json(recommendations);
   } catch (error: any) {
-    console.error("Get recommendations error:", error);
+    logger.error({ error, faceAnalysisId }, 'Get recommendations error');
     res.status(500).json({ error: error.message || "Failed to get recommendations" });
   }
 });
@@ -262,7 +264,7 @@ router.post("/recommendations/:id/track", requireAuth, async (req: Request, res:
 
     res.json({ message: "Interaction tracked successfully" });
   } catch (error: any) {
-    console.error("Track interaction error:", error);
+    logger.error({ error, recommendationId: id, interactionType }, 'Track interaction error');
     res.status(500).json({ error: error.message || "Failed to track interaction" });
   }
 });
@@ -281,7 +283,7 @@ router.get("/recommendations/analytics/:productId", requireAuth, async (req: Req
 
     res.json(analytics);
   } catch (error: any) {
-    console.error("Get analytics error:", error);
+    logger.error({ error, productId }, 'Get analytics error');
     res.status(500).json({ error: error.message || "Failed to get analytics" });
   }
 });
