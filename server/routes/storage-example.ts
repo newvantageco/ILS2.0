@@ -8,8 +8,10 @@ import { z } from 'zod';
 import { storageService, uploadFile } from '../services/StorageService';
 import { uploadSingle, uploadMultiple, uploadImage, processUpload } from '../middleware/upload';
 import { uploadRateLimiter } from '../middleware/rateLimiting';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const logger = createLogger('storage-example');
 
 /**
  * Example 1: Upload product image
@@ -47,7 +49,7 @@ router.post(
         },
       });
     } catch (error: any) {
-      console.error('Image upload failed:', error);
+      logger.error({ error, productId }, 'Image upload failed');
       res.status(500).json({ error: 'Failed to upload image' });
     }
   }
@@ -70,7 +72,7 @@ router.post(
         files,
       });
     } catch (error: any) {
-      console.error('Document upload failed:', error);
+      logger.error({ error, fileCount: files?.length }, 'Document upload failed');
       res.status(500).json({ error: error.message });
     }
   }
@@ -101,7 +103,7 @@ router.get(
         expiresIn: 3600,
       });
     } catch (error: any) {
-      console.error('Failed to generate download URL:', error);
+      logger.error({ error, key }, 'Failed to generate download URL');
       res.status(500).json({ error: 'Failed to generate download URL' });
     }
   }
@@ -131,7 +133,7 @@ router.delete(
         res.status(404).json({ error: 'File not found' });
       }
     } catch (error: any) {
-      console.error('File deletion failed:', error);
+      logger.error({ error, key }, 'File deletion failed');
       res.status(500).json({ error: 'Failed to delete file' });
     }
   }
@@ -159,7 +161,7 @@ router.get(
         },
       });
     } catch (error: any) {
-      console.error('Failed to get storage stats:', error);
+      logger.error({ error, companyId }, 'Failed to get storage stats');
       res.status(500).json({ error: 'Failed to get storage stats' });
     }
   }
@@ -195,7 +197,7 @@ router.get(
         total: files.length,
       });
     } catch (error: any) {
-      console.error('Failed to list files:', error);
+      logger.error({ error, companyId, category }, 'Failed to list files');
       res.status(500).json({ error: 'Failed to list files' });
     }
   }
@@ -216,7 +218,7 @@ router.get(
         storage: health,
       });
     } catch (error: any) {
-      console.error('Health check failed:', error);
+      logger.error({ error }, 'Health check failed');
       res.status(500).json({ error: 'Health check failed' });
     }
   }

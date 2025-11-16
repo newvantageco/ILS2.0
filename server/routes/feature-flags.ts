@@ -2,8 +2,10 @@ import { Router } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replitAuth";
+import { createLogger } from "../utils/logger";
 
 const router = Router();
+const logger = createLogger('feature-flags');
 
 // Validation schemas
 const createFlagSchema = z.object({
@@ -131,7 +133,7 @@ router.get("/", async (req, res) => {
 
     res.json(filtered);
   } catch (error) {
-    console.error("Error fetching feature flags:", error);
+    logger.error({ error, enabled, targetingType, search }, 'Error fetching feature flags');
     res.status(500).json({ message: "Failed to fetch feature flags" });
   }
 });
@@ -184,7 +186,7 @@ router.get("/:id", async (req, res) => {
 
     res.json(flag);
   } catch (error) {
-    console.error("Error fetching feature flag:", error);
+    logger.error({ error, flagId: id }, 'Error fetching feature flag');
     res.status(500).json({ message: "Failed to fetch feature flag" });
   }
 });
@@ -224,7 +226,7 @@ router.post("/", async (req, res) => {
 
     res.status(201).json(newFlag);
   } catch (error) {
-    console.error("Error creating feature flag:", error);
+    logger.error({ error, key: flagData?.key, enabled: flagData?.enabled }, 'Error creating feature flag');
     res.status(500).json({ message: "Failed to create feature flag" });
   }
 });
@@ -257,7 +259,7 @@ router.patch("/:id", async (req, res) => {
 
     res.json(updatedFlag);
   } catch (error) {
-    console.error("Error updating feature flag:", error);
+    logger.error({ error, flagId: id, updates }, 'Error updating feature flag');
     res.status(500).json({ message: "Failed to update feature flag" });
   }
 });
@@ -290,7 +292,7 @@ router.patch("/:id/toggle", async (req, res) => {
 
     res.json(updatedFlag);
   } catch (error) {
-    console.error("Error toggling feature flag:", error);
+    logger.error({ error, flagId: id, enabled }, 'Error toggling feature flag');
     res.status(500).json({ message: "Failed to toggle feature flag" });
   }
 });
@@ -310,7 +312,7 @@ router.delete("/:id", async (req, res) => {
       deletedAt: new Date()
     });
   } catch (error) {
-    console.error("Error deleting feature flag:", error);
+    logger.error({ error, flagId: id }, 'Error deleting feature flag');
     res.status(500).json({ message: "Failed to delete feature flag" });
   }
 });
@@ -349,7 +351,7 @@ router.post("/:id/evaluate", async (req, res) => {
 
     res.json(evaluation);
   } catch (error) {
-    console.error("Error evaluating feature flag:", error);
+    logger.error({ error, flagId: id, userId, companyId }, 'Error evaluating feature flag');
     res.status(500).json({ message: "Failed to evaluate feature flag" });
   }
 });
@@ -382,7 +384,7 @@ router.get("/:id/usage", async (req, res) => {
 
     res.json(usage);
   } catch (error) {
-    console.error("Error fetching feature flag usage:", error);
+    logger.error({ error, flagId: id, timeRange }, 'Error fetching feature flag usage');
     res.status(500).json({ message: "Failed to fetch feature flag usage" });
   }
 });
@@ -417,7 +419,7 @@ router.post("/bulk-evaluate", async (req, res) => {
       evaluatedAt: new Date(),
     });
   } catch (error) {
-    console.error("Error bulk evaluating feature flags:", error);
+    logger.error({ error, flagCount: flagKeys?.length, userId, companyId }, 'Error bulk evaluating feature flags');
     res.status(500).json({ message: "Failed to bulk evaluate feature flags" });
   }
 });
