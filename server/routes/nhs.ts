@@ -39,8 +39,10 @@ import {
   createNhsClaimSchema,
   createNhsVoucherSchema,
 } from "../../shared/schema.js";
+import { createLogger } from "../utils/logger.js";
 
 const router = express.Router();
+const logger = createLogger('nhs');
 
 // ============== NHS CLAIMS ROUTES ==============
 
@@ -63,7 +65,7 @@ router.post("/claims/create", requireAuth, async (req: Request, res: Response) =
 
     res.json(claim);
   } catch (error: any) {
-    console.error("Create NHS claim error:", error);
+    logger.error({ error }, 'Create NHS claim error');
     res.status(400).json({ error: error.message || "Failed to create claim" });
   }
 });
@@ -84,7 +86,7 @@ router.post("/claims/:id/submit", requireAuth, async (req: Request, res: Respons
 
     res.json(claim);
   } catch (error: any) {
-    console.error("Submit NHS claim error:", error);
+    logger.error({ error, claimId: id }, 'Submit NHS claim error');
     res.status(400).json({ error: error.message || "Failed to submit claim" });
   }
 });
@@ -107,7 +109,7 @@ router.get("/claims/:id", requireAuth, async (req: Request, res: Response) => {
 
     res.json(claim);
   } catch (error: any) {
-    console.error("Get NHS claim error:", error);
+    logger.error({ error, claimId: id }, 'Get NHS claim error');
     res.status(500).json({ error: error.message || "Failed to get claim" });
   }
 });
@@ -133,7 +135,7 @@ router.get("/claims", requireAuth, async (req: Request, res: Response) => {
 
     res.json(claims);
   } catch (error: any) {
-    console.error("Get NHS claims error:", error);
+    logger.error({ error }, 'Get NHS claims error');
     res.status(500).json({ error: error.message || "Failed to get claims" });
   }
 });
@@ -152,7 +154,7 @@ router.get("/claims/patient/:patientId", requireAuth, async (req: Request, res: 
 
     res.json(claims);
   } catch (error: any) {
-    console.error("Get patient claims error:", error);
+    logger.error({ error, patientId }, 'Get patient claims error');
     res.status(500).json({ error: error.message || "Failed to get patient claims" });
   }
 });
@@ -180,7 +182,7 @@ router.get("/claims/summary", requireAuth, async (req: Request, res: Response) =
 
     res.json(summary);
   } catch (error: any) {
-    console.error("Get claims summary error:", error);
+    logger.error({ error }, 'Get claims summary error');
     res.status(500).json({ error: error.message || "Failed to get claims summary" });
   }
 });
@@ -203,7 +205,7 @@ router.post("/claims/batch-submit", requireAuth, async (req: Request, res: Respo
 
     res.json(results);
   } catch (error: any) {
-    console.error("Batch submit claims error:", error);
+    logger.error({ error, claimCount: claimIds?.length }, 'Batch submit claims error');
     res.status(500).json({ error: error.message || "Failed to batch submit claims" });
   }
 });
@@ -222,7 +224,7 @@ router.delete("/claims/:id", requireAuth, async (req: Request, res: Response) =>
 
     res.json({ message: "Claim deleted successfully" });
   } catch (error: any) {
-    console.error("Delete claim error:", error);
+    logger.error({ error, claimId: id }, 'Delete claim error');
     res.status(400).json({ error: error.message || "Failed to delete claim" });
   }
 });
@@ -249,7 +251,7 @@ router.post("/vouchers/check-eligibility", requireAuth, async (req: Request, res
 
     res.json(eligibility);
   } catch (error: any) {
-    console.error("Check voucher eligibility error:", error);
+    logger.error({ error, patientId }, 'Check voucher eligibility error');
     res.status(500).json({ error: error.message || "Failed to check eligibility" });
   }
 });
@@ -277,7 +279,7 @@ router.post("/vouchers/calculate", requireAuth, async (req: Request, res: Respon
 
     res.json(calculation);
   } catch (error: any) {
-    console.error("Calculate voucher error:", error);
+    logger.error({ error, prescriptionId, patientId }, 'Calculate voucher error');
     res.status(500).json({ error: error.message || "Failed to calculate voucher" });
   }
 });
@@ -300,7 +302,7 @@ router.post("/vouchers/create", requireAuth, async (req: Request, res: Response)
 
     res.json(voucher);
   } catch (error: any) {
-    console.error("Create voucher error:", error);
+    logger.error({ error }, 'Create voucher error');
     res.status(400).json({ error: error.message || "Failed to create voucher" });
   }
 });
@@ -327,7 +329,7 @@ router.post("/vouchers/:id/redeem", requireAuth, async (req: Request, res: Respo
 
     res.json(voucher);
   } catch (error: any) {
-    console.error("Redeem voucher error:", error);
+    logger.error({ error, voucherId: id }, 'Redeem voucher error');
     res.status(400).json({ error: error.message || "Failed to redeem voucher" });
   }
 });
@@ -350,7 +352,7 @@ router.get("/vouchers/:id", requireAuth, async (req: Request, res: Response) => 
 
     res.json(voucher);
   } catch (error: any) {
-    console.error("Get voucher error:", error);
+    logger.error({ error, voucherId: id }, 'Get voucher error');
     res.status(500).json({ error: error.message || "Failed to get voucher" });
   }
 });
@@ -369,7 +371,7 @@ router.get("/vouchers/patient/:patientId", requireAuth, async (req: Request, res
 
     res.json(vouchers);
   } catch (error: any) {
-    console.error("Get patient vouchers error:", error);
+    logger.error({ error, patientId }, 'Get patient vouchers error');
     res.status(500).json({ error: error.message || "Failed to get patient vouchers" });
   }
 });
@@ -397,7 +399,7 @@ router.get("/vouchers/statistics", requireAuth, async (req: Request, res: Respon
 
     res.json(statistics);
   } catch (error: any) {
-    console.error("Get voucher statistics error:", error);
+    logger.error({ error }, 'Get voucher statistics error');
     res.status(500).json({ error: error.message || "Failed to get voucher statistics" });
   }
 });
@@ -419,7 +421,7 @@ router.post("/exemptions/check", requireAuth, async (req: Request, res: Response
 
     res.json(exemption);
   } catch (error: any) {
-    console.error("Check exemption error:", error);
+    logger.error({ error, patientId }, 'Check exemption error');
     res.status(500).json({ error: error.message || "Failed to check exemption" });
   }
 });
@@ -439,7 +441,7 @@ router.post("/exemptions/auto-detect", requireAuth, async (req: Request, res: Re
 
     res.json(detected);
   } catch (error: any) {
-    console.error("Auto-detect exemptions error:", error);
+    logger.error({ error, patientId }, 'Auto-detect exemptions error');
     res.status(500).json({ error: error.message || "Failed to auto-detect exemptions" });
   }
 });
@@ -460,7 +462,7 @@ router.post("/exemptions/create", requireAuth, async (req: Request, res: Respons
 
     res.json(exemption);
   } catch (error: any) {
-    console.error("Create exemption error:", error);
+    logger.error({ error }, 'Create exemption error');
     res.status(400).json({ error: error.message || "Failed to create exemption" });
   }
 });
@@ -481,7 +483,7 @@ router.post("/exemptions/:id/verify", requireAuth, async (req: Request, res: Res
 
     res.json(exemption);
   } catch (error: any) {
-    console.error("Verify exemption error:", error);
+    logger.error({ error, exemptionId: id }, 'Verify exemption error');
     res.status(500).json({ error: error.message || "Failed to verify exemption" });
   }
 });
@@ -500,7 +502,7 @@ router.get("/exemptions/patient/:patientId", requireAuth, async (req: Request, r
 
     res.json(exemptions);
   } catch (error: any) {
-    console.error("Get patient exemptions error:", error);
+    logger.error({ error, patientId }, 'Get patient exemptions error');
     res.status(500).json({ error: error.message || "Failed to get patient exemptions" });
   }
 });
@@ -521,7 +523,7 @@ router.get("/exemptions/expiring", requireAuth, async (req: Request, res: Respon
 
     res.json(exemptions);
   } catch (error: any) {
-    console.error("Get expiring exemptions error:", error);
+    logger.error({ error, daysAhead }, 'Get expiring exemptions error');
     res.status(500).json({ error: error.message || "Failed to get expiring exemptions" });
   }
 });
@@ -539,7 +541,7 @@ router.get("/exemptions/statistics", requireAuth, async (req: Request, res: Resp
 
     res.json(statistics);
   } catch (error: any) {
-    console.error("Get exemption statistics error:", error);
+    logger.error({ error }, 'Get exemption statistics error');
     res.status(500).json({ error: error.message || "Failed to get exemption statistics" });
   }
 });
