@@ -3,6 +3,7 @@ import { sendEmailImmediate } from '../workers/emailWorker';
 import { generatePDFImmediate } from '../workers/pdfWorker';
 import { sendNotificationImmediate } from '../workers/notificationWorker';
 import { processAIImmediate } from '../workers/aiWorker';
+import logger from '../utils/logger';
 
 /**
  * Queue Helper Functions
@@ -14,13 +15,13 @@ import { processAIImmediate } from '../workers/aiWorker';
  */
 export async function queueOrderConfirmationEmail(orderId: string, userId: string) {
   const data = { type: 'order-confirmation' as const, orderId, userId };
-  
+
   if (isRedisAvailable() && emailQueue) {
     await emailQueue.add('order-confirmation', data, {
       priority: 1, // High priority
       attempts: 3,
     });
-    console.log(`✅ Order confirmation email queued for order ${orderId}`);
+    logger.info({ orderId, type: 'order-confirmation' }, 'Order confirmation email queued');
   } else {
     await sendEmailImmediate(data);
   }
@@ -28,36 +29,36 @@ export async function queueOrderConfirmationEmail(orderId: string, userId: strin
 
 export async function queueOrderShipmentEmail(orderId: string, trackingNumber: string, carrier: string) {
   const data = { type: 'order-shipment' as const, orderId, trackingNumber, carrier };
-  
+
   if (isRedisAvailable() && emailQueue) {
     await emailQueue.add('order-shipment', data, {
       priority: 2, // Medium priority
       attempts: 3,
     });
-    console.log(`✅ Order shipment email queued for order ${orderId}`);
+    logger.info({ orderId, type: 'order-shipment' }, 'Order shipment email queued');
   } else {
     await sendEmailImmediate(data);
   }
 }
 
 export async function queueMarketplaceConnectionEmail(
-  connectionId: number, 
-  requesterCompanyId: string, 
+  connectionId: number,
+  requesterCompanyId: string,
   targetCompanyId: string
 ) {
-  const data = { 
-    type: 'marketplace-connection' as const, 
-    connectionId, 
-    requesterCompanyId, 
-    targetCompanyId 
+  const data = {
+    type: 'marketplace-connection' as const,
+    connectionId,
+    requesterCompanyId,
+    targetCompanyId
   };
-  
+
   if (isRedisAvailable() && emailQueue) {
     await emailQueue.add('marketplace-connection', data, {
       priority: 3, // Lower priority
       attempts: 5,
     });
-    console.log(`✅ Marketplace connection email queued for connection ${connectionId}`);
+    logger.info({ connectionId, type: 'marketplace-connection' }, 'Marketplace connection email queued');
   } else {
     await sendEmailImmediate(data);
   }
@@ -65,13 +66,13 @@ export async function queueMarketplaceConnectionEmail(
 
 export async function queueDailyBriefingEmail(userId: string, companyId: string, date: string) {
   const data = { type: 'daily-briefing' as const, userId, companyId, date };
-  
+
   if (isRedisAvailable() && emailQueue) {
     await emailQueue.add('daily-briefing', data, {
       priority: 5, // Low priority
       attempts: 2,
     });
-    console.log(`✅ Daily briefing email queued for user ${userId}`);
+    logger.info({ userId, companyId, date, type: 'daily-briefing' }, 'Daily briefing email queued');
   } else {
     await sendEmailImmediate(data);
   }
@@ -79,13 +80,13 @@ export async function queueDailyBriefingEmail(userId: string, companyId: string,
 
 export async function queueGenericEmail(to: string, subject: string, html: string, text?: string) {
   const data = { type: 'generic' as const, to, subject, html, text };
-  
+
   if (isRedisAvailable() && emailQueue) {
     await emailQueue.add('generic', data, {
       priority: 3,
       attempts: 3,
     });
-    console.log(`✅ Generic email queued to ${to}`);
+    logger.info({ to, subject, type: 'generic' }, 'Generic email queued');
   } else {
     await sendEmailImmediate(data);
   }
@@ -102,7 +103,7 @@ export async function queueOrderSheetPDF(orderId: string): Promise<void> {
       priority: 2,
       attempts: 2,
     });
-    console.log(`✅ Order sheet PDF queued for order ${orderId}`);
+    logger.info({ orderId, type: 'order-sheet' }, 'Order sheet PDF queued');
   } else {
     await generatePDFImmediate(data);
   }
@@ -116,7 +117,7 @@ export async function queueLabWorkTicketPDF(orderId: string): Promise<void> {
       priority: 1, // High priority
       attempts: 2,
     });
-    console.log(`✅ Lab work ticket PDF queued for order ${orderId}`);
+    logger.info({ orderId, type: 'lab-work-ticket' }, 'Lab work ticket PDF queued');
   } else {
     await generatePDFImmediate(data);
   }
@@ -130,7 +131,7 @@ export async function queueExaminationFormPDF(patientId: string, examinationId?:
       priority: 2,
       attempts: 2,
     });
-    console.log(`✅ Examination form PDF queued for patient ${patientId}`);
+    logger.info({ patientId, examinationId, type: 'examination-form' }, 'Examination form PDF queued');
   } else {
     await generatePDFImmediate(data);
   }
@@ -144,7 +145,7 @@ export async function queueInvoicePDF(orderId: string): Promise<void> {
       priority: 1, // High priority
       attempts: 2,
     });
-    console.log(`✅ Invoice PDF queued for order ${orderId}`);
+    logger.info({ orderId, type: 'invoice' }, 'Invoice PDF queued');
   } else {
     await generatePDFImmediate(data);
   }
@@ -158,7 +159,7 @@ export async function queueReceiptPDF(orderId: string): Promise<void> {
       priority: 3, // Lower priority
       attempts: 2,
     });
-    console.log(`✅ Receipt PDF queued for order ${orderId}`);
+    logger.info({ orderId, type: 'receipt' }, 'Receipt PDF queued');
   } else {
     await generatePDFImmediate(data);
   }
@@ -217,7 +218,7 @@ export async function queueSystemNotification(
       priority: priority === 'urgent' ? 1 : priority === 'high' ? 2 : priority === 'medium' ? 3 : 4,
       attempts: 5,
     });
-    console.log(`✅ System notification queued for user ${userId}`);
+    logger.info({ userId, priority, type: 'system' }, 'System notification queued');
   } else {
     await sendNotificationImmediate(data);
   }
@@ -231,7 +232,7 @@ export async function queueOrderNotification(userId: string, orderId: string, st
       priority: 2,
       attempts: 5,
     });
-    console.log(`✅ Order notification queued for user ${userId}`);
+    logger.info({ userId, orderId, status, type: 'order' }, 'Order notification queued');
   } else {
     await sendNotificationImmediate(data);
   }
@@ -251,7 +252,7 @@ export async function queueAIInsightNotification(
       priority: 3,
       attempts: 3,
     });
-    console.log(`✅ AI insight notification queued for user ${userId}`);
+    logger.info({ userId, insightType, type: 'ai-insight' }, 'AI insight notification queued');
   } else {
     await sendNotificationImmediate(data);
   }
@@ -270,7 +271,7 @@ export async function queueMarketplaceNotification(
       priority: 2,
       attempts: 3,
     });
-    console.log(`✅ Marketplace notification queued for user ${userId}`);
+    logger.info({ userId, connectionId, action, type: 'marketplace' }, 'Marketplace notification queued');
   } else {
     await sendNotificationImmediate(data);
   }
@@ -287,7 +288,7 @@ export async function queueDailyBriefing(companyId: string, date: string, userId
       priority: 3,
       attempts: 2,
     });
-    console.log(`✅ Daily briefing queued for company ${companyId}`);
+    logger.info({ companyId, date, type: 'daily-briefing' }, 'Daily briefing queued');
   } else {
     await processAIImmediate(data);
   }
@@ -305,7 +306,7 @@ export async function queueDemandForecast(
       priority: 3,
       attempts: 2,
     });
-    console.log(`✅ Demand forecast queued for company ${companyId}`);
+    logger.info({ companyId, forecastDays, type: 'demand-forecast' }, 'Demand forecast queued');
   } else {
     await processAIImmediate(data);
   }
@@ -323,7 +324,7 @@ export async function queueAnomalyDetection(
       priority: 2,
       attempts: 2,
     });
-    console.log(`✅ Anomaly detection queued for company ${companyId}`);
+    logger.info({ companyId, metricType, timeRange, type: 'anomaly-detection' }, 'Anomaly detection queued');
   } else {
     await processAIImmediate(data);
   }
@@ -342,7 +343,7 @@ export async function queueInsightGeneration(
       priority: 3,
       attempts: 2,
     });
-    console.log(`✅ Insight generation queued for company ${companyId}`);
+    logger.info({ companyId, insightType, periodStart, periodEnd, type: 'insight-generation' }, 'Insight generation queued');
   } else {
     await processAIImmediate(data);
   }
@@ -361,7 +362,7 @@ export async function queueChatResponse(
       priority: 1, // High priority for chat
       attempts: 2,
     });
-    console.log(`✅ Chat response queued for user ${userId}`);
+    logger.info({ userId, companyId, conversationId, type: 'chat-response' }, 'Chat response queued');
   } else {
     await processAIImmediate(data);
   }
