@@ -6,6 +6,7 @@
 
 // Import Redis constructor from ioredis (default export for CommonJS compatibility)
 import IORedis from 'ioredis';
+import logger from '../utils/logger';
 
 interface CacheOptions {
   ttl?: number; // Time to live in seconds (default: 300 = 5 minutes)
@@ -42,8 +43,8 @@ export class CacheService {
     const redisUrl = process.env.REDIS_URL;
 
     if (!redisUrl) {
-      console.warn('REDIS_URL not configured. Using in-memory fallback cache.');
-      console.warn('For production scalability, configure Redis.');
+      logger.warn({}, 'REDIS_URL not configured. Using in-memory fallback cache.');
+      logger.warn({}, 'For production scalability, configure Redis.');
       this.enabled = false;
       return;
     }
@@ -63,22 +64,22 @@ export class CacheService {
       });
 
       this.redis.on('connect', () => {
-        console.log('✓ Redis cache connected successfully');
+        logger.info({}, 'Redis cache connected successfully');
         this.enabled = true;
       });
 
       this.redis.on('error', (err: Error) => {
-        console.error('Redis cache error:', err.message);
+        logger.error({ error: err.message }, 'Redis cache error');
         this.enabled = false;
       });
 
       this.redis.on('close', () => {
-        console.warn('Redis cache connection closed. Using fallback cache.');
+        logger.warn({}, 'Redis cache connection closed. Using fallback cache.');
         this.enabled = false;
       });
 
     } catch (error) {
-      console.error('Failed to initialize Redis:', error);
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Failed to initialize Redis');
       this.enabled = false;
     }
   }
@@ -115,7 +116,7 @@ export class CacheService {
         return this.getFallback<T>(cacheKey);
       }
     } catch (error) {
-      console.error('Cache get error:', error);
+      logger.error({ companyId, key, error: error instanceof Error ? error.message : String(error) }, 'Cache get error');
       this.recordError(companyId);
       return null;
     }
@@ -145,7 +146,7 @@ export class CacheService {
         return true;
       }
     } catch (error) {
-      console.error('Cache set error:', error);
+      logger.error({ companyId, key, ttl, error: error instanceof Error ? error.message : String(error) }, 'Cache set error');
       this.recordError(companyId);
       return false;
     }
@@ -168,7 +169,7 @@ export class CacheService {
         return true;
       }
     } catch (error) {
-      console.error('Cache delete error:', error);
+      logger.error({ companyId, key, error: error instanceof Error ? error.message : String(error) }, 'Cache delete error');
       return false;
     }
   }
@@ -210,7 +211,7 @@ export class CacheService {
         return count;
       }
     } catch (error) {
-      console.error('Cache invalidation error:', error);
+      logger.error({ companyId, namespace, error: error instanceof Error ? error.message : String(error) }, 'Cache invalidation error');
       return 0;
     }
   }
@@ -236,7 +237,7 @@ export class CacheService {
 
     // Store in cache (don't wait)
     this.set(companyId, key, value, options).catch(err => {
-      console.error('Background cache set failed:', err);
+      logger.error({ companyId, key, error: err instanceof Error ? err.message : String(err) }, 'Background cache set failed');
     });
 
     return value;
@@ -273,7 +274,7 @@ export class CacheService {
         const keys = await this.redis.keys('ils:company:*');
         totalKeys = keys.length;
       } catch (error) {
-        console.error('Failed to get cache health:', error);
+        logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Failed to get cache health');
       }
     } else {
       totalKeys = this.fallbackCache.size;
@@ -375,7 +376,7 @@ export class CacheService {
   async shutdown(): Promise<void> {
     if (this.redis) {
       await this.redis.quit();
-      console.log('Redis cache connection closed');
+      logger.info({}, 'Redis cache connection closed');
     }
   }
 }

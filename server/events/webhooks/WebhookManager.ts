@@ -11,6 +11,7 @@ import { webhookSubscriptions, webhookDeliveries } from '../../../shared/schema'
 import type { Event } from '../EventBus';
 import { eq } from 'drizzle-orm';
 import { EventBus } from '../EventBus';
+import logger from '../../utils/logger';
 
 /**
  * Webhook subscription configuration
@@ -48,8 +49,8 @@ export class WebhookManager {
       active: true,
     }).returning();
 
-    console.log(`✅ Webhook registered: ${subscription.id} for company ${companyId}`);
-    
+    logger.info({ webhookId: subscription.id, companyId, url, events }, 'Webhook registered');
+
     return subscription.id;
   }
 
@@ -62,7 +63,7 @@ export class WebhookManager {
       .set({ active: false })
       .where(eq(webhookSubscriptions.id, subscriptionId));
 
-    console.log(`❌ Webhook unregistered: ${subscriptionId}`);
+    logger.info({ webhookId: subscriptionId }, 'Webhook unregistered');
   }
 
   /**
@@ -155,14 +156,14 @@ export class WebhookManager {
       });
 
       if (response.ok) {
-        console.log(`✅ Webhook delivered: ${deliveryId} to ${subscription.url}`);
+        logger.info({ deliveryId, webhookId: subscription.id, url: subscription.url, eventType: event.type }, 'Webhook delivered');
       } else {
-        console.error(`❌ Webhook failed: ${deliveryId} - Status ${response.status}`);
+        logger.error({ deliveryId, webhookId: subscription.id, status: response.status, eventType: event.type }, 'Webhook failed');
         // Schedule retry
         await this.scheduleRetry(deliveryId, subscription, event);
       }
     } catch (error) {
-      console.error(`❌ Webhook delivery error: ${deliveryId}`, error);
+      logger.error({ deliveryId, webhookId: subscription.id, error: error instanceof Error ? error.message : String(error) }, 'Webhook delivery error');
 
       // Log failed delivery
       await db.insert(webhookDeliveries).values({
@@ -237,7 +238,7 @@ export class WebhookManager {
     const maxAttempts = 5;
 
     if (attempts >= maxAttempts) {
-      console.error(`❌ Webhook max retries reached: ${deliveryId}`);
+      logger.error({ deliveryId, webhookId: subscription.id, attempts }, 'Webhook max retries reached');
       return;
     }
 
@@ -253,7 +254,7 @@ export class WebhookManager {
       })
       .where(eq(webhookDeliveries.id, deliveryId));
 
-    console.log(`🔄 Webhook retry scheduled: ${deliveryId} at ${nextRetry.toISOString()}`);
+    logger.info({ deliveryId, webhookId: subscription.id, nextRetry: nextRetry.toISOString(), attempt: attempts + 1 }, 'Webhook retry scheduled');
 
     // Actually schedule the retry (simplified - in production use a queue)
     setTimeout(() => {
@@ -269,7 +270,7 @@ export class WebhookManager {
     subscription: typeof webhookSubscriptions.$inferSelect,
     event: any
   ): Promise<void> {
-    console.log(`🔄 Retrying webhook delivery: ${deliveryId}`);
+    logger.info({ deliveryId, webhookId: subscription.id, eventType: event.type }, 'Retrying webhook delivery');
 
     try {
       const signature = this.generateSignature(event, subscription.secret);
@@ -309,14 +310,14 @@ export class WebhookManager {
         .where(eq(webhookDeliveries.id, deliveryId));
 
       if (response.ok) {
-        console.log(`✅ Webhook retry successful: ${deliveryId}`);
+        logger.info({ deliveryId, webhookId: subscription.id, eventType: event.type }, 'Webhook retry successful');
       } else {
-        console.error(`❌ Webhook retry failed: ${deliveryId}`);
+        logger.error({ deliveryId, webhookId: subscription.id, status: response.status }, 'Webhook retry failed');
         // Schedule another retry
         await this.scheduleRetry(deliveryId, subscription, event);
       }
     } catch (error) {
-      console.error(`❌ Webhook retry error: ${deliveryId}`, error);
+      logger.error({ deliveryId, webhookId: subscription.id, error: error instanceof Error ? error.message : String(error) }, 'Webhook retry error');
       const delivery = await db
         .select()
         .from(webhookDeliveries)
@@ -346,6 +347,6 @@ export class WebhookManager {
       await this.sendToSubscribers(event);
     });
 
-    console.log('✅ Webhook manager initialized');
+    logger.info({}, 'Webhook manager initialized');
   }
 }

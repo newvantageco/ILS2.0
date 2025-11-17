@@ -7,6 +7,7 @@
 
 import { EventBus } from '../EventBus';
 import type { Event } from '../EventBus';
+import logger from '../../utils/logger';
 
 /**
  * WebSocket connection tracking
@@ -39,7 +40,7 @@ export class WebSocketBroadcaster {
       socket,
     });
 
-    console.log(`WebSocket connected: ${connectionId} (user: ${userId}, company: ${companyId})`);
+    logger.info({ connectionId, userId, companyId }, 'WebSocket connected');
   }
 
   /**
@@ -47,7 +48,7 @@ export class WebSocketBroadcaster {
    */
   static unregisterConnection(connectionId: string): void {
     this.connections.delete(connectionId);
-    console.log(`WebSocket disconnected: ${connectionId}`);
+    logger.info({ connectionId }, 'WebSocket disconnected');
   }
 
   /**
@@ -59,7 +60,7 @@ export class WebSocketBroadcaster {
     );
 
     if (userConnections.length === 0) {
-      console.log(`No WebSocket connections for user: ${userId}`);
+      logger.info({ userId, eventType: event.type }, 'No WebSocket connections for user');
       return;
     }
 
@@ -77,11 +78,11 @@ export class WebSocketBroadcaster {
       try {
         conn.socket.send(message);
       } catch (error) {
-        console.error(`Failed to send to WebSocket:`, error);
+        logger.error({ userId, eventType: event.type, error: error instanceof Error ? error.message : String(error) }, 'Failed to send to WebSocket');
       }
     }
 
-    console.log(`✅ Broadcast to user ${userId}: ${event.type} (${userConnections.length} connections)`);
+    logger.info({ userId, eventType: event.type, connections: userConnections.length }, 'Broadcast to user');
   }
 
   /**
@@ -93,7 +94,7 @@ export class WebSocketBroadcaster {
     );
 
     if (companyConnections.length === 0) {
-      console.log(`No WebSocket connections for company: ${companyId}`);
+      logger.info({ companyId, eventType: event.type }, 'No WebSocket connections for company');
       return;
     }
 
@@ -111,11 +112,11 @@ export class WebSocketBroadcaster {
       try {
         conn.socket.send(message);
       } catch (error) {
-        console.error(`Failed to send to WebSocket:`, error);
+        logger.error({ companyId, eventType: event.type, error: error instanceof Error ? error.message : String(error) }, 'Failed to send to WebSocket');
       }
     }
 
-    console.log(`✅ Broadcast to company ${companyId}: ${event.type} (${companyConnections.length} connections)`);
+    logger.info({ companyId, eventType: event.type, connections: companyConnections.length }, 'Broadcast to company');
   }
 
   /**
@@ -137,11 +138,11 @@ export class WebSocketBroadcaster {
       try {
         conn.socket.send(message);
       } catch (error) {
-        console.error(`Failed to send to WebSocket:`, error);
+        logger.error({ eventType: event.type, error: error instanceof Error ? error.message : String(error) }, 'Failed to send to WebSocket');
       }
     }
 
-    console.log(`✅ Broadcast to all: ${event.type} (${this.connections.size} connections)`);
+    logger.info({ eventType: event.type, connections: this.connections.size }, 'Broadcast to all');
   }
 
   /**
@@ -159,7 +160,7 @@ export class WebSocketBroadcaster {
       }
     });
 
-    console.log('✅ WebSocket broadcaster initialized');
+    logger.info({}, 'WebSocket broadcaster initialized');
   }
 
   /**
