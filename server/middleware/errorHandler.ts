@@ -7,6 +7,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ApiError, toApiError, isOperationalError } from '../utils/ApiError';
 import { ZodError } from 'zod';
 import { createLogger } from '../utils/logger';
+import ErrorMonitoringService from '../services/ErrorMonitoringService';
 
 const logger = createLogger('ErrorHandler');
 
@@ -54,8 +55,11 @@ export function errorHandler(
     apiError = new ApiError(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
   }
 
-  // Log error details (wrapped in try-catch to prevent logging from crashing the handler)
+  // Log error details and track with monitoring service
   try {
+    const userId = (req as any)?.user?.id || (req as any)?.user?.claims?.sub;
+    const companyId = (req as any)?.user?.companyId;
+    
     const errorLog = {
       code: apiError.code,
       message: apiError.message,
@@ -63,7 +67,8 @@ export function errorHandler(
       path: req?.path || 'unknown',
       method: req?.method || 'unknown',
       ip: req?.ip || 'unknown',
-      userId: (req as any)?.user?.id || (req as any)?.user?.claims?.sub,
+      userId,
+      companyId,
       isOperational: apiError.isOperational,
       stack: apiError.stack,
     };
@@ -73,6 +78,22 @@ export function errorHandler(
     } else {
       logger.error('Non-operational error occurred: ' + JSON.stringify(errorLog));
     }
+
+    // Track error with monitoring service
+    const severity = apiError.statusCode >= 500 ? 'critical' : 
+                     apiError.statusCode >= 400 ? 'medium' : 'low';
+    
+    ErrorMonitoringService.trackError(err, {
+      userId,
+      companyId,
+      endpoint: req?.path,
+      method: req?.method,
+      statusCode: apiError.statusCode,
+      userAgent: req?.get('User-Agent'),
+      ip: req?.ip,
+    }, severity).catch(monitorError => {
+      logger.error('Failed to track error with monitoring service: ' + String(monitorError));
+    });
   } catch (logError) {
     // If logging fails, just console.error it
     console.error('Error handler logging failed:', logError);

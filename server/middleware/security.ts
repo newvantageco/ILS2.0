@@ -66,9 +66,13 @@ export const securityHeaders = helmet({
 export const enforceTLS = (req: Request, res: Response, next: NextFunction) => {
   const protocol = req.protocol;
   const forwardedProto = req.get('x-forwarded-proto');
+  const host = req.get('host') || '';
   
-  // Check for HTTPS in production
-  if (process.env.NODE_ENV === 'production' && protocol !== 'https' && forwardedProto !== 'https') {
+  // Allow HTTP for localhost in any environment (for local testing)
+  const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
+  
+  // Check for HTTPS in production (skip for localhost)
+  if (process.env.NODE_ENV === 'production' && !isLocalhost && protocol !== 'https' && forwardedProto !== 'https') {
     logger.warn({ 
       ip: req.ip, 
       userAgent: req.get('user-agent'),
@@ -82,7 +86,8 @@ export const enforceTLS = (req: Request, res: Response, next: NextFunction) => {
     return res.redirect(301, httpsUrl);
   }
   
-  if (protocol !== 'https' && forwardedProto !== 'https') {
+  // Skip HTTPS requirement for localhost
+  if (!isLocalhost && protocol !== 'https' && forwardedProto !== 'https') {
     return res.status(403).json({ 
       error: 'HTTPS required',
       message: 'This endpoint requires a secure connection'

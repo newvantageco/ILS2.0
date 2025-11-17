@@ -2519,16 +2519,17 @@ export const aiDispensingRecommendations = pgTable("ai_dispensing_recommendation
 // Validation Schemas for AI Engine
 
 // Prescription data (from order)
+// Updated to use numeric types matching database decimal columns
 export const prescriptionDataSchema = z.object({
-  odSphere: z.string().optional(),
-  odCylinder: z.string().optional(),
-  odAxis: z.string().optional(),
-  odAdd: z.string().optional(),
-  osSphere: z.string().optional(),
-  osCylinder: z.string().optional(),
-  osAxis: z.string().optional(),
-  osAdd: z.string().optional(),
-  pd: z.string().optional(),
+  odSphere: z.number().min(-20).max(20).optional().or(z.string().regex(/^-?\d+\.?\d*$/).transform(Number)),
+  odCylinder: z.number().min(-10).max(0).optional().or(z.string().regex(/^-?\d+\.?\d*$/).transform(Number)),
+  odAxis: z.number().int().min(0).max(180).optional().or(z.string().regex(/^\d+$/).transform(Number)),
+  odAdd: z.number().min(0).max(4).optional().or(z.string().regex(/^\d+\.?\d*$/).transform(Number)),
+  osSphere: z.number().min(-20).max(20).optional().or(z.string().regex(/^-?\d+\.?\d*$/).transform(Number)),
+  osCylinder: z.number().min(-10).max(0).optional().or(z.string().regex(/^-?\d+\.?\d*$/).transform(Number)),
+  osAxis: z.number().int().min(0).max(180).optional().or(z.string().regex(/^\d+$/).transform(Number)),
+  osAdd: z.number().min(0).max(4).optional().or(z.string().regex(/^\d+\.?\d*$/).transform(Number)),
+  pd: z.number().min(40).max(80).optional().or(z.string().regex(/^\d+\.?\d*$/).transform(Number)),
 });
 
 // Clinical notes input for NLP analysis

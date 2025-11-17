@@ -80,7 +80,23 @@ if (!corsOrigin && process.env.NODE_ENV === 'production') {
 }
 
 app.use((req, res, next) => {
-  const allowedOrigin = corsOrigin || 'http://localhost:3000';
+  const requestOrigin = req.headers.origin;
+  
+  // For local development, allow localhost and 127.0.0.1 with any port
+  const isLocalhost = requestOrigin && (
+    requestOrigin.includes('localhost') || 
+    requestOrigin.includes('127.0.0.1')
+  );
+  
+  let allowedOrigin: string;
+  if (process.env.NODE_ENV === 'production' && !isLocalhost) {
+    // Production: use configured CORS_ORIGIN
+    allowedOrigin = corsOrigin || '';
+  } else {
+    // Development or localhost: allow the request origin
+    allowedOrigin = requestOrigin || corsOrigin || 'http://localhost:3000';
+  }
+  
   res.header('Access-Control-Allow-Origin', allowedOrigin);
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');

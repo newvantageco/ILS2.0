@@ -1,5 +1,5 @@
 // Service Worker for PWA functionality
-const CACHE_NAME = 'ils-cache-v1';
+const CACHE_NAME = 'ils-cache-v2-production';
 const urlsToCache = [
   '/',
   '/index.html',

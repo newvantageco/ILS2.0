@@ -54,6 +54,22 @@ export interface AiResponse {
   learningOpportunity?: boolean;
 }
 
+// Internal types for objects with computed relevance scores
+type ScoredLearningData = AiLearningData & {
+  relevanceScore: number;
+};
+
+type ScoredDocument = AiKnowledgeBase & {
+  relevanceScore: number;
+};
+
+interface ProgressCalculation {
+  progress: number;
+  learningScore: number;
+  documentScore: number;
+  successScore: number;
+}
+
 export class AIAssistantService {
   private logger: Logger;
   private externalAI: ExternalAIService;
@@ -89,13 +105,13 @@ export class AIAssistantService {
         config.companyId
       );
 
-      // Step 3: Search uploaded documents
+      // Step 2: Search uploaded documents
       const documentContext = await this.searchDocuments(
         query.question,
         config.companyId
       );
 
-      // Step 4: Decide if we can answer with learned data or need external AI
+      // Step 3: Decide if we can answer with learned data or need external AI
       const canAnswerLocally = await this.canAnswerWithLearnedData(
         learnedAnswers,
         documentContext,
@@ -149,7 +165,7 @@ export class AIAssistantService {
   private async searchLearnedKnowledge(
     question: string,
     companyId: string
-  ): Promise<AiLearningData[]> {
+  ): Promise<ScoredLearningData[]> {
     try {
       // In production, this would use vector similarity search with embeddings
       // For now, we'll use a simplified keyword-based search
@@ -190,7 +206,7 @@ export class AIAssistantService {
   private async searchDocuments(
     question: string,
     companyId: string
-  ): Promise<AiKnowledgeBase[]> {
+  ): Promise<ScoredDocument[]> {
     try {
       const documents = await this.storage.getAiKnowledgeBaseByCompany(companyId);
       
@@ -219,8 +235,8 @@ export class AIAssistantService {
    * Determine if we can answer with local learned data
    */
   private async canAnswerWithLearnedData(
-    learnedAnswers: any[],
-    documentContext: any[],
+    learnedAnswers: ScoredLearningData[],
+    documentContext: ScoredDocument[],
     learningProgress: number
   ): Promise<boolean> {
     // Decision matrix based on learning progress
@@ -246,13 +262,13 @@ export class AIAssistantService {
    */
   private async generateLocalAnswer(
     question: string,
-    learnedAnswers: any[],
-    documentContext: any[]
+    learnedAnswers: ScoredLearningData[],
+    documentContext: ScoredDocument[]
   ): Promise<AiResponse> {
     const bestAnswer = learnedAnswers[0];
     
     // Combine answer with document context if available
-    let answer = bestAnswer.answer;
+    let answer = bestAnswer.answer || 'No answer available';
     const sources: AiResponse['sources'] = [];
 
     sources.push({
@@ -264,7 +280,10 @@ export class AIAssistantService {
     // Add document context
     if (documentContext.length > 0) {
       const docContext = documentContext
-        .map(doc => `\n\nRelevant information from ${doc.filename}:\n${this.extractRelevantExcerpt(doc.content, question)}`)
+        .map(doc => {
+          const content = doc.content || '';
+          return `\n\nRelevant information from ${doc.filename}:\n${this.extractRelevantExcerpt(content, question)}`;
+        })
         .join('');
       
       answer += docContext;
@@ -281,9 +300,10 @@ export class AIAssistantService {
     // Update use count
     await this.storage.incrementAiLearningUseCount(bestAnswer.id);
 
+    const confidenceValue = parseFloat(bestAnswer.confidence || '0.5');
     return {
       answer,
-      confidence: Math.min(0.95, bestAnswer.confidence + 0.1),
+      confidence: Math.min(0.95, confidenceValue + 0.1),
       usedExternalAi: false,
       sources,
       learningOpportunity: false
@@ -295,8 +315,8 @@ export class AIAssistantService {
    */
   private async generateExternalAiAnswer(
     question: string,
-    learnedAnswers: any[],
-    documentContext: any[],
+    learnedAnswers: ScoredLearningData[],
+    documentContext: ScoredDocument[],
     config: AiAssistantConfig
   ): Promise<AiResponse> {
     try {
@@ -306,14 +326,15 @@ export class AIAssistantService {
       if (documentContext.length > 0) {
         contextPrompt += "\n\nRelevant company documents:\n";
         documentContext.forEach(doc => {
-          contextPrompt += `- ${doc.filename}: ${this.extractRelevantExcerpt(doc.content, question)}\n`;
+          const content = doc.content || '';
+          contextPrompt += `- ${doc.filename}: ${this.extractRelevantExcerpt(content, question)}\n`;
         });
       }
 
       if (learnedAnswers.length > 0) {
         contextPrompt += "\n\nPreviously learned information:\n";
         learnedAnswers.slice(0, 3).forEach(learning => {
-          contextPrompt += `Q: ${learning.question}\nA: ${learning.answer}\n\n`;
+          contextPrompt += `Q: ${learning.question || 'N/A'}\nA: ${learning.answer || 'N/A'}\n\n`;
         });
       }
 
@@ -442,14 +463,15 @@ To get the most accurate assistance, please ensure your AI integration is config
    */
   private async generateFallbackAnswer(
     question: string,
-    learnedAnswers: any[],
-    documentContext: any[]
+    learnedAnswers: ScoredLearningData[],
+    documentContext: ScoredDocument[]
   ): Promise<AiResponse> {
     let answer = "I don't have enough information to answer this question confidently. ";
     const sources: AiResponse['sources'] = [];
 
     if (learnedAnswers.length > 0) {
-      answer += `\n\nHere's some potentially relevant information I've learned:\n${learnedAnswers[0].answer}`;
+      const learnedAnswer = learnedAnswers[0].answer || 'No answer available';
+      answer += `\n\nHere's some potentially relevant information I've learned:\n${learnedAnswer}`;
       sources.push({
         type: 'learned',
         relevance: learnedAnswers[0].relevanceScore || 0.5
@@ -659,26 +681,13 @@ To get the most accurate assistance, please ensure your AI integration is config
       const learningData = await this.storage.getAiLearningDataByCompany(companyId);
       const knowledgeBase = await this.storage.getAiKnowledgeBaseByCompany(companyId);
 
-      // Calculate progress based on:
-      // - Number of learned Q&A pairs (40%)
-      // - Number of documents (30%)
-      // - Success rate of answers (30%)
-      
-      const learningScore = Math.min(40, (learningData.length / 100) * 40);
-      const documentScore = Math.min(30, (knowledgeBase.length / 20) * 30);
-      
-      const avgSuccessRate = learningData.length > 0
-        ? learningData.reduce((sum, l) => sum + parseFloat(l.successRate || '0'), 0) / learningData.length
-        : 0;
-      const successScore = avgSuccessRate * 30;
+      const { progress } = this.calculateProgress(learningData, knowledgeBase);
 
-      const totalProgress = Math.floor(learningScore + documentScore + successScore);
-
-      await this.storage.updateCompanyAiProgress(companyId, totalProgress);
+      await this.storage.updateCompanyAiProgress(companyId, progress);
       
       this.logger.info({ 
         companyId, 
-        progress: totalProgress 
+        progress 
       }, "Updated AI learning progress");
     } catch (error) {
       this.logger.error({ err: error as Error }, "Error updating learning progress");
@@ -686,6 +695,36 @@ To get the most accurate assistance, please ensure your AI integration is config
   }
 
   // ========== UTILITY METHODS ==========
+
+  /**
+   * Calculate AI learning progress based on learning data and documents
+   */
+  private calculateProgress(
+    learningData: AiLearningData[],
+    knowledgeBase: AiKnowledgeBase[]
+  ): ProgressCalculation {
+    // Calculate progress based on:
+    // - Number of learned Q&A pairs (40%)
+    // - Number of documents (30%)
+    // - Success rate of answers (30%)
+    
+    const learningScore = Math.min(40, (learningData.length / 100) * 40);
+    const documentScore = Math.min(30, (knowledgeBase.length / 20) * 30);
+    
+    const avgSuccessRate = learningData.length > 0
+      ? learningData.reduce((sum, l) => sum + parseFloat(l.successRate || '0'), 0) / learningData.length
+      : 0;
+    const successScore = avgSuccessRate * 30;
+
+    const progress = Math.floor(learningScore + documentScore + successScore);
+
+    return {
+      progress,
+      learningScore,
+      documentScore,
+      successScore
+    };
+  }
 
   private extractKeywords(text: string): string[] {
     // Simple keyword extraction (in production, use proper NLP)
@@ -714,7 +753,7 @@ To get the most accurate assistance, please ensure your AI integration is config
     return intersection.size / union.size;
   }
 
-  private calculateRelevanceScore(question: string, learning: any): number {
+  private calculateRelevanceScore(question: string, learning: AiLearningData): number {
     const questionSim = this.calculateTextSimilarity(
       question.toLowerCase(),
       (learning.question || '').toLowerCase()
@@ -791,7 +830,7 @@ To get the most accurate assistance, please ensure your AI integration is config
   /**
    * Get external AI availability status
    */
-  getExternalAIAvailability() {
+  getExternalAIAvailability(): { openaiAvailable: boolean; anthropicAvailable: boolean } {
     return {
       openaiAvailable: this.externalAI.getAvailableProviders().includes('openai'),
       anthropicAvailable: this.externalAI.getAvailableProviders().includes('anthropic'),
@@ -815,13 +854,10 @@ To get the most accurate assistance, please ensure your AI integration is config
       let conversation = await this.storage.getAiConversation(conversationId);
       
       if (!conversation) {
-        conversation = await this.storage.createAiConversation({
-          id: conversationId,
-          companyId,
-          userId,
-          title: question.substring(0, 100),
-          status: 'active' as const
-        });
+        // If conversation doesn't exist, we should create one without forcing an ID
+        // The storage layer will generate an ID automatically
+        this.logger.warn({ conversationId }, 'Conversation not found, cannot create with specific ID');
+        throw new Error(`Conversation ${conversationId} not found`);
       }
 
       // Save user message
@@ -938,19 +974,10 @@ To get the most accurate assistance, please ensure your AI integration is config
       const learningData = await this.storage.getAiLearningDataByCompany(companyId);
       const knowledgeBase = await this.storage.getAiKnowledgeBaseByCompany(companyId);
 
-      // Calculate progress
-      const learningScore = Math.min(40, (learningData.length / 100) * 40);
-      const documentScore = Math.min(30, (knowledgeBase.length / 20) * 30);
-      
-      const avgSuccessRate = learningData.length > 0
-        ? learningData.reduce((sum, l) => sum + parseFloat(l.successRate || '0'), 0) / learningData.length
-        : 0;
-      const successScore = avgSuccessRate * 30;
-
-      const totalProgress = Math.floor(learningScore + documentScore + successScore);
+      const { progress } = this.calculateProgress(learningData, knowledgeBase);
 
       return {
-        progress: totalProgress,
+        progress,
         totalLearning: learningData.length,
         totalDocuments: knowledgeBase.length,
         lastUpdated: new Date().toISOString()
@@ -1012,12 +1039,11 @@ To get the most accurate assistance, please ensure your AI integration is config
     conversationId: string,
     messageId: string,
     companyId: string,
+    userId: string,
     helpful: boolean,
     feedback?: string
   ): Promise<void> {
     try {
-      // Get current user from context (we'll need to pass userId)
-      const userId = 'system'; // This should be passed from the API route
       
       await this.storage.createAiFeedback({
         messageId,

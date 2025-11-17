@@ -89,12 +89,33 @@ export class FeatureUsageService {
   ): Promise<void> {
     logger.debug(`[Features] Tracking usage: ${companyId} - ${featureName}`);
 
-    // TODO: Insert into usage_events and feature_usage_metrics
-    // Update:
-    // - usage_count increment
-    // - active_users set union
-    // - last_used_at timestamp
-    // - metadata JSON
+    try {
+      // Insert usage event
+      await storage.createUsageEvent({
+        companyId,
+        userId,
+        featureName,
+        eventType: 'feature_used',
+        metadata,
+        success: true,
+      });
+
+      // Update aggregated metrics
+      const today = new Date();
+      const periodStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+      await storage.upsertFeatureUsageMetric(companyId, featureName, {
+        periodStart,
+        periodEnd,
+        lastUsedAt: today,
+      });
+
+      logger.debug(`[Features] Tracked usage for ${featureName}`);
+    } catch (error) {
+      logger.error({ err: error as Error }, `Failed to track feature usage: ${featureName}`);
+      // Don't throw - tracking failures shouldn't break app functionality
+    }
   }
 
   /**
@@ -232,15 +253,22 @@ export class FeatureUsageService {
   ): Promise<void> {
     logger.debug(`[Features] API call: ${companyId} - ${featureName} (${responseTime}ms)`);
 
-    // TODO: Record in usage_events with:
-    // - event_type: 'api_call'
-    // - feature_name
-    // - success status
-    // - response_time
-    // - rate_limit status if applicable
-
-    // Check rate limits based on tier
-    // Track for abuse detection
+    try {
+      await storage.createUsageEvent({
+        companyId,
+        userId: 'system', // API calls may not have user context
+        featureName,
+        eventType: 'api_call',
+        success,
+        responseTimeMs: responseTime,
+        metadata: {
+          timestamp: new Date().toISOString(),
+          responseTime,
+        },
+      });
+    } catch (error) {
+      logger.error({ err: error as Error }, 'Failed to track API call');
+    }
   }
 
   /**

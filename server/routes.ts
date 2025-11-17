@@ -75,6 +75,7 @@ import { withTransaction, transactionalInsert, transactionalUpdate } from "./uti
 
 import { registerMetricsRoutes } from "./routes/metrics";
 import { registerBiRoutes } from "./routes/bi";
+import { registerSaaSRoutes } from "./routes/saas-analytics";
 import { registerMasterAIRoutes } from "./routes/master-ai";
 import { registerAINotificationRoutes } from "./routes/ai-notifications";
 import { registerAutonomousPORoutes } from "./routes/ai-purchase-orders";
@@ -290,6 +291,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Business Intelligence Dashboard routes
   registerBiRoutes(app);
+  
+  // Register SaaS Analytics routes (customer health, churn, feature usage)
+  registerSaaSRoutes(app);
   
   // Register Background Job Queue Management routes (admin-only monitoring)
   registerQueueRoutes(app);

@@ -6874,6 +6874,80 @@ export class DbStorage implements IStorage {
   }
 
   /**
+   * Create usage event
+   */
+  async createUsageEvent(data: {
+    companyId: string;
+    userId: string;
+    featureName: string;
+    eventType: string;
+    metadata?: any;
+    success?: boolean;
+    responseTimeMs?: number;
+  }) {
+    const [event] = await db.insert(usageEvents).values({
+      companyId: data.companyId,
+      userId: data.userId,
+      eventType: data.eventType,
+      eventName: data.featureName,
+      properties: data.metadata,
+      responseTimeMs: data.responseTimeMs,
+      success: data.success ?? true,
+    }).returning();
+    return event;
+  }
+
+  /**
+   * Upsert feature usage metric
+   */
+  async upsertFeatureUsageMetric(
+    companyId: string,
+    featureName: string,
+    data: {
+      periodStart: Date;
+      periodEnd: Date;
+      lastUsedAt: Date;
+    }
+  ) {
+    const existing = await db
+      .select()
+      .from(featureUsageMetrics)
+      .where(
+        and(
+          eq(featureUsageMetrics.companyId, companyId),
+          eq(featureUsageMetrics.featureName, featureName),
+          eq(featureUsageMetrics.periodStart, data.periodStart)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      const [updated] = await db
+        .update(featureUsageMetrics)
+        .set({
+          usageCount: (existing[0].usageCount || 0) + 1,
+          lastUsedAt: data.lastUsedAt,
+          updatedAt: new Date(),
+        })
+        .where(eq(featureUsageMetrics.id, existing[0].id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(featureUsageMetrics).values({
+        companyId,
+        featureName,
+        tier: 'free', // Would be determined by subscription
+        usageCount: 1,
+        activeUsers: 1,
+        lastUsedAt: data.lastUsedAt,
+        periodStart: data.periodStart,
+        periodEnd: data.periodEnd,
+      }).returning();
+      return created;
+    }
+  }
+
+  /**
    * Get customer acquisition source data
    */
   async getCustomerAcquisitionSources(companyId: string) {
