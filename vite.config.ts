@@ -56,18 +56,19 @@ export default defineConfig({
           return `js/[name]-[hash].js`;
         },
         assetFileNames: (assetInfo) => {
-          const info = assetInfo.name.split('.');
+          const name = assetInfo.name || 'asset';
+          const info = name.split('.');
           const ext = info[info.length - 1];
-          if (/\.(mp4|webm|ogg|mp3|wav|flac|aac)(\?.*)?$/i.test(assetInfo.name)) {
+          if (/\.(mp4|webm|ogg|mp3|wav|flac|aac)(\?.*)?$/i.test(name)) {
             return `media/[name]-[hash][extname]`;
           }
-          if (/\.(png|jpe?g|gif|svg)(\?.*)?$/i.test(assetInfo.name)) {
+          if (/\.(png|jpe?g|gif|svg)(\?.*)?$/i.test(name)) {
             return `images/[name]-[hash][extname]`;
           }
-          if (/\.(woff2?|eot|ttf|otf)(\?.*)?$/i.test(assetInfo.name)) {
+          if (/\.(woff2?|eot|ttf|otf)(\?.*)?$/i.test(name)) {
             return `fonts/[name]-[hash][extname]`;
           }
-          if (/\.css$/.test(assetInfo.name)) {
+          if (/\.css$/.test(name)) {
             return `css/[name]-[hash][extname]`;
           }
           return `assets/[name]-[hash][extname]`;
@@ -94,9 +95,8 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 3000,
     strictPort: true,
-    hmr: {
-      port: 3001,
-    },
+    // HMR configuration is handled by server/vite.ts in middleware mode
+    // No need to specify HMR port here as it causes conflicts
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:5000',

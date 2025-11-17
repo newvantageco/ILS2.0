@@ -34,10 +34,8 @@ export async function setupVite(app: Express, server: Server) {
       ...serverOptions,
       middlewareMode: true,
       hmr: {
-        server,
-        port: 3001,
-        host: '127.0.0.1',
-        protocol: 'ws',
+        server, // Use the HTTP server instance - no need to specify port
+        // Port is automatically determined from the server instance
       },
     },
     appType: "custom",
