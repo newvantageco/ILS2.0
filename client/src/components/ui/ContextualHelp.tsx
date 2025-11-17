@@ -13,7 +13,7 @@
  */
 
 import { useState } from 'react';
-import { HelpCircle, ExternalLink, X } from 'lucide-react';
+import { HelpCircle, ExternalLink, X, Lightbulb } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -153,11 +153,13 @@ export function ContextualHelp({
         </div>
 
         {/* Footer tip */}
-        <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
-          💡 Tip: You can find more help in the{' '}
+        <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+          <Lightbulb className="h-3 w-3" />
+          <span>Tip: You can find more help in the{' '}
           <a href="/help" className="text-blue-600 dark:text-blue-400 hover:underline">
             Help Center
           </a>
+          </span>
         </div>
       </PopoverContent>
     </Popover>

@@ -11,6 +11,7 @@ import {
   Brain,
   Zap,
   Target,
+  Lightbulb,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format, startOfMonth } from "date-fns";
@@ -97,7 +98,10 @@ const InsightCard = ({ insight }: { insight: AIInsight }) => {
       <CardContent className="space-y-2">
         <p className="text-sm font-medium">{insight.message}</p>
         <div className="bg-white/50 p-2 rounded-md">
-          <p className="text-xs font-semibold text-muted-foreground">💡 Recommendation:</p>
+          <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+            <Lightbulb className="h-3 w-3" />
+            Recommendation:
+          </p>
           <p className="text-sm">{insight.recommendation}</p>
         </div>
       </CardContent>

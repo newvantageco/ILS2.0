@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, Info, AlertCircle, CheckCircle, X, Sparkles, ExternalLink, TrendingUp } from 'lucide-react';
+import { Bell, Info, AlertCircle, CheckCircle, X, Sparkles, ExternalLink, TrendingUp, Lightbulb } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useLocation } from 'wouter';
 import {
@@ -315,8 +315,9 @@ export const NotificationCenter: React.FC = () => {
                             {notification.message}
                           </p>
                           {!isSystem && (notification as AINotification).recommendation && (
-                            <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
-                              💡 {(notification as AINotification).recommendation}
+                            <p className="text-xs text-purple-600 dark:text-purple-400 mt-2 flex items-center gap-1">
+                              <Lightbulb className="h-3 w-3" />
+                              {(notification as AINotification).recommendation}
                             </p>
                           )}
                           {!isSystem && (notification as AINotification).actionLabel && (
@@ -458,7 +459,10 @@ export const NotificationCenter: React.FC = () => {
                           </p>
                           {notification.recommendation && (
                             <div className="mt-2 p-2 bg-purple-50 dark:bg-purple-950/30 rounded text-xs">
-                              <span className="font-medium">💡 Recommendation:</span>
+                              <span className="font-medium flex items-center gap-1">
+                                <Lightbulb className="h-3 w-3" />
+                                Recommendation:
+                              </span>
                               <p className="mt-1">{notification.recommendation}</p>
                             </div>
                           )}

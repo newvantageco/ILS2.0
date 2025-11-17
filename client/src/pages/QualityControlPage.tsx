@@ -519,11 +519,11 @@ export default function QualityControlPage() {
                         const change = ((recentAvg - olderAvg) / olderAvg) * 100;
                         
                         if (change > 20) {
-                          return <p>⚠️ Defect rate increased by {change.toFixed(1)}% in the last week. Investigation recommended.</p>;
+                          return <p className="flex items-center gap-2"><AlertCircle className="h-4 w-4 text-yellow-600" /> Defect rate increased by {change.toFixed(1)}% in the last week. Investigation recommended.</p>;
                         } else if (change < -20) {
-                          return <p>✅ Defect rate improved by {Math.abs(change).toFixed(1)}% in the last week. Quality initiatives are working!</p>;
+                          return <p className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /> Defect rate improved by {Math.abs(change).toFixed(1)}% in the last week. Quality initiatives are working!</p>;
                         } else {
-                          return <p>📊 Defect rate is stable with {change > 0 ? 'a slight increase' : 'a slight decrease'} of {Math.abs(change).toFixed(1)}%.</p>;
+                          return <p className="flex items-center gap-2"><BarChart3 className="h-4 w-4 text-blue-600" /> Defect rate is stable with {change > 0 ? 'a slight increase' : 'a slight decrease'} of {Math.abs(change).toFixed(1)}%.</p>;
                         }
                       })()}
                     </div>

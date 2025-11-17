@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, Shield, Plus, Edit, Trash2, Copy, Lock } from 'lucide-react';
+import { Users, Shield, Plus, Edit, Trash2, Copy, Lock, Lightbulb } from 'lucide-react';
 
 // Types
 type Role = {
@@ -606,8 +606,9 @@ function CreateRoleModal({ onClose }: { onClose: () => void }) {
               rows={3}
             />
           </div>
-          <p className="text-sm text-gray-500">
-            💡 Tip: You can add permissions after creating the role
+          <p className="text-sm text-gray-500 flex items-center gap-1">
+            <Lightbulb className="h-3 w-3" />
+            Tip: You can add permissions after creating the role
           </p>
         </div>
 

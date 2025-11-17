@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { PrescriptionAlertsWidget } from '../components/PrescriptionAlertsWidget';
 import { BIRecommendationsWidget } from '../components/BIRecommendationsWidget';
-import { RefreshCw, Brain, AlertCircle, TrendingUp } from 'lucide-react';
+import { RefreshCw, Brain, AlertCircle, TrendingUp, Target, BarChart3 } from 'lucide-react';
 
 export const IntelligentSystemDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -279,8 +279,9 @@ export const IntelligentSystemDashboard: React.FC = () => {
         {/* Feature Explanation */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg border border-blue-200 dark:border-blue-800 p-6">
-            <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
-              🎯 Predictive Non-Adapt Alerts
+            <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2 flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Predictive Non-Adapt Alerts
             </h3>
             <p className="text-sm text-blue-800 dark:text-blue-200">
               Our Principal Engineer's AI analyzes complex prescriptions (high-add progressives,
@@ -290,8 +291,9 @@ export const IntelligentSystemDashboard: React.FC = () => {
           </div>
 
           <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg border border-green-200 dark:border-green-800 p-6">
-            <h3 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-2">
-              📊 Intelligent Purchasing Assistant
+            <h3 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-2 flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Intelligent Purchasing Assistant
             </h3>
             <p className="text-sm text-green-800 dark:text-green-200">
               Combines your POS sales data with our LIMS lab data to provide proactive business

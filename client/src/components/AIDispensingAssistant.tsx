@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, AlertCircle, TrendingUp, DollarSign, Zap } from "lucide-react";
+import { Check, AlertCircle, TrendingUp, DollarSign, Zap, Star, Sparkles, Lightbulb } from "lucide-react";
 import type { AiRecommendationResponse, RecommendationTier } from "@shared/schema";
 
 interface AIDispensingAssistantProps {
@@ -116,10 +116,10 @@ export function AIDispensingAssistant({
       <Tabs defaultValue="BEST" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           {tiers.map((tier) => (
-            <TabsTrigger key={tier.tier} value={tier.tier}>
-              {tier.tier === "BEST" && "🌟 Best"}
-              {tier.tier === "BETTER" && "⭐ Better"}
-              {tier.tier === "GOOD" && "💡 Good"}
+            <TabsTrigger key={tier.tier} value={tier.tier} className="flex items-center gap-2">
+              {tier.tier === "BEST" && <><Sparkles className="h-4 w-4" /> Best</>}
+              {tier.tier === "BETTER" && <><Star className="h-4 w-4" /> Better</>}
+              {tier.tier === "GOOD" && <><Lightbulb className="h-4 w-4" /> Good</>}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -247,11 +247,12 @@ export function AIDispensingAssistant({
                     setSelectedTier(tier.tier);
                     onAcceptRecommendation?.(tier.tier);
                   }}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 flex items-center justify-center gap-2"
                 >
-                  {tier.tier === "BEST" && "✓ Accept Best Recommendation"}
-                  {tier.tier === "BETTER" && "✓ Accept Alternative"}
-                  {tier.tier === "GOOD" && "✓ Accept Budget Option"}
+                  <Check className="h-4 w-4" />
+                  {tier.tier === "BEST" && "Accept Best Recommendation"}
+                  {tier.tier === "BETTER" && "Accept Alternative"}
+                  {tier.tier === "GOOD" && "Accept Budget Option"}
                 </Button>
               </CardContent>
             </Card>

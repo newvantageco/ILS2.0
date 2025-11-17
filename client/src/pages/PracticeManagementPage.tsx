@@ -416,7 +416,10 @@ export default function PracticeManagementPage() {
                         </div>
                         <p className="text-sm text-gray-600 mb-3">{suggestion.description}</p>
                         <div className="flex justify-between items-center">
-                          <span className="text-xs text-green-600 font-medium">💰 {suggestion.savings}</span>
+                          <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                            <DollarSign className="h-3 w-3" />
+                            {suggestion.savings}
+                          </span>
                           <Button 
                             size="sm" 
                             onClick={() => handleApplySuggestion(suggestion.id)}
@@ -846,7 +849,10 @@ export default function PracticeManagementPage() {
                 </div>
                 <p className="text-sm text-gray-600 mb-3">{suggestion.description}</p>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-green-600 font-medium">💰 {suggestion.savings}</span>
+                  <span className="text-sm text-green-600 font-medium flex items-center gap-1">
+                    <DollarSign className="h-3 w-3" />
+                    {suggestion.savings}
+                  </span>
                   <Button onClick={() => handleApplySuggestion(suggestion.id)}>
                     Apply Suggestion
                   </Button>

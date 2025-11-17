@@ -13,6 +13,7 @@ import {
   XCircle,
   ArrowUpRight,
   ArrowDownRight,
+  Star,
 } from "lucide-react";
 import {
   BarChart,
@@ -257,8 +258,10 @@ export function OperationalDashboard() {
                     <td className="px-4 py-3 text-right">
                       <Badge 
                         variant={staff.patientSatisfaction >= 4.5 ? "default" : staff.patientSatisfaction >= 4.0 ? "secondary" : "destructive"}
+                        className="flex items-center gap-1 justify-center"
                       >
-                        {staff.patientSatisfaction.toFixed(1)} ⭐
+                        {staff.patientSatisfaction.toFixed(1)}
+                        <Star className="h-3 w-3 fill-current" />
                       </Badge>
                     </td>
                   </tr>
