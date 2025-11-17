@@ -5,11 +5,20 @@
 # Tests all system components with correct API endpoints
 # ═══════════════════════════════════════════════════════════
 
-BASE_URL="http://localhost:3000"
+BASE_URL="${TEST_API_URL:-http://localhost:3000}"
 API_URL="$BASE_URL/api"
+TEST_EMAIL="${TEST_USER_EMAIL:-}"
+TEST_PASSWORD="${TEST_USER_PASSWORD:-}"
 PASSED=0
 FAILED=0
 WARNINGS=0
+
+# Check for required credentials
+if [ -z "$TEST_EMAIL" ] || [ -z "$TEST_PASSWORD" ]; then
+  echo "Error: TEST_USER_EMAIL and TEST_USER_PASSWORD environment variables must be set"
+  echo "Usage: TEST_USER_EMAIL='user@example.com' TEST_USER_PASSWORD='password' $0"
+  exit 1
+fi
 
 # Colors
 RED='\033[0;31m'
@@ -127,7 +136,7 @@ echo "────────────────────────�
 # Test login
 LOGIN_RESPONSE=$(curl -s -c /tmp/ils_test_cookies.txt -X POST "$API_URL/auth/login-email" \
     -H "Content-Type: application/json" \
-    -d '{"email":"saban@newvantageco.com","password":"B6cdcab52a!!"}' 2>&1)
+    -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\"}" 2>&1)
 
 if echo "$LOGIN_RESPONSE" | jq -e '.user.email' > /dev/null 2>&1; then
     USER_EMAIL=$(echo "$LOGIN_RESPONSE" | jq -r '.user.email')

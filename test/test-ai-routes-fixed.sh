@@ -5,10 +5,17 @@
 
 set -e
 
-API_URL="http://localhost:3000"
+API_URL="${TEST_API_URL:-http://localhost:3000}"
 COOKIE_FILE="/tmp/test_cookies.txt"
-EMAIL="saban@newvantageco.com"
-PASSWORD="B6cdcab52a!!"
+EMAIL="${TEST_USER_EMAIL:-}"
+PASSWORD="${TEST_USER_PASSWORD:-}"
+
+# Check for required credentials
+if [ -z "$EMAIL" ] || [ -z "$PASSWORD" ]; then
+  echo "Error: TEST_USER_EMAIL and TEST_USER_PASSWORD environment variables must be set"
+  echo "Usage: TEST_USER_EMAIL='user@example.com' TEST_USER_PASSWORD='password' $0"
+  exit 1
+fi
 
 echo "=========================================="
 echo "AI ROUTES VERIFICATION TEST"

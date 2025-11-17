@@ -19,8 +19,15 @@ railway variables --set "HOST=0.0.0.0" --skip-deploys || echo "❌ Failed to set
 
 # Security Secrets
 echo "Setting security secrets..."
-railway variables --set "SESSION_SECRET=Yl/goPtE6DHlSEvXkECwfSlSKfIBhNoonVNzGbg2y10=" --skip-deploys || echo "❌ Failed to set SESSION_SECRET"
-railway variables --set "ADMIN_SETUP_KEY=O4msyb1N0Ptvv1lMIqEPj5m91nW+gNi0" --skip-deploys || echo "❌ Failed to set ADMIN_SETUP_KEY"
+# NOTE: Generate unique secrets before deployment
+# Example: openssl rand -base64 32
+if [ -z "$SESSION_SECRET" ] || [ -z "$ADMIN_SETUP_KEY" ]; then
+  echo "❌ Error: SESSION_SECRET and ADMIN_SETUP_KEY environment variables must be set"
+  echo "Generate them with: openssl rand -base64 32"
+  exit 1
+fi
+railway variables --set "SESSION_SECRET=$SESSION_SECRET" --skip-deploys || echo "❌ Failed to set SESSION_SECRET"
+railway variables --set "ADMIN_SETUP_KEY=$ADMIN_SETUP_KEY" --skip-deploys || echo "❌ Failed to set ADMIN_SETUP_KEY"
 
 # Optional: Master User
 echo "Setting master user configuration..."
