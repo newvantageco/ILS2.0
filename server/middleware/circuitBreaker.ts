@@ -6,6 +6,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { cacheService } from '../services/CacheService';
+import logger from '../utils/logger';
 
 type CircuitState = 'closed' | 'open' | 'half-open';
 
@@ -54,11 +55,11 @@ class CircuitBreaker {
       ) {
         // Move to half-open state
         circuit.state = 'half-open';
-        console.log(`Circuit '${circuitName}' moved to half-open state`);
+        logger.info({ circuitName, state: 'half-open' }, 'Circuit moved to half-open state');
       } else {
         // Circuit is still open, use fallback
         if (opts.fallbackResponse !== undefined) {
-          console.warn(`Circuit '${circuitName}' is open, using fallback`);
+          logger.warn({ circuitName, state: 'open' }, 'Circuit is open, using fallback');
           return opts.fallbackResponse;
         }
         
@@ -80,7 +81,7 @@ class CircuitBreaker {
           circuit.state = 'closed';
           circuit.failures = 0;
           circuit.successes = 0;
-          console.log(`Circuit '${circuitName}' closed`);
+          logger.info({ circuitName, state: 'closed', successes: circuit.successes }, 'Circuit closed');
         }
       }
 
@@ -95,13 +96,13 @@ class CircuitBreaker {
       if (circuit.state === 'closed' || circuit.state === 'half-open') {
         if (circuit.failures >= opts.failureThreshold) {
           circuit.state = 'open';
-          console.error(`Circuit '${circuitName}' opened due to ${circuit.failures} failures`);
+          logger.error({ circuitName, state: 'open', failures: circuit.failures }, 'Circuit opened due to failures');
         }
       }
 
       // If circuit is now open and we have a fallback, use it
       if (circuit.state === 'open' && opts.fallbackResponse !== undefined) {
-        console.warn(`Circuit '${circuitName}' opened, using fallback`);
+        logger.warn({ circuitName, state: 'open' }, 'Circuit opened, using fallback');
         return opts.fallbackResponse;
       }
 
@@ -142,7 +143,7 @@ class CircuitBreaker {
 
         // Move to half-open
         circuit.state = 'half-open';
-        console.log(`Circuit '${circuitName}' moved to half-open state`);
+        logger.info({ circuitName, state: 'half-open' }, 'Circuit moved to half-open state');
       }
 
       // Store original send function
@@ -200,7 +201,7 @@ class CircuitBreaker {
         circuit.state = 'closed';
         circuit.failures = 0;
         circuit.successes = 0;
-        console.log(`Circuit '${circuitName}' closed`);
+        logger.info({ circuitName, state: 'closed', successes: opts.successThreshold }, 'Circuit closed');
       }
     }
   }
@@ -220,7 +221,7 @@ class CircuitBreaker {
     if (circuit.state === 'closed' || circuit.state === 'half-open') {
       if (circuit.failures >= opts.failureThreshold) {
         circuit.state = 'open';
-        console.error(`Circuit '${circuitName}' opened due to ${circuit.failures} failures`);
+        logger.error({ circuitName, state: 'open', failures: circuit.failures }, 'Circuit opened due to failures');
       }
     }
   }
@@ -274,8 +275,8 @@ class CircuitBreaker {
       circuit.totalRequests = 0;
       circuit.lastFailureTime = null;
       circuit.state = 'closed';
-      
-      console.log(`Circuit '${circuitName}' reset`);
+
+      logger.info({ circuitName, state: 'closed' }, 'Circuit reset');
     }
   }
 
@@ -295,7 +296,7 @@ class CircuitBreaker {
     const circuit = this.getOrCreateCircuit(circuitName);
     circuit.state = 'open';
     circuit.lastFailureTime = new Date();
-    console.log(`Circuit '${circuitName}' forcefully opened`);
+    logger.info({ circuitName, state: 'open', forced: true }, 'Circuit forcefully opened');
   }
 
   /**
@@ -308,7 +309,7 @@ class CircuitBreaker {
       circuit.state = 'closed';
       circuit.failures = 0;
       circuit.successes = 0;
-      console.log(`Circuit '${circuitName}' forcefully closed`);
+      logger.info({ circuitName, state: 'closed', forced: true }, 'Circuit forcefully closed');
     }
   }
 }

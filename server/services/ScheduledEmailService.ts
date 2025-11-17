@@ -3,6 +3,7 @@ import { db } from '../db';
 import { prescriptions, patients, companies, users } from '../../shared/schema';
 import { EmailTrackingService } from './EmailTrackingService';
 import { eq, and, lte, gte, isNull, sql } from 'drizzle-orm';
+import logger from '../utils/logger';
 
 export class ScheduledEmailService {
   private prescriptionReminderJob: ScheduledTask | null = null;
@@ -19,7 +20,7 @@ export class ScheduledEmailService {
   startAllJobs() {
     this.startPrescriptionReminderJob();
     this.startRecallNotificationJob();
-    console.log('✅ All scheduled email jobs started');
+    logger.info('All scheduled email jobs started');
   }
 
   /**
@@ -28,11 +29,11 @@ export class ScheduledEmailService {
   stopAllJobs() {
     if (this.prescriptionReminderJob) {
       this.prescriptionReminderJob.stop();
-      console.log('🛑 Prescription reminder job stopped');
+      logger.info('Prescription reminder job stopped');
     }
     if (this.recallNotificationJob) {
       this.recallNotificationJob.stop();
-      console.log('🛑 Recall notification job stopped');
+      logger.info('Recall notification job stopped');
     }
   }
 
@@ -43,15 +44,15 @@ export class ScheduledEmailService {
   startPrescriptionReminderJob() {
     // Run daily at 9:00 AM
     this.prescriptionReminderJob = cron.schedule('0 9 * * *', async () => {
-      console.log('⏰ Running prescription reminder job...');
+      logger.info('Running prescription reminder job');
       try {
         await this.sendPrescriptionReminders();
       } catch (error) {
-        console.error('Error in prescription reminder job:', error);
+        logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in prescription reminder job');
       }
     });
 
-    console.log('✅ Prescription reminder job scheduled (daily at 9:00 AM)');
+    logger.info('Prescription reminder job scheduled (daily at 9:00 AM)');
   }
 
   /**
@@ -61,15 +62,15 @@ export class ScheduledEmailService {
   startRecallNotificationJob() {
     // Run daily at 10:00 AM
     this.recallNotificationJob = cron.schedule('0 10 * * *', async () => {
-      console.log('⏰ Running recall notification job...');
+      logger.info('Running recall notification job');
       try {
         await this.sendRecallNotifications();
       } catch (error) {
-        console.error('Error in recall notification job:', error);
+        logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in recall notification job');
       }
     });
 
-    console.log('✅ Recall notification job scheduled (daily at 10:00 AM)');
+    logger.info('Recall notification job scheduled (daily at 10:00 AM)');
   }
 
   /**
@@ -103,7 +104,7 @@ export class ScheduledEmailService {
         )
       );
 
-    console.log(`Found ${expiringPrescriptions.length} prescriptions expiring in ~30 days`);
+    logger.info({ count: expiringPrescriptions.length }, 'Found prescriptions expiring in ~30 days');
 
     let successCount = 0;
     let failureCount = 0;
@@ -153,14 +154,17 @@ export class ScheduledEmailService {
         });
 
         successCount++;
-        console.log(`✅ Sent prescription reminder to ${patient.email}`);
+        logger.info({ email: patient.email, prescriptionId: prescription.id }, 'Sent prescription reminder');
       } catch (error) {
         failureCount++;
-        console.error(`❌ Failed to send reminder for prescription ${record.prescription.id}:`, error);
+        logger.error({
+          error: error instanceof Error ? error.message : String(error),
+          prescriptionId: record.prescription.id
+        }, 'Failed to send prescription reminder');
       }
     }
 
-    console.log(`📧 Prescription reminders sent: ${successCount} success, ${failureCount} failed`);
+    logger.info({ successCount, failureCount, totalFound: expiringPrescriptions.length }, 'Prescription reminders sent');
     return { successCount, failureCount, totalFound: expiringPrescriptions.length };
   }
 
@@ -204,7 +208,7 @@ export class ScheduledEmailService {
         )
       );
 
-    console.log(`Found ${patientsForRecall.length} patients due for recall`);
+    logger.info({ count: patientsForRecall.length }, 'Found patients due for recall');
 
     let successCount = 0;
     let failureCount = 0;
@@ -249,14 +253,17 @@ export class ScheduledEmailService {
         });
 
         successCount++;
-        console.log(`✅ Sent recall notification to ${patient.email}`);
+        logger.info({ email: patient.email, patientId: patient.id }, 'Sent recall notification');
       } catch (error) {
         failureCount++;
-        console.error(`❌ Failed to send recall for patient ${record.patient.id}:`, error);
+        logger.error({
+          error: error instanceof Error ? error.message : String(error),
+          patientId: record.patient.id
+        }, 'Failed to send recall notification');
       }
     }
 
-    console.log(`📧 Recall notifications sent: ${successCount} success, ${failureCount} failed`);
+    logger.info({ successCount, failureCount, totalFound: patientsForRecall.length }, 'Recall notifications sent');
     return { successCount, failureCount, totalFound: patientsForRecall.length };
   }
 
@@ -441,7 +448,7 @@ export class ScheduledEmailService {
    * Manual trigger for testing - send prescription reminders now
    */
   async triggerPrescriptionRemindersNow() {
-    console.log('🔧 Manual trigger: Prescription reminders');
+    logger.info('Manual trigger: Prescription reminders');
     return await this.sendPrescriptionReminders();
   }
 
@@ -449,7 +456,7 @@ export class ScheduledEmailService {
    * Manual trigger for testing - send recall notifications now
    */
   async triggerRecallNotificationsNow() {
-    console.log('🔧 Manual trigger: Recall notifications');
+    logger.info('Manual trigger: Recall notifications');
     return await this.sendRecallNotifications();
   }
 }

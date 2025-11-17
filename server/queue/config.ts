@@ -1,5 +1,6 @@
 import { Queue, QueueOptions } from 'bullmq';
 import Redis from 'ioredis';
+import logger from '../utils/logger';
 
 /**
  * Queue System Configuration
@@ -47,25 +48,29 @@ export async function initializeRedis(): Promise<boolean> {
     // Test connection
     await redisConnection.ping();
     redisAvailable = true;
-    console.log('✅ Redis connected successfully', REDIS_URL ? '(from REDIS_URL)' : '(from REDIS_HOST/PORT)');
-    
+    logger.info({
+      source: REDIS_URL ? 'REDIS_URL' : 'REDIS_HOST/PORT',
+      host: REDIS_URL ? undefined : REDIS_HOST,
+      port: REDIS_URL ? undefined : REDIS_PORT
+    }, 'Redis connected successfully');
+
     // Initialize queues after successful connection
     initializeQueues();
     
     // Handle Redis errors
     redisConnection.on('error', (err) => {
-      console.error('Redis error:', err.message);
+      logger.error({ error: err.message }, 'Redis error');
       redisAvailable = false;
     });
 
     redisConnection.on('reconnecting', () => {
-      console.log('Redis reconnecting...');
+      logger.info({}, 'Redis reconnecting');
     });
 
     return true;
   } catch (error) {
-    console.warn('⚠️  Redis not available:', (error as Error).message);
-    console.warn('Queue system will operate in fallback mode (immediate execution)');
+    logger.warn({ error: (error as Error).message }, 'Redis not available');
+    logger.warn({}, 'Queue system will operate in fallback mode (immediate execution)');
     redisConnection = null;
     redisAvailable = false;
     return false;
@@ -153,7 +158,7 @@ export let scheduledQueue: Queue | null = null;
  */
 function initializeQueues() {
   if (!isRedisAvailable() || !redisConnection) {
-    console.warn('Skipping queue initialization - Redis not available');
+    logger.warn({}, 'Skipping queue initialization - Redis not available');
     return;
   }
 
@@ -186,7 +191,9 @@ function initializeQueues() {
     },
   });
 
-  console.log('✅ All queues initialized successfully');
+  logger.info({
+    queues: ['emails', 'pdfs', 'notifications', 'ai-processing', 'oma-processing', 'scheduled-jobs']
+  }, 'All queues initialized successfully');
 }
 
 /**
@@ -199,13 +206,13 @@ export async function executeFallback<T>(
   data: any,
   handler: (data: any) => Promise<T>
 ): Promise<T> {
-  console.log(`⚠️  [FALLBACK] Executing ${queueName}/${jobName} immediately (Redis unavailable)`);
+  logger.info({ queueName, jobName, mode: 'fallback' }, 'Executing job immediately (Redis unavailable)');
   try {
     const result = await handler(data);
-    console.log(`✅ [FALLBACK] ${queueName}/${jobName} completed`);
+    logger.info({ queueName, jobName, mode: 'fallback' }, 'Job completed');
     return result;
   } catch (error) {
-    console.error(`❌ [FALLBACK] ${queueName}/${jobName} failed:`, error);
+    logger.error({ queueName, jobName, mode: 'fallback', error: error instanceof Error ? error.message : String(error) }, 'Job failed');
     throw error;
   }
 }
@@ -214,8 +221,8 @@ export async function executeFallback<T>(
  * Graceful shutdown of all queues
  */
 export async function closeQueues(): Promise<void> {
-  console.log('Closing queues...');
-  
+  logger.info({}, 'Closing queues');
+
   const queues = [
     emailQueue,
     pdfQueue,
@@ -235,7 +242,7 @@ export async function closeQueues(): Promise<void> {
     await redisConnection.quit();
   }
 
-  console.log('✅ All queues closed');
+  logger.info({}, 'All queues closed');
 }
 
 /**
