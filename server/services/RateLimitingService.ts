@@ -147,6 +147,16 @@ export class RateLimitingService {
   ]);
 
   constructor() {
+    // Don't initialize Redis immediately - wait for first use
+    // This prevents connecting to localhost:6379 at module load time in Docker
+  }
+
+  /**
+   * Initialize Redis connection (lazy)
+   */
+  private initializeRedis(): void {
+    if (this.redis) return; // Already initialized
+
     this.redis = new Redis({
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379'),
@@ -174,6 +184,8 @@ export class RateLimitingService {
     userId?: string,
     tenantId?: string
   ): Promise<RateLimitResult> {
+    this.initializeRedis(); // Lazy initialization
+    
     const key = `rate_limit:${identifier}:${endpoint}`;
     const now = Date.now();
     const windowStart = now - config.windowMs;
@@ -406,6 +418,7 @@ export class RateLimitingService {
    * Record usage for analytics
    */
   private async recordUsage(metrics: UsageMetrics): Promise<void> {
+    this.initializeRedis();
     try {
       const usageKey = `usage:${metrics.tenantId}:${Date.now()}`;
       await this.redis.setex(
@@ -500,6 +513,7 @@ export class RateLimitingService {
    * Reset rate limits for a user or tenant
    */
   async resetRateLimits(identifier: string, endpoint?: string): Promise<void> {
+    this.initializeRedis();
     try {
       const pattern = endpoint 
         ? `rate_limit:${identifier}:${endpoint}*`
@@ -519,6 +533,7 @@ export class RateLimitingService {
    * Get current rate limit status
    */
   async getRateLimitStatus(identifier: string, endpoint: string): Promise<any> {
+    this.initializeRedis();
     try {
       const config = this.getEndpointConfig(endpoint);
       if (!config) {
@@ -554,6 +569,7 @@ export class RateLimitingService {
    * Cleanup old rate limit data
    */
   async cleanup(): Promise<void> {
+    this.initializeRedis();
     try {
       const pattern = 'rate_limit:*';
       const keys = await this.redis.keys(pattern);
@@ -575,6 +591,7 @@ export class RateLimitingService {
    * Get rate limiting statistics
    */
   async getStatistics(): Promise<any> {
+    this.initializeRedis();
     try {
       const pattern = 'rate_limit:*';
       const keys = await this.redis.keys(pattern);
@@ -616,7 +633,9 @@ export class RateLimitingService {
    * Close Redis connection
    */
   async disconnect(): Promise<void> {
-    await this.redis.quit();
+    if (this.redis) {
+      await this.redis.quit();
+    }
   }
 }
 

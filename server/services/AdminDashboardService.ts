@@ -319,19 +319,24 @@ export class AdminDashboardService {
    */
   private async getRedisHealth(): Promise<SystemHealthMetrics['redis']> {
     try {
+      // Use existing Redis connection from queue config to avoid creating new connections
+      const { getRedisConnection } = await import('../queue/config');
+      const redisClient = getRedisConnection();
+      
+      if (!redisClient) {
+        return {
+          status: 'disconnected',
+          responseTime: 0,
+          memoryUsage: 0
+        };
+      }
+
       const startTime = Date.now();
-      
-      // Test Redis connection
-      const redis = require('ioredis');
-      const redisClient = new redis.default(process.env.REDIS_URL || 'redis://localhost:6379');
-      
       await redisClient.ping();
       const responseTime = Date.now() - startTime;
       
       const info = await redisClient.info('memory');
       const memoryUsage = this.parseRedisMemoryInfo(info);
-      
-      redisClient.quit();
 
       return {
         status: responseTime < 500 ? 'connected' : 'error',

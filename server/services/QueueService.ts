@@ -69,10 +69,12 @@ class QueueService {
   private redisConnection: any;
 
   constructor() {
-    this.initializeQueues();
+    // Don't initialize at module load time - prevents Redis connection to localhost in Docker
   }
 
   private initializeQueues(): void {
+    if (this.isEnabled || this.queues.size > 0) return; // Already initialized
+
     // Check if BullMQ is available
     if (!Queue) {
       logger.info({}, '⚠️  BullMQ not available - job queues disabled');
@@ -301,6 +303,8 @@ class QueueService {
       jobId?: string; // Unique job ID (prevents duplicates)
     }
   ): Promise<string> {
+    this.initializeQueues(); // Lazy initialization
+    
     if (!this.isEnabled) {
       // If queues disabled, run synchronously (fallback)
       logger.warn({ queueType }, 'Queue disabled - running job synchronously');
@@ -329,10 +333,12 @@ class QueueService {
     queueType: JobType,
     data: JobData,
     pattern: string // Cron pattern, e.g., '0 * * * *' for every hour
-  ): Promise<void> {
+  ): Promise<string | null> {
+    this.initializeQueues();
+    
     if (!this.isEnabled) {
       logger.warn({}, 'Queues disabled - cannot schedule recurring jobs');
-      return;
+      return null;
     }
 
     const queue = this.queues.get(queueType);
@@ -340,19 +346,22 @@ class QueueService {
       throw new Error(`Queue '${queueType}' not found`);
     }
 
-    await queue.add(queueType, data, {
+    const job = await queue.add(queueType, data, {
       repeat: {
         pattern,
       },
     });
 
     logger.info({}, 'Scheduled recurring ${queueType} job: ${pattern}');
+    return job.id;
   }
 
   /**
    * Get job status
    */
   async getJobStatus(queueType: JobType, jobId: string): Promise<any> {
+    this.initializeQueues();
+    
     if (!this.isEnabled) {
       return null;
     }
@@ -385,6 +394,8 @@ class QueueService {
    * Get queue statistics
    */
   async getQueueStats(queueType: JobType): Promise<any> {
+    this.initializeQueues();
+    
     if (!this.isEnabled) {
       return null;
     }
@@ -416,6 +427,8 @@ class QueueService {
    * Get all queue statistics
    */
   async getAllQueueStats(): Promise<Record<JobType, any>> {
+    this.initializeQueues();
+    
     const stats: Record<string, any> = {};
 
     this.queues.forEach((queue, queueType) => {
@@ -431,6 +444,8 @@ class QueueService {
    * Cancel job
    */
   async cancelJob(queueType: JobType, jobId: string): Promise<boolean> {
+    this.initializeQueues();
+    
     if (!this.isEnabled) {
       return false;
     }
@@ -453,6 +468,8 @@ class QueueService {
    * Pause queue
    */
   async pauseQueue(queueType: JobType): Promise<void> {
+    this.initializeQueues();
+    
     if (!this.isEnabled) {
       return;
     }
@@ -470,6 +487,8 @@ class QueueService {
    * Resume queue
    */
   async resumeQueue(queueType: JobType): Promise<void> {
+    this.initializeQueues();
+    
     if (!this.isEnabled) {
       return;
     }
@@ -491,6 +510,8 @@ class QueueService {
     grace: number = 86400000, // 24 hours default
     status: 'completed' | 'failed' | 'active' | 'delayed' | 'wait' = 'completed'
   ): Promise<number> {
+    this.initializeQueues();
+    
     if (!this.isEnabled) {
       return 0;
     }
