@@ -9,12 +9,12 @@ import React from 'react';
 // @ts-ignore - Temporary fix for react-router-dom import issues
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { UserRole } from '@shared/schema';
+import { RoleEnum } from '@shared/schema';
 
 export interface RouteConfig {
   path: string;
   component: React.ComponentType<any>;
-  roles: UserRole[];
+  roles: RoleEnum[];
   exact?: boolean;
   requireCompany?: boolean;
   requireActiveSubscription?: boolean;
@@ -44,7 +44,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ config, children
   }
 
   // Check if user has required role
-  if (config.roles.length > 0 && !config.roles.includes(user.role)) {
+  if (config.roles.length > 0 && (!user.role || !config.roles.includes(user.role))) {
     return (
       <Navigate 
         to="/unauthorized" 
@@ -92,11 +92,11 @@ export const withProtection = (config: RouteConfig) => {
 };
 
 // Permission checking utilities
-export const hasRole = (user: any, roles: UserRole[]): boolean => {
+export const hasRole = (user: any, roles: RoleEnum[]): boolean => {
   return user && roles.includes(user.role);
 };
 
-export const hasAnyRole = (user: any, roles: UserRole[]): boolean => {
+export const hasAnyRole = (user: any, roles: RoleEnum[]): boolean => {
   return user && roles.some(role => user.role === role);
 };
 

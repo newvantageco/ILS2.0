@@ -11,8 +11,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
-import getRealtimeService, { useRealtimeNotifications } from './useRealtimeNotifications';
-import type { NotificationData } from './useRealtimeNotifications';
+import { useRealtimeNotifications } from './useRealtimeNotifications';
+import type { NotificationData } from '../services/RealtimeService';
 
 export interface SystemHealth {
   overall: 'healthy' | 'warning' | 'critical';

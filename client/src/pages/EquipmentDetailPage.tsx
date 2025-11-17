@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 import { CardSkeleton } from "@/components/ui/CardSkeleton";
 import { TimestampDisplay } from "@/components/ui/TimestampDisplay";
 import { useState } from "react";

@@ -18,25 +18,10 @@ import { useFeedback } from "@/hooks/useFeedback"
  * 3. Role-appropriate technical detail
  */
 export function FeedbackProvider({ children }: { children: React.ReactNode }) {
-  const { messages } = useFeedback()
-
   return (
     <ToastProvider>
       {children}
-      <ToastViewport className="gap-2">
-        {messages.map((message, index) => (
-          <Toast key={index} variant={message.variant}>
-            <div className="grid gap-1">
-              <ToastTitle>{message.title}</ToastTitle>
-              {message.description && (
-                <ToastDescription>{message.description}</ToastDescription>
-              )}
-            </div>
-            {message.action}
-            <ToastClose />
-          </Toast>
-        ))}
-      </ToastViewport>
+      <ToastViewport />
     </ToastProvider>
   )
 }

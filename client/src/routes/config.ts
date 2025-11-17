@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { UserRole } from '@shared/schema';
+import { RoleEnum } from '@shared/schema';
 import type { RouteConfig } from '@/components/auth/ProtectedRoute';
 
 // Import all page components using default imports
@@ -237,7 +237,7 @@ export const appRoutes: RouteConfig[] = [
 ];
 
 // Helper functions for route filtering
-export const getRoutesForRole = (role: UserRole): RouteConfig[] => {
+export const getRoutesForRole = (role: RoleEnum): RouteConfig[] => {
   return appRoutes.filter(route => 
     route.roles.length === 0 || route.roles.includes(role)
   );
@@ -247,7 +247,7 @@ export const getRoutesByPath = (path: string): RouteConfig | undefined => {
   return appRoutes.find(route => route.path === path);
 };
 
-export const hasAccessToRoute = (role: UserRole, path: string): boolean => {
+export const hasAccessToRoute = (role: RoleEnum, path: string): boolean => {
   const route = getRoutesByPath(path);
   return route ? route.roles.length === 0 || route.roles.includes(role) : false;
 };

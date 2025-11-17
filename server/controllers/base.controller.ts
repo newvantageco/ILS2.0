@@ -145,10 +145,10 @@ export class BaseController {
         if (error instanceof ZodError) {
           this.handleZodError(error, res);
         } else if (error instanceof Error) {
-          this.logError("async_handler", error, req.user?.claims?.sub);
+          this.logError("async_handler", error, req.user?.id);
           this.error(res, error.message, 500);
         } else {
-          this.logError("async_handler", new Error(String(error)), req.user?.claims?.sub);
+          this.logError("async_handler", new Error(String(error)), req.user?.id);
           this.error(res, "An unexpected error occurred", 500);
         }
       }

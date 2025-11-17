@@ -2221,6 +2221,7 @@ export type OrganizationSettings = typeof organizationSettings.$inferSelect;
 export type UpdateUserPreferences = z.infer<typeof updateUserPreferencesSchema>;
 export type UserPreferences = typeof userPreferences.$inferSelect;
 
+export type RoleEnum = "ecp" | "admin" | "lab_tech" | "engineer" | "supplier" | "platform_admin" | "company_admin" | "dispenser";
 export type UserRole = typeof userRoles.$inferSelect;
 export type UserWithRoles = User & {
   availableRoles: string[];

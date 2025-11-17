@@ -78,10 +78,10 @@ export class AIAssistantService {
    */
   async ask(query: AiQuery, config: AiAssistantConfig): Promise<AiResponse> {
     try {
-      this.logger.info("Processing AI query", { 
+      this.logger.info({ 
         companyId: config.companyId, 
         learningProgress: config.learningProgress 
-      });
+      }, "Processing AI query");
 
       // Step 1: Search learned knowledge base
       const learnedAnswers = await this.searchLearnedKnowledge(
@@ -138,7 +138,7 @@ export class AIAssistantService {
 
       return response;
     } catch (error) {
-      this.logger.error("Error processing AI query", error as Error);
+      this.logger.error({ err: error as Error }, "Error processing AI query");
       throw error;
     }
   }
@@ -179,7 +179,7 @@ export class AIAssistantService {
 
       return scoredLearning;
     } catch (error) {
-      this.logger.error("Error searching learned knowledge", error as Error);
+      this.logger.error({ err: error as Error }, "Error searching learned knowledge");
       return [];
     }
   }
@@ -210,7 +210,7 @@ export class AIAssistantService {
 
       return relevantDocs;
     } catch (error) {
-      this.logger.error("Error searching documents", error as Error);
+      this.logger.error({ err: error as Error }, "Error searching documents");
       return [];
     }
   }
@@ -337,12 +337,12 @@ export class AIAssistantService {
           temperature: 0.7,
         });
 
-        this.logger.info("External AI response generated", {
+        this.logger.info({
           provider: aiResponse.provider,
           model: aiResponse.model,
           tokensUsed: aiResponse.tokensUsed.total,
           estimatedCost: aiResponse.estimatedCost
-        });
+        }, "External AI response generated");
 
         const sources: AiResponse['sources'] = [
           { type: 'external', relevance: 1.0 }
@@ -401,7 +401,7 @@ export class AIAssistantService {
         };
       }
     } catch (error) {
-      this.logger.error("Error with external AI", error as Error);
+      this.logger.error({ err: error as Error }, "Error with external AI");
       throw error;
     }
   }
@@ -526,7 +526,7 @@ To get the most accurate assistance, please ensure your AI integration is config
         }
       });
     } catch (error) {
-      this.logger.error("Error saving conversation", error as Error);
+      this.logger.error({ err: error as Error }, "Error saving conversation");
     }
   }
 
@@ -552,10 +552,10 @@ To get the most accurate assistance, please ensure your AI integration is config
           successRate: "1.00"
         });
 
-        this.logger.info("Created learning opportunity", { companyId });
+        this.logger.info({ companyId }, "Created learning opportunity");
       }
     } catch (error) {
-      this.logger.error("Error creating learning opportunity", error as Error);
+      this.logger.error({ err: error as Error }, "Error creating learning opportunity");
     }
   }
 
@@ -573,10 +573,10 @@ To get the most accurate assistance, please ensure your AI integration is config
     }
   ): Promise<AiKnowledgeBase> {
     try {
-      this.logger.info("Processing document", { 
+      this.logger.info({ 
         companyId, 
         filename: file.filename 
-      });
+      }, "Processing document");
 
       // Extract text content (in production, use proper parsers for PDF, DOCX, etc.)
       const content = file.content;
@@ -609,7 +609,7 @@ To get the most accurate assistance, please ensure your AI integration is config
 
       return knowledge;
     } catch (error) {
-      this.logger.error("Error processing document", error as Error);
+      this.logger.error({ err: error as Error }, "Error processing document");
       throw error;
     }
   }
@@ -676,12 +676,12 @@ To get the most accurate assistance, please ensure your AI integration is config
 
       await this.storage.updateCompanyAiProgress(companyId, totalProgress);
       
-      this.logger.info("Updated AI learning progress", { 
+      this.logger.info({ 
         companyId, 
         progress: totalProgress 
-      });
+      }, "Updated AI learning progress");
     } catch (error) {
-      this.logger.error("Error updating learning progress", error as Error);
+      this.logger.error({ err: error as Error }, "Error updating learning progress");
     }
   }
 
@@ -761,7 +761,7 @@ To get the most accurate assistance, please ensure your AI integration is config
     // Neural network training is disabled in this deployment to avoid heavy
     // TensorFlow native dependencies in the Node.js container. External AI
     // and statistical models remain fully available.
-    this.logger.info("trainNeuralNetwork called, but neural nets are disabled in this deployment", { companyId });
+    this.logger.info({ companyId }, "trainNeuralNetwork called, but neural nets are disabled in this deployment");
     return {
       success: false,
       progress: 0,
@@ -777,7 +777,7 @@ To get the most accurate assistance, please ensure your AI integration is config
     progress: number;
   }> {
     // With neural networks disabled, always report not training.
-    this.logger.debug("getNeuralNetworkStatus called, neural nets disabled", { companyId });
+    this.logger.debug({ companyId }, "getNeuralNetworkStatus called, neural nets disabled");
     return { isTraining: false, progress: 0 };
   }
 
@@ -840,7 +840,7 @@ To get the most accurate assistance, please ensure your AI integration is config
         usedExternalAi: true
       });
     } catch (error) {
-      this.logger.error("Error saving conversation", error as Error);
+      this.logger.error({ err: error as Error }, "Error saving conversation");
       throw error;
     }
   }
@@ -852,7 +852,7 @@ To get the most accurate assistance, please ensure your AI integration is config
     try {
       return await this.storage.getAiConversations(companyId, userId);
     } catch (error) {
-      this.logger.error("Error getting conversations", error as Error);
+      this.logger.error({ err: error as Error }, "Error getting conversations");
       throw error;
     }
   }
@@ -878,7 +878,7 @@ To get the most accurate assistance, please ensure your AI integration is config
         messages
       };
     } catch (error) {
-      this.logger.error("Error getting conversation", error as Error);
+      this.logger.error({ err: error as Error }, "Error getting conversation");
       throw error;
     }
   }
@@ -908,7 +908,7 @@ To get the most accurate assistance, please ensure your AI integration is config
 
       return knowledge;
     } catch (error) {
-      this.logger.error("Error uploading document", error as Error);
+      this.logger.error({ err: error as Error }, "Error uploading document");
       throw error;
     }
   }
@@ -920,7 +920,7 @@ To get the most accurate assistance, please ensure your AI integration is config
     try {
       return await this.storage.getAiKnowledgeBaseByCompany(companyId);
     } catch (error) {
-      this.logger.error("Error getting knowledge base", error as Error);
+      this.logger.error({ err: error as Error }, "Error getting knowledge base");
       throw error;
     }
   }
@@ -956,7 +956,7 @@ To get the most accurate assistance, please ensure your AI integration is config
         lastUpdated: new Date().toISOString()
       };
     } catch (error) {
-      this.logger.error("Error getting learning progress", error as Error);
+      this.logger.error({ err: error as Error }, "Error getting learning progress");
       throw error;
     }
   }
@@ -1000,7 +1000,7 @@ To get the most accurate assistance, please ensure your AI integration is config
         externalAIUsage: totalMessages > 0 ? (externalAICount / totalMessages) * 100 : 0
       };
     } catch (error) {
-      this.logger.error("Error getting stats", error as Error);
+      this.logger.error({ err: error as Error }, "Error getting stats");
       throw error;
     }
   }
@@ -1028,9 +1028,9 @@ To get the most accurate assistance, please ensure your AI integration is config
         comments: feedback
       });
 
-      this.logger.info("Saved AI feedback", { conversationId, helpful });
+      this.logger.info({ conversationId, helpful }, "Saved AI feedback");
     } catch (error) {
-      this.logger.error("Error saving feedback", error as Error);
+      this.logger.error({ err: error as Error }, "Error saving feedback");
       throw error;
     }
   }

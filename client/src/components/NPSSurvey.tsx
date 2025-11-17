@@ -39,7 +39,7 @@ export function NPSSurvey({ open, onClose, trigger, context }: NPSSurveyProps) {
   const [feedback, setFeedback] = useState('');
   const [step, setStep] = useState<'score' | 'feedback' | 'thanks'>('score');
   const [submitting, setSubmitting] = useState(false);
-  const { success, error: showError } = useFeedback();
+  const { showSuccess, showError } = useFeedback();
 
   const handleScoreSelect = (selectedScore: number) => {
     setScore(selectedScore);
@@ -48,7 +48,7 @@ export function NPSSurvey({ open, onClose, trigger, context }: NPSSurveyProps) {
 
   const handleSubmit = async () => {
     if (score === null) {
-      showError('Please select a score');
+      showError({ title: 'Please select a score' });
       return;
     }
 
@@ -84,7 +84,7 @@ export function NPSSurvey({ open, onClose, trigger, context }: NPSSurveyProps) {
       }, 2000);
     } catch (err) {
       console.error('NPS submission error:', err);
-      showError('Failed to submit survey. Please try again.');
+      showError({ title: 'Failed to submit survey. Please try again.' });
     } finally {
       setSubmitting(false);
     }

@@ -561,7 +561,7 @@ describe('Patient Portal API', () => {
       noCompanyApp.use(express.json());
       
       noCompanyApp.use('/api/patient-portal', (req, res, next) => {
-        req.user = { id: 'test-user-id' }; // Missing companyId
+        req.user = { id: 'test-user-id', email: 'test@example.com', role: 'ecp' }; // Missing companyId
         next();
       });
       

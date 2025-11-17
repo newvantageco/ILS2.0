@@ -75,13 +75,13 @@ export function FeedbackModal({
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const { success, error: showError } = useFeedback();
+  const { showSuccess, showError } = useFeedback();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!message.trim()) {
-      showError('Please enter your feedback');
+      showError({ title: 'Please enter your feedback' });
       return;
     }
 
@@ -104,13 +104,13 @@ export function FeedbackModal({
 
       if (!response.ok) throw new Error('Failed to submit feedback');
 
-      success('Thank you for your feedback! We appreciate your input.');
+      showSuccess({ title: 'Thank you for your feedback! We appreciate your input.' });
       setMessage('');
       setEmail('');
       onClose();
     } catch (err) {
       console.error('Feedback submission error:', err);
-      showError('Failed to submit feedback. Please try again.');
+      showError({ title: 'Failed to submit feedback. Please try again.' });
     } finally {
       setSubmitting(false);
     }

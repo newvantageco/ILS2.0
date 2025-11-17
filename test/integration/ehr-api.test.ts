@@ -392,7 +392,7 @@ describe('EHR System API', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.vitalSigns.every(vs => vs.vitalType === 'blood_pressure')).toBe(true);
+      expect(response.body.vitalSigns.every((vs: any) => vs.vitalType === 'blood_pressure')).toBe(true);
     });
 
     it('should validate vital sign data', async () => {
@@ -583,7 +583,7 @@ describe('EHR System API', () => {
       noCompanyApp.use(express.json());
       
       noCompanyApp.use('/api/ehr', (req, res, next) => {
-        req.user = { id: 'test-user-id' }; // Missing companyId
+        req.user = { id: 'test-user-id', email: 'test@example.com', role: 'ecp' }; // Missing companyId
         next();
       });
       
