@@ -7,7 +7,7 @@
 export interface PerformanceMetrics {
   fcp?: number;  // First Contentful Paint
   lcp?: number;  // Largest Contentful Paint
-  fid?: number;  // First Input Delay
+  inp?: number;  // Interaction to Next Paint (replaces FID)
   cls?: number;  // Cumulative Layout Shift
   ttfb?: number; // Time to First Byte
 }
@@ -18,12 +18,12 @@ export interface PerformanceMetrics {
  */
 export function reportWebVitals(onPerfEntry?: (metric: PerformanceMetrics) => void) {
   if (onPerfEntry && onPerfEntry instanceof Function) {
-    import('web-vitals').then(({ onCLS, onFID, onFCP, onLCP, onTTFB }) => {
-      onCLS((metric) => onPerfEntry({ cls: metric.value }));
-      onFID((metric) => onPerfEntry({ fid: metric.value }));
-      onFCP((metric) => onPerfEntry({ fcp: metric.value }));
-      onLCP((metric) => onPerfEntry({ lcp: metric.value }));
-      onTTFB((metric) => onPerfEntry({ ttfb: metric.value }));
+    import('web-vitals').then(({ onCLS, onINP, onFCP, onLCP, onTTFB }) => {
+      onCLS((metric: any) => onPerfEntry({ cls: metric.value }));
+      onINP((metric: any) => onPerfEntry({ inp: metric.value }));
+      onFCP((metric: any) => onPerfEntry({ fcp: metric.value }));
+      onLCP((metric: any) => onPerfEntry({ lcp: metric.value }));
+      onTTFB((metric: any) => onPerfEntry({ ttfb: metric.value }));
     });
   }
 }

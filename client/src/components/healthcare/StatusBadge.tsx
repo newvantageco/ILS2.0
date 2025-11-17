@@ -2,11 +2,11 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface StatusBadgeProps {
-  status: "pending" | "in-progress" | "completed" | "cancelled" | "urgent" | "routine" | "stat";
+  status: string;
   className?: string;
 }
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; className: string }> = {
   "pending": {
     label: "Pending",
     className: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
@@ -37,8 +37,19 @@ const statusConfig = {
   },
 };
 
+// Capitalize first letter of status for display
+const formatStatus = (status: string) => {
+  return status
+    .split(/[-_]/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const config = statusConfig[status];
+  const config = statusConfig[status] || {
+    label: formatStatus(status),
+    className: "bg-gray-100 text-gray-800 hover:bg-gray-100",
+  };
   
   return (
     <Badge className={cn(config.className, className)}>

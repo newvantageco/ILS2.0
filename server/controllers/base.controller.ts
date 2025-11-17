@@ -24,7 +24,7 @@ interface ClaimsBasedUser {
 }
 
 // Extended interface that matches the actual usage pattern in the codebase
-interface ExtendedAuthenticatedRequest extends Omit<AuthenticatedRequest, 'user'> {
+export interface ExtendedAuthenticatedRequest extends Omit<AuthenticatedRequest, 'user'> {
   user?: ClaimsBasedUser;
 }
 

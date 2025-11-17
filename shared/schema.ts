@@ -2018,6 +2018,8 @@ export const updateOrderStatusSchema = z.object({
   status: z.enum(["pending", "in_production", "quality_check", "shipped", "completed", "on_hold", "cancelled"]),
 });
 
+export type OrderStatus = z.infer<typeof updateOrderStatusSchema>['status'];
+
 export const insertConsultLogSchema = createInsertSchema(consultLogs).omit({
   id: true,
   createdAt: true,

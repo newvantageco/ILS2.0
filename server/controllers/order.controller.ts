@@ -72,7 +72,7 @@ export class OrderController extends BaseController {
       filters,
     };
 
-    const result = await this.orderService.getOrders(userId, user.role, user.companyId, options);
+    const result = await this.orderService.getOrders(userId, user.role, user.companyId!, options);
 
     this.logAction('get_orders', userId, { 
       page: query.page, 
@@ -101,7 +101,7 @@ export class OrderController extends BaseController {
       return this.error(res, "Invalid order ID", 400);
     }
 
-    const order = await this.orderService.getOrderById(id, userId, user.role, user.companyId);
+    const order = await this.orderService.getOrderById(id, userId, user.role, user.companyId!);
 
     this.logAction('get_order', userId, { orderId: id });
     this.success(res, order, "Order retrieved successfully");
@@ -126,7 +126,7 @@ export class OrderController extends BaseController {
 
     const orderData = {
       ...req.body,
-      companyId: user.companyId,
+      companyId: user.companyId!,
       ecpId: userId,
     };
 
@@ -169,7 +169,8 @@ export class OrderController extends BaseController {
       'platform_admin': ['pending', 'in_production', 'quality_check', 'shipped', 'completed', 'on_hold', 'cancelled'],
     };
 
-    if (!allowedTransitions[user.role]?.includes(statusData.status)) {
+    const userRole = user.role || 'user';
+    if (!allowedTransitions[userRole]?.includes(statusData.status)) {
       return this.error(res, "Insufficient permissions for this status transition", 403);
     }
 
@@ -202,7 +203,7 @@ export class OrderController extends BaseController {
     }
 
     // Check permissions
-    if (!['ecp', 'admin'].includes(user.role)) {
+    if (!['ecp', 'admin'].includes(user.role || '')) {
       return this.error(res, "Insufficient permissions to delete orders", 403);
     }
 
