@@ -46,29 +46,46 @@ export function errorHandler(
   }
 
   // Convert to ApiError if needed
-  const apiError = err instanceof ApiError ? err : toApiError(err);
+  let apiError: ApiError;
+  try {
+    apiError = err instanceof ApiError ? err : toApiError(err);
+  } catch (conversionError) {
+    // Fallback if conversion fails
+    apiError = new ApiError(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
+  }
 
-  // Log error details
-  const errorLog = {
-    code: apiError.code,
-    message: apiError.message,
-    statusCode: apiError.statusCode,
-    path: req.path,
-    method: req.method,
-    ip: req.ip,
-    userId: (req as any).user?.id || (req as any).user?.claims?.sub,
-    isOperational: apiError.isOperational,
-    stack: apiError.stack,
-  };
+  // Log error details (wrapped in try-catch to prevent logging from crashing the handler)
+  try {
+    const errorLog = {
+      code: apiError.code,
+      message: apiError.message,
+      statusCode: apiError.statusCode,
+      path: req?.path || 'unknown',
+      method: req?.method || 'unknown',
+      ip: req?.ip || 'unknown',
+      userId: (req as any)?.user?.id || (req as any)?.user?.claims?.sub,
+      isOperational: apiError.isOperational,
+      stack: apiError.stack,
+    };
 
-  if (apiError.isOperational) {
-    logger.warn('Operational error occurred: ' + JSON.stringify(errorLog));
-  } else {
-    logger.error('Non-operational error occurred: ' + JSON.stringify(errorLog));
+    if (apiError.isOperational) {
+      logger.warn('Operational error occurred: ' + JSON.stringify(errorLog));
+    } else {
+      logger.error('Non-operational error occurred: ' + JSON.stringify(errorLog));
+    }
+  } catch (logError) {
+    // If logging fails, just console.error it
+    console.error('Error handler logging failed:', logError);
   }
 
   // Send error response
-  res.status(apiError.statusCode).json(apiError.toJSON());
+  try {
+    if (!res.headersSent) {
+      res.status(apiError.statusCode).json(apiError.toJSON());
+    }
+  } catch (responseError) {
+    console.error('Error sending response:', responseError);
+  }
 }
 
 /**
