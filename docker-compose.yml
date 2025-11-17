@@ -62,9 +62,9 @@ services:
       DATABASE_URL: postgresql://ils_user:ils_password@postgres:5432/ils_db
       REDIS_URL: redis://:ils_redis_password@redis:6379
       SESSION_SECRET: development_session_secret_change_in_production
-      ALLOWED_ORIGINS: http://localhost:5000,http://localhost:3000
+      ALLOWED_ORIGINS: http://localhost:5005,http://localhost:3000
     ports:
-      - "5000:5000"
+      - "5005:5000"
     volumes:
       - ./uploads:/app/uploads
       - ./logs:/app/logs

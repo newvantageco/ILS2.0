@@ -6191,7 +6191,7 @@ var init_schema = __esm({
         // HH:MM
         duration: integer("duration").notNull(),
         // minutes
-        status: appointmentStatusEnum("status").notNull().default("pending"),
+        status: appointmentStatusEnum("status").notNull().default("scheduled"),
         reason: text("reason"),
         notes: text("notes"),
         // Confirmation
