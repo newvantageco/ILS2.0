@@ -15207,8 +15207,8 @@ var init_LimsClient = __esm({
           ...config3
         };
       }
-      async makeRequest(method, path9, body) {
-        const url = new URL(path9, this.config.baseUrl).toString();
+      async makeRequest(method, path8, body) {
+        const url = new URL(path8, this.config.baseUrl).toString();
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
         try {
@@ -16663,349 +16663,6 @@ var init_IntelligentPurchasingAssistantService = __esm({
   }
 });
 
-// server/services/NeuralNetworkService.ts
-import * as tf from "@tensorflow/tfjs-node";
-import * as fs6 from "fs";
-import * as path5 from "path";
-var NeuralNetworkService;
-var init_NeuralNetworkService = __esm({
-  "server/services/NeuralNetworkService.ts"() {
-    "use strict";
-    init_storage();
-    init_logger();
-    NeuralNetworkService = class {
-      model = null;
-      tokenizer = /* @__PURE__ */ new Map();
-      reverseTokenizer = /* @__PURE__ */ new Map();
-      vocabSize = 1e4;
-      maxSequenceLength = 100;
-      embeddingDim = 128;
-      modelPath;
-      companyId;
-      isTraining = false;
-      trainingProgress = 0;
-      logger;
-      constructor(companyId2) {
-        this.companyId = companyId2;
-        this.modelPath = path5.join(process.cwd(), "data", "models", companyId2);
-        this.logger = createLogger(`NeuralNetworkService-${companyId2}`);
-      }
-      /**
-       * Initialize the neural network - load existing model or create new one
-       */
-      async initialize() {
-        try {
-          const modelExists = await this.modelExists();
-          if (modelExists) {
-            await this.loadModel();
-            this.logger.info("Loaded existing model for company");
-          } else {
-            await this.createModel();
-            this.logger.info("Created new model for company");
-          }
-        } catch (error) {
-          this.logger.error("Error initializing neural network:", error);
-          await this.createModel();
-        }
-      }
-      /**
-       * Create a new neural network model
-       */
-      async createModel() {
-        this.model = tf.sequential({
-          layers: [
-            // Embedding layer converts tokens to dense vectors
-            tf.layers.embedding({
-              inputDim: this.vocabSize,
-              outputDim: this.embeddingDim,
-              inputLength: this.maxSequenceLength
-            }),
-            // Bidirectional LSTM for better context understanding
-            tf.layers.bidirectional({
-              layer: tf.layers.lstm({
-                units: 256,
-                returnSequences: true
-              })
-            }),
-            // Attention mechanism (simplified)
-            tf.layers.globalAveragePooling1d(),
-            // Dense layers for classification/prediction
-            tf.layers.dense({
-              units: 512,
-              activation: "relu"
-            }),
-            tf.layers.dropout({ rate: 0.3 }),
-            tf.layers.dense({
-              units: 256,
-              activation: "relu"
-            }),
-            tf.layers.dropout({ rate: 0.2 }),
-            // Output layer - predicts answer tokens
-            tf.layers.dense({
-              units: this.vocabSize,
-              activation: "softmax"
-            })
-          ]
-        });
-        this.model.compile({
-          optimizer: tf.train.adam(1e-3),
-          loss: "sparseCategoricalCrossentropy",
-          metrics: ["accuracy"]
-        });
-        this.logger.info("Neural network model created");
-      }
-      /**
-       * Train the model on company data
-       */
-      async train(options2 = {}) {
-        const { epochs = 20, batchSize = 32, onProgress } = options2;
-        if (this.isTraining) {
-          throw new Error("Training already in progress");
-        }
-        this.isTraining = true;
-        this.trainingProgress = 0;
-        try {
-          const trainingData = await this.fetchTrainingData();
-          if (trainingData.questions.length === 0) {
-            this.logger.info("No training data available");
-            this.isTraining = false;
-            return;
-          }
-          await this.buildVocabulary(trainingData.questions, trainingData.answers);
-          const questionSequences = this.textsToSequences(trainingData.questions);
-          const answerSequences = this.textsToSequences(trainingData.answers);
-          const xTrain = this.padSequences(questionSequences);
-          const yTrain = this.padSequences(answerSequences);
-          const xTrainTensor = tf.tensor2d(xTrain);
-          const yTrainTensor = tf.tensor2d(yTrain);
-          await this.model.fit(xTrainTensor, yTrainTensor, {
-            epochs,
-            batchSize,
-            validationSplit: 0.2,
-            shuffle: true,
-            callbacks: {
-              onEpochEnd: (epoch, logs) => {
-                this.trainingProgress = (epoch + 1) / epochs * 100;
-                this.logger.debug(`Epoch ${epoch + 1}/${epochs} - Loss: ${logs?.loss.toFixed(4)} - Accuracy: ${logs?.acc?.toFixed(4)}`);
-                if (onProgress) {
-                  onProgress(this.trainingProgress, epoch + 1, logs);
-                }
-              }
-            }
-          });
-          xTrainTensor.dispose();
-          yTrainTensor.dispose();
-          await this.saveModel();
-          this.logger.info("Model training completed");
-        } catch (error) {
-          this.logger.error("Error training model:", error);
-          throw error;
-        } finally {
-          this.isTraining = false;
-        }
-      }
-      /**
-       * Fetch training data from database
-       */
-      async fetchTrainingData() {
-        try {
-          const conversations = await storage.getAiConversations(this.companyId);
-          const questions = [];
-          const answers = [];
-          for (const conversation of conversations) {
-            const messages2 = await storage.getAiMessages(conversation.id);
-            for (let i = 0; i < messages2.length - 1; i++) {
-              const currentMessage = messages2[i];
-              const nextMessage = messages2[i + 1];
-              if (currentMessage.role === "user" && nextMessage.role === "assistant") {
-                const feedbackList = await storage.getAiFeedbackByMessage(nextMessage.id);
-                const feedback2 = feedbackList && feedbackList.length > 0 ? feedbackList[0] : null;
-                if (!feedback2 || feedback2.rating >= 4) {
-                  questions.push(this.cleanText(currentMessage.content));
-                  answers.push(this.cleanText(nextMessage.content));
-                }
-              }
-            }
-          }
-          const knowledgeEntry = await storage.getAiKnowledgeBase(this.companyId);
-          if (knowledgeEntry) {
-            if (knowledgeEntry.filename && knowledgeEntry.content) {
-              questions.push(this.cleanText(knowledgeEntry.filename));
-              answers.push(this.cleanText(knowledgeEntry.content.substring(0, 500)));
-            }
-          }
-          this.logger.info("Fetched training examples", { count: questions.length });
-          return { questions, answers };
-        } catch (error) {
-          this.logger.error("Error fetching training data:", error);
-          return { questions: [], answers: [] };
-        }
-      }
-      /**
-       * Build vocabulary from text data
-       */
-      async buildVocabulary(questions, answers) {
-        const allTexts = [...questions, ...answers];
-        const wordFrequency = /* @__PURE__ */ new Map();
-        for (const text4 of allTexts) {
-          const words = text4.toLowerCase().split(/\s+/);
-          for (const word of words) {
-            if (word) {
-              wordFrequency.set(word, (wordFrequency.get(word) || 0) + 1);
-            }
-          }
-        }
-        const sortedWords = Array.from(wordFrequency.entries()).sort((a, b) => b[1] - a[1]).slice(0, this.vocabSize - 2);
-        this.tokenizer.clear();
-        this.reverseTokenizer.clear();
-        this.tokenizer.set("<PAD>", 0);
-        this.tokenizer.set("<UNK>", 1);
-        this.reverseTokenizer.set(0, "<PAD>");
-        this.reverseTokenizer.set(1, "<UNK>");
-        let index4 = 2;
-        for (const [word] of sortedWords) {
-          this.tokenizer.set(word, index4);
-          this.reverseTokenizer.set(index4, word);
-          index4++;
-        }
-        this.logger.info("Built vocabulary with tokens", { tokenCount: this.tokenizer.size });
-      }
-      /**
-       * Convert texts to sequences of token IDs
-       */
-      textsToSequences(texts) {
-        return texts.map((text4) => {
-          const words = text4.toLowerCase().split(/\s+/);
-          return words.map((word) => this.tokenizer.get(word) || 1);
-        });
-      }
-      /**
-       * Pad sequences to same length
-       */
-      padSequences(sequences) {
-        return sequences.map((seq) => {
-          if (seq.length > this.maxSequenceLength) {
-            return seq.slice(0, this.maxSequenceLength);
-          } else {
-            const padding = new Array(this.maxSequenceLength - seq.length).fill(0);
-            return [...seq, ...padding];
-          }
-        });
-      }
-      /**
-       * Predict answer for a question
-       */
-      async predict(question2) {
-        if (!this.model) {
-          throw new Error("Model not initialized");
-        }
-        try {
-          const cleanQuestion = this.cleanText(question2);
-          const sequence = this.textsToSequences([cleanQuestion]);
-          const paddedSequence = this.padSequences(sequence);
-          const inputTensor = tf.tensor2d(paddedSequence);
-          const prediction = this.model.predict(inputTensor);
-          const predictedIds = await prediction.argMax(-1).array();
-          const predictedText = this.sequenceToText(predictedIds[0]);
-          inputTensor.dispose();
-          prediction.dispose();
-          return predictedText;
-        } catch (error) {
-          this.logger.error("Error making prediction:", error);
-          throw error;
-        }
-      }
-      /**
-       * Convert sequence of token IDs back to text
-       */
-      sequenceToText(sequence) {
-        const words = [];
-        for (const tokenId of sequence) {
-          if (tokenId === 0) break;
-          const word = this.reverseTokenizer.get(tokenId);
-          if (word && word !== "<PAD>" && word !== "<UNK>") {
-            words.push(word);
-          }
-        }
-        return words.join(" ");
-      }
-      /**
-       * Clean and normalize text
-       */
-      cleanText(text4) {
-        return text4.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
-      }
-      /**
-       * Save model to disk
-       */
-      async saveModel() {
-        if (!this.model) {
-          throw new Error("No model to save");
-        }
-        try {
-          if (!fs6.existsSync(this.modelPath)) {
-            fs6.mkdirSync(this.modelPath, { recursive: true });
-          }
-          const modelSavePath = `file://${this.modelPath}`;
-          await this.model.save(modelSavePath);
-          const tokenizerPath = path5.join(this.modelPath, "tokenizer.json");
-          const tokenizerData = {
-            tokenizer: Array.from(this.tokenizer.entries()),
-            reverseTokenizer: Array.from(this.reverseTokenizer.entries())
-          };
-          fs6.writeFileSync(tokenizerPath, JSON.stringify(tokenizerData));
-          this.logger.info("Model saved successfully");
-        } catch (error) {
-          this.logger.error("Error saving model:", error);
-          throw error;
-        }
-      }
-      /**
-       * Load model from disk
-       */
-      async loadModel() {
-        try {
-          const modelLoadPath = `file://${this.modelPath}/model.json`;
-          this.model = await tf.loadLayersModel(modelLoadPath);
-          const tokenizerPath = path5.join(this.modelPath, "tokenizer.json");
-          const tokenizerData = JSON.parse(fs6.readFileSync(tokenizerPath, "utf-8"));
-          this.tokenizer = new Map(tokenizerData.tokenizer);
-          this.reverseTokenizer = new Map(tokenizerData.reverseTokenizer);
-          this.logger.info("Model loaded successfully");
-        } catch (error) {
-          this.logger.error("Error loading model:", error);
-          throw error;
-        }
-      }
-      /**
-       * Check if model exists on disk
-       */
-      async modelExists() {
-        const modelFilePath = path5.join(this.modelPath, "model.json");
-        return fs6.existsSync(modelFilePath);
-      }
-      /**
-       * Get training progress
-       */
-      getTrainingProgress() {
-        return {
-          isTraining: this.isTraining,
-          progress: this.trainingProgress
-        };
-      }
-      /**
-       * Dispose of the model and free memory
-       */
-      dispose() {
-        if (this.model) {
-          this.model.dispose();
-          this.model = null;
-        }
-      }
-    };
-  }
-});
-
 // server/services/AIAssistantService.ts
 var AIAssistantService_exports = {};
 __export(AIAssistantService_exports, {
@@ -17016,7 +16673,6 @@ var init_AIAssistantService = __esm({
   "server/services/AIAssistantService.ts"() {
     "use strict";
     init_logger();
-    init_NeuralNetworkService();
     init_ExternalAIService();
     AIAssistantService = class {
       constructor(storage4) {
@@ -17034,18 +16690,6 @@ var init_AIAssistantService = __esm({
       logger;
       externalAI;
       externalAiAvailable = true;
-      neuralNetworks = /* @__PURE__ */ new Map();
-      /**
-       * Get or create neural network for a company
-       */
-      async getNeuralNetwork(companyId2) {
-        if (!this.neuralNetworks.has(companyId2)) {
-          const nn = new NeuralNetworkService(companyId2);
-          await nn.initialize();
-          this.neuralNetworks.set(companyId2, nn);
-        }
-        return this.neuralNetworks.get(companyId2);
-      }
       /**
        * Main method to ask the AI assistant a question
        */
@@ -17055,19 +16699,6 @@ var init_AIAssistantService = __esm({
             companyId: config3.companyId,
             learningProgress: config3.learningProgress
           });
-          let neuralNetworkAnswer = null;
-          if (config3.learningProgress >= 25) {
-            try {
-              const nn = await this.getNeuralNetwork(config3.companyId);
-              neuralNetworkAnswer = await nn.predict(query2.question);
-              this.logger.info("Neural network prediction obtained", {
-                questionLength: query2.question.length,
-                answerLength: neuralNetworkAnswer?.length
-              });
-            } catch (error) {
-              this.logger.warn("Neural network prediction failed, falling back", error);
-            }
-          }
           const learnedAnswers = await this.searchLearnedKnowledge(
             query2.question,
             config3.companyId
@@ -17082,22 +16713,7 @@ var init_AIAssistantService = __esm({
             config3.learningProgress
           );
           let response;
-          if (neuralNetworkAnswer && neuralNetworkAnswer.length > 20 && config3.learningProgress >= 50) {
-            response = {
-              answer: neuralNetworkAnswer,
-              confidence: config3.learningProgress / 100,
-              usedExternalAi: false,
-              sources: [
-                {
-                  type: "learned",
-                  relevance: 0.9,
-                  reference: "Neural Network Model"
-                }
-              ],
-              suggestions: [],
-              learningOpportunity: false
-            };
-          } else if (canAnswerLocally && learnedAnswers.length > 0) {
+          if (canAnswerLocally && learnedAnswers.length > 0) {
             response = await this.generateLocalAnswer(
               query2.question,
               learnedAnswers,
@@ -17561,61 +17177,24 @@ You may find relevant information in: ${documentContext.map((d) => d.filename).j
        * Train neural network for a company
        */
       async trainNeuralNetwork(companyId2, options2) {
-        try {
-          this.logger.info("Starting neural network training", { companyId: companyId2 });
-          const nn = await this.getNeuralNetwork(companyId2);
-          const trainingProgress = nn.getTrainingProgress();
-          if (trainingProgress.isTraining) {
-            return {
-              success: false,
-              progress: trainingProgress.progress,
-              error: "Training already in progress"
-            };
-          }
-          nn.train({
-            epochs: options2?.epochs || 20,
-            batchSize: options2?.batchSize || 32,
-            onProgress: async (progress, epoch, logs) => {
-              this.logger.info("Training progress", { companyId: companyId2, epoch, progress, logs });
-              await this.storage.updateCompanyAiProgress(companyId2, Math.floor(progress));
-            }
-          }).catch((error) => {
-            this.logger.error("Neural network training error", error);
-          });
-          return {
-            success: true,
-            progress: 0
-          };
-        } catch (error) {
-          this.logger.error("Error starting neural network training", error);
-          return {
-            success: false,
-            progress: 0,
-            error: error.message
-          };
-        }
+        this.logger.info("trainNeuralNetwork called, but neural nets are disabled in this deployment", { companyId: companyId2 });
+        return {
+          success: false,
+          progress: 0,
+          error: "Neural network training is disabled in this deployment."
+        };
       }
       /**
        * Get neural network training status
        */
       async getNeuralNetworkStatus(companyId2) {
-        try {
-          const nn = await this.getNeuralNetwork(companyId2);
-          return nn.getTrainingProgress();
-        } catch (error) {
-          this.logger.error("Error getting neural network status", error);
-          return { isTraining: false, progress: 0 };
-        }
+        this.logger.debug("getNeuralNetworkStatus called, neural nets disabled", { companyId: companyId2 });
+        return { isTraining: false, progress: 0 };
       }
       /**
        * Cleanup - dispose of all neural networks
        */
       dispose() {
-        this.neuralNetworks.forEach((nn, companyId2) => {
-          this.logger.info("Disposing neural network", { companyId: companyId2 });
-          nn.dispose();
-        });
-        this.neuralNetworks.clear();
       }
       /**
        * Get external AI availability status
@@ -48438,7 +48017,7 @@ var dynamicRoles_default = router31;
 
 // server/routes.ts
 init_websocket();
-import path6 from "path";
+import path5 from "path";
 
 // server/routes/rcm.ts
 import express2 from "express";
@@ -50067,7 +49646,7 @@ var BillingAutomationService = class {
    */
   static async autoCaptureCharges(encounterId, patientId2, providerId, serviceDate, procedures, createdBy) {
     const charges = [];
-    const feeSchedule = Array.from(this.feeSchedules.values()).find((fs8) => fs8.active);
+    const feeSchedule = Array.from(this.feeSchedules.values()).find((fs7) => fs7.active);
     for (const procedure of procedures) {
       let chargeAmount = 0;
       if (feeSchedule) {
@@ -50329,7 +49908,7 @@ var BillingAutomationService = class {
     if (feeScheduleId) {
       feeSchedule = this.feeSchedules.get(feeScheduleId);
     } else {
-      feeSchedule = Array.from(this.feeSchedules.values()).find((fs8) => fs8.active);
+      feeSchedule = Array.from(this.feeSchedules.values()).find((fs7) => fs7.active);
     }
     if (!feeSchedule) {
       return null;
@@ -50343,7 +49922,7 @@ var BillingAutomationService = class {
   static getFeeSchedules(active) {
     let schedules = Array.from(this.feeSchedules.values());
     if (active !== void 0) {
-      schedules = schedules.filter((fs8) => fs8.active === active);
+      schedules = schedules.filter((fs7) => fs7.active === active);
     }
     return schedules.sort((a, b) => b.effectiveDate.getTime() - a.effectiveDate.getTime());
   }
@@ -73979,8 +73558,8 @@ var APIAnalyticsService = class {
         totalTime: current.totalTime + log2.responseTime
       });
     });
-    const topEndpoints = Array.from(endpointCounts.entries()).map(([path9, stats3]) => ({
-      path: path9,
+    const topEndpoints = Array.from(endpointCounts.entries()).map(([path8, stats3]) => ({
+      path: path8,
       count: stats3.count,
       avgResponseTime: stats3.totalTime / stats3.count
     })).sort((a, b) => b.count - a.count).slice(0, 10);
@@ -90435,7 +90014,7 @@ async function registerRoutes(app2) {
   app2.use(corsConfig);
   setupRateLimiting(app2);
   app2.use("/api", auditLog);
-  app2.use("/uploads", express17.static(path6.join(process.cwd(), "uploads")));
+  app2.use("/uploads", express17.static(path5.join(process.cwd(), "uploads")));
   app2.get("/health", (_req, res) => {
     res.status(200).json({
       status: "healthy",
@@ -94780,14 +94359,14 @@ async function registerRoutes(app2) {
 
 // server/vite.ts
 import express18 from "express";
-import fs7 from "fs";
-import path8 from "path";
+import fs6 from "fs";
+import path7 from "path";
 import { createServer as createViteServer, createLogger as createLogger2 } from "vite";
 
 // vite.config.ts
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import path7 from "path";
+import path6 from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 var vite_config_default = defineConfig({
   plugins: [
@@ -94804,14 +94383,14 @@ var vite_config_default = defineConfig({
   ],
   resolve: {
     alias: {
-      "@": path7.resolve(import.meta.dirname, "client", "src"),
-      "@shared": path7.resolve(import.meta.dirname, "shared"),
-      "@assets": path7.resolve(import.meta.dirname, "attached_assets")
+      "@": path6.resolve(import.meta.dirname, "client", "src"),
+      "@shared": path6.resolve(import.meta.dirname, "shared"),
+      "@assets": path6.resolve(import.meta.dirname, "attached_assets")
     }
   },
-  root: path7.resolve(import.meta.dirname, "client"),
+  root: path6.resolve(import.meta.dirname, "client"),
   build: {
-    outDir: path7.resolve(import.meta.dirname, "dist/public"),
+    outDir: path6.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     // Optimize CSS for production
     cssCodeSplit: true,
@@ -94932,17 +94511,17 @@ async function setupVite(app2, server) {
       return next();
     }
     try {
-      const clientTemplate = path8.resolve(
+      const clientTemplate = path7.resolve(
         import.meta.dirname,
         "..",
         "client",
         "index.html"
       );
-      if (!fs7.existsSync(clientTemplate)) {
+      if (!fs6.existsSync(clientTemplate)) {
         console.error(`Template file not found: ${clientTemplate}`);
         return res.status(500).send("Server configuration error");
       }
-      let template = await fs7.promises.readFile(clientTemplate, "utf-8");
+      let template = await fs6.promises.readFile(clientTemplate, "utf-8");
       template = template.replace(
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`
@@ -94956,8 +94535,8 @@ async function setupVite(app2, server) {
   });
 }
 function serveStatic(app2) {
-  const distPath = path8.resolve(process.cwd(), "dist", "public");
-  if (!fs7.existsSync(distPath)) {
+  const distPath = path7.resolve(process.cwd(), "dist", "public");
+  if (!fs6.existsSync(distPath)) {
     throw new Error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
     );
@@ -94967,7 +94546,7 @@ function serveStatic(app2) {
     if (req2.path.startsWith("/api") || req2.path === "/health" || req2.path.startsWith("/uploads")) {
       return next();
     }
-    res.sendFile(path8.resolve(distPath, "index.html"));
+    res.sendFile(path7.resolve(distPath, "index.html"));
   });
 }
 
@@ -95065,8 +94644,8 @@ function extractPHIFields(data2) {
   }
   return foundFields;
 }
-function extractResource(path9) {
-  const parts = path9.split("/").filter(Boolean);
+function extractResource(path8) {
+  const parts = path8.split("/").filter(Boolean);
   const relevantParts = parts.slice(1);
   if (relevantParts.length === 0) {
     return { type: "unknown" };
@@ -95093,8 +94672,8 @@ function getEventType(method) {
       return "access";
   }
 }
-function generateActionDescription(method, path9, user2) {
-  const { type, id: id2 } = extractResource(path9);
+function generateActionDescription(method, path8, user2) {
+  const { type, id: id2 } = extractResource(path8);
   const userName = user2 ? `${user2.firstName} ${user2.lastName}` : "Anonymous";
   switch (method.toUpperCase()) {
     case "POST":
@@ -95107,7 +94686,7 @@ function generateActionDescription(method, path9, user2) {
     case "DELETE":
       return `${userName} deleted ${type}${id2 ? ` ${id2}` : ""}`;
     default:
-      return `${userName} performed ${method} on ${path9}`;
+      return `${userName} performed ${method} on ${path8}`;
   }
 }
 function calculateRetentionDate() {
@@ -95117,7 +94696,7 @@ function calculateRetentionDate() {
 }
 async function auditMiddleware(req2, res, next) {
   const skipPaths = ["/health", "/api/health", "/uploads", "/ws"];
-  if (skipPaths.some((path9) => req2.path.startsWith(path9))) {
+  if (skipPaths.some((path8) => req2.path.startsWith(path8))) {
     return next();
   }
   const startTime = Date.now();

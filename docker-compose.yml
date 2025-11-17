@@ -63,6 +63,9 @@ services:
       REDIS_URL: redis://:ils_redis_password@redis:6379
       SESSION_SECRET: development_session_secret_change_in_production
       ALLOWED_ORIGINS: http://localhost:5005,http://localhost:3000
+      CORS_ORIGIN: http://localhost:5005
+      STRIPE_SECRET_KEY: sk_test_dummy
+      STRIPE_PUBLISHABLE_KEY: pk_test_dummy
     ports:
       - "5005:5000"
     volumes:
