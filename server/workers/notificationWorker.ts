@@ -3,6 +3,7 @@ import { getRedisConnection } from '../queue/config';
 import { db } from '../../db';
 import { users, companies } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import logger from '../utils/logger';
 
 /**
  * Notification Job Data Types
@@ -53,43 +54,46 @@ type NotificationJobData =
  */
 export function createNotificationWorker() {
   const connection = getRedisConnection();
-  
+
   if (!connection) {
-    console.warn('⚠️  Notification worker not started - Redis not available');
+    logger.warn('Notification worker not started - Redis not available');
     return null;
   }
 
   const worker = new Worker<NotificationJobData>(
     'notifications',
     async (job: Job<NotificationJobData>) => {
-      console.log(`🔔 Processing notification job ${job.id}: ${job.data.type}`);
-      
+      logger.info({ jobId: job.id, type: job.data.type }, 'Processing notification job');
+
       try {
         switch (job.data.type) {
           case 'system':
             await processSystemNotification(job.data);
             break;
-          
+
           case 'order':
             await processOrderNotification(job.data);
             break;
-          
+
           case 'ai-insight':
             await processAIInsightNotification(job.data);
             break;
-          
+
           case 'marketplace':
             await processMarketplaceNotification(job.data);
             break;
-          
+
           default:
             throw new Error(`Unknown notification type: ${(job.data as any).type}`);
         }
-        
-        console.log(`✅ Notification job ${job.id} completed successfully`);
+
+        logger.info({ jobId: job.id }, 'Notification job completed successfully');
         return { success: true, sentAt: new Date().toISOString() };
       } catch (error) {
-        console.error(`❌ Notification job ${job.id} failed:`, error);
+        logger.error({
+          error: error instanceof Error ? error.message : String(error),
+          jobId: job.id
+        }, 'Notification job failed');
         throw error;
       }
     },
@@ -105,18 +109,21 @@ export function createNotificationWorker() {
 
   // Worker event handlers
   worker.on('completed', (job) => {
-    console.log(`✅ Notification job ${job.id} completed`);
+    logger.info({ jobId: job.id }, 'Notification job completed');
   });
 
   worker.on('failed', (job, err) => {
-    console.error(`❌ Notification job ${job?.id} failed:`, err.message);
+    logger.error({
+      error: err.message,
+      jobId: job?.id
+    }, 'Notification job failed');
   });
 
   worker.on('error', (err) => {
-    console.error('Notification worker error:', err);
+    logger.error({ error: err.message }, 'Notification worker error');
   });
 
-  console.log('✅ Notification worker started');
+  logger.info('Notification worker started');
   return worker;
 }
 
@@ -125,7 +132,7 @@ export function createNotificationWorker() {
  */
 async function processSystemNotification(data: SystemNotificationData): Promise<void> {
   const { userId, title, message, priority, actionUrl } = data;
-  
+
   // Get user details
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
@@ -137,11 +144,14 @@ async function processSystemNotification(data: SystemNotificationData): Promise<
 
   // Store notification in database (using aiNotifications table for now)
   // In production, you might want a dedicated notifications table
-  console.log(`📢 System notification for ${user.email}: ${title}`);
-  console.log(`   Priority: ${priority}, Message: ${message}`);
-  if (actionUrl) {
-    console.log(`   Action URL: ${actionUrl}`);
-  }
+  logger.info({
+    email: user.email,
+    title,
+    priority,
+    message,
+    actionUrl,
+    type: 'system'
+  }, 'System notification processed');
 
   // TODO: Store in database
   // await db.insert(notifications).values({
@@ -166,7 +176,7 @@ async function processSystemNotification(data: SystemNotificationData): Promise<
  */
 async function processOrderNotification(data: OrderNotificationData): Promise<void> {
   const { userId, orderId, status, message } = data;
-  
+
   // Get user details
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
@@ -176,8 +186,13 @@ async function processOrderNotification(data: OrderNotificationData): Promise<vo
     throw new Error(`User ${userId} not found`);
   }
 
-  console.log(`📦 Order notification for ${user.email}: Order ${orderId} - ${status}`);
-  console.log(`   Message: ${message}`);
+  logger.info({
+    email: user.email,
+    orderId,
+    status,
+    message,
+    type: 'order'
+  }, 'Order notification processed');
 
   // TODO: Store notification and send WebSocket update
   // await db.insert(notifications).values({
@@ -195,7 +210,7 @@ async function processOrderNotification(data: OrderNotificationData): Promise<vo
  */
 async function processAIInsightNotification(data: AIInsightNotificationData): Promise<void> {
   const { userId, insightType, title, summary, detailUrl } = data;
-  
+
   // Get user details
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
@@ -205,12 +220,14 @@ async function processAIInsightNotification(data: AIInsightNotificationData): Pr
     throw new Error(`User ${userId} not found`);
   }
 
-  console.log(`🤖 AI Insight for ${user.email}: ${insightType}`);
-  console.log(`   Title: ${title}`);
-  console.log(`   Summary: ${summary}`);
-  if (detailUrl) {
-    console.log(`   Details: ${detailUrl}`);
-  }
+  logger.info({
+    email: user.email,
+    insightType,
+    title,
+    summary,
+    detailUrl,
+    type: 'ai-insight'
+  }, 'AI Insight notification processed');
 
   // TODO: Store notification
   // await db.insert(notifications).values({
@@ -228,7 +245,7 @@ async function processAIInsightNotification(data: AIInsightNotificationData): Pr
  */
 async function processMarketplaceNotification(data: MarketplaceNotificationData): Promise<void> {
   const { userId, connectionId, action, companyName } = data;
-  
+
   // Get user details
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
@@ -244,7 +261,14 @@ async function processMarketplaceNotification(data: MarketplaceNotificationData)
     rejected: `${companyName} declined your connection request`,
   };
 
-  console.log(`🤝 Marketplace notification for ${user.email}: ${actionMessages[action]}`);
+  logger.info({
+    email: user.email,
+    action,
+    companyName,
+    connectionId,
+    message: actionMessages[action],
+    type: 'marketplace'
+  }, 'Marketplace notification processed');
 
   // TODO: Store notification
   // await db.insert(notifications).values({
@@ -261,8 +285,8 @@ async function processMarketplaceNotification(data: MarketplaceNotificationData)
  * Fallback: Send notification immediately if queue not available
  */
 export async function sendNotificationImmediate(data: NotificationJobData): Promise<void> {
-  console.log(`⚠️  [FALLBACK] Sending notification immediately: ${data.type}`);
-  
+  logger.warn({ type: data.type }, 'Sending notification immediately (fallback mode)');
+
   switch (data.type) {
     case 'system':
       await processSystemNotification(data);

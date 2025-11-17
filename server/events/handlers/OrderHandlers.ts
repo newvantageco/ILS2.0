@@ -24,8 +24,8 @@
  */
 
 import { EventBus } from '../EventBus';
-import { 
-  InvoicePaidPayload, 
+import {
+  InvoicePaidPayload,
   OrderShippedPayload,
   OrderStatusChangedPayload,
   publishOrderCreated,
@@ -36,6 +36,7 @@ import { db } from '../../db';
 import { orders, patients, prescriptions, invoices } from '../../../shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
+import logger from '../../utils/logger';
 
 // =====================================================
 // HANDLER 1: Auto-Create Order When Invoice is Paid
@@ -58,39 +59,39 @@ import { sql } from 'drizzle-orm';
  */
 EventBus.subscribe(PatientJourneyEvent.INVOICE_PAID, async (event) => {
   const payload = event.data as InvoicePaidPayload;
-  
-  console.log(`📦 [OrderHandler] Processing invoice.paid: ${payload.invoiceNumber}`);
-  
+
+  logger.info({ invoiceNumber: payload.invoiceNumber, event: 'invoice.paid' }, 'Processing invoice.paid event');
+
   try {
     // Check if invoice contains items that require a lab order
-    const hasLensOrder = payload.lineItems.some(item => 
-      item.type === 'lens' || 
+    const hasLensOrder = payload.lineItems.some(item =>
+      item.type === 'lens' ||
       item.type === 'product' && item.productId?.includes('lens')
     );
-    
+
     if (!hasLensOrder) {
-      console.log(`   ℹ️  Invoice ${payload.invoiceNumber} has no lens items. Skipping order creation.`);
+      logger.info({ invoiceNumber: payload.invoiceNumber }, 'Invoice has no lens items. Skipping order creation');
       return;
     }
-    
+
     // Get patient details
     const patient = await db.query.patients.findFirst({
       where: eq(patients.id, payload.patientId),
     });
-    
+
     if (!patient) {
-      console.error(`   ❌ Patient ${payload.patientId} not found. Cannot create order.`);
+      logger.error({ patientId: payload.patientId, invoiceNumber: payload.invoiceNumber }, 'Patient not found. Cannot create order');
       return;
     }
-    
+
     // Get most recent prescription for this patient
     const recentPrescription = await db.query.prescriptions.findFirst({
       where: eq(prescriptions.patientId, payload.patientId),
       orderBy: desc(prescriptions.createdAt),
     });
-    
+
     if (!recentPrescription) {
-      console.warn(`   ⚠️  No prescription found for patient ${patient.name}. Creating order without Rx.`);
+      logger.warn({ patientName: patient.name, patientId: payload.patientId }, 'No prescription found for patient. Creating order without Rx');
     }
     
     // Extract lens details from line items
@@ -127,9 +128,9 @@ EventBus.subscribe(PatientJourneyEvent.INVOICE_PAID, async (event) => {
       // Metadata
       notes: `Auto-created from invoice ${payload.invoiceNumber}`,
     }).returning();
-    
-    console.log(`   ✅ Order created: ${orderNumber} (ID: ${newOrder.id})`);
-    
+
+    logger.info({ orderNumber, orderId: newOrder.id, invoiceNumber: payload.invoiceNumber }, 'Order created successfully');
+
     // Publish order.created event
     // This triggers:
     // - Lab dashboard update (WebSocket)
@@ -177,15 +178,19 @@ EventBus.subscribe(PatientJourneyEvent.INVOICE_PAID, async (event) => {
         companyId: payload.companyId,
         priority: 'normal',
       });
-      
-      console.log(`   📧 Order confirmation email queued for ${payload.patientEmail}`);
+
+      logger.info({ email: payload.patientEmail, orderNumber }, 'Order confirmation email queued');
     }
-    
-    console.log(`   🎉 Order automation complete for invoice ${payload.invoiceNumber}`);
-    
+
+    logger.info({ invoiceNumber: payload.invoiceNumber, orderNumber }, 'Order automation complete');
+
   } catch (error) {
-    console.error(`   ❌ Failed to create order for invoice ${payload.invoiceNumber}:`, error);
-    
+    logger.error({
+      error: error instanceof Error ? error.message : String(error),
+      invoiceNumber: payload.invoiceNumber,
+      patientId: payload.patientId
+    }, 'Failed to create order for invoice');
+
     // TODO: Add to retry queue or dead letter queue
     // For now, we'll let it fail silently to not break the POS
     // The invoice is still paid, order can be created manually
@@ -213,20 +218,20 @@ EventBus.subscribe(PatientJourneyEvent.INVOICE_PAID, async (event) => {
  */
 EventBus.subscribe(PatientJourneyEvent.ORDER_SHIPPED, async (event) => {
   const payload = event.data as OrderShippedPayload;
-  
-  console.log(`📦 [OrderHandler] Processing order.shipped: ${payload.orderNumber}`);
-  
+
+  logger.info({ orderNumber: payload.orderNumber, event: 'order.shipped' }, 'Processing order.shipped event');
+
   try {
     // Get patient details (for email/phone)
     const patient = await db.query.patients.findFirst({
       where: eq(patients.id, payload.patientId),
     });
-    
+
     if (!patient) {
-      console.error(`   ❌ Patient ${payload.patientId} not found. Cannot send notification.`);
+      logger.error({ patientId: payload.patientId, orderNumber: payload.orderNumber }, 'Patient not found. Cannot send notification');
       return;
     }
-    
+
     // Send email notification
     if (patient.email) {
       await publishEmailRequired({
@@ -238,22 +243,22 @@ EventBus.subscribe(PatientJourneyEvent.ORDER_SHIPPED, async (event) => {
           orderNumber: payload.orderNumber,
           trackingNumber: payload.trackingNumber || 'Not available',
           carrier: payload.carrier || 'Standard Delivery',
-          estimatedDelivery: payload.estimatedDelivery 
+          estimatedDelivery: payload.estimatedDelivery
             ? payload.estimatedDelivery.toLocaleDateString('en-GB')
             : '2-3 business days',
-          trackingUrl: payload.trackingNumber 
+          trackingUrl: payload.trackingNumber
             ? `https://track.royalmail.com/track?trackingNumber=${payload.trackingNumber}`
             : null,
         },
         companyId: payload.companyId,
         priority: 'high',
       });
-      
-      console.log(`   📧 Shipment notification email queued for ${patient.email}`);
+
+      logger.info({ email: patient.email, orderNumber: payload.orderNumber }, 'Shipment notification email queued');
     } else {
-      console.warn(`   ⚠️  Patient ${patient.name} has no email. Skipping email notification.`);
+      logger.warn({ patientName: patient.name, patientId: patient.id }, 'Patient has no email. Skipping email notification');
     }
-    
+
     // TODO: Send SMS notification (if enabled)
     // if (patient.phone && process.env.SMS_ENABLED === 'true') {
     //   await sendSMS({
@@ -261,11 +266,14 @@ EventBus.subscribe(PatientJourneyEvent.ORDER_SHIPPED, async (event) => {
     //     message: `Your order ${payload.orderNumber} has shipped! Track: ${payload.trackingNumber}`,
     //   });
     // }
-    
-    console.log(`   ✅ Shipment notifications sent for order ${payload.orderNumber}`);
-    
+
+    logger.info({ orderNumber: payload.orderNumber }, 'Shipment notifications sent');
+
   } catch (error) {
-    console.error(`   ❌ Failed to send shipment notification for order ${payload.orderNumber}:`, error);
+    logger.error({
+      error: error instanceof Error ? error.message : String(error),
+      orderNumber: payload.orderNumber
+    }, 'Failed to send shipment notification');
   }
 });
 
@@ -291,25 +299,30 @@ EventBus.subscribe(PatientJourneyEvent.ORDER_SHIPPED, async (event) => {
  */
 EventBus.subscribe(PatientJourneyEvent.ORDER_STATUS_CHANGED, async (event) => {
   const payload = event.data as OrderStatusChangedPayload;
-  
-  console.log(`📊 [OrderHandler] Order status changed: ${payload.orderNumber}`);
-  console.log(`   ${payload.oldStatus} → ${payload.newStatus} by ${payload.changedByName}`);
-  
+
+  logger.info({
+    orderNumber: payload.orderNumber,
+    oldStatus: payload.oldStatus,
+    newStatus: payload.newStatus,
+    changedBy: payload.changedByName,
+    event: 'order.status_changed'
+  }, 'Order status changed');
+
   // The EventBus already logs this to event_log table
   // Additional business logic can be added here:
-  
+
   // Example: If order goes to quality_check, assign to QC team
   if (payload.newStatus === 'quality_check') {
-    console.log(`   🔍 Order moved to quality check. Assigning to QC team...`);
+    logger.info({ orderNumber: payload.orderNumber }, 'Order moved to quality check. Assigning to QC team');
     // TODO: Implement QC assignment logic
   }
-  
+
   // Example: If order is cancelled, send notification
   if (payload.newStatus === 'cancelled') {
-    console.log(`   ⚠️  Order cancelled. Sending notification...`);
+    logger.warn({ orderNumber: payload.orderNumber }, 'Order cancelled. Sending notification');
     // TODO: Implement cancellation notification
   }
-  
+
   // Example: Calculate time in previous status (for metrics)
   // const timeInStatus = calculateTimeInStatus(payload.orderId, payload.oldStatus);
   // await saveMetric('order_status_duration', timeInStatus, { status: payload.oldStatus });
@@ -333,15 +346,15 @@ EventBus.subscribe(PatientJourneyEvent.ORDER_STATUS_CHANGED, async (event) => {
  */
 EventBus.subscribe(PatientJourneyEvent.ORDER_CREATED, async (event) => {
   const payload = event.data as any;
-  
-  console.log(`📧 [OrderHandler] Sending order confirmation for ${payload.orderNumber}`);
-  
+
+  logger.info({ orderNumber: payload.orderNumber, event: 'order.created' }, 'Sending order confirmation');
+
   try {
     if (!payload.patientEmail) {
-      console.log(`   ℹ️  No email address for patient. Skipping confirmation email.`);
+      logger.info({ orderNumber: payload.orderNumber }, 'No email address for patient. Skipping confirmation email');
       return;
     }
-    
+
     // Build prescription summary for email
     let prescriptionSummary = '';
     if (payload.prescription) {
@@ -351,7 +364,7 @@ EventBus.subscribe(PatientJourneyEvent.ORDER_CREATED, async (event) => {
         ${payload.prescription.odAdd ? `Add: +${payload.prescription.odAdd}` : ''}
       `;
     }
-    
+
     await publishEmailRequired({
       to: payload.patientEmail,
       subject: `Order Confirmation - ${payload.orderNumber}`,
@@ -370,11 +383,14 @@ EventBus.subscribe(PatientJourneyEvent.ORDER_CREATED, async (event) => {
       companyId: payload.companyId,
       priority: 'normal',
     });
-    
-    console.log(`   ✅ Order confirmation email queued`);
-    
+
+    logger.info({ orderNumber: payload.orderNumber }, 'Order confirmation email queued');
+
   } catch (error) {
-    console.error(`   ❌ Failed to send order confirmation:`, error);
+    logger.error({
+      error: error instanceof Error ? error.message : String(error),
+      orderNumber: payload.orderNumber
+    }, 'Failed to send order confirmation');
   }
 });
 
@@ -382,8 +398,9 @@ EventBus.subscribe(PatientJourneyEvent.ORDER_CREATED, async (event) => {
 // INITIALIZATION
 // =====================================================
 
-console.log('✅ Order event handlers initialized');
-console.log('   Subscribed to: invoice.paid, order.created, order.shipped, order.status_changed');
+logger.info({
+  handlers: ['invoice.paid', 'order.created', 'order.shipped', 'order.status_changed']
+}, 'Order event handlers initialized');
 
 /**
  * Export for testing
