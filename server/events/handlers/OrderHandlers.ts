@@ -148,11 +148,11 @@ EventBus.subscribe(PatientJourneyEvent.INVOICE_PAID, async (event) => {
       prescription: recentPrescription ? {
         odSphere: recentPrescription.odSphere || '',
         odCylinder: recentPrescription.odCylinder || '',
-        odAxis: recentPrescription.odAxis || '',
+        odAxis: String(recentPrescription.odAxis || ''),
         odAdd: recentPrescription.odAdd ?? undefined,
         osSphere: recentPrescription.osSphere || '',
         osCylinder: recentPrescription.osCylinder || '',
-        osAxis: recentPrescription.osAxis || '',
+        osAxis: String(recentPrescription.osAxis || ''),
         osAdd: recentPrescription.osAdd ?? undefined,
         pd: recentPrescription.pd ?? undefined,
       } : undefined,

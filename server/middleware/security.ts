@@ -123,12 +123,10 @@ export const corsConfig = cors({
     if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      logger.warn({ 
-        origin, 
-        ip: req.ip,
-        userAgent: req.get('user-agent')
+      logger.warn({
+        origin
       }, 'CORS violation - origin not allowed');
-      
+
       callback(new Error('Not allowed by CORS'));
     }
   },

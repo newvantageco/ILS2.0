@@ -8,6 +8,11 @@ export interface AuthenticatedUser {
   email: string;
   role: typeof roleEnum.enumValues[number];
   companyId?: string;
+  claims?: {
+    sub?: string;
+    email?: string;
+    role?: string;
+  };
 }
 
 export interface AuthenticatedRequest extends Request {

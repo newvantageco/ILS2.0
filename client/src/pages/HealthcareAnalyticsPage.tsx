@@ -298,14 +298,14 @@ export default function HealthcareAnalyticsPage() {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={clinicalOutcomesData}>
+                    <RechartsLineChart data={clinicalOutcomesData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="month" />
                       <YAxis />
                       <Tooltip />
                       <Legend />
                       <Line type="monotone" dataKey="readmissionRate" stroke="#C5352A" strokeWidth={2} />
-                    </LineChart>
+                    </RechartsLineChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
