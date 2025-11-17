@@ -13,6 +13,7 @@ import { NotificationCenter } from "@/components/NotificationCenter";
 import { FloatingAiChat } from "@/components/FloatingAiChat";
 import { PageTransition } from "@/components/ui/PageTransition";
 import { CommandPalette } from "@/components/ui/CommandPalette";
+import { GlobalKeyboardShortcuts } from "@/components/GlobalKeyboardShortcuts";
 import { ScrollToTop, ScrollProgress } from "@/components/ui/ScrollEnhancements";
 import { PWAInstallPrompt, OfflineIndicator } from "@/components/ui/PWAFeatures";
 import { NotificationProvider } from "@/components/ui/SmartNotifications";
@@ -237,6 +238,7 @@ function AppLayout({ children, userRole }: { children: React.ReactNode; userRole
       <ScrollProgress />
       <OfflineIndicator />
       <CommandPalette userRole={userRole} />
+      <GlobalKeyboardShortcuts />
       <div className="flex h-screen w-full overflow-hidden">
         <AppSidebar userRole={userRole} />
         <div className="flex flex-col flex-1 min-w-0">

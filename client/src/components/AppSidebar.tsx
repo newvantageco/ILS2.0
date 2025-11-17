@@ -49,6 +49,7 @@ import {
   Store,
   Heart,
   Flag,
+  Keyboard,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -516,6 +517,14 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
               <LogOut className="h-4 w-4 mr-2" />
               <span>Logout</span>
             </Button>
+            <div className="pt-2 border-t border-border">
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5 px-2 py-1">
+                <Keyboard className="h-3 w-3" />
+                <span>Press</span>
+                <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">⌘/</kbd>
+                <span>for shortcuts</span>
+              </p>
+            </div>
           </div>
         )}
       </SidebarFooter>
