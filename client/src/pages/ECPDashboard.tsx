@@ -203,7 +203,7 @@ export default function ECPDashboardModern() {
     return actions.slice(0, 3);
   };
 
-  const quickActions = getAIQuickActions();
+  const aiQuickActions = getAIQuickActions();
 
   const handleQuickAction = async (question: string) => {
     setLocation(`/ecp/ai-assistant?q=${encodeURIComponent(question)}`);
@@ -342,13 +342,13 @@ export default function ECPDashboardModern() {
           </div>
 
           {/* AI Quick Actions */}
-          {quickActions.length > 0 && (
+          {aiQuickActions.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center gap-2 mb-3">
                 <Zap className="h-5 w-5" />
                 <span className="font-semibold">Quick AI Actions</span>
               </div>
-              {quickActions.map((action) => (
+              {aiQuickActions.map((action) => (
                 <button
                   key={action.id}
                   onClick={() => handleQuickAction(action.question)}
