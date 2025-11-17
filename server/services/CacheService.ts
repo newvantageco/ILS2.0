@@ -28,14 +28,17 @@ export class CacheService {
   private readonly MAX_FALLBACK_SIZE = 1000;
 
   constructor() {
-    this.initialize();
+    // Don't initialize Redis immediately - wait for first use
+    // This prevents connecting to localhost:6379 at module load time in Docker
   }
 
   /**
-   * Initialize Redis connection
+   * Initialize Redis connection (lazy)
    * Falls back to in-memory cache if Redis is unavailable
    */
   private initialize() {
+    if (this.redis !== null || this.enabled) return; // Already initialized
+
     const redisUrl = process.env.REDIS_URL;
 
     if (!redisUrl) {
@@ -92,8 +95,10 @@ export class CacheService {
    * Get cached value for a company
    */
   async get<T>(companyId: string, key: string, options?: CacheOptions): Promise<T | null> {
+    this.initialize(); // Lazy initialization
+
     const cacheKey = this.getKey(companyId, key, options?.namespace);
-    
+
     try {
       if (this.enabled && this.redis) {
         const value = await this.redis.get(cacheKey);
@@ -125,6 +130,8 @@ export class CacheService {
     value: T,
     options?: CacheOptions
   ): Promise<boolean> {
+    this.initialize(); // Lazy initialization
+
     const cacheKey = this.getKey(companyId, key, options?.namespace);
     const ttl = options?.ttl || this.DEFAULT_TTL;
 
@@ -148,6 +155,8 @@ export class CacheService {
    * Delete cached value for a company
    */
   async delete(companyId: string, key: string, options?: CacheOptions): Promise<boolean> {
+    this.initialize(); // Lazy initialization
+
     const cacheKey = this.getKey(companyId, key, options?.namespace);
 
     try {
@@ -168,6 +177,8 @@ export class CacheService {
    * Invalidate all cache entries for a company
    */
   async invalidateCompany(companyId: string, namespace?: string): Promise<number> {
+    this.initialize(); // Lazy initialization
+
     try {
       if (this.enabled && this.redis) {
         const pattern = namespace 
@@ -252,6 +263,8 @@ export class CacheService {
     type: 'redis' | 'memory';
     stats: { totalCompanies: number; totalKeys: number };
   }> {
+    this.initialize(); // Lazy initialization
+
     const totalCompanies = this.stats.size;
     let totalKeys = 0;
 

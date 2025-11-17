@@ -14,17 +14,37 @@ import { logger } from '../utils/logger';
 import Redis from 'ioredis';
 import { performance } from 'perf_hooks';
 
-// Initialize Redis client (optional - falls back to in-memory cache when unavailable)
+// Redis client (lazy initialization - prevents connection at module load time in Docker)
 let redis: Redis | null = null;
-const redisUrl = process.env.REDIS_URL;
+let redisInitialized = false;
 
-if (redisUrl) {
-  redis = new Redis(redisUrl);
-  redis.on('error', (error) => {
-    logger.warn({ error }, 'APIOptimizer Redis connection error; using in-memory cache only');
-  });
-} else {
-  logger.info('APIOptimizer: REDIS_URL not set; using in-memory cache only');
+/**
+ * Initialize Redis connection (lazy)
+ */
+function initializeRedis(): void {
+  if (redisInitialized) return; // Already attempted initialization
+  redisInitialized = true;
+
+  const redisUrl = process.env.REDIS_URL;
+
+  if (!redisUrl) {
+    logger.info('APIOptimizer: REDIS_URL not set; using in-memory cache only');
+    return;
+  }
+
+  try {
+    redis = new Redis(redisUrl);
+    redis.on('error', (error) => {
+      logger.warn({ error }, 'APIOptimizer Redis connection error; using in-memory cache only');
+      redis = null;
+    });
+    redis.on('connect', () => {
+      logger.info('APIOptimizer: Redis connected successfully');
+    });
+  } catch (error) {
+    logger.warn({ error }, 'APIOptimizer: Failed to initialize Redis');
+    redis = null;
+  }
 }
 
 export interface APIMetrics {
@@ -397,6 +417,8 @@ export class APIOptimizer {
    * Redis-based distributed caching
    */
   async getDistributedCache(key: string): Promise<any> {
+    initializeRedis(); // Lazy initialization
+
     if (!redis) {
       return null;
     }
@@ -410,6 +432,8 @@ export class APIOptimizer {
   }
 
   async setDistributedCache(key: string, data: any, ttl: number): Promise<void> {
+    initializeRedis(); // Lazy initialization
+
     if (!redis) {
       return;
     }
