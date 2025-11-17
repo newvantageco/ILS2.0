@@ -29,6 +29,7 @@ import { VisualAcuityChart } from "@/components/eye-test/VisualAcuityChart";
 import { ColorBlindnessTest, type ColorBlindnessResult } from "@/components/eye-test/ColorBlindnessTest";
 import { VisualFieldTest } from "@/components/eye-test/VisualFieldTest";
 import { EXAM_TEMPLATES, type ExamTemplate } from "@/data/examTemplates";
+import { EYE_TERMINOLOGY } from "../../../shared/terminology";
 
 interface Patient {
   id: string;
@@ -53,9 +54,9 @@ export default function EyeTestPage() {
   const [activeTab, setActiveTab] = useState("template");
   const [selectedTemplate, setSelectedTemplate] = useState<ExamTemplate | null>(null);
   const [templateData, setTemplateData] = useState<Record<string, any>>({});
-  const [vaResults, setVaResults] = useState({ OD: "", OS: "" });
+  const [vaResults, setVaResults] = useState({ R: "", L: "" });
   const [colorBlindnessResult, setColorBlindnessResult] = useState<ColorBlindnessResult | null>(null);
-  const [visualFieldResults, setVisualFieldResults] = useState<any>({ OD: null, OS: null });
+  const [visualFieldResults, setVisualFieldResults] = useState<any>({ R: null, L: null });
   const [selectedTestRoom, setSelectedTestRoom] = useState<string>("");
   const { toast } = useToast();
 
@@ -280,14 +281,14 @@ export default function EyeTestPage() {
         <TabsContent value="visual-acuity">
           <div className="grid gap-6 md:grid-cols-2">
             <VisualAcuityChart
-              eye="OD"
-              initialValue={vaResults.OD}
-              onResult={(result) => setVaResults({ ...vaResults, OD: result })}
+              eye="R"
+              initialValue={vaResults.R}
+              onResult={(result) => setVaResults({ ...vaResults, R: result })}
             />
             <VisualAcuityChart
-              eye="OS"
-              initialValue={vaResults.OS}
-              onResult={(result) => setVaResults({ ...vaResults, OS: result })}
+              eye="L"
+              initialValue={vaResults.L}
+              onResult={(result) => setVaResults({ ...vaResults, L: result })}
             />
           </div>
           <div className="mt-4 flex justify-end">
@@ -317,21 +318,21 @@ export default function EyeTestPage() {
         <TabsContent value="visual-field">
           <div className="grid gap-6 md:grid-cols-2">
             <VisualFieldTest
-              eye="OD"
+              eye="R"
               onComplete={(results) => {
-                setVisualFieldResults({ ...visualFieldResults, OD: results });
+                setVisualFieldResults({ ...visualFieldResults, R: results });
                 toast({
-                  title: "Visual Field Test Complete - OD",
+                  title: "Visual Field Test Complete - R",
                   description: "Results saved for right eye",
                 });
               }}
             />
             <VisualFieldTest
-              eye="OS"
+              eye="L"
               onComplete={(results) => {
-                setVisualFieldResults({ ...visualFieldResults, OS: results });
+                setVisualFieldResults({ ...visualFieldResults, L: results });
                 toast({
-                  title: "Visual Field Test Complete - OS",
+                  title: "Visual Field Test Complete - L",
                   description: "Results saved for left eye",
                 });
               }}
@@ -409,25 +410,25 @@ export default function EyeTestPage() {
                 </div>
 
                 {/* Show test results summary if available */}
-                {(vaResults.OD || vaResults.OS || colorBlindnessResult || visualFieldResults.OD || visualFieldResults.OS) && (
+                {(vaResults.R || vaResults.L || colorBlindnessResult || visualFieldResults.R || visualFieldResults.L) && (
                   <div className="p-4 bg-muted rounded-lg space-y-2">
                     <h3 className="font-semibold text-sm">Test Results Summary</h3>
-                    {vaResults.OD && (
-                      <p className="text-sm">Visual Acuity OD: {vaResults.OD}</p>
+                    {vaResults.R && (
+                      <p className="text-sm">Visual Acuity R: {vaResults.R}</p>
                     )}
-                    {vaResults.OS && (
-                      <p className="text-sm">Visual Acuity OS: {vaResults.OS}</p>
+                    {vaResults.L && (
+                      <p className="text-sm">Visual Acuity L: {vaResults.L}</p>
                     )}
                     {colorBlindnessResult && (
                       <p className="text-sm">
                         Color Vision: {colorBlindnessResult.correctAnswers}/{colorBlindnessResult.totalPlates} - {colorBlindnessResult.interpretation}
                       </p>
                     )}
-                    {visualFieldResults.OD && (
-                      <p className="text-sm">Visual Field OD: Complete</p>
+                    {visualFieldResults.R && (
+                      <p className="text-sm">Visual Field R: Complete</p>
                     )}
-                    {visualFieldResults.OS && (
-                      <p className="text-sm">Visual Field OS: Complete</p>
+                    {visualFieldResults.L && (
+                      <p className="text-sm">Visual Field L: Complete</p>
                     )}
                   </div>
                 )}
@@ -439,17 +440,17 @@ export default function EyeTestPage() {
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="visualAcuityOD">OD (Right Eye)</Label>
+                        <Label htmlFor="visualAcuityOD">{EYE_TERMINOLOGY.RIGHT_EYE}</Label>
                         <Input
                           id="visualAcuityOD"
                           name="visualAcuityOD"
                           placeholder="e.g., 6/6"
-                          defaultValue={vaResults.OD}
+                          defaultValue={vaResults.R}
                           data-testid="input-va-od"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="visualAcuityOS">OS (Left Eye)</Label>
+                        <Label htmlFor="visualAcuityOS">{EYE_TERMINOLOGY.LEFT_EYE}</Label>
                         <Input
                           id="visualAcuityOS"
                           name="visualAcuityOS"
@@ -462,7 +463,7 @@ export default function EyeTestPage() {
 
                   <div className="space-y-4">
                     <h3 className="font-semibold flex items-center gap-2">
-                      Auto-Refraction - OD (Right Eye)
+                      Auto-Refraction - {EYE_TERMINOLOGY.RIGHT_EYE}
                     </h3>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
@@ -497,7 +498,7 @@ export default function EyeTestPage() {
 
                   <div className="space-y-4">
                     <h3 className="font-semibold flex items-center gap-2">
-                      Auto-Refraction - OS (Left Eye)
+                      Auto-Refraction - {EYE_TERMINOLOGY.LEFT_EYE}
                     </h3>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
@@ -593,7 +594,7 @@ export default function EyeTestPage() {
 
                   <div className="space-y-4">
                     <h3 className="font-semibold flex items-center gap-2">
-                      OD (Right Eye)
+                      {EYE_TERMINOLOGY.RIGHT_EYE}
                     </h3>
                     <div className="grid grid-cols-4 gap-4">
                       <div className="space-y-2">
@@ -637,7 +638,7 @@ export default function EyeTestPage() {
 
                   <div className="space-y-4">
                     <h3 className="font-semibold flex items-center gap-2">
-                      OS (Left Eye)
+                      {EYE_TERMINOLOGY.LEFT_EYE}
                     </h3>
                     <div className="grid grid-cols-4 gap-4">
                       <div className="space-y-2">

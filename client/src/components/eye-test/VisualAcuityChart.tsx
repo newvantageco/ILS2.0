@@ -17,7 +17,7 @@ const SNELLEN_CHART = [
 ];
 
 interface Props {
-  eye: "OD" | "OS";
+  eye: "R" | "L";
   onResult: (result: string) => void;
   initialValue?: string;
 }
@@ -35,7 +35,7 @@ export function VisualAcuityChart({ eye, onResult, initialValue }: Props) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Eye className="h-5 w-5" />
-          Visual Acuity - {eye === "OD" ? "Right Eye" : "Left Eye"}
+          Visual Acuity - {eye === "R" ? "Right Eye" : "Left Eye"}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

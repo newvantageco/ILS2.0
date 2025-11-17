@@ -10,7 +10,7 @@ interface FieldPoint {
 }
 
 interface Props {
-  eye: "OD" | "OS";
+  eye: "R" | "L";
   onComplete: (results: FieldPoint[]) => void;
 }
 
@@ -132,7 +132,7 @@ export function VisualFieldTest({ eye, onComplete }: Props) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Crosshair className="h-5 w-5" />
-            Visual Field Test Results - {eye === "OD" ? "Right Eye" : "Left Eye"}
+            Visual Field Test Results - {eye === "R" ? "Right Eye" : "Left Eye"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -204,7 +204,7 @@ export function VisualFieldTest({ eye, onComplete }: Props) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Crosshair className="h-5 w-5" />
-          Visual Field Test - {eye === "OD" ? "Right Eye" : "Left Eye"}
+          Visual Field Test - {eye === "R" ? "Right Eye" : "Left Eye"}
         </CardTitle>
         <CardDescription>
           {!isStarted
