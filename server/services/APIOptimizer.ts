@@ -14,8 +14,18 @@ import { logger } from '../utils/logger';
 import Redis from 'ioredis';
 import { performance } from 'perf_hooks';
 
-// Initialize Redis client
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+// Initialize Redis client (optional - falls back to in-memory cache when unavailable)
+let redis: Redis | null = null;
+const redisUrl = process.env.REDIS_URL;
+
+if (redisUrl) {
+  redis = new Redis(redisUrl);
+  redis.on('error', (error) => {
+    logger.warn({ error }, 'APIOptimizer Redis connection error; using in-memory cache only');
+  });
+} else {
+  logger.info('APIOptimizer: REDIS_URL not set; using in-memory cache only');
+}
 
 export interface APIMetrics {
   totalRequests: number;
@@ -387,6 +397,9 @@ export class APIOptimizer {
    * Redis-based distributed caching
    */
   async getDistributedCache(key: string): Promise<any> {
+    if (!redis) {
+      return null;
+    }
     try {
       const cached = await redis.get(key);
       return cached ? JSON.parse(cached) : null;
@@ -397,6 +410,9 @@ export class APIOptimizer {
   }
 
   async setDistributedCache(key: string, data: any, ttl: number): Promise<void> {
+    if (!redis) {
+      return;
+    }
     try {
       await redis.setex(key, ttl, JSON.stringify(data));
     } catch (error) {
