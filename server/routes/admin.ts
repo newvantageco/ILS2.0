@@ -10,6 +10,10 @@ import { storage } from "../storage";
 import { z } from "zod";
 import type { User } from "@shared/schema";
 import { createLogger } from "../utils/logger";
+import { adminDashboardService } from "../services/AdminDashboardService";
+import { db } from "../db";
+import { eq, desc, and, count, sql } from "drizzle-orm";
+import * as schema from "@shared/schema";
 
 const router = Router();
 const logger = createLogger('admin');
@@ -577,6 +581,117 @@ router.get("/users/search", isPlatformAdmin, async (req: any, res: Response) => 
       error: "Failed to search users",
       message: error.message
     });
+  }
+});
+
+// ========================================
+// DASHBOARD ENDPOINTS
+// ========================================
+
+/**
+ * GET /api/admin/health
+ * Get system health metrics
+ */
+router.get("/health", isPlatformAdmin, async (req: Request, res: Response) => {
+  try {
+    const health = await adminDashboardService.getSystemHealth();
+    res.json(health);
+  } catch (error) {
+    logger.error({ error }, 'Failed to get system health');
+    res.status(500).json({ error: 'Failed to get system health' });
+  }
+});
+
+/**
+ * GET /api/admin/analytics/users
+ * Get user analytics
+ */
+router.get("/analytics/users", isPlatformAdmin, async (req: Request, res: Response) => {
+  try {
+    const analytics = await adminDashboardService.getUserAnalytics();
+    res.json(analytics);
+  } catch (error) {
+    logger.error({ error }, 'Failed to get user analytics');
+    res.status(500).json({ error: 'Failed to get user analytics' });
+  }
+});
+
+/**
+ * GET /api/admin/analytics/performance
+ * Get performance metrics
+ */
+router.get("/analytics/performance", isPlatformAdmin, async (req: Request, res: Response) => {
+  try {
+    const metrics = await adminDashboardService.getPerformanceMetrics();
+    res.json(metrics);
+  } catch (error) {
+    logger.error({ error }, 'Failed to get performance metrics');
+    res.status(500).json({ error: 'Failed to get performance metrics' });
+  }
+});
+
+/**
+ * GET /api/admin/activity-logs
+ * Get activity logs with filtering
+ */
+router.get("/activity-logs", isPlatformAdmin, async (req: Request, res: Response) => {
+  try {
+    const { limit = 50, offset = 0, userId, action, severity } = req.query;
+    
+    const logs = await adminDashboardService.getActivityLogs({
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+      userId: userId as string,
+      action: action as string,
+      severity: severity as string
+    });
+
+    res.json(logs);
+  } catch (error) {
+    logger.error({ error }, 'Failed to get activity logs');
+    res.status(500).json({ error: 'Failed to get activity logs' });
+  }
+});
+
+/**
+ * GET /api/admin/stats
+ * Get dashboard statistics
+ */
+router.get("/stats", isPlatformAdmin, async (req: Request, res: Response) => {
+  try {
+    const [userCount, prescriptionCount, orderCount] = await Promise.all([
+      db.select({ count: count() }).from(schema.users),
+      db.select({ count: count() }).from(schema.prescriptions),
+      db.select({ count: count() }).from(schema.orders)
+    ]);
+
+    const stats = {
+      users: userCount[0].count,
+      prescriptions: prescriptionCount[0].count,
+      orders: orderCount[0].count,
+      systemUptime: process.uptime(),
+      memoryUsage: process.memoryUsage(),
+      nodeVersion: process.version
+    };
+
+    res.json(stats);
+  } catch (error) {
+    logger.error({ error }, 'Failed to get dashboard stats');
+    res.status(500).json({ error: 'Failed to get dashboard stats' });
+  }
+});
+
+/**
+ * POST /api/admin/broadcast/health
+ * Broadcast system health to admin users
+ */
+router.post("/broadcast/health", isPlatformAdmin, async (req: Request, res: Response) => {
+  try {
+    await adminDashboardService.broadcastSystemHealth();
+    res.json({ success: true, message: 'System health broadcast sent' });
+  } catch (error) {
+    logger.error({ error }, 'Failed to broadcast system health');
+    res.status(500).json({ error: 'Failed to broadcast system health' });
   }
 });
 

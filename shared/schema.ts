@@ -43,6 +43,45 @@ export const analyticsEventTypeEnum = pgEnum("analytics_event_type", [
   "non_adapt_reported"
 ]);
 
+// Appointment Scheduling Enums
+export const appointmentStatusEnum = pgEnum("appointment_status", [
+  "scheduled",
+  "confirmed",
+  "in_progress",
+  "completed",
+  "cancelled",
+  "no_show",
+  "rescheduled"
+]);
+
+export const appointmentTypeEnum = pgEnum("appointment_type", [
+  "eye_examination",
+  "contact_lens_fitting",
+  "frame_selection",
+  "follow_up",
+  "emergency",
+  "consultation",
+  "test_room_booking",
+  "dispensing",
+  "collection"
+]);
+
+export const reminderTypeEnum = pgEnum("reminder_type", [
+  "email",
+  "sms",
+  "phone",
+  "push_notification",
+  "automated_call"
+]);
+
+export const resourceTypeEnum = pgEnum("resource_type", [
+  "test_room",
+  "equipment",
+  "practitioner",
+  "room",
+  "specialist"
+]);
+
 export const emailTypeEnum = pgEnum("email_type", [
   "invoice",
   "receipt",
@@ -1283,15 +1322,15 @@ export const orders = pgTable("orders", {
   ecpId: varchar("ecp_id").notNull().references(() => users.id),
   status: orderStatusEnum("status").notNull().default("pending"),
   
-  odSphere: text("od_sphere"),
-  odCylinder: text("od_cylinder"),
-  odAxis: text("od_axis"),
-  odAdd: text("od_add"),
-  osSphere: text("os_sphere"),
-  osCylinder: text("os_cylinder"),
-  osAxis: text("os_axis"),
-  osAdd: text("os_add"),
-  pd: text("pd"),
+  odSphere: decimal("od_sphere", { precision: 6, scale: 3 }),
+  odCylinder: decimal("od_cylinder", { precision: 6, scale: 3 }),
+  odAxis: integer("od_axis"),
+  odAdd: decimal("od_add", { precision: 4, scale: 2 }),
+  osSphere: decimal("os_sphere", { precision: 6, scale: 3 }),
+  osCylinder: decimal("os_cylinder", { precision: 6, scale: 3 }),
+  osAxis: integer("os_axis"),
+  osAdd: decimal("os_add", { precision: 4, scale: 2 }),
+  pd: decimal("pd", { precision: 4, scale: 1 }),
   
   lensType: text("lens_type").notNull(),
   lensMaterial: text("lens_material").notNull(),
@@ -1523,15 +1562,15 @@ export const prescriptions = pgTable("prescriptions", {
   ecpId: varchar("ecp_id").notNull().references(() => users.id),
   issueDate: timestamp("issue_date").defaultNow().notNull(),
   expiryDate: timestamp("expiry_date"),
-  odSphere: text("od_sphere"),
-  odCylinder: text("od_cylinder"),
-  odAxis: text("od_axis"),
-  odAdd: text("od_add"),
-  osSphere: text("os_sphere"),
-  osCylinder: text("os_cylinder"),
-  osAxis: text("os_axis"),
-  osAdd: text("os_add"),
-  pd: text("pd"), // Legacy field - kept for backwards compatibility
+  odSphere: decimal("od_sphere", { precision: 6, scale: 3 }),
+  odCylinder: decimal("od_cylinder", { precision: 6, scale: 3 }),
+  odAxis: integer("od_axis"),
+  odAdd: decimal("od_add", { precision: 4, scale: 2 }),
+  osSphere: decimal("os_sphere", { precision: 6, scale: 3 }),
+  osCylinder: decimal("os_cylinder", { precision: 6, scale: 3 }),
+  osAxis: integer("os_axis"),
+  osAdd: decimal("os_add", { precision: 4, scale: 2 }),
+  pd: decimal("pd", { precision: 4, scale: 1 }), // Legacy field - kept for backwards compatibility
   // British Standards - Separate L/R Pupillary Distances
   pdRight: decimal("pd_right", { precision: 4, scale: 1 }), // Right monocular PD (mm)
   pdLeft: decimal("pd_left", { precision: 4, scale: 1 }),   // Left monocular PD (mm)
@@ -7240,14 +7279,6 @@ export type InsertTreatmentOutcomePrediction = typeof treatmentOutcomePrediction
 /**
  * Appointment Booking Enums
  */
-export const appointmentStatusEnum = pgEnum("appointment_status", [
-  "pending",
-  "confirmed",
-  "cancelled",
-  "completed",
-  "no_show",
-]);
-
 export const cancelledByEnum = pgEnum("cancelled_by", ["patient", "provider", "system"]);
 
 /**
@@ -7324,7 +7355,7 @@ export const appointmentBookings = pgTable(
     endTime: text("end_time").notNull(), // HH:MM
     duration: integer("duration").notNull(), // minutes
 
-    status: appointmentStatusEnum("status").notNull().default("pending"),
+    status: appointmentStatusEnum("status").notNull().default("scheduled"),
 
     reason: text("reason"),
     notes: text("notes"),
@@ -8764,3 +8795,744 @@ export type NPSSurvey = typeof npsSurveys.$inferSelect;
 export type InsertNPSSurvey = typeof npsSurveys.$inferInsert;
 
 // ========== End User Feedback & NPS Tables ==========
+
+// ========== Appointment Scheduling Tables ==========
+
+// Appointments table
+export const appointments = pgTable(
+  "appointments",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+    patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
+    practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
+    
+    // Appointment details
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    type: appointmentTypeEnum("appointment_type").notNull(),
+    status: appointmentStatusEnum("appointment_status").notNull().default("scheduled"),
+    
+    // Timing
+    startTime: timestamp("start_time", { withTimezone: true }).notNull(),
+    endTime: timestamp("end_time", { withTimezone: true }).notNull(),
+    duration: integer("duration").notNull(), // in minutes
+    
+    // Location and resources
+    location: varchar("location", { length: 255 }),
+    notes: text("notes"),
+    isVirtual: boolean("is_virtual").default(false),
+    virtualMeetingLink: text("virtual_meeting_link"),
+    
+    // Reminders
+    reminderSent: boolean("reminder_sent").default(false),
+    reminderType: reminderTypeEnum("reminder_type"),
+    reminderTime: timestamp("reminder_time", { withTimezone: true }),
+    
+    // Metadata
+    createdBy: varchar("created_by").references(() => users.id),
+    updatedBy: varchar("updated_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+    
+    // Cancellation details
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    cancelledBy: varchar("cancelled_by").references(() => users.id),
+    cancellationReason: text("cancellation_reason"),
+    
+    // Rescheduling details
+    rescheduledFrom: varchar("rescheduled_from").references(() => appointments.id),
+    rescheduledTo: varchar("rescheduled_to").references(() => appointments.id),
+  },
+  (table) => [
+    index("idx_appointments_company").on(table.companyId),
+    index("idx_appointments_patient").on(table.patientId),
+    index("idx_appointments_practitioner").on(table.practitionerId),
+    index("idx_appointments_start_time").on(table.startTime),
+    index("idx_appointments_status").on(table.status),
+    index("idx_appointments_type").on(table.type),
+    index("idx_appointments_created_at").on(table.createdAt),
+  ],
+);
+
+// Appointment Resources table (for booking test rooms, equipment, etc.)
+export const appointmentResources = pgTable(
+  "appointment_resources",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    appointmentId: varchar("appointment_id").references(() => appointments.id, { onDelete: 'cascade' }),
+    resourceId: varchar("resource_id").notNull(),
+    resourceType: resourceTypeEnum("resource_type").notNull(),
+    resourceName: varchar("resource_name", { length: 255 }).notNull(),
+    
+    // Resource availability
+    startTime: timestamp("start_time", { withTimezone: true }).notNull(),
+    endTime: timestamp("end_time", { withTimezone: true }).notNull(),
+    
+    // Resource details
+    location: varchar("location", { length: 255 }),
+    capacity: integer("capacity").default(1),
+    
+    // Metadata
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("idx_appointment_resources_appointment").on(table.appointmentId),
+    index("idx_appointment_resources_resource").on(table.resourceId),
+    index("idx_appointment_resources_type").on(table.resourceType),
+    index("idx_appointment_resources_time").on(table.startTime, table.endTime),
+  ],
+);
+
+// Appointment Availability (practitioner schedules, resource availability)
+export const appointmentAvailability = pgTable(
+  "appointment_availability",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+    resourceId: varchar("resource_id").notNull(),
+    resourceType: resourceTypeEnum("resource_type").notNull(),
+    
+    // Availability pattern
+    dayOfWeek: integer("day_of_week").notNull(), // 0 = Sunday, 6 = Saturday
+    startTime: timestamp("start_time", { withTimezone: true }).notNull(),
+    endTime: timestamp("end_time", { withTimezone: true }).notNull(),
+    
+    // Recurrence
+    isRecurring: boolean("is_recurring").default(true),
+    validFrom: date("valid_from").notNull(),
+    validUntil: date("valid_until"),
+    
+    // Exceptions (blocked times, holidays, etc.)
+    isBlocked: boolean("is_blocked").default(false),
+    blockReason: text("block_reason"),
+    
+    // Metadata
+    createdBy: varchar("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("idx_appointment_availability_company").on(table.companyId),
+    index("idx_appointment_availability_resource").on(table.resourceId),
+    index("idx_appointment_availability_type").on(table.resourceType),
+    index("idx_appointment_availability_day").on(table.dayOfWeek),
+    index("idx_appointment_availability_time").on(table.startTime, table.endTime),
+  ],
+);
+
+// Appointment Reminders
+export const appointmentReminders = pgTable(
+  "appointment_reminders",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    appointmentId: varchar("appointment_id").references(() => appointments.id, { onDelete: 'cascade' }),
+    
+    // Reminder configuration
+    type: reminderTypeEnum("type").notNull(),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    
+    // Recipient details
+    recipientEmail: varchar("recipient_email", { length: 255 }),
+    recipientPhone: varchar("recipient_phone", { length: 50 }),
+    
+    // Status
+    status: varchar("status", { length: 50 }).default("pending"), // pending, sent, failed
+    attempts: integer("attempts").default(0),
+    errorMessage: text("error_message"),
+    
+    // Message content
+    message: text("message"),
+    subject: varchar("subject", { length: 255 }),
+    
+    // Metadata
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("idx_appointment_reminders_appointment").on(table.appointmentId),
+    index("idx_appointment_reminders_status").on(table.status),
+    index("idx_appointment_reminders_scheduled").on(table.scheduledFor),
+    index("idx_appointment_reminders_type").on(table.type),
+  ],
+);
+
+// Appointment Waitlist
+export const appointmentWaitlist = pgTable(
+  "appointment_waitlist",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+    patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
+    
+    // Waitlist request details
+    appointmentType: appointmentTypeEnum("appointment_type").notNull(),
+    preferredDate: date("preferred_date"),
+    preferredTimeRange: varchar("preferred_time_range", { length: 100 }), // morning, afternoon, evening
+    flexibility: integer("flexibility").default(3), // days willing to wait
+    
+    // Contact preferences
+    contactMethod: reminderTypeEnum("contact_method").notNull(),
+    contactValue: varchar("contact_value", { length: 255 }).notNull(),
+    
+    // Status
+    status: varchar("status", { length: 50 }).default("active"), // active, fulfilled, cancelled, expired
+    fulfilledAt: timestamp("fulfilled_at", { withTimezone: true }),
+    fulfilledAppointmentId: varchar("fulfilled_appointment_id").references(() => appointments.id),
+    
+    // Notes
+    notes: text("notes"),
+    priority: integer("priority").default(5), // 1 = highest, 10 = lowest
+    
+    // Metadata
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("idx_appointment_waitlist_company").on(table.companyId),
+    index("idx_appointment_waitlist_patient").on(table.patientId),
+    index("idx_appointment_waitlist_status").on(table.status),
+    index("idx_appointment_waitlist_priority").on(table.priority),
+    index("idx_appointment_waitlist_created").on(table.createdAt),
+  ],
+);
+
+// Zod schemas for validation
+export const insertAppointmentSchema = createInsertSchema(appointments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  cancelledAt: true,
+  cancelledBy: true,
+  rescheduledFrom: true,
+  rescheduledTo: true,
+});
+
+export const updateAppointmentSchema = insertAppointmentSchema.partial();
+
+export const insertAppointmentResourceSchema = createInsertSchema(appointmentResources).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAppointmentAvailabilitySchema = createInsertSchema(appointmentAvailability).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAppointmentReminderSchema = createInsertSchema(appointmentReminders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  sentAt: true,
+});
+
+export const insertAppointmentWaitlistSchema = createInsertSchema(appointmentWaitlist).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  fulfilledAt: true,
+});
+
+// TypeScript types
+export type Appointment = typeof appointments.$inferSelect;
+export type InsertAppointment = typeof appointments.$inferInsert;
+export type AppointmentResource = typeof appointmentResources.$inferSelect;
+export type InsertAppointmentResource = typeof appointmentResources.$inferInsert;
+export type AppointmentAvailability = typeof appointmentAvailability.$inferSelect;
+export type InsertAppointmentAvailability = typeof appointmentAvailability.$inferInsert;
+export type AppointmentReminder = typeof appointmentReminders.$inferSelect;
+export type InsertAppointmentReminder = typeof appointmentReminders.$inferInsert;
+export type AppointmentWaitlist = typeof appointmentWaitlist.$inferSelect;
+export type InsertAppointmentWaitlist = typeof appointmentWaitlist.$inferInsert;
+
+// ========== End Appointment Scheduling Tables ==========
+
+// ========== EHR System Tables ==========
+
+// EHR Enums
+export const medicalRecordStatusEnum = pgEnum("medical_record_status", [
+  "active",
+  "inactive",
+  "archived",
+  "under_review"
+]);
+
+export const medicationStatusEnum = pgEnum("medication_status", [
+  "active",
+  "discontinued",
+  "completed",
+  "on_hold"
+]);
+
+export const allergySeverityEnum = pgEnum("allergy_severity", [
+  "mild",
+  "moderate",
+  "severe",
+  "life_threatening"
+]);
+
+export const clinicalNoteTypeEnum = pgEnum("clinical_note_type", [
+  "consultation",
+  "examination",
+  "follow_up",
+  "discharge_summary",
+  "referral",
+  "progress_note",
+  "initial_evaluation",
+  "treatment_plan"
+]);
+
+export const vitalSignTypeEnum = pgEnum("vital_sign_type", [
+  "blood_pressure",
+  "heart_rate",
+  "respiratory_rate",
+  "temperature",
+  "oxygen_saturation",
+  "height",
+  "weight",
+  "bmi",
+  "visual_acuity",
+  "intraocular_pressure"
+]);
+
+export const immunizationStatusEnum = pgEnum("immunization_status", [
+  "administered",
+  "refused",
+  "contraindicated",
+  "scheduled",
+  "unknown"
+]);
+
+// Medications
+export const medications = pgTable(
+  "medications",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+    patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
+    practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
+    
+    // Medication details
+    medicationName: varchar("medication_name", { length: 255 }).notNull(),
+    genericName: varchar("generic_name", { length: 255 }),
+    ndcCode: varchar("ndc_code", { length: 20 }), // National Drug Code
+    dosage: varchar("dosage", { length: 100 }).notNull(),
+    route: varchar("route", { length: 50 }).notNull(), // oral, topical, etc.
+    frequency: varchar("frequency", { length: 100 }).notNull(),
+    instructions: text("instructions"),
+    
+    // Prescription details
+    prescribedDate: timestamp("prescribed_date", { withTimezone: true }).notNull(),
+    startDate: timestamp("start_date", { withTimezone: true }),
+    endDate: timestamp("end_date", { withTimezone: true }),
+    status: medicationStatusEnum("status").notNull().default("active"),
+    
+    // Prescribing information
+    reason: text("reason"),
+    quantity: integer("quantity"),
+    refills: integer("refills").default(0),
+    pharmacy: varchar("pharmacy", { length: 255 }),
+    
+    // Metadata
+    prescribedBy: varchar("prescribed_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+    
+    // External identifiers
+    externalPrescriptionId: varchar("external_prescription_id", { length: 100 }),
+  },
+  (table) => [
+    index("idx_medications_company").on(table.companyId),
+    index("idx_medications_patient").on(table.patientId),
+    index("idx_medications_practitioner").on(table.practitionerId),
+    index("idx_medications_status").on(table.status),
+    index("idx_medications_name").on(table.medicationName),
+    index("idx_medications_prescribed_date").on(table.prescribedDate),
+  ],
+);
+
+// Allergies
+export const allergies = pgTable(
+  "allergies",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+    patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
+    practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
+    
+    // Allergy details
+    allergen: varchar("allergen", { length: 255 }).notNull(),
+    allergenType: varchar("allergen_type", { length: 50 }).notNull(), // medication, food, environmental
+    severity: allergySeverityEnum("severity").notNull(),
+    reaction: text("reaction").notNull(),
+    
+    // Status and dates
+    status: varchar("status", { length: 50 }).default("active"),
+    onsetDate: date("onset_date"),
+    reportedDate: timestamp("reported_date", { withTimezone: true }).defaultNow(),
+    
+    // Clinical notes
+    notes: text("notes"),
+    
+    // Metadata
+    reportedBy: varchar("reported_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("idx_allergies_company").on(table.companyId),
+    index("idx_allergies_patient").on(table.patientId),
+    index("idx_allergies_severity").on(table.severity),
+    index("idx_allergies_status").on(table.status),
+    index("idx_allergies_allergen").on(table.allergen),
+  ],
+);
+
+// Clinical Notes
+export const clinicalNotes = pgTable(
+  "clinical_notes",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+    patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
+    practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
+    
+    // Note details
+    noteType: clinicalNoteTypeEnum("note_type").notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    content: text("content").notNull(),
+    
+    // SOAP structure (Subjective, Objective, Assessment, Plan)
+    subjective: text("subjective"),
+    objective: text("objective"),
+    assessment: text("assessment"),
+    plan: text("plan"),
+    
+    // Date and time
+    noteDate: timestamp("note_date", { withTimezone: true }).notNull(),
+    serviceDate: timestamp("service_date", { withTimezone: true }),
+    
+    // Status and workflow
+    status: varchar("status", { length: 50 }).default("draft"),
+    isSigned: boolean("is_signed").default(false),
+    signedAt: timestamp("signed_at", { withTimezone: true }),
+    signedBy: varchar("signed_by").references(() => users.id),
+    
+    // Metadata
+    createdBy: varchar("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+    
+    // Attachments and references
+    appointmentId: varchar("appointment_id").references(() => appointments.id),
+    attachments: jsonb("attachments"), // Array of file references
+  },
+  (table) => [
+    index("idx_clinical_notes_company").on(table.companyId),
+    index("idx_clinical_notes_patient").on(table.patientId),
+    index("idx_clinical_notes_practitioner").on(table.practitionerId),
+    index("idx_clinical_notes_type").on(table.noteType),
+    index("idx_clinical_notes_date").on(table.noteDate),
+    index("idx_clinical_notes_status").on(table.status),
+    index("idx_clinical_notes_appointment").on(table.appointmentId),
+  ],
+);
+
+// Vital Signs
+export const vitalSigns = pgTable(
+  "vital_signs",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+    patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
+    practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
+    
+    // Vital sign details
+    vitalType: vitalSignTypeEnum("vital_type").notNull(),
+    value: varchar("value", { length: 100 }).notNull(),
+    unit: varchar("unit", { length: 50 }).notNull(),
+    
+    // Measurement details
+    measurementDate: timestamp("measurement_date", { withTimezone: true }).notNull(),
+    method: varchar("method", { length: 100 }), // How it was measured
+    position: varchar("position", { length: 50 }), // Patient position during measurement
+    
+    // Clinical context
+    interpretation: varchar("interpretation", { length: 50 }), // normal, high, low, critical
+    notes: text("notes"),
+    
+    // Metadata
+    measuredBy: varchar("measured_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    
+    // Device information
+    deviceId: varchar("device_id", { length: 100 }),
+    deviceType: varchar("device_type", { length: 100 }),
+  },
+  (table) => [
+    index("idx_vital_signs_company").on(table.companyId),
+    index("idx_vital_signs_patient").on(table.patientId),
+    index("idx_vital_signs_type").on(table.vitalType),
+    index("idx_vital_signs_date").on(table.measurementDate),
+    index("idx_vital_signs_interpretation").on(table.interpretation),
+  ],
+);
+
+// Immunizations
+export const immunizations = pgTable(
+  "immunizations",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+    patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
+    practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
+    
+    // Vaccine details
+    vaccineName: varchar("vaccine_name", { length: 255 }).notNull(),
+    vaccineType: varchar("vaccine_type", { length: 100 }).notNull(),
+    manufacturer: varchar("manufacturer", { length: 255 }),
+    lotNumber: varchar("lot_number", { length: 100 }),
+    
+    // Administration details
+    administrationDate: timestamp("administration_date", { withTimezone: true }).notNull(),
+    dose: varchar("dose", { length: 100 }),
+    route: varchar("route", { length: 50 }),
+    site: varchar("site", { length: 50 }), // Injection site
+    
+    // Status and dates
+    status: immunizationStatusEnum("status").notNull().default("administered"),
+    nextDueDate: timestamp("next_due_date", { withTimezone: true }),
+    
+    // Clinical information
+    indications: text("indications"),
+    adverseEvents: text("adverse_events"),
+    notes: text("notes"),
+    
+    // Metadata
+    administeredBy: varchar("administered_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+    
+    // External identifiers
+    cvxCode: varchar("cvx_code", { length: 10 }), // CDC Vaccine Code
+  },
+  (table) => [
+    index("idx_immunizations_company").on(table.companyId),
+    index("idx_immunizations_patient").on(table.patientId),
+    index("idx_immunizations_vaccine").on(table.vaccineName),
+    index("idx_immunizations_date").on(table.administrationDate),
+    index("idx_immunizations_status").on(table.status),
+  ],
+);
+
+// Lab Results
+export const labResults = pgTable(
+  "lab_results",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+    patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
+    practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
+    
+    // Test details
+    testName: varchar("test_name", { length: 255 }).notNull(),
+    testCategory: varchar("test_category", { length: 100 }),
+    loincCode: varchar("loinc_code", { length: 20 }), // LOINC code for standardization
+    
+    // Results
+    resultValue: varchar("result_value", { length: 255 }),
+    resultUnit: varchar("result_unit", { length: 50 }),
+    referenceRange: text("reference_range"),
+    abnormalFlag: varchar("abnormal_flag", { length: 10 }), // H, L, HH, LL, etc.
+    interpretation: text("interpretation"),
+    
+    // Dates and status
+    specimenDate: timestamp("specimen_date", { withTimezone: true }),
+    resultDate: timestamp("result_date", { withTimezone: true }).notNull(),
+    status: varchar("status", { length: 50 }).default("final"),
+    
+    // Laboratory information
+    performingLab: varchar("performing_lab", { length: 255 }),
+    orderingProvider: varchar("ordering_provider", { length: 255 }),
+    
+    // Clinical notes
+    clinicalNotes: text("clinical_notes"),
+    
+    // Metadata
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+    
+    // External identifiers
+    accessionNumber: varchar("accession_number", { length: 100 }),
+  },
+  (table) => [
+    index("idx_lab_results_company").on(table.companyId),
+    index("idx_lab_results_patient").on(table.patientId),
+    index("idx_lab_results_test").on(table.testName),
+    index("idx_lab_results_date").on(table.resultDate),
+    index("idx_lab_results_status").on(table.status),
+  ],
+);
+
+// Zod schemas for validation
+export const insertMedicationSchema = createInsertSchema(medications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertAllergySchema = createInsertSchema(allergies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertClinicalNoteSchema = createInsertSchema(clinicalNotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  signedAt: true
+});
+
+export const insertVitalSignSchema = createInsertSchema(vitalSigns).omit({
+  id: true,
+  createdAt: true
+});
+
+export const insertImmunizationSchema = createInsertSchema(immunizations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertLabResultSchema = createInsertSchema(labResults).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+// TypeScript types
+export type Medication = typeof medications.$inferSelect;
+export type InsertMedication = typeof medications.$inferInsert;
+export type Allergy = typeof allergies.$inferSelect;
+export type InsertAllergy = typeof allergies.$inferInsert;
+export type ClinicalNote = typeof clinicalNotes.$inferSelect;
+export type InsertClinicalNote = typeof clinicalNotes.$inferInsert;
+export type VitalSign = typeof vitalSigns.$inferSelect;
+export type InsertVitalSign = typeof vitalSigns.$inferInsert;
+export type Immunization = typeof immunizations.$inferSelect;
+export type InsertImmunization = typeof immunizations.$inferInsert;
+export type LabResult = typeof labResults.$inferSelect;
+export type InsertLabResult = typeof labResults.$inferInsert;
+
+// ========== End EHR System Tables ==========
+
+// ========== Patient Portal Tables ==========
+
+// Patient portal settings and preferences
+export const patientPortalSettings = pgTable("patient_portal_settings", {
+id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
+preferredLanguage: varchar("preferred_language").default("en"),
+timezone: varchar("timezone").default("UTC"),
+notificationPreferences: jsonb("notification_preferences"),
+privacySettings: jsonb("privacy_settings"),
+createdAt: timestamp("created_at").defaultNow().notNull(),
+updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Appointment requests from patients
+export const appointmentRequests = pgTable("appointment_requests", {
+id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
+companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }).notNull(),
+providerId: varchar("provider_id").references(() => users.id, { onDelete: 'set null' }),
+serviceType: varchar("service_type"),
+preferredDate: timestamp("preferred_date"),
+preferredTime: varchar("preferred_time"),
+reasonForVisit: text("reason_for_visit"),
+notes: text("notes"),
+status: varchar("status").default("pending"), // pending, approved, denied, scheduled
+requestedAt: timestamp("requested_at").defaultNow().notNull(),
+processedAt: timestamp("processed_at"),
+processedBy: varchar("processed_by").references(() => users.id, { onDelete: 'set null' }),
+adminNotes: text("admin_notes"),
+});
+
+// Patient documents and files
+export const patientDocuments = pgTable("patient_documents", {
+id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
+companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }).notNull(),
+documentType: varchar("document_type").notNull(), // lab_result, imaging, prescription, insurance_card, id_document, other
+title: varchar("title").notNull(),
+description: text("description"),
+fileUrl: varchar("file_url").notNull(),
+fileName: varchar("file_name").notNull(),
+fileSize: integer("file_size").notNull(),
+mimeType: varchar("mime_type").notNull(),
+uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+expiresAt: timestamp("expires_at"),
+isShared: boolean("is_shared").default(false).notNull(),
+status: varchar("status").default("active").notNull(), // active, archived, deleted
+uploadedBy: varchar("uploaded_by").references(() => users.id, { onDelete: 'set null' }),
+tags: jsonb("tags"),
+metadata: jsonb("metadata"),
+});
+
+// Patient health metrics and wellness tracking
+export const patientHealthMetrics = pgTable("patient_health_metrics", {
+id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
+companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }).notNull(),
+metricType: varchar("metric_type").notNull(), // blood_pressure, weight, blood_sugar, temperature, heart_rate, oxygen_saturation, custom
+value: numeric("value").notNull(),
+unit: varchar("unit").notNull(),
+measuredAt: timestamp("measured_at").notNull(),
+notes: text("notes"),
+deviceInfo: varchar("device_info"),
+recordedAt: timestamp("recorded_at").defaultNow().notNull(),
+source: varchar("source").default("patient"), // patient, provider, device
+customMetricName: varchar("custom_metric_name"),
+metadata: jsonb("metadata"),
+});
+
+// Patient portal access logs for audit
+export const patientPortalAccessLogs = pgTable("patient_portal_access_logs", {
+id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
+companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }).notNull(),
+accessTime: timestamp("access_time").defaultNow().notNull(),
+ipAddress: varchar("ip_address"),
+userAgent: text("user_agent"),
+action: varchar("action").notNull(), // login, logout, view_records, send_message, etc.
+resourceType: varchar("resource_type"), // appointment, medical_record, message, document
+resourceId: varchar("resource_id"),
+success: boolean("success").default(true).notNull(),
+failureReason: varchar("failure_reason"),
+sessionId: varchar("session_id"),
+location: jsonb("location"), // geolocation data
+deviceFingerprint: varchar("device_fingerprint"),
+});
+
+// Export types for patient portal tables
+export type PatientPortalSetting = typeof patientPortalSettings.$inferSelect;
+export type InsertPatientPortalSetting = typeof patientPortalSettings.$inferInsert;
+export type AppointmentRequest = typeof appointmentRequests.$inferSelect;
+export type InsertAppointmentRequest = typeof appointmentRequests.$inferInsert;
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;
+export type PatientDocument = typeof patientDocuments.$inferSelect;
+export type InsertPatientDocument = typeof patientDocuments.$inferInsert;
+export type PatientHealthMetric = typeof patientHealthMetrics.$inferSelect;
+export type InsertPatientHealthMetric = typeof patientHealthMetrics.$inferInsert;
+export type PatientPortalAccessLog = typeof patientPortalAccessLogs.$inferSelect;
+export type InsertPatientPortalAccessLog = typeof patientPortalAccessLogs.$inferInsert;
+
+// ========== End Patient Portal Tables ==========

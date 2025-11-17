@@ -106,6 +106,7 @@ const MLModelManagementPage = lazy(() => import("@/pages/MLModelManagementPage")
 const PythonMLDashboardPage = lazy(() => import("@/pages/PythonMLDashboardPage"));
 const ShopifyIntegrationPage = lazy(() => import("@/pages/integrations/ShopifyIntegrationPage"));
 const NHSIntegrationPage = lazy(() => import("@/pages/integrations/NHSIntegrationPage"));
+const ServiceStatusPage = lazy(() => import("@/pages/ServiceStatusPage"));
 const FeatureFlagsPage = lazy(() => import("@/pages/FeatureFlagsPage"));
 const APIDocumentationPage = lazy(() => import("@/pages/APIDocumentationPage"));
 const SupplierLibraryPage = lazy(() => import("@/pages/SupplierLibraryPage"));
@@ -113,6 +114,12 @@ const SupplierLibraryPage = lazy(() => import("@/pages/SupplierLibraryPage"));
 // Email & Communications
 const EmailAnalyticsPage = lazy(() => import("@/pages/EmailAnalyticsPage"));
 const EmailTemplatesPage = lazy(() => import("@/pages/EmailTemplatesPage"));
+
+// Advanced Healthcare Systems (New Implementation)
+const HealthcareAnalyticsPage = lazy(() => import("@/pages/HealthcareAnalyticsPage"));
+const LaboratoryIntegrationPage = lazy(() => import("@/pages/LaboratoryIntegrationPage"));
+const PracticeManagementPage = lazy(() => import("@/pages/PracticeManagementPage"));
+const HealthcareSystemsDemoPage = lazy(() => import("@/pages/HealthcareSystemsDemoPage"));
 
 // Marketplace (Chunk 6)
 const MarketplacePage = lazy(() => import("@/pages/MarketplacePage"));
@@ -411,6 +418,7 @@ function AuthenticatedApp() {
         <Switch>
           {/* Welcome/Home Page - Shows platform capabilities */}
           <Route path="/welcome" component={WelcomePage} />
+          <Route path="/healthcare-systems-demo" component={HealthcareSystemsDemoPage} />
 
         {userRole === "ecp" && (
           <>
@@ -448,6 +456,12 @@ function AuthenticatedApp() {
             <Route path="/ecp/clinical-protocols" component={ClinicalProtocolsPage} />
             <Route path="/ecp/analytics" component={BusinessAnalyticsPage} />
             <Route path="/ecp/nhs" component={NHSIntegrationPage} />
+            
+            {/* Advanced Healthcare Systems */}
+            <Route path="/ecp/healthcare-analytics" component={HealthcareAnalyticsPage} />
+            <Route path="/ecp/laboratory" component={LaboratoryIntegrationPage} />
+            <Route path="/ecp/practice-management" component={PracticeManagementPage} />
+            
             <Route path="/order/:id" component={OrderDetailsPage} />
             <Route path="/ecp/returns">
               <div className="text-center py-12">
@@ -486,6 +500,11 @@ function AuthenticatedApp() {
             <Route path="/lab/analytics" component={BusinessAnalyticsPage} />
             <Route path="/lab/equipment" component={EquipmentPage} />
             <Route path="/lab/equipment/:id" component={EquipmentDetailPage} />
+            
+            {/* Advanced Healthcare Systems */}
+            <Route path="/lab/healthcare-analytics" component={HealthcareAnalyticsPage} />
+            <Route path="/lab/laboratory" component={LaboratoryIntegrationPage} />
+            
             <Route path="/lab/rnd">
               <div className="text-center py-12">
                 <h2 className="text-2xl font-semibold">R&D Projects</h2>
@@ -542,8 +561,15 @@ function AuthenticatedApp() {
             <Route path="/admin/python-ml" component={PythonMLDashboardPage} />
             <Route path="/admin/shopify" component={ShopifyIntegrationPage} />
             <Route path="/admin/nhs" component={NHSIntegrationPage} />
+            <Route path="/admin/service-status" component={ServiceStatusPage} />
             <Route path="/admin/feature-flags" component={FeatureFlagsPage} />
             <Route path="/admin/api-docs" component={APIDocumentationPage} />
+            
+            {/* Advanced Healthcare Systems */}
+            <Route path="/admin/healthcare-analytics" component={HealthcareAnalyticsPage} />
+            <Route path="/admin/laboratory" component={LaboratoryIntegrationPage} />
+            <Route path="/admin/practice-management" component={PracticeManagementPage} />
+            
             <Route path="/admin/platform">
               <div className="text-center py-12">
                 <h2 className="text-2xl font-semibold">Platform Settings</h2>
@@ -568,8 +594,14 @@ function AuthenticatedApp() {
             <Route path="/platform-admin/python-ml" component={PythonMLDashboardPage} />
             <Route path="/platform-admin/shopify" component={ShopifyIntegrationPage} />
             <Route path="/platform-admin/nhs" component={NHSIntegrationPage} />
+            <Route path="/platform-admin/service-status" component={ServiceStatusPage} />
             <Route path="/platform-admin/feature-flags" component={FeatureFlagsPage} />
             <Route path="/platform-admin/api-docs" component={APIDocumentationPage} />
+            
+            {/* Advanced Healthcare Systems */}
+            <Route path="/platform-admin/healthcare-analytics" component={HealthcareAnalyticsPage} />
+            <Route path="/platform-admin/laboratory" component={LaboratoryIntegrationPage} />
+            <Route path="/platform-admin/practice-management" component={PracticeManagementPage} />
             
             {/* ECP Routes */}
             <Route path="/ecp/dashboard" component={ECPDashboard} />

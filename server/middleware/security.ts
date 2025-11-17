@@ -3,11 +3,13 @@ import { createHmac } from 'crypto';
 import type { TLSSocket } from 'tls';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import cors from 'cors';
 import { AuthenticatedRequest } from './auth';
 import { eq } from 'drizzle-orm';
 import * as schema from '@shared/schema';
 import { db } from '../db';
 import PasswordValidator from 'password-validator';
+import { logger } from '../utils/logger';
 
 // Constants for security requirements
 const REQUIRED_TLS_VERSION = 'TLSv1.3';
@@ -60,18 +62,118 @@ export const securityHeaders = helmet({
   },
 });
 
-// Enforce TLS version
+// Enforce TLS version with enhanced logging
 export const enforceTLS = (req: Request, res: Response, next: NextFunction) => {
   const protocol = req.protocol;
-  if (protocol !== 'https') {
-    return res.status(403).json({ error: 'HTTPS required' });
+  const forwardedProto = req.get('x-forwarded-proto');
+  
+  // Check for HTTPS in production
+  if (process.env.NODE_ENV === 'production' && protocol !== 'https' && forwardedProto !== 'https') {
+    logger.warn({ 
+      ip: req.ip, 
+      userAgent: req.get('user-agent'),
+      url: req.url,
+      protocol,
+      forwardedProto
+    }, 'HTTP request attempted in production - redirecting to HTTPS');
+    
+    // Redirect to HTTPS
+    const httpsUrl = `https://${req.get('host')}${req.url}`;
+    return res.redirect(301, httpsUrl);
+  }
+  
+  if (protocol !== 'https' && forwardedProto !== 'https') {
+    return res.status(403).json({ 
+      error: 'HTTPS required',
+      message: 'This endpoint requires a secure connection'
+    });
   }
   
   // Check TLS version
   const tlsSocket = req.socket as TLSSocket;
   const negotiatedProtocol = typeof tlsSocket.getProtocol === 'function' ? tlsSocket.getProtocol() : null;
   if (negotiatedProtocol && negotiatedProtocol !== REQUIRED_TLS_VERSION) {
-    return res.status(403).json({ error: `TLS ${REQUIRED_TLS_VERSION} required` });
+    logger.warn({ 
+      ip: req.ip,
+      negotiatedProtocol,
+      requiredProtocol: REQUIRED_TLS_VERSION
+    }, 'Insecure TLS version detected');
+    
+    return res.status(403).json({ 
+      error: `TLS ${REQUIRED_TLS_VERSION} required`,
+      message: `Your connection uses ${negotiatedProtocol}, but ${REQUIRED_TLS_VERSION} is required`
+    });
+  }
+  
+  next();
+};
+
+// Enhanced CORS configuration
+export const corsConfig = cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'https://yourdomain.com'
+    ];
+    
+    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      logger.warn({ 
+        origin, 
+        ip: req.ip,
+        userAgent: req.get('user-agent')
+      }, 'CORS violation - origin not allowed');
+      
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Origin',
+    'X-Requested-With',
+    'Content-Type',
+    'Accept',
+    'Authorization',
+    'X-API-Key',
+    'X-Client-Version'
+  ],
+  credentials: true,
+  optionsSuccessStatus: 200,
+  preflightContinue: false
+});
+
+// SSL Certificate validation middleware
+export const validateSSLCertificate = (req: Request, res: Response, next: NextFunction) => {
+  const tlsSocket = req.socket as TLSSocket;
+  
+  if (!tlsSocket || !tlsSocket.authorized) {
+    logger.error({ 
+      ip: req.ip,
+      authorized: tlsSocket?.authorized,
+      authorizationError: tlsSocket?.authorizationError
+    }, 'SSL certificate validation failed');
+    
+    return res.status(403).json({
+      error: 'Invalid SSL certificate',
+      message: 'The SSL certificate could not be validated'
+    });
+  }
+  
+  // Log certificate details for monitoring
+  const cert = tlsSocket.getPeerCertificate();
+  if (cert && process.env.NODE_ENV === 'production') {
+    logger.debug({
+      subject: cert.subject,
+      issuer: cert.issuer,
+      validFrom: cert.valid_from,
+      validTo: cert.valid_to,
+      fingerprint: cert.fingerprint
+    }, 'SSL certificate validated');
   }
   
   next();

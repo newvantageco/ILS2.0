@@ -15,7 +15,7 @@ import { StatCardSkeleton } from "@/components/ui/CardSkeleton";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserCheck, UserX, Clock, CheckCircle, XCircle, Ban, Shield, Trash2, UserPlus, Brain, TrendingUp, Zap, AlertTriangle, Lightbulb, ShieldCheck, ArrowRight } from "lucide-react";
+import { Users, UserCheck, UserX, Clock, CheckCircle, XCircle, Ban, Shield, Trash2, UserPlus, Brain, TrendingUp, Zap, AlertTriangle, Lightbulb, ShieldCheck, ArrowRight, Database } from "lucide-react";
 import { StatsCard, SkeletonStats } from "@/components/ui";
 
 type User = {
@@ -60,6 +60,18 @@ export default function AdminDashboard() {
     rateLimitHits: number;
   }>({
     queryKey: ["/api/admin/ai-stats"],
+  });
+
+  const { data: systemHealth } = useQuery<{
+    overall: 'healthy' | 'warning' | 'critical';
+    database: { status: string; responseTime: number; connectionCount: number };
+    redis: { status: string; responseTime: number; memoryUsage: number };
+    api: { status: string; averageResponseTime: number; requestsPerMinute: number; errorRate: number };
+    ai: { status: string; modelAvailability: number; averageProcessingTime: number; queueLength: number };
+    storage: { status: string; totalSpace: number; usedSpace: number; availableSpace: number };
+  }>({
+    queryKey: ["/api/admin/health"],
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // AI Quick Actions for admin based on system state
@@ -343,6 +355,131 @@ export default function AdminDashboard() {
           }}
         />
       </div>
+
+      {/* System Health Monitoring */}
+      {systemHealth && (
+        <Card className="border-2 border-green-500/30 bg-gradient-to-br from-green-50/50 via-background to-background shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
+                <ShieldCheck className="h-6 w-6 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <CardTitle className="text-xl flex items-center gap-2">
+                  System Health
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    systemHealth.overall === 'healthy' ? 'bg-green-100 text-green-800' :
+                    systemHealth.overall === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-red-100 text-red-800'
+                  }`}>
+                    {systemHealth.overall.toUpperCase()}
+                  </span>
+                </CardTitle>
+                <CardDescription className="mt-0.5">Real-time system status and performance metrics</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Database */}
+              <div className="flex items-center justify-between p-3 border rounded-lg bg-white/50">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <Database className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Database</p>
+                    <p className="text-xs text-gray-600">{systemHealth.database.responseTime}ms</p>
+                  </div>
+                </div>
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                  systemHealth.database.status === 'connected' ? 'bg-green-100 text-green-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {systemHealth.database.status}
+                </span>
+              </div>
+
+              {/* Redis */}
+              <div className="flex items-center justify-between p-3 border rounded-lg bg-white/50">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                    <Zap className="w-4 h-4 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Redis Cache</p>
+                    <p className="text-xs text-gray-600">{systemHealth.redis.responseTime}ms</p>
+                  </div>
+                </div>
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                  systemHealth.redis.status === 'connected' ? 'bg-green-100 text-green-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {systemHealth.redis.status}
+                </span>
+              </div>
+
+              {/* API */}
+              <div className="flex items-center justify-between p-3 border rounded-lg bg-white/50">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">API Service</p>
+                    <p className="text-xs text-gray-600">{systemHealth.api.averageResponseTime}ms</p>
+                  </div>
+                </div>
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                  systemHealth.api.status === 'operational' ? 'bg-green-100 text-green-800' :
+                  systemHealth.api.status === 'degraded' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {systemHealth.api.status}
+                </span>
+              </div>
+
+              {/* AI Service */}
+              <div className="flex items-center justify-between p-3 border rounded-lg bg-white/50">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-cyan-100 flex items-center justify-center">
+                    <Brain className="w-4 h-4 text-cyan-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">AI Service</p>
+                    <p className="text-xs text-gray-600">{Math.round(systemHealth.ai.modelAvailability * 100)}% available</p>
+                  </div>
+                </div>
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                  systemHealth.ai.status === 'operational' ? 'bg-green-100 text-green-800' :
+                  systemHealth.ai.status === 'degraded' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {systemHealth.ai.status}
+                </span>
+              </div>
+            </div>
+
+            {/* Additional Metrics */}
+            <div className="mt-4 pt-4 border-t">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">API Requests/min:</span>
+                  <span className="font-medium">{systemHealth.api.requestsPerMinute}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Error Rate:</span>
+                  <span className="font-medium">{systemHealth.api.errorRate}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">AI Queue Length:</span>
+                  <span className="font-medium">{systemHealth.ai.queueLength}</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* AI System Statistics - Enhanced Modern Card */}
       <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-background shadow-lg shadow-primary/5 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300">

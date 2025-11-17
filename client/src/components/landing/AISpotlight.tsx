@@ -7,6 +7,8 @@ import { Card, CardContent } from '@/components/ui/card';
 export function AISpotlight() {
   const [query, setQuery] = useState('');
   const [showResponse, setShowResponse] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [response, setResponse] = useState<any>(null);
 
   const exampleQueries = [
     "Show me my top-selling frames this month",
@@ -26,7 +28,32 @@ export function AISpotlight() {
     }, 5000);
   };
 
-  const mockResponse = {
+  const handleAIQuery = async (queryText: string) => {
+    if (!queryText.trim()) return;
+
+    setIsLoading(true);
+    try {
+      // Call the AI assistant API
+      const response = await fetch('/api/ai/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: queryText,
+          context: 'landing_page_demo'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('AI service unavailable');
+      }
+
+      const aiResponse = await response.json();
+      setResponse(aiResponse.response);
+    } catch (error) {
+      // Fallback to demo data for landing page
+      const fallbackResponse: Record<string, any> = {
     "Show me my top-selling frames this month": {
       title: "Top 5 Frames This Month",
       items: [
@@ -47,7 +74,14 @@ export function AISpotlight() {
     }
   };
 
-  const currentResponse = mockResponse[query as keyof typeof mockResponse];
+      setResponse(fallbackResponse[queryText as keyof typeof fallbackResponse] || "I'm sorry, I couldn't process that request. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Use the response state (either from AI or fallback)
+  const currentResponse = response;
 
   return (
     <section className="py-20 bg-gradient-to-b from-white to-blue-50">

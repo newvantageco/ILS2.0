@@ -5,6 +5,7 @@ import { db } from '../db';
 import { eq } from 'drizzle-orm';
 import { equipment } from '@shared/schema';
 import { createLogger } from '../utils/logger';
+import { ErrorResponses, asyncHandler } from '../utils/errorResponses';
 
 const router = Router();
 const logger = createLogger('equipment');
@@ -15,15 +16,15 @@ router.post(
   '/api/equipment/discovery/start',
   authenticateUser,
   requireRole(['admin', 'engineer'] as const),
-  (req, res) => {
+  asyncHandler(async (req, res) => {
     try {
       equipmentService.startDiscovery();
       res.json({ message: 'Equipment discovery started' });
     } catch (error) {
       logger.error({ error }, 'Error starting discovery');
-      res.status(500).json({ error: 'Failed to start equipment discovery' });
+      ErrorResponses.equipmentConnectionFailed(res, 'discovery-service', error.message);
     }
-  }
+  })
 );
 
 // Stop equipment discovery
@@ -31,15 +32,15 @@ router.post(
   '/api/equipment/discovery/stop',
   authenticateUser,
   requireRole(['admin', 'engineer'] as const),
-  (req, res) => {
+  asyncHandler(async (req, res) => {
     try {
       equipmentService.stopDiscovery();
       res.json({ message: 'Equipment discovery stopped' });
     } catch (error) {
       logger.error({ error }, 'Error stopping discovery');
-      res.status(500).json({ error: 'Failed to stop equipment discovery' });
+      ErrorResponses.equipmentConnectionFailed(res, 'discovery-service', error.message);
     }
-  }
+  })
 );
 
 // Get all known equipment
@@ -47,15 +48,15 @@ router.get(
   '/api/equipment',
   authenticateUser,
   requireRole(['admin', 'engineer', 'lab_tech'] as const),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     try {
       const equipment = await equipmentService.getKnownEquipment();
       res.json(equipment);
     } catch (error) {
       logger.error({ error }, 'Error fetching equipment');
-      res.status(500).json({ error: 'Failed to fetch equipment list' });
+      ErrorResponses.equipmentConnectionFailed(res, 'equipment-list', error.message);
     }
-  }
+  })
 );
 
 // Get specific equipment details
@@ -63,18 +64,18 @@ router.get(
   '/api/equipment/:id',
   authenticateUser,
   requireRole(['admin', 'engineer', 'lab_tech'] as const),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     try {
       const equipment = await equipmentService.getEquipmentById(req.params.id);
       if (!equipment) {
-        return res.status(404).json({ error: 'Equipment not found' });
+        return ErrorResponses.equipmentNotFound(res, req.params.id);
       }
       res.json(equipment);
     } catch (error) {
       logger.error({ error, equipmentId: req.params.id }, 'Error fetching equipment');
-      res.status(500).json({ error: 'Failed to fetch equipment details' });
+      ErrorResponses.equipmentConnectionFailed(res, req.params.id, error.message);
     }
-  }
+  })
 );
 
 // Configure equipment

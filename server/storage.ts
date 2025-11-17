@@ -7166,28 +7166,6 @@ export class DbStorage implements IStorage {
   }
 
   /**
-   * Get customer health score for a specific customer
-   */
-  async getCustomerHealthScore(companyId: string, customerId: string) {
-    const records = await db
-      .select()
-      .from(customerMetrics)
-      .where(
-        and(
-          eq(customerMetrics.companyId, companyId),
-          eq(customerMetrics.customerId, customerId)
-        )
-      )
-      .limit(1);
-
-    if (records.length > 0) {
-      return records[0];
-    }
-
-    return { healthScore: 75, healthTrend: 'stable' };
-  }
-
-  /**
    * Get top customers by MRR
    */
   async getTopCustomersByMRR(companyId: string, limit: number = 10) {

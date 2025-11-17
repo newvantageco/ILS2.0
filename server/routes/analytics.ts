@@ -12,6 +12,7 @@ import {
 import { and, eq, gte, lte, sql, desc, count, sum, avg, between } from 'drizzle-orm';
 import { z } from 'zod';
 import { createLogger } from '../utils/logger';
+import { analyticsService } from '../services/AnalyticsService';
 
 const router = Router();
 const logger = createLogger('analytics');
@@ -664,6 +665,220 @@ router.get('/abandonment-funnel', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error({ error }, 'Error fetching abandonment funnel');
     res.status(500).json({ error: 'Failed to fetch abandonment funnel' });
+  }
+});
+
+// ========================================
+// ADVANCED ANALYTICS ENDPOINTS
+// ========================================
+
+// Admin authentication middleware
+const requireAdmin = (req: Request, res: Response, next: Function) => {
+  if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'practitioner')) {
+    return res.status(403).json({ error: 'Admin or practitioner access required' });
+  }
+  next();
+};
+
+/**
+ * GET /api/analytics/advanced/prescriptions
+ * Get comprehensive prescription analytics
+ */
+router.get('/advanced/prescriptions', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { startDate, endDate, ecpId } = req.query;
+    
+    const options = {
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+      ecpId: ecpId as string
+    };
+
+    const analytics = await analyticsService.getPrescriptionAnalytics(options);
+    res.json(analytics);
+  } catch (error) {
+    logger.error({ error, query: req.query }, 'Failed to get prescription analytics');
+    res.status(500).json({ error: 'Failed to get prescription analytics' });
+  }
+});
+
+/**
+ * GET /api/analytics/advanced/orders
+ * Get comprehensive order analytics
+ */
+router.get('/advanced/orders', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { startDate, endDate, status } = req.query;
+    
+    const options = {
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+      status: status as string
+    };
+
+    const analytics = await analyticsService.getOrderAnalytics(options);
+    res.json(analytics);
+  } catch (error) {
+    logger.error({ error, query: req.query }, 'Failed to get order analytics');
+    res.status(500).json({ error: 'Failed to get order analytics' });
+  }
+});
+
+/**
+ * GET /api/analytics/advanced/ai
+ * Get AI model analytics
+ */
+router.get('/advanced/ai', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { startDate, endDate, modelType } = req.query;
+    
+    const options = {
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+      modelType: modelType as string
+    };
+
+    const analytics = await analyticsService.getAIAnalytics(options);
+    res.json(analytics);
+  } catch (error) {
+    logger.error({ error, query: req.query }, 'Failed to get AI analytics');
+    res.status(500).json({ error: 'Failed to get AI analytics' });
+  }
+});
+
+/**
+ * GET /api/analytics/advanced/users
+ * Get comprehensive user analytics
+ */
+router.get('/advanced/users', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { startDate, endDate, role } = req.query;
+    
+    const options = {
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+      role: role as string
+    };
+
+    const analytics = await analyticsService.getUserAnalytics(options);
+    res.json(analytics);
+  } catch (error) {
+    logger.error({ error, query: req.query }, 'Failed to get user analytics');
+    res.status(500).json({ error: 'Failed to get user analytics' });
+  }
+});
+
+/**
+ * GET /api/analytics/advanced/financial
+ * Get comprehensive financial analytics
+ */
+router.get('/advanced/financial', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    const options = {
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined
+    };
+
+    const analytics = await analyticsService.getFinancialAnalytics(options);
+    res.json(analytics);
+  } catch (error) {
+    logger.error({ error, query: req.query }, 'Failed to get financial analytics');
+    res.status(500).json({ error: 'Failed to get financial analytics' });
+  }
+});
+
+/**
+ * GET /api/analytics/advanced/dashboard
+ * Get comprehensive dashboard analytics
+ */
+router.get('/advanced/dashboard', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    const baseOptions = {
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined
+    };
+
+    const [
+      prescriptionAnalytics,
+      orderAnalytics,
+      aiAnalytics,
+      userAnalytics,
+      financialAnalytics
+    ] = await Promise.all([
+      analyticsService.getPrescriptionAnalytics(baseOptions),
+      analyticsService.getOrderAnalytics(baseOptions),
+      analyticsService.getAIAnalytics(baseOptions),
+      analyticsService.getUserAnalytics(baseOptions),
+      analyticsService.getFinancialAnalytics(baseOptions)
+    ]);
+
+    res.json({
+      prescriptions: prescriptionAnalytics,
+      orders: orderAnalytics,
+      ai: aiAnalytics,
+      users: userAnalytics,
+      financial: financialAnalytics,
+      generatedAt: new Date()
+    });
+  } catch (error) {
+    logger.error({ error, query: req.query }, 'Failed to get dashboard analytics');
+    res.status(500).json({ error: 'Failed to get dashboard analytics' });
+  }
+});
+
+/**
+ * GET /api/analytics/advanced/summary
+ * Get quick analytics summary for dashboard
+ */
+router.get('/advanced/summary', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    
+    const [
+      prescriptionAnalytics,
+      orderAnalytics,
+      userAnalytics,
+      financialAnalytics
+    ] = await Promise.all([
+      analyticsService.getPrescriptionAnalytics({ startDate: thirtyDaysAgo }),
+      analyticsService.getOrderAnalytics({ startDate: thirtyDaysAgo }),
+      analyticsService.getUserAnalytics({}),
+      analyticsService.getFinancialAnalytics({ startDate: thirtyDaysAgo })
+    ]);
+
+    const summary = {
+      prescriptions: {
+        total: prescriptionAnalytics.totalPrescriptions,
+        aiAccuracy: prescriptionAnalytics.aiAccuracyRate,
+        growth: 0 // Would calculate from previous period
+      },
+      orders: {
+        total: orderAnalytics.totalOrders,
+        revenue: orderAnalytics.ordersByMonth.reduce((sum, item) => sum + item.revenue, 0),
+        averageValue: orderAnalytics.averageOrderValue
+      },
+      users: {
+        total: userAnalytics.userGrowthMetrics.totalUsers,
+        newThisMonth: userAnalytics.userGrowthMetrics.newUsersThisMonth,
+        retention: userAnalytics.userGrowthMetrics.userRetentionRate
+      },
+      financial: {
+        totalRevenue: financialAnalytics.totalRevenue,
+        averagePerUser: financialAnalytics.averageRevenuePerUser,
+        profitMargin: financialAnalytics.costAnalysis.profitMargins
+      },
+      period: '30 days',
+      generatedAt: new Date()
+    };
+
+    res.json(summary);
+  } catch (error) {
+    logger.error({ error }, 'Failed to get analytics summary');
+    res.status(500).json({ error: 'Failed to get analytics summary' });
   }
 });
 

@@ -122,30 +122,17 @@ export default function OnlineBookingPortal() {
     setLoading(true);
     try {
       // This would call your API
-      // const response = await fetch(`/api/public/booking/slots?date=${selectedDate}&type=${selectedType.id}`);
-      // const data = await response.json();
+      // Fetch available time slots from API
+      const response = await fetch(`/api/public/booking/slots?date=${selectedDate}&type=${selectedType.id}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch available time slots');
+      }
+      
+      const data = await response.json();
+      const availableSlots: TimeSlot[] = data.slots || [];
 
-      // Mock data for demonstration
-      const mockSlots: TimeSlot[] = [];
-      const baseDate = selectedDate;
-      const hours = [9, 10, 11, 14, 15, 16];
-
-      hours.forEach(hour => {
-        const slotStart = new Date(baseDate);
-        slotStart.setHours(hour, 0, 0, 0);
-        const slotEnd = new Date(slotStart);
-        slotEnd.setMinutes(slotStart.getMinutes() + selectedType.duration);
-
-        mockSlots.push({
-          start: slotStart,
-          end: slotEnd,
-          available: Math.random() > 0.3, // Random availability for demo
-          providerId: "provider1",
-          providerName: "Dr. Sarah Johnson",
-        });
-      });
-
-      setAvailableSlots(mockSlots);
+      setAvailableSlots(availableSlots);
     } catch (error) {
       toast({
         title: "Error",

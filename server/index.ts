@@ -31,6 +31,7 @@ import { startClinicalAnomalyDetectionCron } from "./jobs/clinicalAnomalyDetecti
 import { startUsageReportingCron } from "./jobs/usageReportingCron";
 import { startStorageCalculationCron } from "./jobs/storageCalculationCron";
 import { setupWebSocket } from "./websocket/index";
+import { initializeWebSocket } from "./services/WebSocketService";
 
 // Import workers to start background job processing
 import "./workers/emailWorker";
@@ -389,6 +390,10 @@ app.get('/api/health', healthCheck);
         log(`✅ WebSocket server initialized on /ws endpoint`);
       }
     }
+
+    // Initialize Socket.IO service for real-time notifications
+    const webSocketService = initializeWebSocket(server);
+    log(`✅ Socket.IO service initialized for real-time notifications`);
     
     server.listen(port, host, () => {
       log(`Server successfully started on port ${port}`);
@@ -510,3 +515,6 @@ app.get('/api/health', healthCheck);
     process.exit(1);
   }
 })();
+
+// Export app for testing
+export { app };

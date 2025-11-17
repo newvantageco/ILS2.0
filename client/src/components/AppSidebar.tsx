@@ -96,6 +96,11 @@ const menuItems = {
       { title: "Clinical Protocols", url: "/ecp/clinical-protocols", icon: BookOpen },
       { title: "Company", url: "/ecp/company", icon: Building2 },
     ],
+    healthcare: [
+      { title: "Healthcare Analytics", url: "/ecp/healthcare-analytics", icon: Heart },
+      { title: "Laboratory Integration", url: "/ecp/laboratory", icon: Beaker },
+      { title: "Practice Management", url: "/ecp/practice-management", icon: Users },
+    ],
   },
   lab_tech: [
     { title: "Dashboard", url: "/lab/dashboard", icon: Home },
@@ -107,11 +112,14 @@ const menuItems = {
     { title: "AI Forecasting", url: "/lab/ai-forecasting", icon: TrendingUp },
     { title: "Returns", url: "/lab/returns", icon: PackageX },
     { title: "Non-Adapts", url: "/lab/non-adapts", icon: AlertTriangle },
+    { title: "Equipment", url: "/lab/equipment", icon: Wrench },
+    { title: "Healthcare Analytics", url: "/lab/healthcare-analytics", icon: Heart },
+    { title: "Laboratory Integration", url: "/lab/laboratory", icon: Beaker },
     { title: "Compliance", url: "/lab/compliance", icon: Shield },
-    { title: "Equipment", url: "/lab/equipment", icon: Settings },
     { title: "AI Assistant", url: "/lab/ai-assistant", icon: Brain },
-    { title: "BI Dashboard", url: "/lab/bi-dashboard", icon: BarChart3 },
     { title: "Company", url: "/lab/company", icon: Building2 },
+    { title: "BI Dashboard", url: "/lab/bi-dashboard", icon: BarChart3 },
+    { title: "Analytics", url: "/lab/analytics", icon: LineChart },
   ],
   supplier: [
     { title: "Dashboard", url: "/supplier/dashboard", icon: Home },
@@ -139,25 +147,27 @@ const menuItems = {
   ],
   admin: [
     { title: "Dashboard", url: "/admin/dashboard", icon: Home },
-    { title: "User Management", url: "/admin/users", icon: Users },
-    { title: "Company Management", url: "/admin/companies", icon: Building2 },
-    { title: "Diary / Bookings", url: "/ecp/test-rooms/bookings", icon: CalendarDays },
-    { title: "Permissions", url: "/admin/permissions", icon: KeyRound },
-    { title: "Returns", url: "/admin/returns", icon: PackageX },
-    { title: "Non-Adapts", url: "/admin/non-adapts", icon: AlertTriangle },
+    { title: "Users", url: "/admin/users", icon: Users },
+    { title: "Companies", url: "/admin/companies", icon: Building2 },
+    { title: "Orders", url: "/admin/orders", icon: ClipboardList },
+    { title: "Prescriptions", url: "/admin/prescriptions", icon: FileText },
+    { title: "Email Templates", url: "/admin/email-templates", icon: Mail },
+    { title: "Healthcare Analytics", url: "/admin/healthcare-analytics", icon: Heart },
+    { title: "Laboratory Integration", url: "/admin/laboratory", icon: Beaker },
+    { title: "Practice Management", url: "/admin/practice-management", icon: Users },
     { title: "Compliance", url: "/admin/compliance", icon: Shield },
-    { title: "Prescription Templates", url: "/admin/prescription-templates", icon: FileType },
-    { title: "Clinical Protocols", url: "/admin/clinical-protocols", icon: BookOpen },
-    { title: "AI Forecasting", url: "/admin/ai-forecasting", icon: TrendingUp },
-    { title: "Audit Logs", url: "/admin/audit-logs", icon: FileSearch },
-    { title: "Platform Settings", url: "/admin/platform", icon: Shield },
+    { title: "AI Models", url: "/admin/ai-models", icon: Brain },
+    { title: "ML Models", url: "/admin/ml-models", icon: Brain },
+    { title: "Python ML", url: "/admin/python-ml", icon: Brain },
+    { title: "Shopify", url: "/admin/shopify", icon: Store },
+    { title: "NHS", url: "/admin/nhs", icon: Shield },
+    { title: "Service Status", url: "/admin/service-status", icon: Activity },
+    { title: "Feature Flags", url: "/admin/feature-flags", icon: Flag },
+    { title: "API Docs", url: "/admin/api-docs", icon: FileText },
     { title: "AI Assistant", url: "/admin/ai-assistant", icon: Brain },
-    { title: "AI Settings", url: "/admin/ai-settings", icon: Settings },
-    { title: "Email Analytics", url: "/admin/email-analytics", icon: Mail },
-    { title: "Email Templates", url: "/admin/email-templates", icon: FileType },
+    { title: "Company", url: "/admin/company", icon: Building2 },
     { title: "BI Dashboard", url: "/admin/bi-dashboard", icon: BarChart3 },
-    { title: "Shopify Integration", url: "/admin/shopify", icon: Store },
-    { title: "NHS Integration", url: "/admin/nhs", icon: Heart },
+    { title: "Analytics", url: "/admin/analytics", icon: LineChart },
   ],
   platform_admin: [
     { title: "Platform Dashboard", url: "/platform-admin/dashboard", icon: Home },
@@ -168,10 +178,19 @@ const menuItems = {
     { title: "API Keys", url: "/platform-admin/api-keys", icon: Key },
     { title: "Diary / Bookings", url: "/ecp/test-rooms/bookings", icon: CalendarDays },
     { title: "Platform Settings", url: "/platform-admin/settings", icon: Shield },
+    { title: "Healthcare Analytics", url: "/platform-admin/healthcare-analytics", icon: Heart },
+    { title: "Laboratory Integration", url: "/platform-admin/laboratory", icon: Beaker },
+    { title: "Practice Management", url: "/platform-admin/practice-management", icon: Users },
+    { title: "AI Models", url: "/platform-admin/ai-models", icon: Brain },
+    { title: "ML Models", url: "/platform-admin/ml-models", icon: Brain },
+    { title: "Python ML", url: "/platform-admin/python-ml", icon: Brain },
+    { title: "Shopify", url: "/platform-admin/shopify", icon: Store },
+    { title: "NHS", url: "/platform-admin/nhs", icon: Shield },
+    { title: "Service Status", url: "/platform-admin/service-status", icon: Activity },
+    { title: "Feature Flags", url: "/platform-admin/feature-flags", icon: Flag },
+    { title: "API Docs", url: "/platform-admin/api-docs", icon: FileText },
     { title: "AI Assistant", url: "/admin/ai-assistant", icon: Brain },
     { title: "BI Dashboard", url: "/admin/bi-dashboard", icon: BarChart3 },
-    { title: "Shopify Integration", url: "/platform-admin/shopify", icon: Store },
-    { title: "NHS Integration", url: "/platform-admin/nhs", icon: Heart },
   ],
   company_admin: [
     { title: "Dashboard", url: "/company-admin/dashboard", icon: Home },
@@ -375,6 +394,33 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {items.integrations.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        <Link 
+                          href={item.url}
+                          aria-label={item.title}
+                          aria-current={location === item.url ? "page" : undefined}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {/* Healthcare Systems Section */}
+            <SidebarGroup>
+              <SidebarGroupLabel>Healthcare Systems</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {items.healthcare.map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild

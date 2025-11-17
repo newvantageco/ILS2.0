@@ -58,6 +58,13 @@ import {
   aiQuerySchema
 } from "./middleware/validation";
 import { 
+  securityHeaders, 
+  enforceTLS, 
+  corsConfig, 
+  validateSSLCertificate,
+  auditLog 
+} from "./middleware/security";
+import { 
   BadRequestError,
   UnauthorizedError,
   NotFoundError,
@@ -144,6 +151,15 @@ import ophthalamicAIRoutes from "./routes/ophthalamicAI";
 import orderTrackingRoutes from "./routes/orderTracking";
 import feedbackRoutes from "./routes/feedback";
 import { saasMetricsRouter } from "./routes/saas-metrics";
+import appointmentsRoutes from "./routes/appointments";
+import ehrRoutes from "./routes/ehr";
+import medicalBillingRoutes from "./routes/medical-billing";
+import patientPortalRoutes from "./routes/patient-portal-v2";
+import healthcareAnalyticsRoutes from "./routes/healthcare-analytics";
+import laboratoryRoutes from "./routes/laboratory";
+import practiceManagementRoutes from "./routes/practice-management";
+import verificationRoutes from "./routes/verification";
+import backupRoutes from "./routes/backup";
 import {
   publicApiLimiter,
   authLimiter,
@@ -151,12 +167,37 @@ import {
   webhookLimiter,
   aiQueryLimiter,
   passwordResetLimiter,
-  generalLimiter
+  generalLimiter,
+  // AI/ML Rate Limiters
+  ocrRateLimiter,
+  aiAnalysisRateLimiter,
+  mlModelsRateLimiter,
+  shopifyWidgetRateLimiter,
+  burstProtectionRateLimiter,
+  setupRateLimiting
 } from "./middleware/rateLimiter";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Apply general rate limiting to all routes
-  app.use(generalLimiter);
+  // Apply comprehensive security middleware stack
+  if (process.env.NODE_ENV === 'production') {
+    // Enforce HTTPS in production
+    app.use(enforceTLS);
+    
+    // Validate SSL certificates
+    app.use('/api', validateSSLCertificate);
+  }
+  
+  // Apply security headers to all requests
+  app.use(securityHeaders);
+  
+  // Configure CORS
+  app.use(corsConfig);
+  
+  // Setup comprehensive rate limiting for all endpoints
+  setupRateLimiting(app);
+  
+  // Add security audit logging
+  app.use('/api', auditLog);
   
   // Serve uploaded files statically
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
@@ -180,10 +221,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       endpoints: {
         health: '/health',
         api: '/api',
-        docs: '/api/documentation'
+        docs: '/api/documentation',
+        verification: '/api/verification'
       }
     });
   });
+
+  // Service verification endpoints
+  app.use('/api/verification', verificationRoutes);
+  app.use('/api/backup', backupRoutes);
 
   if (process.env.NODE_ENV !== 'development') {
     await setupReplitAuth(app);
@@ -277,6 +323,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register SaaS Metrics routes (MRR, ARR, CAC, CLV, churn, health scores)
   app.use('/api/saas', isAuthenticated, saasMetricsRouter);
+
+  // Register Appointment Scheduling routes
+  app.use('/api/appointments', isAuthenticated, appointmentsRoutes);
+
+  // Register EHR System routes
+  app.use('/api/ehr', isAuthenticated, ehrRoutes);
+
+  // Register Medical Billing & Insurance routes
+  app.use('/api/medical-billing', isAuthenticated, medicalBillingRoutes);
+
+  // Register Patient Portal routes
+  app.use('/api/patient-portal', isAuthenticated, patientPortalRoutes);
+
+  // Register Healthcare Analytics routes
+  app.use('/api/healthcare-analytics', isAuthenticated, healthcareAnalyticsRoutes);
+
+  // Register Laboratory Integration routes
+  app.use('/api/laboratory', isAuthenticated, laboratoryRoutes);
+
+  // Register Practice Management routes
+  app.use('/api/practice-management', isAuthenticated, practiceManagementRoutes);
 
   // Register PDF Generation routes (receipts, invoices, labels, templates)
   app.use('/api/pdf', isAuthenticated, pdfGenerationRoutes);
