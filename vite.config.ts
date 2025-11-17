@@ -30,6 +30,8 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    // Optimize CSS for production
+    cssCodeSplit: true,
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -48,9 +50,41 @@ export default defineConfig({
             }
           }
         },
+        // Optimize chunks for better caching
+        chunkFileNames: (chunkInfo) => {
+          const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
+          return `js/[name]-[hash].js`;
+        },
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.name.split('.');
+          const ext = info[info.length - 1];
+          if (/\.(mp4|webm|ogg|mp3|wav|flac|aac)(\?.*)?$/i.test(assetInfo.name)) {
+            return `media/[name]-[hash][extname]`;
+          }
+          if (/\.(png|jpe?g|gif|svg)(\?.*)?$/i.test(assetInfo.name)) {
+            return `images/[name]-[hash][extname]`;
+          }
+          if (/\.(woff2?|eot|ttf|otf)(\?.*)?$/i.test(assetInfo.name)) {
+            return `fonts/[name]-[hash][extname]`;
+          }
+          if (/\.css$/.test(assetInfo.name)) {
+            return `css/[name]-[hash][extname]`;
+          }
+          return `assets/[name]-[hash][extname]`;
+        },
+      },
+    },
+    // Enable better minification
+    minify: "terser",
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
       },
     },
     chunkSizeWarningLimit: 1024,
+    // Target modern browsers for better optimization
+    target: "es2020",
   },
   server: {
     fs: {

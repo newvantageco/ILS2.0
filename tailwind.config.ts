@@ -3,6 +3,26 @@ import type { Config } from "tailwindcss";
 export default {
   darkMode: ["class"],
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
+  // Optimize for production by removing unused CSS
+  safelist: [
+    // Keep dynamic classes that might be generated
+    'bg-primary',
+    'text-primary-foreground',
+    'hover:bg-primary/90',
+    'bg-secondary',
+    'text-secondary-foreground',
+    'hover:bg-secondary/80',
+    // Keep animation classes
+    'animate-in',
+    'animate-out',
+    'fade-in',
+    'fade-out',
+    'slide-in-from-top',
+    'slide-in-from-bottom',
+    // Keep loading states
+    'loading-container',
+    'loading-spinner',
+  ],
   theme: {
     extend: {
       // Modern, consistent border radius system

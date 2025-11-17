@@ -13,7 +13,7 @@
  */
 
 import { queryClient } from "./queryClient";
-import { toast } from "@/hooks/use-toast";
+import { feedback } from "./feedback";
 
 type OptimisticUpdateOptions<TData, TVariables> = {
   queryKey: readonly unknown[];
@@ -52,10 +52,9 @@ export function createOptimisticHandlers<TData = unknown, TVariables = unknown>(
         queryClient.setQueryData<TData>(queryKey, context.previousData);
       }
 
-      toast({
+      feedback.error({
         title: errorMessage,
         description: _error.message,
-        variant: "destructive",
       });
     },
 
@@ -64,7 +63,7 @@ export function createOptimisticHandlers<TData = unknown, TVariables = unknown>(
       queryClient.invalidateQueries({ queryKey });
       
       if (successMessage) {
-        toast({
+        feedback.success({
           title: successMessage,
         });
       }

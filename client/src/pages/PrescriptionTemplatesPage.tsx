@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { getQueryFn, apiRequest } from "@/lib/queryClient";
+import { createOptimisticHandlers, optimisticArrayUpdate, optimisticAdd, optimisticRemove } from "@/lib/optimisticUpdates";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -119,21 +120,23 @@ export default function PrescriptionTemplatesPage() {
       const response = await apiRequest("POST", "/api/ecp/prescription-templates", data);
       return await response.json();
     },
+    ...createOptimisticHandlers<any[], typeof templateForm>({
+      queryKey: ["/api/ecp/prescription-templates"],
+      updater: (oldData, variables) => {
+        const newTemplate = {
+          id: `temp-${Date.now()}`,
+          ...variables,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        return optimisticAdd(oldData, newTemplate) || [];
+      },
+      successMessage: "Template Created",
+      errorMessage: "Failed to create template",
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/ecp/prescription-templates"] });
-      toast({
-        title: "Template Created",
-        description: "The prescription template has been created successfully.",
-      });
       resetForm();
       setIsCreateDialogOpen(false);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create template",
-        variant: "destructive",
-      });
     },
   });
 
@@ -143,22 +146,22 @@ export default function PrescriptionTemplatesPage() {
       const response = await apiRequest("PUT", `/api/ecp/prescription-templates/${id}`, data);
       return await response.json();
     },
+    ...createOptimisticHandlers<any[], { id: string; data: typeof templateForm }>({
+      queryKey: ["/api/ecp/prescription-templates"],
+      updater: (oldData, variables) => {
+        return optimisticArrayUpdate(oldData, variables.id, (template) => ({
+          ...template,
+          ...variables.data,
+          updatedAt: new Date().toISOString(),
+        })) || [];
+      },
+      successMessage: "Template Updated",
+      errorMessage: "Failed to update template",
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/ecp/prescription-templates"] });
-      toast({
-        title: "Template Updated",
-        description: "The prescription template has been updated successfully.",
-      });
       resetForm();
       setEditingTemplate(null);
       setIsCreateDialogOpen(false);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update template",
-        variant: "destructive",
-      });
     },
   });
 
@@ -168,13 +171,18 @@ export default function PrescriptionTemplatesPage() {
       const response = await apiRequest("POST", `/api/ecp/prescription-templates/${id}/use`, {});
       return await response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/ecp/prescription-templates"] });
-      toast({
-        title: "Template Used",
-        description: "Template usage has been recorded.",
-      });
-    },
+    ...createOptimisticHandlers<any[], string>({
+      queryKey: ["/api/ecp/prescription-templates"],
+      updater: (oldData, templateId) => {
+        return optimisticArrayUpdate(oldData, templateId, (template) => ({
+          ...template,
+          usageCount: (template.usageCount || 0) + 1,
+          lastUsed: new Date().toISOString(),
+        })) || [];
+      },
+      successMessage: "Template applied",
+      errorMessage: "Failed to apply template",
+    }),
   });
 
   const resetForm = () => {

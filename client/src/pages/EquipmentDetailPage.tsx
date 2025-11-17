@@ -1,5 +1,7 @@
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getQueryFn, apiRequest } from "@/lib/queryClient";
+import { createOptimisticHandlers, optimisticAdd } from "@/lib/optimisticUpdates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -126,22 +128,24 @@ export default function EquipmentDetailPage() {
       }
       return await res.json();
     },
+    ...createOptimisticHandlers<any[], any>({
+      queryKey: ["/api/equipment", equipmentId, "calibration"],
+      updater: (oldData, variables) => {
+        const newRecord = {
+          id: `temp-${Date.now()}`,
+          ...variables,
+          equipmentId,
+          createdAt: new Date().toISOString(),
+        };
+        return optimisticAdd(oldData, newRecord) || [];
+      },
+      successMessage: "Calibration record added successfully",
+      errorMessage: "Failed to add calibration record",
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/equipment", equipmentId, "calibration"] });
       queryClient.invalidateQueries({ queryKey: ["/api/equipment", equipmentId] });
       setShowCalibrationDialog(false);
       setCalibrationData({ result: "", notes: "", nextDueDate: "" });
-      toast({
-        title: "Success",
-        description: "Calibration record added successfully.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
     },
   });
 

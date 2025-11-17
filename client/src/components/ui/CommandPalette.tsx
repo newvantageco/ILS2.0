@@ -31,7 +31,7 @@ import {
   Search,
   UserPlus,
 } from "lucide-react";
-import type { OrderWithDetails } from "@shared/schema";
+import type { OrderWithDetails, Patient } from "@shared/schema";
 
 interface CommandItem {
   label: string;
@@ -54,6 +54,13 @@ export function CommandPalette({ userRole }: CommandPaletteProps) {
   const { data: searchResults } = useQuery<OrderWithDetails[]>({
     queryKey: ["/api/orders", `?search=${search}`],
     enabled: search.length > 2 && open, // Only search when dialog is open and search is meaningful
+    staleTime: 30000, // 30 seconds
+  });
+
+  // Search for patients when user types patient search patterns
+  const { data: patientResults } = useQuery<Patient[]>({
+    queryKey: ["/api/patients", `?search=${search}`],
+    enabled: search.length > 2 && open && userRole === "ecp", // Only for ECP role
     staleTime: 30000, // 30 seconds
   });
 
@@ -274,6 +281,51 @@ export function CommandPalette({ userRole }: CommandPaletteProps) {
           path: "/ecp/new-order",
           shortcut: "⌘N",
           keywords: ["new", "order", "create"],
+        },
+        {
+          label: "Schedule Eye Test",
+          icon: Eye,
+          path: "/ecp/eye-test",
+          shortcut: "⌘E",
+          keywords: ["eye", "test", "examination", "schedule"],
+        }
+      );
+    }
+
+    if (userRole === "lab_tech" || userRole === "engineer") {
+      actions.push(
+        {
+          label: "Start Production",
+          icon: Beaker,
+          path: "/lab/production",
+          shortcut: "⌘P",
+          keywords: ["production", "manufacturing", "start"],
+        },
+        {
+          label: "Quality Check",
+          icon: Eye,
+          path: "/lab/quality",
+          shortcut: "⌘Q",
+          keywords: ["quality", "qc", "inspection", "check"],
+        }
+      );
+    }
+
+    if (userRole === "admin" || userRole === "platform_admin") {
+      actions.push(
+        {
+          label: "Invite User",
+          icon: UserPlus,
+          path: "/admin/users?action=invite",
+          shortcut: "⌘U",
+          keywords: ["invite", "user", "add", "create"],
+        },
+        {
+          label: "System Settings",
+          icon: Settings,
+          path: "/admin/platform",
+          shortcut: "⌘,",
+          keywords: ["system", "platform", "settings", "config"],
         }
       );
     }
@@ -336,6 +388,32 @@ export function CommandPalette({ userRole }: CommandPaletteProps) {
                     </span>
                     <span className="text-xs text-muted-foreground">
                       Order #{order.id} - {order.status}
+                    </span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
+
+        {/* Patient Search Results */}
+        {patientResults && patientResults.length > 0 && (
+          <>
+            <CommandGroup heading="Patients">
+              {patientResults.slice(0, 5).map((patient) => (
+                <CommandItem
+                  key={patient.id}
+                  onSelect={() => handleSelect(`/ecp/patients/${patient.id}`)}
+                  className="flex items-center gap-2"
+                >
+                  <Users className="h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span className="font-medium">
+                      {patient.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {patient.customerNumber} - {patient.nhsNumber || "No NHS Number"}
                     </span>
                   </div>
                 </CommandItem>
