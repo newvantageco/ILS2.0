@@ -252,11 +252,12 @@ jobs:
           sleep 30
 
       - name: Run Lighthouse CI
+        if: ${{ secrets.LHCI_GITHUB_APP_TOKEN != '' }}
         run: |
           npm install -g @lhci/cli@0.12.x
           lhci autorun
         env:
-          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN || 'placeholder' }}
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
 
   # Database Schema Validation
   schema-validation:
@@ -307,6 +308,7 @@ jobs:
     if: always()
     steps:
       - name: Notify Slack
+        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
         uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
@@ -318,4 +320,4 @@ jobs:
             E2E: ${{ needs.e2e-tests.result }}
             Security: ${{ needs.security-audit.result }}
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL || 'placeholder' }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

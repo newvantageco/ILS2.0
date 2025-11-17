@@ -6,6 +6,7 @@
  */
 
 import React, { Suspense } from 'react';
+// @ts-ignore - Temporary fix for react-router-dom import issues
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toast } from '@/components/ui/toast';

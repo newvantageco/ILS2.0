@@ -6,14 +6,14 @@
  */
 
 import { db } from "../db";
-import * as schema from "@shared/schema";
+import * as schema from "@shared/schema/core";
 import { eq, desc, and, ilike, gte, lte, inArray } from "drizzle-orm";
 import { 
   insertOrderSchema, 
   updateOrderStatusSchema,
   Order,
   OrderStatus
-} from "@shared/schema";
+} from "@shared/schema/core";
 import logger from "../utils/logger";
 
 export interface OrderFilters {
@@ -167,13 +167,13 @@ export class OrderService {
    */
   async createOrder(userId: string, orderData: Partial<Order>) {
     try {
-      // Validate order data
+      // Validate order data (excluding auto-generated fields)
       const validatedData = insertOrderSchema.parse(orderData);
 
-      // Generate order number and add it separately (not in schema validation)
+      // Generate order number separately
       const orderNumber = await this.generateOrderNumber(validatedData.companyId!);
 
-      // Prepare final order data
+      // Prepare final order data with all required fields
       const finalOrderData = {
         ...validatedData,
         orderNumber,
