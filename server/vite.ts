@@ -53,6 +53,11 @@ export async function setupVite(app: Express, server: Server) {
       return next();
     }
 
+    // Skip Vite internal paths - let Vite middleware handle them
+    if (url.startsWith('/@') || url.startsWith('/src/') || url.startsWith('/node_modules/')) {
+      return next();
+    }
+
     try {
       const clientTemplate = path.resolve(
         import.meta.dirname,
