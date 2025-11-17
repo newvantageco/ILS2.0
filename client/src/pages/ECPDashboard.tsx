@@ -10,7 +10,11 @@
  */
 
 import { SearchBar } from "@/components/SearchBar";
-import { ConsultLogManager } from "@/components/ConsultLogManager";
+import { QuickActionCards } from "@/components/QuickActionCards";
+import { lazy, Suspense } from "react";
+
+// Lazy load heavy components for better performance
+const ConsultLogManager = lazy(() => import("@/components/ConsultLogManager").then(m => ({ default: m.ConsultLogManager })));
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { OrderCardSkeleton } from "@/components/ui/CardSkeleton";
@@ -46,7 +50,7 @@ import {
   Activity,
   ArrowRight,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -105,6 +109,42 @@ export default function ECPDashboardModern() {
   }, [ordersError, toast]);
 
   const recentOrders = orders?.slice(0, 6) || [];
+
+  // Quick actions with keyboard shortcuts
+  const quickActions = [
+    {
+      title: "New Patient",
+      description: "Add a new patient record",
+      icon: Users,
+      href: "/ecp/patients?new=true",
+      shortcut: "N",
+      color: "bg-blue-500",
+    },
+    {
+      title: "New Examination",
+      description: "Start an eye examination",
+      icon: Eye,
+      href: "/ecp/examinations",
+      shortcut: "E",
+      color: "bg-purple-500",
+    },
+    {
+      title: "New Order",
+      description: "Create a lens order",
+      icon: Plus,
+      href: "/ecp/new-order",
+      shortcut: "O",
+      color: "bg-green-500",
+    },
+    {
+      title: "Point of Sale",
+      description: "Process a sale",
+      icon: Package,
+      href: "/ecp/pos",
+      shortcut: "P",
+      color: "bg-orange-500",
+    },
+  ];
 
   // AI Quick Actions based on dashboard context
   const getAIQuickActions = () => {
@@ -206,32 +246,16 @@ export default function ECPDashboardModern() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Header Section with Gradient */}
-      <div className="relative overflow-hidden rounded-2xl gradient-primary p-8 text-white">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl -ml-48 -mb-48" />
-
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <Eye className="w-8 h-8" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Welcome Back!</h1>
-              <p className="text-white/90 mt-1">Here's what's happening with your practice today</p>
-            </div>
-          </div>
-          <Link href="/ecp/new-order">
-            <Button
-              size="lg"
-              className="bg-white text-primary-600 hover:bg-white/90 hover-lift shadow-xl"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              New Order
-            </Button>
-          </Link>
+      {/* Simplified Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Welcome Back!</h1>
+          <p className="text-muted-foreground mt-1">Here's what's happening with your practice today</p>
         </div>
       </div>
+
+      {/* Quick Actions with Keyboard Shortcuts */}
+      <QuickActionCards actions={quickActions} />
 
       {/* Onboarding Progress */}
       {showOnboarding && <OnboardingProgress steps={onboardingSteps} currentStep={completedSteps} />}
@@ -287,8 +311,9 @@ export default function ECPDashboardModern() {
         </div>
       )}
 
-      {/* AI Assistant Gradient Card */}
-      <GradientCard variant="primary">
+      {/* AI Assistant - Simplified & Optional */}
+      {(aiUsage?.queriesUsed ?? 0) > 0 && (
+        <GradientCard variant="primary">
         <GradientCardHeader
           title="AI-Powered Practice Assistant"
           subtitle="Get instant insights and recommendations for your optical practice"
@@ -358,60 +383,41 @@ export default function ECPDashboardModern() {
           </Button>
         </GradientCardActions>
       </GradientCard>
+      )}
 
-      {/* Quick Actions Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="hover-lift cursor-pointer" onClick={() => setLocation("/ecp/patients")}>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center">
-                <Users className="h-6 w-6 text-primary-600" />
-              </div>
+      {/* Additional quick stats - simplified */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg">Patients</CardTitle>
-                <CardDescription>Manage patient records</CardDescription>
+                <p className="text-sm text-muted-foreground">Total Patients</p>
+                <p className="text-3xl font-bold mt-1">124</p>
               </div>
+              <Users className="h-8 w-8 text-muted-foreground/50" />
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">124</div>
-            <p className="text-sm text-gray-500 mt-1">Total active patients</p>
           </CardContent>
         </Card>
-
-        <Card className="hover-lift cursor-pointer" onClick={() => setLocation("/ecp/appointments")}>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-secondary-100 flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-secondary-600" />
-              </div>
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg">Appointments</CardTitle>
-                <CardDescription>Schedule & manage</CardDescription>
+                <p className="text-sm text-muted-foreground">Today's Appointments</p>
+                <p className="text-3xl font-bold mt-1">8</p>
               </div>
+              <Calendar className="h-8 w-8 text-muted-foreground/50" />
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">8</div>
-            <p className="text-sm text-gray-500 mt-1">Today's appointments</p>
           </CardContent>
         </Card>
-
-        <Card className="hover-lift cursor-pointer" onClick={() => setLocation("/ecp/examinations")}>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-success-100 flex items-center justify-center">
-                <Activity className="h-6 w-6 text-success-600" />
-              </div>
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg">Examinations</CardTitle>
-                <CardDescription>Eye test records</CardDescription>
+                <p className="text-sm text-muted-foreground">This Month's Exams</p>
+                <p className="text-3xl font-bold mt-1">45</p>
               </div>
+              <Activity className="h-8 w-8 text-muted-foreground/50" />
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">45</div>
-            <p className="text-sm text-gray-500 mt-1">This month</p>
           </CardContent>
         </Card>
       </div>
@@ -466,7 +472,18 @@ export default function ECPDashboardModern() {
         )}
       </div>
 
-      <ConsultLogManager />
+      {/* Lazy load consult log manager */}
+      <Suspense fallback={
+        <Card>
+          <CardContent className="p-8">
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          </CardContent>
+        </Card>
+      }>
+        <ConsultLogManager />
+      </Suspense>
     </div>
   );
 }
