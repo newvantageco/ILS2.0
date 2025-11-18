@@ -6,10 +6,24 @@
  */
 
 import React from 'react';
-// @ts-ignore - Temporary fix for react-router-dom import issues
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { RoleEnum } from '@shared/schema';
+
+// Location state types for navigation
+interface LoginRedirectState {
+  from: string;
+}
+
+interface UnauthorizedState {
+  requiredRoles: RoleEnum[];
+  userRole?: RoleEnum;
+  attemptedPath: string;
+}
+
+interface OnboardingState {
+  message: string;
+}
 
 export interface RouteConfig {
   path: string;
@@ -40,31 +54,36 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ config, children
 
   // Redirect to login if not authenticated
   if (!user) {
-    return <Navigate to="/login" state={{ from: location.pathname } as any} replace />;
+    const loginState: LoginRedirectState = { from: location.pathname };
+    return <Navigate to="/login" state={loginState} replace />;
   }
 
   // Check if user has required role
   if (config.roles.length > 0 && (!user.role || !config.roles.includes(user.role))) {
+    const unauthorizedState: UnauthorizedState = {
+      requiredRoles: config.roles,
+      userRole: user.role,
+      attemptedPath: location.pathname,
+    };
     return (
-      <Navigate 
-        to="/unauthorized" 
-        state={{ 
-          requiredRoles: config.roles,
-          userRole: user.role,
-          attemptedPath: location.pathname 
-        } as any} 
-        replace 
+      <Navigate
+        to="/unauthorized"
+        state={unauthorizedState}
+        replace
       />
     );
   }
 
   // Check if user is associated with a company (if required)
   if (config.requireCompany && !user.companyId) {
+    const onboardingState: OnboardingState = {
+      message: 'Company association required',
+    };
     return (
-      <Navigate 
-        to="/onboarding/company" 
-        state={{ message: "Company association required" } as any} 
-        replace 
+      <Navigate
+        to="/onboarding/company"
+        state={onboardingState}
+        replace
       />
     );
   }

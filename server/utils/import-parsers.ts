@@ -7,8 +7,20 @@
 import { parse } from 'csv-parse/sync';
 import * as XLSX from 'xlsx';
 import { createReadStream } from 'fs';
+import { readFile } from 'fs/promises';
 import { Readable } from 'stream';
 import type { ValidationResult } from '../validation/import.js';
+import {
+  validateExcelBuffer,
+  validateWorkbookStructure,
+  sanitizeWorkbook,
+  parseWithTimeout,
+  isSecurityError,
+  getSafeErrorMessage,
+} from './excel-security.js';
+import { loggers } from './logger.js';
+
+const logger = loggers.api;
 
 /**
  * Parser Options
@@ -261,18 +273,94 @@ export class ExcelParser {
 
   /**
    * Parse Excel from file path
+   * @throws {ExcelSecurityError} If file fails security validation
    */
-  parseFile(filePath: string): ParseResult {
-    const workbook = XLSX.readFile(filePath);
-    return this.parseWorkbook(workbook);
+  async parseFile(filePath: string): Promise<ParseResult> {
+    try {
+      // Read file to buffer for security validation
+      const buffer = await readFile(filePath);
+
+      // Validate buffer before parsing
+      validateExcelBuffer(buffer);
+
+      // Parse with timeout protection
+      const workbook = await parseWithTimeout(() =>
+        XLSX.read(buffer, { type: 'buffer' })
+      );
+
+      // Validate workbook structure
+      validateWorkbookStructure(workbook);
+
+      // Sanitize to prevent prototype pollution
+      const sanitized = sanitizeWorkbook(workbook);
+
+      return this.parseWorkbook(sanitized);
+    } catch (error) {
+      logger.error(
+        { error, filePath },
+        'Excel file parsing failed with security error'
+      );
+
+      if (isSecurityError(error)) {
+        return {
+          records: [],
+          headers: [],
+          totalRows: 0,
+          errors: [
+            {
+              row: 0,
+              message: getSafeErrorMessage(error),
+            },
+          ],
+          warnings: [],
+        };
+      }
+
+      throw error;
+    }
   }
 
   /**
    * Parse Excel from buffer
+   * @throws {ExcelSecurityError} If buffer fails security validation
    */
-  parseBuffer(buffer: Buffer): ParseResult {
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
-    return this.parseWorkbook(workbook);
+  async parseBuffer(buffer: Buffer): Promise<ParseResult> {
+    try {
+      // Validate buffer before parsing
+      validateExcelBuffer(buffer);
+
+      // Parse with timeout protection
+      const workbook = await parseWithTimeout(() =>
+        XLSX.read(buffer, { type: 'buffer' })
+      );
+
+      // Validate workbook structure
+      validateWorkbookStructure(workbook);
+
+      // Sanitize to prevent prototype pollution
+      const sanitized = sanitizeWorkbook(workbook);
+
+      return this.parseWorkbook(sanitized);
+    } catch (error) {
+      logger.error({ error }, 'Excel buffer parsing failed with security error');
+
+      if (isSecurityError(error)) {
+        return {
+          records: [],
+          headers: [],
+          totalRows: 0,
+          errors: [
+            {
+              row: 0,
+              message: getSafeErrorMessage(error),
+            },
+          ],
+          warnings: [],
+        };
+      }
+
+      throw error;
+    }
   }
 
   /**
@@ -430,18 +518,47 @@ export class ExcelParser {
 
   /**
    * Get sheet names from file
+   * @throws {ExcelSecurityError} If file fails security validation
    */
-  static getSheetNames(filePath: string): string[] {
-    const workbook = XLSX.readFile(filePath);
-    return workbook.SheetNames;
+  static async getSheetNames(filePath: string): Promise<string[]> {
+    try {
+      const buffer = await readFile(filePath);
+      validateExcelBuffer(buffer);
+
+      const workbook = await parseWithTimeout(() =>
+        XLSX.read(buffer, { type: 'buffer' })
+      );
+
+      validateWorkbookStructure(workbook);
+      const sanitized = sanitizeWorkbook(workbook);
+
+      return sanitized.SheetNames;
+    } catch (error) {
+      logger.error({ error, filePath }, 'Failed to get sheet names');
+      throw error;
+    }
   }
 
   /**
    * Get sheet names from buffer
+   * @throws {ExcelSecurityError} If buffer fails security validation
    */
-  static getSheetNamesFromBuffer(buffer: Buffer): string[] {
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
-    return workbook.SheetNames;
+  static async getSheetNamesFromBuffer(buffer: Buffer): Promise<string[]> {
+    try {
+      validateExcelBuffer(buffer);
+
+      const workbook = await parseWithTimeout(() =>
+        XLSX.read(buffer, { type: 'buffer' })
+      );
+
+      validateWorkbookStructure(workbook);
+      const sanitized = sanitizeWorkbook(workbook);
+
+      return sanitized.SheetNames;
+    } catch (error) {
+      logger.error({ error }, 'Failed to get sheet names from buffer');
+      throw error;
+    }
   }
 }
 
