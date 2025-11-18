@@ -11,6 +11,34 @@ export interface EquipmentFilters {
   needsMaintenance?: boolean;
 }
 
+/**
+ * Equipment technical specifications
+ */
+export interface EquipmentSpecifications {
+  [key: string]: string | number | boolean | null;
+}
+
+/**
+ * Equipment metadata for extensibility
+ */
+export interface EquipmentMetadata {
+  [key: string]: string | number | boolean | null | EquipmentMetadata;
+}
+
+/**
+ * Maintenance record for equipment history tracking
+ */
+export interface MaintenanceRecord {
+  type: "routine" | "repair" | "upgrade" | "emergency";
+  date: Date;
+  description: string;
+  performedBy: string;
+  cost?: number;
+  nextScheduledDate?: Date;
+  parts?: string[];
+  notes?: string;
+}
+
 export interface CreateEquipmentData {
   companyId: string;
   testRoomId?: string | null;
@@ -25,12 +53,12 @@ export interface CreateEquipmentData {
   calibrationFrequencyDays?: number;
   lastMaintenance?: Date | null;
   nextMaintenance?: Date | null;
-  specifications?: any;
+  specifications?: EquipmentSpecifications;
   notes?: string | null;
   location?: string | null;
   warrantyExpiration?: Date | null;
-  maintenanceHistory?: any[];
-  metadata?: any;
+  maintenanceHistory?: MaintenanceRecord[];
+  metadata?: EquipmentMetadata;
 }
 
 export interface UpdateEquipmentData {
@@ -46,23 +74,12 @@ export interface UpdateEquipmentData {
   calibrationFrequencyDays?: number;
   lastMaintenance?: Date | null;
   nextMaintenance?: Date | null;
-  specifications?: any;
+  specifications?: EquipmentSpecifications;
   notes?: string | null;
   location?: string | null;
   warrantyExpiration?: Date | null;
-  maintenanceHistory?: any[];
-  metadata?: any;
-}
-
-export interface MaintenanceRecord {
-  type: "routine" | "repair" | "upgrade" | "emergency";
-  date: Date;
-  description: string;
-  performedBy: string;
-  cost?: number;
-  nextScheduledDate?: Date;
-  parts?: string[];
-  notes?: string;
+  maintenanceHistory?: MaintenanceRecord[];
+  metadata?: EquipmentMetadata;
 }
 
 export async function getAllEquipment(filters: EquipmentFilters): Promise<Equipment[]> {
@@ -165,8 +182,8 @@ export async function addMaintenanceRecord(
 
   const updatedHistory = [...maintenanceHistory, record];
 
-  const updateData: any = {
-    maintenanceHistory: updatedHistory,
+  const updateData: Partial<UpdateEquipmentData> = {
+    maintenanceHistory: updatedHistory as MaintenanceRecord[],
     lastMaintenance: record.date,
   };
 

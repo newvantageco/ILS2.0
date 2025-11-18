@@ -1,8 +1,25 @@
 /**
  * Performance Monitoring Utilities
- * 
+ *
  * Tracks Core Web Vitals and provides performance insights
  */
+
+/**
+ * Network Information API types
+ * These are experimental APIs not yet in standard TypeScript DOM types
+ */
+interface NetworkInformation {
+  effectiveType?: 'slow-2g' | '2g' | '3g' | '4g';
+  downlink?: number;
+  rtt?: number;
+  saveData?: boolean;
+}
+
+interface NavigatorWithConnection extends Navigator {
+  connection?: NetworkInformation;
+  mozConnection?: NetworkInformation;
+  webkitConnection?: NetworkInformation;
+}
 
 export interface PerformanceMetrics {
   fcp?: number;  // First Contentful Paint
@@ -122,8 +139,8 @@ export function prefersReducedMotion(): boolean {
  * Get connection information for adaptive loading
  */
 export function getConnectionInfo() {
-  // @ts-ignore - navigator.connection is not in TypeScript lib yet
-  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const nav = navigator as NavigatorWithConnection;
+  const connection = nav.connection || nav.mozConnection || nav.webkitConnection;
   
   return {
     effectiveType: connection?.effectiveType || 'unknown',
