@@ -23,10 +23,12 @@ const router = Router();
 const logger = loggers.api;
 
 // Configure multer for file uploads
+// SECURITY: Reduced from 10MB to 5MB to mitigate xlsx vulnerabilities
 const upload = multer({
   dest: 'uploads/',
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
+    fileSize: 5 * 1024 * 1024, // 5MB (reduced for security - see docs/SECURITY_AUDIT_FINDINGS.md)
+    files: 1, // Only allow single file uploads
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
@@ -35,9 +37,17 @@ const upload = multer({
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     ];
 
-    if (allowedTypes.includes(file.mimetype) || file.originalname.match(/\.(csv|xlsx|xls)$/)) {
+    // Strict file validation
+    const hasValidMimetype = allowedTypes.includes(file.mimetype);
+    const hasValidExtension = /\.(csv|xlsx|xls)$/i.test(file.originalname);
+
+    if (hasValidMimetype && hasValidExtension) {
       cb(null, true);
     } else {
+      logger.warn(
+        { mimetype: file.mimetype, filename: file.originalname },
+        'Rejected file upload - invalid type'
+      );
       cb(new Error('Invalid file type. Only CSV and Excel files are allowed.'));
     }
   },
