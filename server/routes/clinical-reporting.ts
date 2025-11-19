@@ -9,7 +9,7 @@
  */
 
 import express, { Request, Response } from 'express';
-import { authenticateUser } from '../middleware/auth.js';
+import { isAuthenticated } from '../middleware/auth';
 import { ClinicalDecisionSupport } from '../services/clinical/ClinicalDecisionSupport.js';
 import { ReportBuilderService } from '../services/reporting/ReportBuilderService.js';
 import { TrendAnalysisService } from '../services/reporting/TrendAnalysisService.js';
@@ -25,7 +25,7 @@ const logger = loggers.api;
  * Evaluate patient against clinical rules
  * GET /api/clinical-reporting/cds/evaluate/:patientId
  */
-router.get('/cds/evaluate/:patientId', authenticateUser, async (req: Request, res: Response) => {
+router.get('/cds/evaluate/:patientId', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const { patientId } = req.params;
 
@@ -60,7 +60,7 @@ router.get('/cds/evaluate/:patientId', authenticateUser, async (req: Request, re
  * Get alerts for a patient
  * GET /api/clinical-reporting/cds/alerts/:patientId
  */
-router.get('/cds/alerts/:patientId', authenticateUser, async (req: Request, res: Response) => {
+router.get('/cds/alerts/:patientId', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const { patientId } = req.params;
     const { status } = req.query;
@@ -91,7 +91,7 @@ router.get('/cds/alerts/:patientId', authenticateUser, async (req: Request, res:
  */
 router.post(
   '/cds/alerts/:alertId/acknowledge',
-  authenticateUser,
+  isAuthenticated,
   async (req: Request, res: Response) => {
     try {
       const { alertId } = req.params;
@@ -126,7 +126,7 @@ router.post(
  */
 router.post(
   '/cds/alerts/:alertId/resolve',
-  authenticateUser,
+  isAuthenticated,
   async (req: Request, res: Response) => {
     try {
       const { alertId } = req.params;
@@ -161,7 +161,7 @@ router.post(
  */
 router.post(
   '/cds/alerts/:alertId/dismiss',
-  authenticateUser,
+  isAuthenticated,
   async (req: Request, res: Response) => {
     try {
       const { alertId } = req.params;
@@ -201,7 +201,7 @@ router.post(
  * Get alert statistics
  * GET /api/clinical-reporting/cds/stats
  */
-router.get('/cds/stats', authenticateUser, async (req: Request, res: Response) => {
+router.get('/cds/stats', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const companyId = (req as any).user.companyId;
 
@@ -224,7 +224,7 @@ router.get('/cds/stats', authenticateUser, async (req: Request, res: Response) =
  * Get clinical rules
  * GET /api/clinical-reporting/cds/rules
  */
-router.get('/cds/rules', authenticateUser, async (req: Request, res: Response) => {
+router.get('/cds/rules', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const { category } = req.query;
 
@@ -250,7 +250,7 @@ router.get('/cds/rules', authenticateUser, async (req: Request, res: Response) =
  * Get all reports
  * GET /api/clinical-reporting/reports
  */
-router.get('/reports', authenticateUser, async (req: Request, res: Response) => {
+router.get('/reports', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const companyId = (req as any).user.companyId;
     const { category } = req.query;
@@ -277,7 +277,7 @@ router.get('/reports', authenticateUser, async (req: Request, res: Response) => 
  * Get report by ID
  * GET /api/clinical-reporting/reports/:reportId
  */
-router.get('/reports/:reportId', authenticateUser, async (req: Request, res: Response) => {
+router.get('/reports/:reportId', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const { reportId } = req.params;
 
@@ -309,7 +309,7 @@ router.get('/reports/:reportId', authenticateUser, async (req: Request, res: Res
  */
 router.post(
   '/reports/:reportId/generate',
-  authenticateUser,
+  isAuthenticated,
   async (req: Request, res: Response) => {
     try {
       const { reportId } = req.params;
@@ -339,7 +339,7 @@ router.post(
  * Get report result
  * GET /api/clinical-reporting/reports/results/:resultId
  */
-router.get('/reports/results/:resultId', authenticateUser, async (req: Request, res: Response) => {
+router.get('/reports/results/:resultId', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const { resultId } = req.params;
 
@@ -369,7 +369,7 @@ router.get('/reports/results/:resultId', authenticateUser, async (req: Request, 
  * Get report history
  * GET /api/clinical-reporting/reports/:reportId/history
  */
-router.get('/reports/:reportId/history', authenticateUser, async (req: Request, res: Response) => {
+router.get('/reports/:reportId/history', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const { reportId } = req.params;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -395,7 +395,7 @@ router.get('/reports/:reportId/history', authenticateUser, async (req: Request, 
  * Create custom report
  * POST /api/clinical-reporting/reports
  */
-router.post('/reports', authenticateUser, async (req: Request, res: Response) => {
+router.post('/reports', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const companyId = (req as any).user.companyId;
     const userId = (req as any).user.id;
@@ -428,7 +428,7 @@ router.post('/reports', authenticateUser, async (req: Request, res: Response) =>
  */
 router.post(
   '/reports/:reportId/export/csv',
-  authenticateUser,
+  isAuthenticated,
   async (req: Request, res: Response) => {
     try {
       const { reportId } = req.params;
@@ -475,7 +475,7 @@ router.post(
  * Get visit trends
  * GET /api/clinical-reporting/trends/visits
  */
-router.get('/trends/visits', authenticateUser, async (req: Request, res: Response) => {
+router.get('/trends/visits', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const companyId = (req as any).user.companyId;
     const { startDate, endDate, period = 'monthly' } = req.query;
@@ -511,7 +511,7 @@ router.get('/trends/visits', authenticateUser, async (req: Request, res: Respons
  * Get age distribution trends
  * GET /api/clinical-reporting/trends/age-distribution
  */
-router.get('/trends/age-distribution', authenticateUser, async (req: Request, res: Response) => {
+router.get('/trends/age-distribution', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const companyId = (req as any).user.companyId;
 
@@ -534,7 +534,7 @@ router.get('/trends/age-distribution', authenticateUser, async (req: Request, re
  * Get revenue trends
  * GET /api/clinical-reporting/trends/revenue
  */
-router.get('/trends/revenue', authenticateUser, async (req: Request, res: Response) => {
+router.get('/trends/revenue', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const companyId = (req as any).user.companyId;
     const { startDate, endDate, period = 'monthly' } = req.query;
@@ -570,7 +570,7 @@ router.get('/trends/revenue', authenticateUser, async (req: Request, res: Respon
  * Get patient retention analysis
  * GET /api/clinical-reporting/trends/retention
  */
-router.get('/trends/retention', authenticateUser, async (req: Request, res: Response) => {
+router.get('/trends/retention', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const companyId = (req as any).user.companyId;
     const months = parseInt(req.query.months as string) || 12;
@@ -597,7 +597,7 @@ router.get('/trends/retention', authenticateUser, async (req: Request, res: Resp
  * Get all quality metrics
  * GET /api/clinical-reporting/quality/metrics
  */
-router.get('/quality/metrics', authenticateUser, async (req: Request, res: Response) => {
+router.get('/quality/metrics', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const { category } = req.query;
 
@@ -621,7 +621,7 @@ router.get('/quality/metrics', authenticateUser, async (req: Request, res: Respo
  * Get quality dashboard
  * GET /api/clinical-reporting/quality/dashboard
  */
-router.get('/quality/dashboard', authenticateUser, async (req: Request, res: Response) => {
+router.get('/quality/dashboard', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const companyId = (req as any).user.companyId;
     const { startDate, endDate } = req.query;
@@ -656,7 +656,7 @@ router.get('/quality/dashboard', authenticateUser, async (req: Request, res: Res
  * Calculate all metrics
  * POST /api/clinical-reporting/quality/calculate
  */
-router.post('/quality/calculate', authenticateUser, async (req: Request, res: Response) => {
+router.post('/quality/calculate', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const companyId = (req as any).user.companyId;
     const { startDate, endDate } = req.body;
@@ -694,7 +694,7 @@ router.post('/quality/calculate', authenticateUser, async (req: Request, res: Re
  */
 router.get(
   '/quality/metrics/:metricId/history',
-  authenticateUser,
+  isAuthenticated,
   async (req: Request, res: Response) => {
     try {
       const { metricId } = req.params;

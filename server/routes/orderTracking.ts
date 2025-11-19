@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import * as schema from '@shared/schema';
-import { authenticateUser, requireRole } from '../middleware/auth';
+import { isAuthenticated as authenticateUser, requireRole } from '../middleware/auth';
 import orderTrackingService from '../services/OrderTrackingService';
 import { storage } from '../storage';
 import { createLogger } from '../utils/logger';

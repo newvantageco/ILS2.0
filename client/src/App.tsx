@@ -57,6 +57,8 @@ const PrescriptionsPage = lazy(() => import("@/pages/PrescriptionsPage"));
 const InventoryManagement = lazy(() => import("@/pages/InventoryManagement"));
 const InvoicesPage = lazy(() => import("@/pages/InvoicesPage"));
 const EyeTestPage = lazy(() => import("@/pages/EyeTestPage"));
+const EyeTestWizard = lazy(() => import("@/components/eye-test/EyeTestWizard").then(m => ({ default: m.EyeTestWizard })));
+const DiaryPage = lazy(() => import("@/pages/DiaryPage"));
 const TestRoomsPage = lazy(() => import("@/pages/TestRoomsPage"));
 const TestRoomBookingsPage = lazy(() => import("@/pages/TestRoomBookingsPage"));
 const OpticalPOSPage = lazy(() => import("@/pages/OpticalPOSPage"));
@@ -428,6 +430,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/patients" component={PatientsPage} />
             <Route path="/ecp/patients/:id" component={PatientProfile} />
             <Route path="/ecp/patient/:id/test" component={EyeTestPage} />
+            <Route path="/ecp/patient/:id/test-wizard" component={EyeTestWizard} />
             <Route path="/ecp/prescriptions" component={PrescriptionsPage} />
             <Route path="/ecp/inventory" component={InventoryManagement} />
             <Route path="/ecp/examinations" component={ExaminationList} />
@@ -439,9 +442,9 @@ function AuthenticatedApp() {
             <Route path="/ecp/invoices" component={InvoicesPage} />
             <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/ecp/test-rooms" component={TestRoomsPage} />
-            <Route path="/ecp/new-order" component={NewOrderPage} />
-            <Route path="/ecp/orders" component={ECPDashboard} />
+            <Route path="/ecp/diary" component={DiaryPage} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
+            <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />
             <Route path="/ecp/company" component={CompanyManagementPage} />
             <Route path="/ecp/bi-dashboard" component={BIDashboardPage} />
@@ -609,6 +612,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/dashboard" component={ECPDashboard} />
             <Route path="/ecp/patients" component={PatientsPage} />
             <Route path="/ecp/patient/:id/test" component={EyeTestPage} />
+            <Route path="/ecp/patient/:id/test-wizard" component={EyeTestWizard} />
             <Route path="/ecp/prescriptions" component={PrescriptionsPage} />
             <Route path="/ecp/inventory" component={InventoryManagement} />
             <Route path="/ecp/pos" component={OpticalPOSPage} />

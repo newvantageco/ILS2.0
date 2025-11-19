@@ -60,8 +60,18 @@ COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 # Copy built application from builder (contains bundled index.js and public/)
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
+# Copy shared directory (contains schema and types)
+COPY --from=builder --chown=nodejs:nodejs /app/shared ./shared
+
+# Copy drizzle config and migrations for database setup
+COPY --from=builder --chown=nodejs:nodejs /app/drizzle.config.ts ./drizzle.config.ts
+COPY --from=builder --chown=nodejs:nodejs /app/migrations ./migrations
+
+# Copy public assets
+COPY --from=builder --chown=nodejs:nodejs /app/public ./public
+
 # Create uploads directory with correct permissions
-RUN mkdir -p /app/uploads && chown -R nodejs:nodejs /app/uploads
+RUN mkdir -p /app/uploads /app/logs && chown -R nodejs:nodejs /app/uploads /app/logs
 
 # Switch to non-root user
 USER nodejs

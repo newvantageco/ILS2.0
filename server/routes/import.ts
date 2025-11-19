@@ -17,7 +17,7 @@ import {
   type BatchImportRequest,
   type FieldMapping,
 } from '../validation/import.js';
-import { authenticateUser } from '../middleware/auth.js';
+import { isAuthenticated as authenticateUser } from '../middleware/auth.js';
 
 const router = Router();
 const logger = loggers.api;

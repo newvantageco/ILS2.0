@@ -34,23 +34,28 @@ export default defineConfig({
     cssCodeSplit: true,
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes("node_modules")) {
-            if (id.includes("@mui")) {
-              return "vendor-mui";
-            }
-            if (id.includes("@radix-ui")) {
-              return "vendor-radix";
-            }
-            if (id.includes("@tanstack/react-query")) {
-              return "vendor-react-query";
-            }
-            if (/node_modules\/react(-dom)?\//.test(id)) {
-              return "vendor-react";
-            }
-          }
-        },
+        // Temporarily disabled manual chunks to avoid circular dependency issues
+        // manualChunks(id) {
+        //   if (id.includes("node_modules")) {
+        //     if (id.includes("@mui")) {
+        //       return "vendor-mui";
+        //     }
+        //     if (id.includes("@radix-ui")) {
+        //       return "vendor-radix";
+        //     }
+        //     if (id.includes("@tanstack/react-query")) {
+        //       return "vendor-react-query";
+        //     }
+        //     if (/node_modules\/react(-dom)?\//.test(id)) {
+        //       return "vendor-react";
+        //     }
+        //   }
+        // },
         // Optimize chunks for better caching
+        entryFileNames: (chunkInfo) => {
+          const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'entry';
+          return `js/[name]-[hash].js`;
+        },
         chunkFileNames: (chunkInfo) => {
           const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
           return `js/[name]-[hash].js`;

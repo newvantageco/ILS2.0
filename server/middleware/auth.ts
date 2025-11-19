@@ -69,9 +69,20 @@ export const requireRole = (allowedRoles: typeof roleEnum.enumValues[number][]) 
 export const requireAuth = authenticateUser;
 
 /**
+ * Session-based authentication middleware for express-session + passport
+ * This checks if the user is authenticated via session (not Bearer token)
+ */
+export const isAuthenticated: RequestHandler = (req, res, next) => {
+  if (req.isAuthenticated && req.isAuthenticated()) {
+    return next();
+  }
+  return res.status(401).json({ error: 'User not authenticated' });
+};
+
+/**
  * Another alias for authenticateUser (used in GDPR and other routes)
  */
-export const isAuthenticated = authenticateUser;
+export const requireTokenAuth = authenticateUser;
 
 async function validateToken(token: string) {
   try {

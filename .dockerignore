@@ -81,9 +81,10 @@ test-*.mjs
 setup-*.sh
 
 # Database files
-*.sql
+# Note: migrations/*.sql are needed for schema setup
 db/*.db
 db/*.sqlite
+db/init.sql
 
 # Python service (if separate deployment)
 python
@@ -92,7 +93,6 @@ ai-service
 
 # Infrastructure files
 infrastructure
-migrations
 .github
 kubernetes
 docker-compose*.yml

@@ -6,7 +6,7 @@
 
 import express from "express";
 import { advancedBookingService } from "../services/booking/AdvancedBookingService.js";
-import { authenticateUser } from "../middleware/auth.js";
+import { isAuthenticated as authenticateUser } from '../middleware/auth.js';
 import { createLogger } from "../utils/logger.js";
 
 const router = express.Router();

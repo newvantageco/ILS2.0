@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateUser, requireRole } from '../middleware/auth';
+import { isAuthenticated } from '../middleware/auth';
 import EquipmentDiscoveryService from '../services/EquipmentDiscoveryService';
 import { db } from '../db';
 import { eq } from 'drizzle-orm';
@@ -14,7 +14,7 @@ const equipmentService = EquipmentDiscoveryService.getInstance();
 // Start equipment discovery
 router.post(
   '/api/equipment/discovery/start',
-  authenticateUser,
+  isAuthenticated,
   requireRole(['admin', 'engineer'] as const),
   asyncHandler(async (req, res) => {
     try {
@@ -30,7 +30,7 @@ router.post(
 // Stop equipment discovery
 router.post(
   '/api/equipment/discovery/stop',
-  authenticateUser,
+  isAuthenticated,
   requireRole(['admin', 'engineer'] as const),
   asyncHandler(async (req, res) => {
     try {
@@ -46,7 +46,7 @@ router.post(
 // Get all known equipment
 router.get(
   '/api/equipment',
-  authenticateUser,
+  isAuthenticated,
   requireRole(['admin', 'engineer', 'lab_tech'] as const),
   asyncHandler(async (req, res) => {
     try {
@@ -62,7 +62,7 @@ router.get(
 // Get specific equipment details
 router.get(
   '/api/equipment/:id',
-  authenticateUser,
+  isAuthenticated,
   requireRole(['admin', 'engineer', 'lab_tech'] as const),
   asyncHandler(async (req, res) => {
     try {
@@ -81,7 +81,7 @@ router.get(
 // Configure equipment
 router.post(
   '/api/equipment/:id/configure',
-  authenticateUser,
+  isAuthenticated,
   requireRole(['admin', 'engineer'] as const),
   async (req, res) => {
     try {
@@ -111,7 +111,7 @@ router.post(
 // Test equipment connection
 router.post(
   '/api/equipment/:id/test',
-  authenticateUser,
+  isAuthenticated,
   requireRole(['admin', 'engineer', 'lab_tech'] as const),
   async (req, res) => {
     try {

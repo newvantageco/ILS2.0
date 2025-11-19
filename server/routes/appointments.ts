@@ -491,4 +491,256 @@ router.post('/waitlist/:id/fulfill', requireAuth, requireCompanyAccess, async (r
   }
 });
 
+// ============== INTEGRATED APPOINTMENT ENDPOINTS ==============
+
+import { integratedAppointmentService } from '../services/IntegratedAppointmentService';
+import { appointmentHandoffService } from '../services/AppointmentHandoffService';
+
+/**
+ * GET /api/appointments/integrated
+ * Get appointments with enriched data (patient, practitioner, clinical, dispensing)
+ */
+router.get('/integrated', requireAuth, requireCompanyAccess, async (req: Request, res: Response) => {
+  try {
+    const {
+      startDate,
+      endDate,
+      practitionerId,
+      patientId,
+      status,
+      stage,
+    } = req.query;
+
+    const filters = {
+      companyId: req.user!.companyId!,
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+      practitionerId: practitionerId as string | undefined,
+      patientId: patientId as string | undefined,
+      status: status as string | undefined,
+      stage: stage as string | undefined,
+    };
+
+    const appointments = await integratedAppointmentService.getIntegratedAppointments(filters);
+
+    res.json({
+      success: true,
+      appointments,
+      count: appointments.length,
+      message: 'Integrated appointments retrieved successfully',
+    });
+  } catch (error) {
+    logger.error({ error, query: req.query }, 'Failed to get integrated appointments');
+    res.status(500).json({ error: 'Failed to get integrated appointments' });
+  }
+});
+
+/**
+ * GET /api/appointments/integrated/:id
+ * Get single appointment with enriched data
+ */
+router.get('/integrated/:id', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const appointment = await integratedAppointmentService.getIntegratedAppointment(id);
+
+    if (!appointment) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+
+    res.json({
+      success: true,
+      appointment,
+      message: 'Integrated appointment retrieved successfully',
+    });
+  } catch (error) {
+    logger.error({ error, appointmentId: req.params.id }, 'Failed to get integrated appointment');
+    res.status(500).json({ error: 'Failed to get integrated appointment' });
+  }
+});
+
+/**
+ * GET /api/appointments/queue/:stage
+ * Get appointments by workflow stage (checked_in, in_exam, ready_for_dispense)
+ */
+router.get('/queue/:stage', requireAuth, requireCompanyAccess, async (req: Request, res: Response) => {
+  try {
+    const { stage } = req.params;
+
+    if (!['checked_in', 'in_exam', 'ready_for_dispense'].includes(stage)) {
+      return res.status(400).json({ error: 'Invalid stage. Must be: checked_in, in_exam, or ready_for_dispense' });
+    }
+
+    const appointments = await integratedAppointmentService.getAppointmentsByStage(
+      req.user!.companyId!,
+      stage as any
+    );
+
+    res.json({
+      success: true,
+      stage,
+      appointments,
+      count: appointments.length,
+      message: `${stage} queue retrieved successfully`,
+    });
+  } catch (error) {
+    logger.error({ error, stage: req.params.stage }, 'Failed to get queue');
+    res.status(500).json({ error: 'Failed to get queue' });
+  }
+});
+
+/**
+ * POST /api/appointments/:id/check-in
+ * Check in a patient for their appointment
+ */
+router.post('/:id/check-in', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const checkedInBy = req.user!.id;
+
+    await appointmentHandoffService.handleCheckIn(id, checkedInBy);
+
+    // Get updated integrated appointment
+    const appointment = await integratedAppointmentService.getIntegratedAppointment(id);
+
+    res.json({
+      success: true,
+      appointment,
+      message: 'Patient checked in successfully',
+    });
+  } catch (error) {
+    logger.error({ error, appointmentId: req.params.id }, 'Failed to check in patient');
+    res.status(500).json({ error: 'Failed to check in patient' });
+  }
+});
+
+/**
+ * POST /api/appointments/:id/start-exam
+ * Start examination for appointment (creates exam record)
+ */
+router.post('/:id/start-exam', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const practitionerId = req.user!.id;
+
+    const result = await appointmentHandoffService.handleExamStart(id, practitionerId);
+
+    res.json({
+      success: true,
+      examId: result.examId,
+      examUrl: result.examUrl,
+      message: 'Exam started successfully',
+    });
+  } catch (error) {
+    logger.error({ error, appointmentId: req.params.id }, 'Failed to start exam');
+    res.status(500).json({ error: 'Failed to start exam' });
+  }
+});
+
+/**
+ * POST /api/appointments/:id/complete-exam
+ * Mark examination as complete (triggers handoff to dispenser)
+ */
+router.post('/:id/complete-exam', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { examId, prescriptionId } = req.body;
+
+    if (!examId) {
+      return res.status(400).json({ error: 'Exam ID is required' });
+    }
+
+    await appointmentHandoffService.handleExamComplete(id, examId, prescriptionId);
+
+    // Get updated integrated appointment
+    const appointment = await integratedAppointmentService.getIntegratedAppointment(id);
+
+    res.json({
+      success: true,
+      appointment,
+      message: 'Exam completed successfully',
+    });
+  } catch (error) {
+    logger.error({ error, appointmentId: req.params.id }, 'Failed to complete exam');
+    res.status(500).json({ error: 'Failed to complete exam' });
+  }
+});
+
+/**
+ * POST /api/appointments/:id/create-order
+ * Create order for appointment (final handoff)
+ */
+router.post('/:id/create-order', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({ error: 'Order ID is required' });
+    }
+
+    await appointmentHandoffService.handleOrderCreated(id, orderId);
+
+    // Get updated integrated appointment
+    const appointment = await integratedAppointmentService.getIntegratedAppointment(id);
+
+    res.json({
+      success: true,
+      appointment,
+      message: 'Order created successfully',
+    });
+  } catch (error) {
+    logger.error({ error, appointmentId: req.params.id }, 'Failed to create order');
+    res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+/**
+ * PATCH /api/appointments/:id/status
+ * Update appointment status (triggers WebSocket broadcast)
+ */
+router.patch('/:id/status', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status, notes } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+
+    await appointmentService.updateAppointment(id, {
+      status,
+      notes,
+      updatedBy: req.user!.id,
+    });
+
+    // Get updated integrated appointment
+    const appointment = await integratedAppointmentService.getIntegratedAppointment(id);
+
+    // Broadcast status change via WebSocket
+    if (appointment?.companyId) {
+      const webSocketService = require('../services/WebSocketService').getWebSocketService();
+      webSocketService.broadcastToCompany(appointment.companyId, {
+        event: 'appointment:status_changed',
+        data: {
+          appointmentId: id,
+          status,
+          stage: appointment.realtimeStatus.currentStage,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+
+    res.json({
+      success: true,
+      appointment,
+      message: 'Appointment status updated successfully',
+    });
+  } catch (error) {
+    logger.error({ error, appointmentId: req.params.id }, 'Failed to update status');
+    res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
 export default router;

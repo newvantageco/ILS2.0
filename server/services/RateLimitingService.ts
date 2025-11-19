@@ -157,13 +157,26 @@ export class RateLimitingService {
   private initializeRedis(): void {
     if (this.redis) return; // Already initialized
 
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD,
-      maxRetriesPerRequest: 3,
-      lazyConnect: true
-    });
+    // Check if Redis is configured
+    const redisUrl = process.env.REDIS_URL;
+    const redisHost = process.env.REDIS_HOST;
+    
+    if (!redisUrl && !redisHost) {
+      this.logger.warn('Redis not configured - rate limiting will be in-memory only');
+      return;
+    }
+
+    const redisConfig = redisUrl 
+      ? { url: redisUrl, maxRetriesPerRequest: 3, lazyConnect: true }
+      : {
+          host: redisHost,
+          port: parseInt(process.env.REDIS_PORT || '6379'),
+          password: process.env.REDIS_PASSWORD,
+          maxRetriesPerRequest: 3,
+          lazyConnect: true
+        };
+
+    this.redis = new Redis(redisConfig);
 
     this.redis.on('error', (error) => {
       this.logger.error({ error }, 'Redis connection error');

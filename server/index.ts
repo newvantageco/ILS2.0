@@ -79,7 +79,7 @@ if (!corsOrigin && process.env.NODE_ENV === 'production') {
   );
 }
 
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   const requestOrigin = req.headers.origin;
   
   // For local development, allow localhost and 127.0.0.1 with any port
@@ -167,7 +167,7 @@ const sessionConfig = {
   saveUninitialized: false,
   cookie: {
     httpOnly: true, // XSS protection
-    secure: process.env.NODE_ENV === 'production', // HTTPS in production
+    secure: process.env.NODE_ENV === 'production' && !process.env.DISABLE_HTTPS, // HTTPS in production (unless disabled for local testing)
     sameSite: 'strict' as const, // CSRF protection
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
   },
@@ -462,7 +462,7 @@ app.get('/api/health', healthCheck);
     });
 
     // Handle server errors
-    server.on('error', (error: NodeJS.ErrnoException) => {
+    server.on('error', (error: any) => {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Server error:');
       if (error.code === 'EADDRINUSE') {
         logger.error({ port }, 'Port is already in use');

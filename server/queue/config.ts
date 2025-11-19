@@ -26,52 +26,83 @@ let redisAvailable = false;
  */
 export async function initializeRedis(): Promise<boolean> {
   try {
-    // Use REDIS_URL from Railway if available, otherwise use individual config
-    const redisConfig = REDIS_URL
-      ? { 
-          url: REDIS_URL,
-          maxRetriesPerRequest: null,
-          enableReadyCheck: false,
+    // Check if Redis is configured
+    if (!REDIS_URL && (!REDIS_HOST || !REDIS_PORT)) {
+      logger.warn({}, 'Redis configuration missing - using fallback mode');
+      redisAvailable = false;
+      return false;
+    }
+
+    logger.info({ 
+      host: REDIS_HOST, 
+      port: REDIS_PORT, 
+      url: REDIS_URL ? 'set' : 'not set' 
+    }, 'Initializing Redis connection...');
+
+    // Create Redis connection
+    // Use REDIS_URL if available, otherwise individual parameters
+    if (REDIS_URL) {
+      redisConnection = new Redis(REDIS_URL, {
+        maxRetriesPerRequest: null, // Required for BullMQ
+        retryStrategy: (times) => {
+          const delay = Math.min(times * 50, 2000);
+          return delay;
         }
-      : {
-          host: REDIS_HOST,
-          port: REDIS_PORT,
-          password: REDIS_PASSWORD,
-          db: REDIS_DB,
-          maxRetriesPerRequest: null,
-          enableReadyCheck: false,
-        };
+      });
+    } else {
+      redisConnection = new Redis({
+        host: REDIS_HOST,
+        port: REDIS_PORT,
+        password: REDIS_PASSWORD,
+        db: REDIS_DB,
+        maxRetriesPerRequest: null, // Required for BullMQ
+        retryStrategy: (times) => {
+          const delay = Math.min(times * 50, 2000);
+          return delay;
+        }
+      });
+    }
 
-    redisConnection = new Redis(redisConfig as any);
-    redisConnection.setMaxListeners(100);
+    // Wait for connection
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Redis connection timeout'));
+      }, 5000);
 
-    // Test connection
-    await redisConnection.ping();
-    redisAvailable = true;
-    logger.info({
-      source: REDIS_URL ? 'REDIS_URL' : 'REDIS_HOST/PORT',
-      host: REDIS_URL ? undefined : REDIS_HOST,
-      port: REDIS_URL ? undefined : REDIS_PORT
-    }, 'Redis connected successfully');
+      redisConnection!.once('ready', () => {
+        clearTimeout(timeout);
+        redisAvailable = true;
+        resolve();
+      });
 
-    // Initialize queues after successful connection
+      redisConnection!.once('error', (err) => {
+        clearTimeout(timeout);
+        logger.error({ error: err.message }, 'Redis connection error during initialization');
+        // Don't reject here, let it retry or fail gracefully
+        // But for initialization, we might want to know
+        reject(err);
+      });
+    });
+
+    logger.info({}, '✅ Redis connected successfully');
+    
+    // Initialize queues now that Redis is ready
     initializeQueues();
     
-    // Handle Redis errors
-    redisConnection.on('error', (err) => {
-      logger.error({ error: err.message }, 'Redis error');
-      redisAvailable = false;
-    });
-
-    redisConnection.on('reconnecting', () => {
-      logger.info({}, 'Redis reconnecting');
-    });
-
     return true;
   } catch (error) {
-    logger.warn({ error: (error as Error).message }, 'Redis not available');
-    logger.warn({}, 'Queue system will operate in fallback mode (immediate execution)');
-    redisConnection = null;
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, '❌ Failed to initialize Redis - using fallback mode');
+    
+    // Clean up connection if it exists but failed
+    if (redisConnection) {
+      try {
+        await redisConnection.quit();
+      } catch (e) {
+        // Ignore close errors
+      }
+      redisConnection = null;
+    }
+    
     redisAvailable = false;
     return false;
   }
