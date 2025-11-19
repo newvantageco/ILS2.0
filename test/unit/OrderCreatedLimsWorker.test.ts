@@ -12,7 +12,7 @@ describe('OrderCreatedLimsWorker (unit)', () => {
     const order = { id: orderId, odSphere: '1.0', osSphere: '1.0', lensType: 'single', lensMaterial: 'poly', coating: 'ar' } as any;
 
     const storageMock = {
-      getOrder: vi.fn(async (id: string) => (id === orderId ? order : null)),
+      getOrderById_Internal: vi.fn(async (id: string) => (id === orderId ? order : null)),
       updateOrderWithLimsJob: vi.fn(async (id: string, limsData: any) => ({ ...limsData })),
     } as any;
 
@@ -31,7 +31,7 @@ describe('OrderCreatedLimsWorker (unit)', () => {
     // Wait for worker to process (small sleep)
     await new Promise((r) => setTimeout(r, 400));
 
-    expect(storageMock.getOrder).toHaveBeenCalledWith(orderId);
+    expect(storageMock.getOrderById_Internal).toHaveBeenCalledWith(orderId);
     expect(limsClientMock.createJob).toHaveBeenCalled();
     expect(storageMock.updateOrderWithLimsJob).toHaveBeenCalledWith(orderId, expect.objectContaining({ jobId: limsResponse.jobId }));
   });

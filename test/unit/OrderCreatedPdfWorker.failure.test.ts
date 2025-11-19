@@ -14,7 +14,7 @@ describe('OrderCreatedPdfWorker (failure DLQ)', () => {
     const updateCalls: any[] = [];
 
     const storageMock = {
-      getOrder: vi.fn(async (id: string) => (id === orderId ? order : null)),
+      getOrderById_Internal: vi.fn(async (id: string) => (id === orderId ? order : null)),
       updateOrder: vi.fn(async (id: string, updates: any) => {
         updateCalls.push({ id, updates });
         return true;

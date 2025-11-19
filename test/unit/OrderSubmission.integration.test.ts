@@ -36,7 +36,7 @@ describe('Order submission integration (in-memory event bus)', () => {
 
     const storage = {
       createOrder: vi.fn(async (o: any) => createdOrder),
-      getOrder: vi.fn(async (id: string) => createdOrder),
+      getOrderById_Internal: vi.fn(async (id: string) => createdOrder),
       updateOrderWithLimsJob: vi.fn(async (id: string, updates: any) => ({ id, ...updates })),
       updateOrder: vi.fn(async (id: string, updates: any) => ({ id, ...updates })),
     } as any;

@@ -294,9 +294,10 @@ export function EyeTestWizard() {
       <Card className="min-h-[500px]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            {WIZARD_STEPS[currentStep].icon && (
-              <WIZARD_STEPS[currentStep].icon className="w-5 h-5" />
-            )}
+            {WIZARD_STEPS[currentStep].icon && (() => {
+              const IconComponent = WIZARD_STEPS[currentStep].icon;
+              return IconComponent ? <IconComponent className="w-5 h-5" /> : null;
+            })()}
             {WIZARD_STEPS[currentStep].title}
           </CardTitle>
         </CardHeader>

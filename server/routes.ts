@@ -1410,13 +1410,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rightEye: {
           sphere: order.odSphere || undefined,
           cylinder: order.odCylinder || undefined,
-          axis: order.odAxis || undefined,
+          axis: order.odAxis?.toString() || undefined,
           add: order.odAdd || undefined,
         },
         leftEye: {
           sphere: order.osSphere || undefined,
           cylinder: order.osCylinder || undefined,
-          axis: order.osAxis || undefined,
+          axis: order.osAxis?.toString() || undefined,
           add: order.osAdd || undefined,
         },
         pd: order.pd || undefined,
@@ -1484,7 +1484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           right: {
             sph: order.odSphere || undefined,
             cyl: order.odCylinder || undefined,
-            axis: order.odAxis || undefined,
+            axis: order.odAxis?.toString() || undefined,
             add: order.odAdd || undefined,
             // Note: Prism values would need to be added to the order schema
             hPrism: undefined,
@@ -1495,7 +1495,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           left: {
             sph: order.osSphere || undefined,
             cyl: order.osCylinder || undefined,
-            axis: order.osAxis || undefined,
+            axis: order.osAxis?.toString() || undefined,
             add: order.osAdd || undefined,
             hPrism: undefined,
             hBase: undefined,
@@ -1587,13 +1587,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rightEye: {
           sphere: order.odSphere || undefined,
           cylinder: order.odCylinder || undefined,
-          axis: order.odAxis || undefined,
+          axis: order.odAxis?.toString() || undefined,
           add: order.odAdd || undefined,
         },
         leftEye: {
           sphere: order.osSphere || undefined,
           cylinder: order.osCylinder || undefined,
-          axis: order.osAxis || undefined,
+          axis: order.osAxis?.toString() || undefined,
           add: order.osAdd || undefined,
         },
         pd: order.pd || undefined,
@@ -2872,7 +2872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         orders,
         invoices
       ] = await Promise.all([
-        db.select().from(schema.patients).where(eq(schema.patients.id, patientId)).limit(1).then(r => r[0]),
+        db.select().from(schema.patients).where(eq(schema.patients.id, patientId)).limit(1).then((r: any) => r[0]),
         db.select().from(schema.testRoomBookings).where(eq(schema.testRoomBookings.patientId, patientId)).orderBy(desc(schema.testRoomBookings.bookingDate)),
         db.select().from(schema.eyeExaminations).where(eq(schema.eyeExaminations.patientId, patientId)).orderBy(desc(schema.eyeExaminations.examinationDate)),
         db.select().from(schema.prescriptions).where(eq(schema.prescriptions.patientId, patientId)).orderBy(desc(schema.prescriptions.issueDate)),
@@ -2891,12 +2891,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Calculate summary stats
       const totalSpent = invoices
-        .filter(inv => inv.status === 'paid')
-        .reduce((sum, inv) => sum + Number(inv.totalAmount || 0), 0);
+        .filter((inv: any) => inv.status === 'paid')
+        .reduce((sum: number, inv: any) => sum + Number(inv.totalAmount || 0), 0);
 
       const pendingBalance = invoices
-        .filter(inv => inv.status === 'draft')
-        .reduce((sum, inv) => sum + Number(inv.totalAmount || 0), 0);
+        .filter((inv: any) => inv.status === 'draft')
+        .reduce((sum: number, inv: any) => sum + Number(inv.totalAmount || 0), 0);
 
       const summary = {
         patient,
@@ -2906,7 +2906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalSpent,
           pendingBalance,
           lastVisit: examinations[0]?.examinationDate || null,
-          nextAppointment: appointments.find(apt => 
+          nextAppointment: appointments.find((apt: any) => 
             apt.status === 'scheduled' && new Date(apt.bookingDate) > new Date()
           )?.bookingDate || null
         },
@@ -3007,7 +3007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           right: {
             sph: lastOrder.odSphere || undefined,
             cyl: lastOrder.odCylinder || undefined,
-            axis: lastOrder.odAxis || undefined,
+            axis: lastOrder.odAxis?.toString() || undefined,
             prism: undefined, // Add if available in future
             add: lastOrder.odAdd || undefined,
             type: lastOrder.lensType || undefined,
@@ -3018,7 +3018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           left: {
             sph: lastOrder.osSphere || undefined,
             cyl: lastOrder.osCylinder || undefined,
-            axis: lastOrder.osAxis || undefined,
+            axis: lastOrder.osAxis?.toString() || undefined,
             prism: undefined,
             add: lastOrder.osAdd || undefined,
             type: lastOrder.lensType || undefined,
@@ -3068,7 +3068,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Auto-detect timezone from postcode or IP
       const { autoDetectTimezone } = await import("./lib/timezoneDetector.js");
-      const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+      const ipAddressRaw = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+      const ipAddress = Array.isArray(ipAddressRaw) ? ipAddressRaw[0] : ipAddressRaw;
       const timezoneInfo = await autoDetectTimezone(req.body.postcode, ipAddress);
 
       const patientData = addCreationTimestamp({
@@ -3127,7 +3128,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let timezoneUpdate = {};
       if (req.body.postcode && req.body.postcode !== patient.postcode) {
         const { autoDetectTimezone } = await import("./lib/timezoneDetector.js");
-        const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        const ipAddressRaw = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        const ipAddress = Array.isArray(ipAddressRaw) ? ipAddressRaw[0] : ipAddressRaw;
         const timezoneInfo = await autoDetectTimezone(req.body.postcode, ipAddress);
         timezoneUpdate = {
           timezone: timezoneInfo.timezone,
@@ -3153,7 +3155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         `${user.firstName} ${user.lastName}`,
         { 
-          ipAddress: req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+          ipAddress: Array.isArray(req.headers['x-forwarded-for']) ? req.headers['x-forwarded-for'][0] : (req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress),
           userAgent: req.headers['user-agent']
         }
       );
@@ -3290,8 +3292,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await shopifyService.syncCustomers(user.companyId, user);
       
       res.json({
-        message: "Sync completed",
         ...result,
+        message: result.message || "Sync completed",
       });
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error syncing Shopify customers');
@@ -3643,7 +3645,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { generatePrescriptionPDF } = await import('./pdfService');
-      const pdfBuffer = await generatePrescriptionPDF(prescription);
+      // Convert axis values to strings for PDF generation
+      const prescriptionData = {
+        ...prescription,
+        odAxis: prescription.odAxis?.toString() || null,
+        osAxis: prescription.osAxis?.toString() || null,
+      };
+      const pdfBuffer = await generatePrescriptionPDF(prescriptionData as any);
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="prescription-${prescription.id}.pdf"`);

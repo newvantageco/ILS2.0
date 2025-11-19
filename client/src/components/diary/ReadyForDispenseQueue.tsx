@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAppointmentQueue } from '@/hooks/useIntegratedAppointments';
 import { useDispenserNotifications } from '@/hooks/useAppointmentWebSocket';
 import { useUser } from '@/hooks/use-user';
-import { useNavigate } from 'wouter';
+import { useLocation } from 'wouter';
 import { 
   Package, 
   FileText, 
@@ -34,7 +34,7 @@ import { AppointmentStatusBadge } from './AppointmentStatusBadge';
 export function ReadyForDispenseQueue() {
   const { user } = useUser();
   const { data: queue = [], isLoading } = useAppointmentQueue('ready_for_dispense');
-  const [, navigate] = useNavigate();
+  const [, setLocation] = useLocation();
   
   // Enable real-time notifications
   useDispenserNotifications(user?.companyId);
@@ -172,7 +172,7 @@ export function ReadyForDispenseQueue() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => navigate(`/prescriptions/${appointment.clinical!.prescriptionId}`)}
+                          onClick={() => setLocation(`/prescriptions/${appointment.clinical!.prescriptionId}`)}
                         >
                           <FileText className="w-4 h-4 mr-2" />
                           View Rx
@@ -190,7 +190,7 @@ export function ReadyForDispenseQueue() {
                             params.append('prescriptionId', appointment.clinical.prescriptionId);
                           }
                           
-                          navigate(`/pos?${params.toString()}`);
+                          setLocation(`/pos?${params.toString()}`);
                         }}
                         className="bg-purple-600 hover:bg-purple-700"
                       >

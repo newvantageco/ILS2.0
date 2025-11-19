@@ -14,7 +14,7 @@ describe('OrderCreatedPdfWorker (unit)', () => {
     const updateCalls: any[] = [];
 
     const storageMock = {
-      getOrder: vi.fn(async (id: string) => (id === orderId ? order : null)),
+      getOrderById_Internal: vi.fn(async (id: string) => (id === orderId ? order : null)),
       updateOrder: vi.fn(async (id: string, updates: any) => {
         updateCalls.push({ id, updates });
         return true;
@@ -30,8 +30,8 @@ describe('OrderCreatedPdfWorker (unit)', () => {
     // Wait enough time for the worker to run its placeholder PDF generation (200ms) plus slop
     await new Promise((r) => setTimeout(r, 400));
 
-    // Assert storage.getOrder and updateOrder were called
-    expect(storageMock.getOrder).toHaveBeenCalledWith(orderId);
+    // Assert storage.getOrderById_Internal and updateOrder were called
+    expect(storageMock.getOrderById_Internal).toHaveBeenCalledWith(orderId);
     expect(updateCalls.length).toBeGreaterThan(0);
 
     const found = updateCalls.find((c) => c.id === orderId && c.updates && c.updates.pdfUrl);

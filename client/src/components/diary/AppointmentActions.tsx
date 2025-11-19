@@ -10,7 +10,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'wouter';
+import { useLocation } from 'wouter';
 import {
   UserCheck,
   Stethoscope,
@@ -58,7 +58,7 @@ interface StartExamButtonProps {
 
 export function StartExamButton({ appointment }: StartExamButtonProps) {
   const startExam = useStartExam();
-  const [, navigate] = useNavigate();
+  const [, setLocation] = useLocation();
   
   // Only show if checked in or if exam already exists
   const canStart = 
@@ -72,14 +72,14 @@ export function StartExamButton({ appointment }: StartExamButtonProps) {
   const handleStartExam = async () => {
     // If exam already exists, navigate directly
     if (appointment.clinical?.examId) {
-      navigate(`/examinations/${appointment.clinical.examId}`);
+      setLocation(`/examinations/${appointment.clinical.examId}`);
       return;
     }
     
     // Otherwise, create new exam
     const result = await startExam.mutateAsync(appointment.id);
     if (result.examId) {
-      navigate(`/examinations/${result.examId}`);
+      setLocation(`/examinations/${result.examId}`);
     }
   };
   
@@ -103,7 +103,7 @@ interface ViewPrescriptionButtonProps {
 }
 
 export function ViewPrescriptionButton({ appointment }: ViewPrescriptionButtonProps) {
-  const [, navigate] = useNavigate();
+  const [, setLocation] = useLocation();
   
   // Only show if prescription exists
   if (!appointment.clinical?.prescriptionId) {
@@ -114,7 +114,7 @@ export function ViewPrescriptionButton({ appointment }: ViewPrescriptionButtonPr
     <Button
       variant="outline"
       size="sm"
-      onClick={() => navigate(`/prescriptions/${appointment.clinical!.prescriptionId}`)}
+      onClick={() => setLocation(`/prescriptions/${appointment.clinical!.prescriptionId}`)}
     >
       <FileText className="w-4 h-4 mr-2" />
       View Prescription
@@ -127,7 +127,7 @@ interface CreateOrderButtonProps {
 }
 
 export function CreateOrderButton({ appointment }: CreateOrderButtonProps) {
-  const [, navigate] = useNavigate();
+  const [, setLocation] = useLocation();
   
   // Only show if prescription is signed but no order exists
   const canCreateOrder = 
@@ -144,7 +144,7 @@ export function CreateOrderButton({ appointment }: CreateOrderButtonProps) {
       <Button
         variant="outline"
         size="sm"
-        onClick={() => navigate(`/orders/${appointment.dispensing!.orderId}`)}
+        onClick={() => setLocation(`/orders/${appointment.dispensing!.orderId}`)}
       >
         <ShoppingCart className="w-4 h-4 mr-2" />
         View Order
@@ -156,7 +156,7 @@ export function CreateOrderButton({ appointment }: CreateOrderButtonProps) {
     <Button
       onClick={() => {
         // Navigate to POS with pre-filled patient and prescription
-        navigate(`/pos?patientId=${appointment.patientId}&prescriptionId=${appointment.clinical!.prescriptionId}&appointmentId=${appointment.id}`);
+        setLocation(`/pos?patientId=${appointment.patientId}&prescriptionId=${appointment.clinical!.prescriptionId}&appointmentId=${appointment.id}`);
       }}
     >
       <ShoppingCart className="w-4 h-4 mr-2" />

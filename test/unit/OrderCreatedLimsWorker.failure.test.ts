@@ -13,7 +13,7 @@ describe('OrderCreatedLimsWorker (failure DLQ)', () => {
 
     const updateCalls: any[] = [];
     const storageMock = {
-      getOrder: vi.fn(async (id: string) => (id === orderId ? order : null)),
+      getOrderById_Internal: vi.fn(async (id: string) => (id === orderId ? order : null)),
       updateOrderWithLimsJob: vi.fn(async (id: string, limsData: any) => {
         updateCalls.push({ id, limsData });
         return true;
