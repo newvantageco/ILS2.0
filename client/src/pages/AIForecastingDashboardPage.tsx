@@ -11,18 +11,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  AlertTriangle, 
-  Users, 
-  Activity, 
-  Target, 
+import { motion } from "framer-motion";
+import StatsCard from "@/components/ui/StatsCard";
+import { StatsGridSkeleton } from "@/components/ui/LoadingSkeletons";
+import {
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  Users,
+  Activity,
+  Target,
   Calendar,
   BarChart3,
   LineChart as LineChartIcon,
   Zap,
   RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import {
   LineChart,
@@ -172,80 +176,77 @@ export default function AIForecastingDashboardPage() {
     refetchSurge();
   };
 
-  return (
-    <div className="container mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">AI Demand Forecasting</h1>
-          <p className="text-muted-foreground">
-            Predictive analytics for demand planning and capacity optimization
-          </p>
-        </div>
-        <Button onClick={handleRefresh}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh Data
-        </Button>
-      </div>
+  // Calculate average predicted orders
+  const avgPredictedOrders = forecast.length > 0
+    ? Math.round(forecast.reduce((sum, f) => sum + f.predictedOrders, 0) / forecast.length)
+    : 0;
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Target className="h-4 w-4 text-blue-500" />
-              Forecast Accuracy
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{(metrics.accuracy * 100).toFixed(1)}%</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {metrics.lastUpdated && formatDistanceToNow(new Date(metrics.lastUpdated), { addSuffix: true })}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Activity className="h-4 w-4 text-green-500" />
-              Avg Predicted Daily Orders
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {forecast.length > 0 
-                ? Math.round(forecast.reduce((sum, f) => sum + f.predictedOrders, 0) / forecast.length)
-                : 0}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Next {forecastDays} days</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Zap className="h-4 w-4 text-yellow-500" />
-              Surge Periods
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{surgePeriods.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">Next {surgeDays} days</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Staffing Gaps
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {staffing.filter(s => s.gap > 0).length}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Days needing more staff</p>
-          </CardContent>
-        </Card>
-      </div>
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Modern Gradient Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 p-6 text-white shadow-lg"
+      >
+        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="rounded-xl bg-white/20 p-3 backdrop-blur">
+              <Sparkles className="h-8 w-8" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">AI Demand Forecasting</h1>
+              <p className="text-white/80">Predictive analytics for demand planning and capacity optimization</p>
+            </div>
+          </div>
+          <Button onClick={handleRefresh} className="bg-white/20 hover:bg-white/30 text-white border-white/30">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh Data
+          </Button>
+        </div>
+      </motion.div>
+
+      {/* Key Metrics with StatsCard */}
+      {forecastLoading ? (
+        <StatsGridSkeleton count={4} />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StatsCard
+            title="Forecast Accuracy"
+            value={`${(metrics.accuracy * 100).toFixed(1)}%`}
+            subtitle={metrics.lastUpdated ? formatDistanceToNow(new Date(metrics.lastUpdated), { addSuffix: true }) : ''}
+            icon={Target}
+            iconBgColor="bg-blue-100"
+            iconColor="text-blue-600"
+          />
+          <StatsCard
+            title="Avg Daily Orders"
+            value={avgPredictedOrders.toString()}
+            subtitle={`Next ${forecastDays} days`}
+            icon={Activity}
+            iconBgColor="bg-green-100"
+            iconColor="text-green-600"
+          />
+          <StatsCard
+            title="Surge Periods"
+            value={surgePeriods.length.toString()}
+            subtitle={`Next ${surgeDays} days`}
+            icon={Zap}
+            iconBgColor="bg-yellow-100"
+            iconColor="text-yellow-600"
+          />
+          <StatsCard
+            title="Staff Recommendations"
+            value={staffing.filter(s => s.gap > 0).length.toString()}
+            subtitle="Understaffed days"
+            icon={Users}
+            iconBgColor="bg-red-100"
+            iconColor="text-red-600"
+          />
+        </div>
+      )}
 
       {/* Demand Forecast Chart */}
       <Card>
