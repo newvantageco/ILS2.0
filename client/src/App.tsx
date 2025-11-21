@@ -208,7 +208,7 @@ class RouteErrorBoundary extends React.Component<
   }
 }
 
-function AppLayout({ children, userRole }: { children: React.ReactNode; userRole: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin" | "dispenser" }) {
+function AppLayout({ children, userRole }: { children: React.ReactNode; userRole: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "dispenser" }) {
   const { logout } = useAuth();
   const [showWelcome, setShowWelcome] = useState(false);
   
@@ -405,10 +405,10 @@ function AuthenticatedApp() {
         return "/admin";
       case "platform_admin":
         return "/platform-admin";
-      case "company_admin":
-        return "/company-admin";
+      case "dispenser":
+        return "/dispenser";
       default:
-        return "/lab";
+        return "/welcome";
     }
   };
 
@@ -654,18 +654,16 @@ function AuthenticatedApp() {
           </>
         )}
 
-        {userRole === "company_admin" && (
+        {/* Company Admin routes - accessible to users with isCompanyAdmin flag */}
+        {user.isCompanyAdmin && (
           <>
-            <Route path="/company-admin/dashboard" component={CompanyAdminPage} />
-            <Route path="/company-admin/profile" component={CompanyAdminPage} />
-            <Route path="/company-admin/users" component={CompanyAdminPage} />
-            <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
-            <Route path="/company-admin/suppliers" component={CompanyAdminPage} />
-            <Route path="/company-admin/settings" component={SettingsPage} />
-            <Route path="/company-admin/analytics" component={AnalyticsDashboard} />
-            <Route path="/company-admin/ai-assistant" component={AIAssistantPage} />
-            <Route path="/admin/permissions" component={PermissionsManagementPage} />
-            <Route path="/ecp/company" component={CompanyManagementPage} />
+            <Route path="/company/dashboard" component={CompanyAdminPage} />
+            <Route path="/company/profile" component={CompanyAdminPage} />
+            <Route path="/company/users" component={CompanyAdminPage} />
+            <Route path="/company/suppliers" component={CompanyAdminPage} />
+            <Route path="/company/settings" component={SettingsPage} />
+            <Route path="/company/analytics" component={AnalyticsDashboard} />
+            <Route path="/company/management" component={CompanyManagementPage} />
           </>
         )}
 

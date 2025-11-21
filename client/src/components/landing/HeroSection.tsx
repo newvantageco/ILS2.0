@@ -54,9 +54,9 @@ export function HeroSection() {
               transition={{ delay: 0.3, duration: 0.6 }}
               className="text-4xl md:text-5xl lg:text-7xl font-extrabold text-gray-900 mb-6 leading-[1.1] tracking-tight"
             >
-              The Operating System for{' '}
+              The World's Most Advanced{' '}
               <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Modern Optical Practices
+                AI-Powered Optical Platform
               </span>
             </motion.h1>
             
@@ -66,7 +66,7 @@ export function HeroSection() {
               transition={{ delay: 0.4, duration: 0.6 }}
               className="text-xl md:text-2xl text-gray-600 mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0"
             >
-              Unite your practice, lab, and suppliers in one intelligent platform.
+              AI clinical documentation • AR virtual try-on • Predictive analytics • Telehealth • Automated billing. All in one platform.
             </motion.p>
 
             <motion.div

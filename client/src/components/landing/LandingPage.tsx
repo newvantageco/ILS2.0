@@ -1,5 +1,6 @@
 import { Header } from './Header';
 import { HeroSection } from './HeroSection';
+import { NextGenFeatures } from './NextGenFeatures';
 import { ProblemSolution } from './ProblemSolution';
 import { FeatureShowcase } from './FeatureShowcase';
 import { AISpotlight } from './AISpotlight';
@@ -19,6 +20,11 @@ export function LandingPage() {
       {/* Hero Section */}
       <div id="hero" style={{ scrollMarginTop: '64px' }}>
         <HeroSection />
+      </div>
+
+      {/* Next-Generation Features - NEW! */}
+      <div id="next-gen" style={{ scrollMarginTop: '64px' }}>
+        <NextGenFeatures />
       </div>
 
       {/* Problem/Solution Section */}

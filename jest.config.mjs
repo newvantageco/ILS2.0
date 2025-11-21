@@ -13,11 +13,17 @@ export default {
     '^@/(.*)$': '<rootDir>/server/$1',
     '^@shared/(.*)$': '<rootDir>/shared/$1',
     '^(\.{1,2}/.*)\.js$': '$1',
-    // Fix drizzle-orm module resolution
-    '^drizzle-orm/(.*)$': '<rootDir>/node_modules/drizzle-orm/$1'
+    // Fix drizzle-orm ES module resolution
+    '^drizzle-orm/neon-serverless$': '<rootDir>/node_modules/drizzle-orm/neon-serverless/index.mjs',
+    '^drizzle-orm/node-postgres$': '<rootDir>/node_modules/drizzle-orm/node-postgres/index.mjs',
+    '^drizzle-orm/(.*)$': '<rootDir>/node_modules/drizzle-orm/$1',
+    // Fix Zod v3 module resolution issue
+    '^zod$': '<rootDir>/node_modules/zod/lib/index.mjs',
+    // Mock ws for tests
+    '^ws$': '<rootDir>/test/__mocks__/ws.js'
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(zod|drizzle-orm|@neondatabase)/)'
+    'node_modules/(?!(zod|drizzle-orm|@neondatabase|ws)/)'
   ],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {

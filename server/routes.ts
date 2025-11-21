@@ -379,6 +379,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WORLD-CLASS TRANSFORMATION ROUTES (November 2025)
   // ============================================================================
   
+  // AI Clinical Documentation routes (AI-powered note generation, diagnosis suggestions)
+  const aiDocumentationRoutes = require('./routes/ai-documentation').default;
+  app.use('/api/ai-documentation', isAuthenticated, aiDocumentationRoutes);
+  
+  // AR Virtual Try-On routes (AR-powered frame selection and try-on)
+  const arTryOnRoutes = require('./routes/ar-try-on').default;
+  app.use('/api/ar-try-on', arTryOnRoutes);
+  
+  // Predictive Analytics routes (ML-powered predictions and forecasts)
+  const predictiveAnalyticsRoutes = require('./routes/predictive-analytics').default;
+  app.use('/api/predictive-analytics', isAuthenticated, predictiveAnalyticsRoutes);
+  
+  // Revenue Cycle Management routes (automated billing and claims)
+  const revenueCycleRoutes = require('./routes/revenue-cycle').default;
+  app.use('/api/revenue-cycle', isAuthenticated, revenueCycleRoutes);
+  
   // Shopify webhook routes (public, HMAC-verified)
   app.use('/api/webhooks/shopify', webhookLimiter, shopifyWebhookRoutes);
 

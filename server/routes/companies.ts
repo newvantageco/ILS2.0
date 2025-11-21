@@ -124,18 +124,20 @@ router.post('/', async (req: Request, res: Response) => {
       .returning();
 
     // Update user's companyId and set as company admin
+    // IMPORTANT: Keep user's functional role, just add company admin flag
     await db
       .update(users)
       .set({ 
         companyId: newCompany.id,
-        role: 'company_admin',
+        isCompanyAdmin: true, // Grant company admin privileges
         accountStatus: 'active'
+        // Note: role field is NOT changed - user keeps their functional role
       })
       .where(eq(users.id, userId));
 
     res.json(newCompany);
   } catch (error) {
-    logger.error({ error, companyName: name }, 'Error creating company');
+    logger.error({ error, companyName: req.body?.name }, 'Error creating company');
     res.status(500).json({ error: 'Failed to create company' });
   }
 });

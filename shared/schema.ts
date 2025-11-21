@@ -988,6 +988,7 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   role: roleEnum("role"),
   enhancedRole: roleEnum("enhanced_role"),
+  isCompanyAdmin: boolean("is_company_admin").default(false), // Multi-tenant: admin privileges for their company
   subscriptionPlan: subscriptionPlanEnum("subscription_plan").notNull().default("full"),
   gocNumber: varchar("goc_number"), // General Optical Council registration number
   accountNumber: varchar("account_number"),
@@ -9540,3 +9541,10 @@ export type PatientPortalAccessLog = typeof patientPortalAccessLogs.$inferSelect
 export type InsertPatientPortalAccessLog = typeof patientPortalAccessLogs.$inferInsert;
 
 // ========== End Patient Portal Tables ==========
+
+// ========== Next-Gen Features Exports ==========
+// Re-export schemas from dedicated feature modules
+export * from './schema/ai-documentation';
+export * from './schema/ar-try-on';
+export * from './schema/telehealth';
+// ========== End Next-Gen Features ==========
