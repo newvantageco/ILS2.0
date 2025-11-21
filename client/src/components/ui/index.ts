@@ -42,3 +42,6 @@ export {
   ProfileSkeleton,
   OrderTrackingSkeleton,
 } from './LoadingSkeletons';
+
+// Theme Toggle
+export { ThemeToggle, useTheme } from './ThemeToggle';
