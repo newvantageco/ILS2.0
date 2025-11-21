@@ -209,9 +209,23 @@ export class IntegrationFramework {
   private static events: IntegrationEvent[] = [];
 
   /**
-   * Encryption key for credentials (use proper key management in production)
+   * Encryption key for credentials
+   * SECURITY: Must be set via environment variable in production
    */
-  private static readonly ENCRYPTION_KEY = process.env.INTEGRATION_ENCRYPTION_KEY || 'default-key-change-in-production';
+  private static readonly ENCRYPTION_KEY = (() => {
+    const key = process.env.INTEGRATION_ENCRYPTION_KEY;
+    
+    if (!key && process.env.NODE_ENV === 'production') {
+      throw new Error('INTEGRATION_ENCRYPTION_KEY must be set in production environment');
+    }
+    
+    if (!key) {
+      console.warn('⚠️  WARNING: Using development-only integration encryption key. Set INTEGRATION_ENCRYPTION_KEY in production!');
+      return 'development-integration-key-not-for-production';
+    }
+    
+    return key;
+  })();
 
   /**
    * Create a new integration

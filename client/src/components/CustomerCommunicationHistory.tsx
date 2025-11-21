@@ -65,7 +65,7 @@ export function CustomerCommunicationHistory({ patientEmail, patientId }: Props)
       if (!response.ok) throw new Error("Failed to fetch email history");
       const data = await response.json();
       setEmails(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching email history:", error);
       toast({
         title: "Error",
@@ -83,7 +83,7 @@ export function CustomerCommunicationHistory({ patientEmail, patientId }: Props)
       if (!response.ok) throw new Error("Failed to fetch email events");
       const data = await response.json();
       setEmailEvents(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching email events:", error);
       toast({
         title: "Error",
@@ -127,7 +127,7 @@ export function CustomerCommunicationHistory({ patientEmail, patientId }: Props)
       });
 
       fetchEmailHistory();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,

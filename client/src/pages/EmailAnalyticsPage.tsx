@@ -71,7 +71,7 @@ export default function EmailAnalyticsPage() {
 
       const data = await response.json();
       setAnalytics(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -97,7 +97,7 @@ export default function EmailAnalyticsPage() {
 
       const data = await response.json();
       setEmailLogs(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,

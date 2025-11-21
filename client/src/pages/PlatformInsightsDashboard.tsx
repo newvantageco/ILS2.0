@@ -321,7 +321,7 @@ export default function PlatformInsightsDashboard() {
         });
         loadInsights();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error generating insight:', error);
       toast({
         title: "Error",

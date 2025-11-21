@@ -533,7 +533,7 @@ export default function AuditLogsPage() {
               <CardContent>
                 {stats?.byEventType && stats.byEventType.length > 0 ? (
                   <div className="space-y-2">
-                    {stats.byEventType.map((item: any) => (
+                    {stats.byEventType.map(item => (
                       <div key={item.eventType} className="flex items-center justify-between p-2 bg-muted rounded">
                         <span className="font-medium">{item.eventType}</span>
                         <Badge>{item.count.toLocaleString()}</Badge>
@@ -556,7 +556,7 @@ export default function AuditLogsPage() {
               <CardContent>
                 {stats?.mostActiveUsers && stats.mostActiveUsers.length > 0 ? (
                   <div className="space-y-2">
-                    {stats.mostActiveUsers.slice(0, 5).map((user: any) => (
+                    {stats.mostActiveUsers.slice(0, 5).map(user => (
                       <div key={user.userId} className="flex items-center justify-between p-2 bg-muted rounded">
                         <div>
                           <p className="font-medium text-sm">{user.userEmail}</p>
@@ -582,7 +582,7 @@ export default function AuditLogsPage() {
               <CardContent>
                 {stats?.byResourceType && stats.byResourceType.length > 0 ? (
                   <div className="grid grid-cols-2 gap-2">
-                    {stats.byResourceType.map((item: any) => (
+                    {stats.byResourceType.map(item => (
                       <div key={item.resourceType} className="flex items-center justify-between p-3 bg-muted rounded">
                         <span className="font-medium">{item.resourceType}</span>
                         <Badge>{item.count.toLocaleString()}</Badge>

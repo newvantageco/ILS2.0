@@ -89,7 +89,7 @@ export default function ShopifyIntegrationPage() {
       if (data.authUrl) {
         window.location.href = data.authUrl;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Connection Failed",
         description: error.message || "Failed to connect to Shopify",

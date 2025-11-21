@@ -128,7 +128,19 @@ export class ConfigurationService {
    * Configuration
    */
   private static readonly CHANGE_HISTORY_RETENTION_DAYS = 90;
-  private static readonly ENCRYPTION_KEY = process.env.CONFIG_ENCRYPTION_KEY || 'default-key-change-in-production';
+  private static readonly ENCRYPTION_KEY = (() => {
+    const key = process.env.CONFIG_ENCRYPTION_KEY || process.env.SESSION_SECRET;
+    
+    if (!key && process.env.NODE_ENV === 'production') {
+      throw new Error('CONFIG_ENCRYPTION_KEY or SESSION_SECRET must be set in production environment');
+    }
+    
+    if (!process.env.CONFIG_ENCRYPTION_KEY) {
+      console.warn('⚠️  WARNING: Using SESSION_SECRET for config encryption. Set CONFIG_ENCRYPTION_KEY in production for better security!');
+    }
+    
+    return key || 'development-config-key-not-for-production';
+  })();
   private static currentEnvironment: Environment = (process.env.NODE_ENV as Environment) || 'development';
 
   /**

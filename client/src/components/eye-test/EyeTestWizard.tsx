@@ -45,11 +45,21 @@ interface Patient {
 }
 
 interface EyeTestData {
-  patientHistory?: Record<string, any>;
+  patientHistory?: Record<string, unknown>;
   visualAcuity?: { R: string; L: string };
   colorBlindness?: ColorBlindnessResult;
-  visualField?: { R: any; L: any };
+  visualField?: { R: unknown; L: unknown };
   finalNotes?: string;
+}
+
+interface StepProps {
+  data: unknown;
+  onChange: (data: unknown) => void;
+}
+
+interface ReviewStepProps {
+  testData: EyeTestData;
+  patient: unknown;
 }
 
 // Define wizard steps
@@ -187,7 +197,7 @@ export function EyeTestWizard() {
     setCurrentStep(stepIndex);
   };
 
-  const updateTestData = (stepId: string, data: any) => {
+  const updateTestData = (stepId: string, data: unknown) => {
     setTestData((prev) => ({
       ...prev,
       [stepId]: data,
@@ -407,11 +417,11 @@ export function EyeTestWizard() {
 }
 
 // Step Components (placeholders for now - will expand)
-function PatientHistoryStep({ data, onChange }: any) {
+function PatientHistoryStep({ data, onChange }: StepProps) {
   return <div className="space-y-4">{/* Patient history form */}</div>;
 }
 
-function VisualAcuityStep({ data, onChange }: any) {
+function VisualAcuityStep({ data, onChange }: StepProps) {
   return (
     <div className="space-y-4">
       <VisualAcuityChart
@@ -421,7 +431,7 @@ function VisualAcuityStep({ data, onChange }: any) {
   );
 }
 
-function ColorVisionStep({ data, onChange }: any) {
+function ColorVisionStep({ data, onChange }: StepProps) {
   return (
     <div className="space-y-4">
       <ColorBlindnessTest
@@ -431,7 +441,7 @@ function ColorVisionStep({ data, onChange }: any) {
   );
 }
 
-function VisualFieldStep({ data, onChange }: any) {
+function VisualFieldStep({ data, onChange }: StepProps) {
   return (
     <div className="space-y-4">
       <VisualFieldTest
@@ -441,7 +451,7 @@ function VisualFieldStep({ data, onChange }: any) {
   );
 }
 
-function ReviewStep({ testData, patient }: any) {
+function ReviewStep({ testData, patient }: ReviewStepProps) {
   return (
     <div className="space-y-6">
       <div className="grid gap-4">

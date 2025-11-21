@@ -77,7 +77,7 @@ export function ImageUpload({
         title: 'Success',
         description: 'Image uploaded successfully',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Upload error:', error);
       toast({
         title: 'Upload failed',

@@ -60,7 +60,7 @@ export default function EmailLoginPage() {
             setLocation('/');
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Login failed",
         description: error.message || "Invalid email or password",

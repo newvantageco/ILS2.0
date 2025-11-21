@@ -38,6 +38,14 @@ type Permission = {
   category: string;
 };
 
+type User = {
+  id: string;
+  full_name: string;
+  email: string;
+  status: string;
+  roles?: Role[];
+};
+
 type Category = {
   id: string;
   name: string;
@@ -55,7 +63,7 @@ function TeamMembersTab() {
   const [showEditRolesModal, setShowEditRolesModal] = useState(false);
   
   const queryClient = useQueryClient();
-  const { data: users, isLoading } = useQuery<any[]>({ queryKey: ['/api/users'] });
+  const { data: users, isLoading } = useQuery<User[]>({ queryKey: ['/api/users'] });
   const { data: roles } = useQuery<{ roles: Role[] }>({ queryKey: ['/api/roles'] });
 
   if (isLoading) return <div>Loading team members...</div>;
@@ -84,7 +92,7 @@ function TeamMembersTab() {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {users?.map((user: any) => (
+            {users?.map(user => (
               <tr key={user.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4">
                   <div>
@@ -94,7 +102,7 @@ function TeamMembersTab() {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex gap-2 flex-wrap">
-                    {user.roles?.map((role: any) => (
+                    {user.roles?.map(role => (
                       <Badge key={role.id} variant={role.isPrimary ? 'default' : 'secondary'}>
                         {role.name}
                         {role.isPrimary && ' (Primary)'}
@@ -222,7 +230,7 @@ function RolesTab() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {roles?.roles?.map((role: any) => (
+        {roles?.roles?.map(role => (
           <div key={role.id} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
             <div className="flex justify-between items-start mb-4">
               <div>
@@ -319,8 +327,8 @@ function EditUserRolesModal({ userId, onClose }: { userId: string; onClose: () =
 
   useState(() => {
     if (userRoles?.roles) {
-      setSelectedRoles(userRoles.roles.map((r: any) => r.id));
-      setPrimaryRole(userRoles.roles.find((r: any) => r.isPrimary)?.id || '');
+      setSelectedRoles(userRoles.roles.map(r => r.id));
+      setPrimaryRole(userRoles.roles.find(r => r.isPrimary)?.id || '');
     }
   });
 
@@ -353,7 +361,7 @@ function EditUserRolesModal({ userId, onClose }: { userId: string; onClose: () =
         </DialogHeader>
 
         <div className="space-y-4">
-          {allRoles?.roles?.map((role: any) => (
+          {allRoles?.roles?.map(role => (
             <div key={role.id} className="flex items-start gap-3">
               <Checkbox
                 checked={selectedRoles.includes(role.id)}
@@ -407,7 +415,7 @@ function EditRoleModal({ roleId, onClose }: { roleId: string; onClose: () => voi
     if (roleData) {
       setName(roleData.role.name);
       setDescription(roleData.role.description || '');
-      setSelectedPermissions(roleData.permissions.map((p: any) => p.id));
+      setSelectedPermissions(roleData.permissions.map(p => p.id));
     }
   });
 
@@ -466,7 +474,7 @@ function EditRoleModal({ roleId, onClose }: { roleId: string; onClose: () => voi
           <div>
             <h3 className="font-semibold mb-4">Permissions</h3>
             <div className="space-y-6">
-              {allPermissions?.categories?.map((category: any) => (
+              {allPermissions?.categories?.map(category => (
                 <div key={category.id} className="border rounded-lg p-4">
                   <div className="flex justify-between items-center mb-3">
                     <div>
@@ -477,7 +485,7 @@ function EditRoleModal({ roleId, onClose }: { roleId: string; onClose: () => voi
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        const categoryPermIds = category.permissions.map((p: any) => p.id);
+                        const categoryPermIds = category.permissions.map(p => p.id);
                         const allSelected = categoryPermIds.every((id: string) => 
                           selectedPermissions.includes(id)
                         );
@@ -496,14 +504,14 @@ function EditRoleModal({ roleId, onClose }: { roleId: string; onClose: () => voi
                         }
                       }}
                     >
-                      {category.permissions.every((p: any) => 
+                      {category.permissions.every(p => 
                         selectedPermissions.includes(p.id)
                       ) ? 'Deselect All' : 'Select All'}
                     </Button>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    {category.permissions.map((perm: any) => (
+                    {category.permissions.map(perm => (
                       <div key={perm.id} className="flex items-start gap-2">
                         <Checkbox
                           checked={selectedPermissions.includes(perm.id)}
@@ -662,7 +670,7 @@ function InviteUserModal({ onClose }: { onClose: () => void }) {
           <div>
             <label className="block text-sm font-medium mb-2">Assign Roles</label>
             <div className="space-y-2">
-              {roles?.roles?.map((role: any) => (
+              {roles?.roles?.map(role => (
                 <div key={role.id} className="flex items-center gap-2">
                   <Checkbox
                     checked={selectedRoles.includes(role.id)}

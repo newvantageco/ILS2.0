@@ -100,7 +100,7 @@ export default function EmailTemplatesPage() {
       if (!response.ok) throw new Error("Failed to fetch templates");
       const data = await response.json();
       setTemplates(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -165,7 +165,7 @@ export default function EmailTemplatesPage() {
 
       setIsDialogOpen(false);
       fetchTemplates();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -190,7 +190,7 @@ export default function EmailTemplatesPage() {
       });
 
       fetchTemplates();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,

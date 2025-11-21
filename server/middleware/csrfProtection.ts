@@ -8,14 +8,25 @@
 import { doubleCsrf } from 'csrf-csrf';
 import type { Request, Response, NextFunction } from 'express';
 
-const CSRF_SECRET = process.env.CSRF_SECRET || 'your-secret-csrf-token-change-in-production';
+// SECURITY: CSRF_SECRET must be set in production
+const CSRF_SECRET = process.env.CSRF_SECRET || process.env.SESSION_SECRET;
+
+if (!CSRF_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('CSRF_SECRET or SESSION_SECRET must be set in production environment');
+}
+
+if (!CSRF_SECRET) {
+  console.warn('⚠️  WARNING: Using development-only CSRF secret. Set CSRF_SECRET in production!');
+}
+
+const CSRF_SECRET_VALUE = CSRF_SECRET || 'development-csrf-secret-not-for-production';
 
 // Configure CSRF protection
 const {
   invalidCsrfTokenError,
   doubleCsrfProtection,
 } = doubleCsrf({
-  getSecret: () => CSRF_SECRET,
+  getSecret: () => CSRF_SECRET_VALUE,
   getSessionIdentifier: (req: Request) => {
     // Use session ID or user ID as identifier
     return (req as any).session?.id || (req as any).user?.id || 'anonymous';

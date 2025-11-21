@@ -219,7 +219,7 @@ export default function InventoryManagement() {
       setShowAddDialog(false);
       resetForm();
       fetchProducts();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
         description: error.message,
@@ -259,7 +259,7 @@ export default function InventoryManagement() {
       setSelectedProduct(null);
       resetForm();
       fetchProducts();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
         description: error.message,
@@ -330,7 +330,7 @@ export default function InventoryManagement() {
       setAdjustmentQuantity(0);
       setAdjustmentReason("");
       fetchProducts();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
         description: error.message,

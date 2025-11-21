@@ -135,7 +135,7 @@ export default function CompanyProfilePage() {
       
       // Reload profile to update status
       loadCompanyProfile(company.id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message || "Failed to send connection request",

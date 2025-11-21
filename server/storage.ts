@@ -95,6 +95,8 @@ import {
   type InsertTechnicalDocument,
   type TechnicalDocument,
   type TechnicalDocumentWithSupplier,
+  type InsertSupplier,
+  type UpdateSupplier,
   type UpdateOrganizationSettings,
   type OrganizationSettings,
   type UpdateUserPreferences,
@@ -116,6 +118,14 @@ import {
   type InsertCompany,
   type CompanySupplierRelationship,
   type InsertCompanySupplierRelationship,
+  type AIModelVersion,
+  type InsertAIModelVersion,
+  type AIModelDeployment,
+  type InsertAIModelDeployment,
+  type AITrainingJob,
+  type InsertAITrainingJob,
+  type MasterTrainingDataset,
+  type InsertMasterTrainingDataset,
   type AiConversation,
   type InsertAiConversation,
   type AiMessage,
@@ -314,8 +324,8 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   getUserStats(): Promise<{ total: number; pending: number; active: number; suspended: number }>;
   getSuppliers(): Promise<User[]>;
-  createSupplier(supplier: any): Promise<User>;
-  updateSupplier(id: string, updates: any): Promise<User | undefined>;
+  createSupplier(supplier: InsertSupplier): Promise<User>;
+  updateSupplier(id: string, updates: UpdateSupplier): Promise<User | undefined>;
   deleteSupplier(id: string): Promise<boolean>;
   getUserAvailableRoles(userId: string): Promise<string[]>;
   addUserRole(userId: string, role: string): Promise<void>;
@@ -445,37 +455,37 @@ export interface IStorage {
   // Model versions
   createAIModelVersion(data: InsertAIModelVersion): Promise<AIModelVersion>;
   getAIModelVersion(id: string, companyId: string): Promise<AIModelVersion | undefined>;
-  getAIModelVersions(companyId: string, filters?: any): Promise<AIModelVersion[]>;
+  getAIModelVersions(companyId: string, filters?: Record<string, unknown>): Promise<AIModelVersion[]>;
   updateAIModelVersion(id: string, companyId: string, data: Partial<AIModelVersion>): Promise<AIModelVersion | undefined>;
 
   // Model deployments
   createAIModelDeployment(data: InsertAIModelDeployment): Promise<AIModelDeployment>;
   getAIModelDeployment(id: string, companyId: string): Promise<AIModelDeployment | undefined>;
-  getAIModelDeployments(companyId: string, filters?: any): Promise<AIModelDeployment[]>;
+  getAIModelDeployments(companyId: string, filters?: Record<string, unknown>): Promise<AIModelDeployment[]>;
   updateAIModelDeployment(id: string, companyId: string, data: Partial<AIModelDeployment>): Promise<AIModelDeployment | undefined>;
 
   // Training jobs
   createAITrainingJob(data: InsertAITrainingJob): Promise<AITrainingJob>;
   getAITrainingJob(id: string, companyId: string): Promise<AITrainingJob | undefined>;
-  getAITrainingJobs(companyId: string, filters?: any): Promise<AITrainingJob[]>;
+  getAITrainingJobs(companyId: string, filters?: Record<string, unknown>): Promise<AITrainingJob[]>;
   updateAITrainingJob(id: string, companyId: string, data: Partial<AITrainingJob>): Promise<AITrainingJob | undefined>;
 
   // Master training datasets
   createMasterTrainingDataset(data: InsertMasterTrainingDataset): Promise<MasterTrainingDataset>;
   getMasterTrainingDataset(id: string, companyId: string): Promise<MasterTrainingDataset | undefined>;
-  getMasterTrainingDatasets(companyId: string, filters?: any): Promise<MasterTrainingDataset[]>;
+  getMasterTrainingDatasets(companyId: string, filters?: Record<string, unknown>): Promise<MasterTrainingDataset[]>;
   updateMasterTrainingDataset(id: string, companyId: string, data: Partial<MasterTrainingDataset>): Promise<MasterTrainingDataset | undefined>;
 
   // ============== CLINICAL DECISION SUPPORT - storage helpers ==============
   getDrug(id: string, companyId: string): Promise<Drug | undefined>;
   getDrugs(companyId: string): Promise<Drug[]>;
-  getDrugInteractions(companyId: string, filters?: any): Promise<DrugInteraction[]>;
+  getDrugInteractions(companyId: string, filters?: Record<string, unknown>): Promise<DrugInteraction[]>;
 
   getClinicalGuideline(id: string, companyId: string): Promise<ClinicalGuideline | undefined>;
   createTreatmentRecommendation(recommendation: InsertTreatmentRecommendation): Promise<TreatmentRecommendation>;
 
   createClinicalAlert(alert: InsertClinicalAlert): Promise<ClinicalAlert>;
-  getClinicalAlerts(companyId: string, filters?: any): Promise<ClinicalAlert[]>;
+  getClinicalAlerts(companyId: string, filters?: Record<string, unknown>): Promise<ClinicalAlert[]>;
   updateClinicalAlert(id: string, companyId: string, data: Partial<ClinicalAlert>): Promise<ClinicalAlert | undefined>;
 
   // ============== RCM (REVENUE CYCLE MANAGEMENT) METHODS ==============
@@ -796,7 +806,7 @@ export class DbStorage implements IStorage {
     return suppliers;
   }
 
-  async createSupplier(supplier: any): Promise<User> {
+  async createSupplier(supplier: InsertSupplier): Promise<User> {
     const [newSupplier] = await db
       .insert(users)
       .values({
@@ -809,7 +819,7 @@ export class DbStorage implements IStorage {
     return newSupplier;
   }
 
-  async updateSupplier(id: string, updates: any): Promise<User | undefined> {
+  async updateSupplier(id: string, updates: UpdateSupplier): Promise<User | undefined> {
     const [updatedSupplier] = await db
       .update(users)
       .set({
@@ -1331,7 +1341,7 @@ export class DbStorage implements IStorage {
   }
 
   async updatePOStatus(id: string, status: PurchaseOrder["status"], trackingNumber?: string, actualDeliveryDate?: Date): Promise<PurchaseOrder | undefined> {
-    const updateData: any = { 
+    const updateData: Record<string, unknown> = { 
       status,
       updatedAt: new Date(),
     };
@@ -1494,7 +1504,7 @@ export class DbStorage implements IStorage {
   }
 
   // Patient Activity Log methods
-  async createPatientActivity(activity: any): Promise<any> {
+  async createPatientActivity(activity: InsertPatientActivity): Promise<PatientActivity> {
     const { patientActivityLog } = await import("@shared/schema");
     const [log] = await db.insert(patientActivityLog).values(activity).returning();
     return log;
@@ -2224,7 +2234,7 @@ export class DbStorage implements IStorage {
       .where(eq(subscriptionPlans.isActive, true));
   }
 
-  async createSubscriptionHistory(history: any) {
+  async createSubscriptionHistory(history: InsertSubscriptionHistory) {
     const [created] = await db
       .insert(subscriptionHistory)
       .values(history)
@@ -2240,7 +2250,7 @@ export class DbStorage implements IStorage {
       .orderBy(desc(subscriptionHistory.createdAt));
   }
 
-  async createPaymentIntent(payment: any) {
+  async createPaymentIntent(payment: InsertPaymentIntent) {
     const [created] = await db
       .insert(stripePaymentIntents)
       .values(payment)
@@ -2257,7 +2267,7 @@ export class DbStorage implements IStorage {
     return company;
   }
 
-  async createDispenseRecord(record: any) {
+  async createDispenseRecord(record: InsertDispenseRecord) {
     const [created] = await db
       .insert(dispenseRecords)
       .values(record)
@@ -2273,7 +2283,7 @@ export class DbStorage implements IStorage {
   }
 
   // Master AI Training methods
-  async createAiModelVersion(version: any) {
+  async createAiModelVersion(version: InsertAIModelVersion) {
     const [created] = await db
       .insert(aiModelVersions)
       .values(version)
@@ -2304,7 +2314,7 @@ export class DbStorage implements IStorage {
     return version;
   }
 
-  async updateAiModelVersion(id: string, updates: any) {
+  async updateAiModelVersion(id: string, updates: Partial<AIModelVersion>) {
     const [updated] = await db
       .update(aiModelVersions)
       .set({ ...updates, updatedAt: new Date() })
@@ -2313,7 +2323,7 @@ export class DbStorage implements IStorage {
     return updated;
   }
 
-  async createModelDeployment(deployment: any) {
+  async createModelDeployment(deployment: InsertAIModelDeployment) {
     const [created] = await db
       .insert(aiModelDeployments)
       .values(deployment)
@@ -2361,7 +2371,7 @@ export class DbStorage implements IStorage {
       .where(eq(masterTrainingDatasets.id, id));
   }
 
-  async createAiTrainingJob(job: any) {
+  async createAiTrainingJob(job: InsertAITrainingJob) {
     const [created] = await db
       .insert(aiTrainingJobs)
       .values(job)
@@ -2382,7 +2392,7 @@ export class DbStorage implements IStorage {
     return await query.orderBy(desc(aiTrainingJobs.createdAt));
   }
 
-  async createDeploymentQueue(deployment: any) {
+  async createDeploymentQueue(deployment: InsertDeploymentQueue) {
     const [created] = await db
       .insert(aiDeploymentQueue)
       .values(deployment)
@@ -2390,7 +2400,7 @@ export class DbStorage implements IStorage {
     return created;
   }
 
-  async updateDeploymentQueue(id: string, updates: any) {
+  async updateDeploymentQueue(id: string, updates: Partial<AIModelDeployment>) {
     const [updated] = await db
       .update(aiDeploymentQueue)
       .set({ ...updates, updatedAt: new Date() })
@@ -2405,7 +2415,7 @@ export class DbStorage implements IStorage {
       .from(companyAiSettings);
   }
 
-  async updateCompanyAiSettings(companyId: string, updates: any) {
+  async updateCompanyAiSettings(companyId: string, updates: Record<string, unknown>) {
     const [updated] = await db
       .update(companyAiSettings)
       .set({ ...updates, updatedAt: new Date() })
@@ -6161,7 +6171,7 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getAIModelVersions(companyId: string, filters?: any): Promise<AIModelVersion[]> {
+  async getAIModelVersions(companyId: string, filters?: Record<string, unknown>): Promise<AIModelVersion[]> {
     const conditions = [eq(aiModelVersions.companyId, companyId)];
 
     if (filters?.modelType) conditions.push(eq(aiModelVersions.modelType, filters.modelType));
@@ -6194,7 +6204,7 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getAIModelDeployments(companyId: string, filters?: any): Promise<AIModelDeployment[]> {
+  async getAIModelDeployments(companyId: string, filters?: Record<string, unknown>): Promise<AIModelDeployment[]> {
     const conditions = [eq(aiModelDeployments.companyId, companyId)];
 
     if (filters?.modelVersionId) conditions.push(eq(aiModelDeployments.modelVersionId, filters.modelVersionId));
@@ -6227,7 +6237,7 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getAITrainingJobs(companyId: string, filters?: any): Promise<AITrainingJob[]> {
+  async getAITrainingJobs(companyId: string, filters?: Record<string, unknown>): Promise<AITrainingJob[]> {
     const conditions = [eq(aiTrainingJobs.companyId, companyId)];
 
     if (filters?.status) conditions.push(eq(aiTrainingJobs.status, filters.status));
@@ -6260,7 +6270,7 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getMasterTrainingDatasets(companyId: string, filters?: any): Promise<MasterTrainingDataset[]> {
+  async getMasterTrainingDatasets(companyId: string, filters?: Record<string, unknown>): Promise<MasterTrainingDataset[]> {
     const conditions = [eq(masterTrainingDatasets.companyId, companyId)];
 
     if (filters?.datasetType) conditions.push(eq(masterTrainingDatasets.datasetType, filters.datasetType));
@@ -6439,7 +6449,7 @@ export class DbStorage implements IStorage {
         .groupBy(sql`date(invoice_date)`)
         .orderBy(sql`date(invoice_date)`);
 
-      return (data || []).map((row: any) => ({
+      return (data || []).map(row => ({
         date: row.date || new Date().toISOString().split('T')[0],
         value: row.total || 0,
       }));
@@ -6459,7 +6469,7 @@ export class DbStorage implements IStorage {
         .groupBy(sql`date(order_date)`)
         .orderBy(sql`date(order_date)`);
 
-      return (data || []).map((row: any) => ({
+      return (data || []).map(row => ({
         date: row.date || new Date().toISOString().split('T')[0],
         value: row.total || 0,
       }));
@@ -6572,7 +6582,7 @@ export class DbStorage implements IStorage {
       .orderBy(desc(aiMessages.createdAt))
       .limit(limit);
 
-    return (messages || []).map((msg: any) => ({
+    return (messages || []).map(msg => ({
       role: msg.role === 'user' ? 'user' : 'assistant',
       content: msg.content,
     }));
@@ -6617,7 +6627,7 @@ export class DbStorage implements IStorage {
   /**
    * Upsert monthly recurring revenue data
    */
-  async upsertMonthlyRecurringRevenue(companyId: string, data: any) {
+  async upsertMonthlyRecurringRevenue(companyId: string, data: Record<string, unknown>) {
     const { year, month, totalMRR, arr, breakdown, newMRR, expansionMRR, contractionMRR, churnMRR, momGrowth } = data;
 
     // First try to find existing record
@@ -6684,7 +6694,7 @@ export class DbStorage implements IStorage {
   /**
    * Upsert customer health score
    */
-  async upsertCustomerHealthScore(companyId: string, data: any) {
+  async upsertCustomerHealthScore(companyId: string, data: Record<string, unknown>) {
     const {
       overallScore,
       engagementScore,
@@ -6758,7 +6768,7 @@ export class DbStorage implements IStorage {
   /**
    * Upsert churn prediction
    */
-  async upsertChurnPrediction(companyId: string, data: any) {
+  async upsertChurnPrediction(companyId: string, data: Record<string, unknown>) {
     const {
       churnProbability,
       riskFactors,
@@ -6838,7 +6848,7 @@ export class DbStorage implements IStorage {
   /**
    * Track feature usage (increment counters)
    */
-  async trackFeatureUsage(companyId: string, featureName: string, userId?: string, metadata?: any) {
+  async trackFeatureUsage(companyId: string, featureName: string, userId?: string, metadata?: Record<string, unknown>) {
     const existing = await this.getFeatureUsage(companyId, featureName);
 
     if (existing) {
@@ -6881,7 +6891,7 @@ export class DbStorage implements IStorage {
     userId: string;
     featureName: string;
     eventType: string;
-    metadata?: any;
+    metadata?: Record<string, unknown>;
     success?: boolean;
     responseTimeMs?: number;
   }) {
@@ -6961,7 +6971,7 @@ export class DbStorage implements IStorage {
   /**
    * Record customer acquisition source
    */
-  async recordCustomerAcquisitionSource(companyId: string, data: any) {
+  async recordCustomerAcquisitionSource(companyId: string, data: Record<string, unknown>) {
     const {
       source,
       campaign,
@@ -7032,7 +7042,7 @@ export class DbStorage implements IStorage {
   /**
    * Create or update cohort
    */
-  async upsertCustomerCohort(companyId: string, data: any) {
+  async upsertCustomerCohort(companyId: string, data: Record<string, unknown>) {
     const {
       cohortName,
       cohortPeriod,
@@ -7085,7 +7095,7 @@ export class DbStorage implements IStorage {
   /**
    * Log usage event
    */
-  async logUsageEvent(companyId: string, data: any) {
+  async logUsageEvent(companyId: string, data: Record<string, unknown>) {
     const {
       userId,
       eventType,
@@ -7178,7 +7188,7 @@ export class DbStorage implements IStorage {
       critical: 0
     };
 
-    result.forEach((row: any) => {
+    result.forEach(row => {
       const level = row.riskLevel || 'good';
       if (level in distribution) {
         distribution[level as keyof typeof distribution] = Number(row.count);
@@ -7216,7 +7226,7 @@ export class DbStorage implements IStorage {
       criticalRisk: 0
     };
 
-    predictions.forEach((pred: any) => {
+    predictions.forEach(pred => {
       const prob = pred.churnProbability || 0;
       if (prob > 0.75) counts.criticalRisk++;
       else if (prob > 0.5) counts.highRisk++;
@@ -7230,7 +7240,7 @@ export class DbStorage implements IStorage {
       mediumRisk: counts.mediumRisk,
       highRisk: counts.highRisk,
       criticalRisk: counts.criticalRisk,
-      topRiskCompanies: predictions.slice(0, 10).map((p: any) => ({
+      topRiskCompanies: predictions.slice(0, 10).map(p => ({
         companyId: p.companyId,
         probability: p.churnProbability,
         riskLevel: p.riskLevel,
@@ -7440,12 +7450,12 @@ export class DbStorage implements IStorage {
   // These methods are placeholders for the new world-class features.
   // They log warnings and return empty/mock data until full implementation.
 
-  async createClinicalAnomaly(data: any) {
+  async createClinicalAnomaly(data: Record<string, unknown>) {
     console.warn('[PLACEHOLDER] createClinicalAnomaly not yet implemented. Run migration first.');
     return { id: 'placeholder', ...data };
   }
 
-  async createNotification(data: any) {
+  async createNotification(data: Record<string, unknown>) {
     console.warn('[PLACEHOLDER] createNotification not yet implemented. Run migration first.');
     return { id: 'placeholder', ...data };
   }

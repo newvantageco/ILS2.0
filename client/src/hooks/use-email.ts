@@ -11,7 +11,7 @@ interface SendEmailOptions {
   patientId?: string;
   relatedEntityType?: string;
   relatedEntityId?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 interface SendTemplateEmailOptions {
@@ -22,7 +22,7 @@ interface SendTemplateEmailOptions {
   patientId?: string;
   relatedEntityType?: string;
   relatedEntityId?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export function useEmail() {
@@ -51,7 +51,7 @@ export function useEmail() {
       });
 
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Email Failed",
         description: error.message,
@@ -85,7 +85,7 @@ export function useEmail() {
       });
 
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Email Failed",
         description: error.message,

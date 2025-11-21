@@ -61,7 +61,7 @@ export function usePermissions() {
   };
 
   const getPrimaryRole = () => {
-    return data?.roles?.find((role: any) => role.is_primary);
+    return data?.roles?.find(role => role.is_primary);
   };
 
   const hasRole = (roleName: string): boolean => {

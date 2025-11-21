@@ -150,7 +150,7 @@ export default function MarketplacePage() {
 
       // Reload data to update connection status
       loadMarketplaceData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message || "Failed to send connection request",

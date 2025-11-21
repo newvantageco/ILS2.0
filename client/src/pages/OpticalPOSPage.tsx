@@ -371,7 +371,7 @@ export default function OpticalPOSPage() {
       // Clear selection
       handleCancel();
       setSelectedCustomer(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Transaction Failed',
         description: error.message,

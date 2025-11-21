@@ -134,7 +134,7 @@ export default function EmailSignupPage() {
         // Active user (admin) - redirect to dashboard
         setLocation('/admin/dashboard');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Signup failed",
         description: error.message || "Failed to create account",

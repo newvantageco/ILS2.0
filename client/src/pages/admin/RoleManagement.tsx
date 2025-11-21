@@ -463,7 +463,7 @@ export default function RoleManagement() {
                   <TabsContent value="permissions" className="space-y-4">
                     <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2">
                       {allPermissionsData?.categories?.flatMap((category: any) => 
-                        category.permissions.map((perm: any) => {
+                        category.permissions.map(perm => {
                           const key = perm.id;
                           return (
                             <div key={key} className="flex items-start space-x-2">

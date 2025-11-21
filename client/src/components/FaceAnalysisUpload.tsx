@@ -152,7 +152,7 @@ export function FaceAnalysisUpload({
 
       const result = await response.json();
       onAnalysisComplete(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Analysis error:", error);
       onError?.(error.message || "Failed to analyze face");
     } finally {

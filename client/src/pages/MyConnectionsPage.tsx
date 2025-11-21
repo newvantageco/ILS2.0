@@ -150,7 +150,7 @@ export default function MyConnectionsPage() {
 
       setShowRequestDialog(false);
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message || "Failed to approve request",
@@ -182,7 +182,7 @@ export default function MyConnectionsPage() {
 
       setShowRequestDialog(false);
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message || "Failed to reject request",
@@ -211,7 +211,7 @@ export default function MyConnectionsPage() {
       });
 
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message || "Failed to cancel request",
@@ -243,7 +243,7 @@ export default function MyConnectionsPage() {
       });
 
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message || "Failed to disconnect",
