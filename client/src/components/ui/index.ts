@@ -45,3 +45,7 @@ export {
 
 // Theme Toggle
 export { ThemeToggle, useTheme } from './ThemeToggle';
+
+// Help & Navigation Components
+export { KeyboardShortcutsHelp, useKeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
+export { FloatingActionButton, MiniFAB, ScrollToTopFAB } from './FloatingActionButton';
