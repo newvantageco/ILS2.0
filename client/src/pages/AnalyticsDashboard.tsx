@@ -3,42 +3,45 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  ShoppingCart, 
-  Users, 
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  ShoppingCart,
+  Users,
   Package,
   Calendar,
   Download,
   RefreshCw,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  BarChart3
 } from "lucide-react";
-import { 
-  LineChart, 
-  Line, 
-  BarChart, 
-  Bar, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer 
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
 } from "recharts";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { AnimatedCard } from "@/components/ui/AnimatedCard";
-import { 
-  dateRanges, 
-  getDateRange, 
-  formatCurrency, 
+import StatsCard from "@/components/ui/StatsCard";
+import { StatsGridSkeleton } from "@/components/ui/LoadingSkeletons";
+import {
+  dateRanges,
+  getDateRange,
+  formatCurrency,
   formatDate,
   CHART_COLOR_ARRAY,
   fetchAnalyticsData
@@ -153,45 +156,26 @@ interface PeakHour {
   transactionCount: number;
 }
 
-const StatCard = ({ 
-  title, 
-  value, 
-  trend, 
-  icon: Icon, 
-  format = 'number' 
-}: { 
-  title: string; 
-  value: number; 
-  trend?: number; 
-  icon: any; 
-  format?: 'number' | 'currency';
-}) => {
-  const formattedValue = format === 'currency' 
-    ? `£${value.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
-    : value.toLocaleString();
-
-  const trendColor = trend && trend > 0 ? 'text-green-600' : 'text-red-600';
-  const TrendIcon = trend && trend > 0 ? ArrowUp : ArrowDown;
-
-  return (
-    <AnimatedCard>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{formattedValue}</div>
-        {trend !== undefined && (
-          <p className={`text-xs flex items-center gap-1 mt-1 ${trendColor}`}>
-            <TrendIcon className="h-3 w-3" />
-            <span>{Math.abs(trend).toFixed(1)}%</span>
-            <span className="text-muted-foreground">vs last period</span>
-          </p>
-        )}
-      </CardContent>
-    </AnimatedCard>
-  );
-};
+// Gradient Header Component for consistent styling
+const GradientHeader = () => (
+  <motion.div
+    initial={{ opacity: 0, y: -20 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 p-6 text-white shadow-lg"
+  >
+    <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+    <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+    <div className="relative flex items-center gap-4">
+      <div className="rounded-xl bg-white/20 p-3 backdrop-blur">
+        <BarChart3 className="h-8 w-8" />
+      </div>
+      <div>
+        <h1 className="text-2xl font-bold">Analytics Dashboard</h1>
+        <p className="text-white/80">Comprehensive business insights and performance metrics</p>
+      </div>
+    </div>
+  </motion.div>
+);
 
 export default function AnalyticsDashboard() {
   console.log('[AnalyticsDashboard] Component mounted');
@@ -303,8 +287,10 @@ export default function AnalyticsDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <LoadingSpinner size="lg" />
+      <div className="container mx-auto p-6 space-y-6">
+        <GradientHeader />
+        <StatsGridSkeleton count={4} />
+        <div className="h-96 bg-muted/50 rounded-xl animate-pulse" />
       </div>
     );
   }
@@ -351,63 +337,66 @@ export default function AnalyticsDashboard() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
-          <p className="text-muted-foreground">
-            Comprehensive business insights and performance metrics
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-[180px]">
-              <Calendar className="h-4 w-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {dateRanges.map(range => (
-                <SelectItem key={range.value} value={range.value}>
-                  {range.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="icon" onClick={fetchAnalytics}>
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon">
-            <Download className="h-4 w-4" />
-          </Button>
-        </div>
+      {/* Modern Gradient Header */}
+      <GradientHeader />
+
+      {/* Action Bar */}
+      <div className="flex justify-end items-center gap-2">
+        <Select value={dateRange} onValueChange={setDateRange}>
+          <SelectTrigger className="w-[180px]">
+            <Calendar className="h-4 w-4 mr-2" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {dateRanges.map(range => (
+              <SelectItem key={range.value} value={range.value}>
+                {range.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="icon" onClick={fetchAnalytics}>
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="icon">
+          <Download className="h-4 w-4" />
+        </Button>
       </div>
 
-      {/* Key Metrics */}
+      {/* Key Metrics with StatsCard */}
       {overview && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard
+          <StatsCard
             title="Total Revenue"
-            value={overview.metrics.revenue.current}
-            trend={overview.metrics.revenue.trend}
+            value={`£${overview.metrics.revenue.current.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`}
+            change={overview.metrics.revenue.trend}
+            changeLabel="vs last period"
             icon={DollarSign}
-            format="currency"
+            iconBgColor="bg-green-100"
+            iconColor="text-green-600"
           />
-          <StatCard
+          <StatsCard
             title="Orders"
-            value={overview.metrics.orders.current}
-            trend={overview.metrics.orders.trend}
+            value={overview.metrics.orders.current.toLocaleString()}
+            change={overview.metrics.orders.trend}
+            changeLabel="vs last period"
             icon={ShoppingCart}
+            iconBgColor="bg-blue-100"
+            iconColor="text-blue-600"
           />
-          <StatCard
+          <StatsCard
             title="Average Order Value"
-            value={overview.metrics.averageOrderValue}
+            value={`£${overview.metrics.averageOrderValue.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`}
             icon={TrendingUp}
-            format="currency"
+            iconBgColor="bg-purple-100"
+            iconColor="text-purple-600"
           />
-          <StatCard
+          <StatsCard
             title="Transactions"
-            value={overview.metrics.transactionCount}
+            value={overview.metrics.transactionCount.toLocaleString()}
             icon={Users}
+            iconBgColor="bg-orange-100"
+            iconColor="text-orange-600"
           />
         </div>
       )}

@@ -32,9 +32,12 @@ import {
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, CheckCircle, XCircle, AlertTriangle, FileText, Plus, TrendingUp } from "lucide-react";
+import { Shield, CheckCircle, XCircle, AlertTriangle, FileText, Plus, TrendingUp, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
+import { motion } from "framer-motion";
+import StatsCard from "@/components/ui/StatsCard";
+import { StatsGridSkeleton } from "@/components/ui/LoadingSkeletons";
 
 interface ComplianceCheck {
   id: string;
@@ -199,31 +202,62 @@ export default function ComplianceDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading compliance data...</p>
-        </div>
+      <div className="container mx-auto p-6 space-y-6">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-xl bg-gradient-to-r from-teal-600 via-emerald-500 to-green-500 p-6 text-white shadow-lg"
+        >
+          <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+          <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+          <div className="relative flex items-center gap-4">
+            <div className="rounded-xl bg-white/20 p-3 backdrop-blur">
+              <ShieldCheck className="h-8 w-8" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Regulatory Compliance Dashboard</h1>
+              <p className="text-white/80">Monitor compliance with Canadian (GOC) and UK (MHRA) regulations</p>
+            </div>
+          </div>
+        </motion.div>
+        <StatsGridSkeleton count={3} />
+        <div className="h-64 bg-muted/50 rounded-xl animate-pulse" />
       </div>
     );
   }
 
+  // Calculate stats for StatsCards
+  const compliantCount = complianceChecks?.filter(c => c.status === "compliant").length || 0;
+  const minorIssuesCount = complianceChecks?.filter(c => c.status === "minor_issues").length || 0;
+  const majorIssuesCount = complianceChecks?.filter(c => c.status === "major_issues").length || 0;
+
   return (
-    <div className="container mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Regulatory Compliance Dashboard</h1>
-          <p className="text-muted-foreground">
-            Monitor compliance with Canadian (GOC) and UK (MHRA) regulations
-          </p>
-        </div>
-        <Dialog open={isCheckDialogOpen} onOpenChange={setIsCheckDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New Compliance Check
-            </Button>
-          </DialogTrigger>
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Modern Gradient Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-xl bg-gradient-to-r from-teal-600 via-emerald-500 to-green-500 p-6 text-white shadow-lg"
+      >
+        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="rounded-xl bg-white/20 p-3 backdrop-blur">
+              <ShieldCheck className="h-8 w-8" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Regulatory Compliance Dashboard</h1>
+              <p className="text-white/80">Monitor compliance with Canadian (GOC) and UK (MHRA) regulations</p>
+            </div>
+          </div>
+          <Dialog open={isCheckDialogOpen} onOpenChange={setIsCheckDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-white/20 hover:bg-white/30 text-white border-white/30">
+                <Plus className="h-4 w-4 mr-2" />
+                New Compliance Check
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Regulatory Compliance Assessment</DialogTitle>
@@ -306,49 +340,32 @@ export default function ComplianceDashboardPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+        </div>
+      </motion.div>
 
-      {/* Compliance Overview */}
+      {/* Compliance Overview with StatsCard */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Shield className="h-4 w-4 text-green-500" />
-              Compliant Checks
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {complianceChecks?.filter(c => c.status === "compliant").length || 0}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-yellow-500" />
-              Minor Issues
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {complianceChecks?.filter(c => c.status === "minor_issues").length || 0}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <XCircle className="h-4 w-4 text-red-500" />
-              Major Issues
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {complianceChecks?.filter(c => c.status === "major_issues").length || 0}
-            </p>
-          </CardContent>
-        </Card>
+        <StatsCard
+          title="Compliant Checks"
+          value={compliantCount.toString()}
+          icon={CheckCircle}
+          iconBgColor="bg-green-100"
+          iconColor="text-green-600"
+        />
+        <StatsCard
+          title="Minor Issues"
+          value={minorIssuesCount.toString()}
+          icon={AlertTriangle}
+          iconBgColor="bg-yellow-100"
+          iconColor="text-yellow-600"
+        />
+        <StatsCard
+          title="Major Issues"
+          value={majorIssuesCount.toString()}
+          icon={XCircle}
+          iconBgColor="bg-red-100"
+          iconColor="text-red-600"
+        />
       </div>
 
       {/* Compliance History */}
