@@ -8,7 +8,7 @@
 import { ReactNode } from "react";
 import { LucideIcon } from "lucide-react";
 
-interface StatsCardProps {
+export interface StatsCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
@@ -18,6 +18,12 @@ interface StatsCardProps {
     isPositive: boolean;
     label?: string;
   };
+  // Alternative trend props for simpler usage
+  change?: number;
+  changeLabel?: string;
+  // Custom icon styling
+  iconBgColor?: string;
+  iconColor?: string;
   gradient?: boolean;
   variant?: "default" | "primary" | "success" | "warning" | "error";
   className?: string;
@@ -29,10 +35,20 @@ export default function StatsCard({
   subtitle,
   icon: Icon,
   trend,
+  change,
+  changeLabel,
+  iconBgColor,
+  iconColor,
   gradient = false,
   variant = "default",
   className = "",
 }: StatsCardProps) {
+  // Compute trend from change prop if trend isn't provided
+  const computedTrend = trend || (change !== undefined ? {
+    value: Math.abs(change),
+    isPositive: change >= 0,
+    label: changeLabel,
+  } : undefined);
   const getVariantStyles = () => {
     if (gradient) {
       return "bg-gradient-to-br from-primary-600 to-secondary-600 text-white border-0";
@@ -53,6 +69,8 @@ export default function StatsCard({
   };
 
   const getIconBgStyles = () => {
+    // Use custom iconBgColor if provided
+    if (iconBgColor) return iconBgColor;
     if (gradient) return "bg-white/20";
 
     switch (variant) {
@@ -70,6 +88,8 @@ export default function StatsCard({
   };
 
   const getIconColorStyles = () => {
+    // Use custom iconColor if provided
+    if (iconColor) return iconColor;
     if (gradient) return "text-white";
 
     switch (variant) {
@@ -127,30 +147,30 @@ export default function StatsCard({
             </p>
           )}
 
-          {trend && (
+          {computedTrend && (
             <div className="flex items-center gap-2 mt-3">
               <div
                 className={`
                   inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold
                   ${
-                    trend.isPositive
+                    computedTrend.isPositive
                       ? "bg-success-100 text-success-700"
                       : "bg-error-100 text-error-700"
                   }
                   ${gradient ? "bg-white/20 text-white" : ""}
                 `}
               >
-                <span>{trend.isPositive ? "↑" : "↓"}</span>
-                <span>{Math.abs(trend.value)}%</span>
+                <span>{computedTrend.isPositive ? "↑" : "↓"}</span>
+                <span>{Math.abs(computedTrend.value)}%</span>
               </div>
-              {trend.label && (
+              {computedTrend.label && (
                 <span
                   className={`
                     text-xs
                     ${gradient ? "text-white/70" : "text-gray-500"}
                   `}
                 >
-                  {trend.label}
+                  {computedTrend.label}
                 </span>
               )}
             </div>
