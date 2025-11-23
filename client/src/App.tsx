@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { RoleSwitcherDropdown } from "@/components/RoleSwitcherDropdown";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { FloatingAiChat } from "@/components/FloatingAiChat";
