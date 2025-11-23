@@ -15,9 +15,30 @@ export interface AuthenticatedUser {
   };
 }
 
-export interface AuthenticatedRequest extends Request {
+// Express 5 compatible authenticated request interface
+export interface AuthenticatedRequest<
+  P = Record<string, string>,
+  ResBody = unknown,
+  ReqBody = unknown,
+  ReqQuery = qs.ParsedQs
+> extends Request<P, ResBody, ReqBody, ReqQuery> {
   user?: AuthenticatedUser;
 }
+
+// Import qs types for query string parsing
+import type * as qs from 'qs';
+
+// Helper type for authenticated route handlers (Express 5 compatible)
+export type AuthenticatedRequestHandler<
+  P = Record<string, string>,
+  ResBody = unknown,
+  ReqBody = unknown,
+  ReqQuery = qs.ParsedQs
+> = (
+  req: AuthenticatedRequest<P, ResBody, ReqBody, ReqQuery>,
+  res: Response<ResBody>,
+  next: NextFunction
+) => void | Promise<void>;
 
 export const authenticateUser: RequestHandler = async (req, res, next) => {
   try {
