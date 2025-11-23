@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { motion } from "framer-motion";
+import StatsCard from "@/components/ui/StatsCard";
+import { StatsGridSkeleton } from "@/components/ui/LoadingSkeletons";
 import {
   TrendingUp,
   TrendingDown,
@@ -14,7 +16,8 @@ import {
   BarChart3,
   Activity,
   Info,
-  CheckCircle2
+  CheckCircle2,
+  Brain
 } from "lucide-react";
 
 interface KPI {
@@ -141,51 +144,88 @@ export default function BIDashboardPage() {
     return colors[severity as keyof typeof colors] || 'bg-gray-500';
   };
 
+  // Get icon for KPI type
+  const getKPIIconComponent = (metric: string) => {
+    switch (metric.toLowerCase()) {
+      case 'total orders':
+      case 'orders':
+        return Package;
+      case 'revenue':
+      case 'total revenue':
+        return DollarSign;
+      case 'turnaround time':
+      case 'avg turnaround':
+        return Clock;
+      default:
+        return Activity;
+    }
+  };
+
+  // Get colors for KPI type
+  const getKPIColors = (metric: string) => {
+    switch (metric.toLowerCase()) {
+      case 'revenue':
+      case 'total revenue':
+        return { bg: 'bg-green-100', text: 'text-green-600' };
+      case 'total orders':
+      case 'orders':
+        return { bg: 'bg-blue-100', text: 'text-blue-600' };
+      case 'turnaround time':
+      case 'avg turnaround':
+        return { bg: 'bg-orange-100', text: 'text-orange-600' };
+      default:
+        return { bg: 'bg-purple-100', text: 'text-purple-600' };
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6" aria-label="Analytics Dashboard">
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2" aria-label="Business Intelligence Dashboard">
-          <BarChart3 className="h-8 w-8" />
-          Business Intelligence Dashboard
-        </h1>
-        <p className="text-muted-foreground">
-          AI-powered insights and analytics for your business
-        </p>
-      </div>
+      {/* Modern Gradient Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-xl bg-gradient-to-r from-indigo-600 via-purple-500 to-pink-500 p-6 text-white shadow-lg"
+      >
+        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="relative flex items-center gap-4">
+          <div className="rounded-xl bg-white/20 p-3 backdrop-blur">
+            <Brain className="h-8 w-8" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Business Intelligence Dashboard</h1>
+            <p className="text-white/80">AI-powered insights and analytics for your business</p>
+          </div>
+        </div>
+      </motion.div>
 
-      {/* KPIs */}
+      {/* KPIs with StatsCard */}
       <section aria-label="Key Performance Indicators" className="space-y-3">
         <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">KPI Overview</div>
+          <div className="text-sm font-medium">KPI Overview</div>
           <div className="text-xs text-muted-foreground">Range: Last 30 days</div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((kpi, index) => (
-          <Card key={index}>
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start mb-2">
-                <div className="text-muted-foreground">{getKPIIcon(kpi.metric)}</div>
-                {getTrendIcon(kpi.trend)}
-              </div>
-              <div className="text-2xl font-bold mb-1" aria-label={`${kpi.metric} value`}>
-                {kpi.metric.toLowerCase().includes('revenue') ? `$${kpi.value.toLocaleString()}` : kpi.value.toLocaleString()}
-              </div>
-              <div className="text-sm text-muted-foreground mb-2" aria-label="Metric name">{kpi.metric}</div>
-              <div className="h-8 mb-2 flex items-end gap-1">
-                {Array.from({ length: 16 }).map((_, i) => (
-                  <div key={i} className="w-1.5 bg-primary/30 rounded" style={{ height: `${20 + ((i * 13) % 60)}%` }} />
-                ))}
-              </div>
-              <div className={`text-sm flex items-center gap-1 ${
-                kpi.change > 0 ? 'text-green-600' : kpi.change < 0 ? 'text-red-600' : 'text-gray-600'
-              }`}>
-                <span>{kpi.change > 0 ? '+' : ''}{kpi.change.toFixed(1)}%</span>
-                <span className="text-muted-foreground">vs {kpi.period}</span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        </div>
+        {kpis.length === 0 ? (
+          <StatsGridSkeleton count={4} />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {kpis.map((kpi, index) => {
+              const colors = getKPIColors(kpi.metric);
+              return (
+                <StatsCard
+                  key={index}
+                  title={kpi.metric}
+                  value={kpi.metric.toLowerCase().includes('revenue') ? `$${kpi.value.toLocaleString()}` : kpi.value.toLocaleString()}
+                  change={kpi.change}
+                  changeLabel={`vs ${kpi.period}`}
+                  icon={getKPIIconComponent(kpi.metric)}
+                  iconBgColor={colors.bg}
+                  iconColor={colors.text}
+                />
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* Alerts */}

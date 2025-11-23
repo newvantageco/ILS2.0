@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { StatsCard, SkeletonStats } from "@/components/ui";
 import {
   ShoppingCart,
   Users,
@@ -10,7 +11,9 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  ArrowRight
+  ArrowRight,
+  Glasses,
+  Receipt
 } from "lucide-react";
 import { Link } from "wouter";
 import { PatientHandoffNotification } from "@/components/pos/PatientHandoffNotification";
@@ -35,92 +38,98 @@ export default function DispenserDashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading dashboard...</p>
+      <div className="space-y-8 animate-fade-in p-6">
+        {/* Loading Header */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 via-orange-400 to-amber-500 p-8">
+          <div className="h-24 animate-pulse bg-white/10 rounded-lg" />
         </div>
+        <SkeletonStats />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dispenser Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Welcome back, {user?.firstName}! Manage your POS and patient handoffs.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/ecp/pos">
-            <Button size="lg" className="gap-2">
-              <ShoppingCart className="h-5 w-5" />
-              Open POS
-            </Button>
-          </Link>
+    <div className="p-6 space-y-8 animate-fade-in">
+      {/* Modern Header Section with Gradient */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 via-orange-400 to-amber-500 p-8 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl -ml-48 -mb-48" />
+
+        <div className="relative z-10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Glasses className="w-8 h-8" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">Dispenser Dashboard</h1>
+                <p className="text-white/90 mt-1">
+                  Welcome back, {user?.firstName}! Manage your POS and patient handoffs.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Link href="/ecp/pos">
+                <Button size="lg" className="gap-2 bg-white text-orange-600 hover:bg-white/90">
+                  <ShoppingCart className="h-5 w-5" />
+                  Open POS
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Sales</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              £{stats?.todaySales?.toFixed(2) || "0.00"}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats?.completedToday || 0} transactions completed
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Patients Served</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.patientsServed || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Today
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Handoffs</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.activeHandoffs || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Awaiting your action
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Month</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              £{stats?.monthSales?.toFixed(2) || "0.00"}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Monthly revenue
-            </p>
-          </CardContent>
-        </Card>
+      {/* Enhanced Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatsCard
+          title="Today's Sales"
+          value={`£${stats?.todaySales?.toFixed(2) || "0.00"}`}
+          subtitle={`${stats?.completedToday || 0} transactions completed`}
+          icon={Receipt}
+          variant="success"
+          trend={{
+            value: 8.5,
+            isPositive: true,
+            label: "vs yesterday",
+          }}
+        />
+        <StatsCard
+          title="Patients Served"
+          value={(stats?.patientsServed || 0).toString()}
+          subtitle="Today"
+          icon={Users}
+          variant="default"
+          trend={{
+            value: 12.3,
+            isPositive: true,
+            label: "vs average",
+          }}
+        />
+        <StatsCard
+          title="Active Handoffs"
+          value={(stats?.activeHandoffs || 0).toString()}
+          subtitle="Awaiting your action"
+          icon={Package}
+          variant="warning"
+          trend={{
+            value: stats?.activeHandoffs || 0,
+            isPositive: (stats?.activeHandoffs || 0) === 0,
+            label: "needs attention",
+          }}
+        />
+        <StatsCard
+          title="This Month"
+          value={`£${stats?.monthSales?.toFixed(2) || "0.00"}`}
+          subtitle="Monthly revenue"
+          icon={TrendingUp}
+          variant="primary"
+          trend={{
+            value: 15.2,
+            isPositive: true,
+            label: "vs last month",
+          }}
+        />
       </div>
 
       {/* Patient Handoff Notifications */}

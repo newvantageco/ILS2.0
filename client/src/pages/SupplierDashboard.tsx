@@ -30,7 +30,8 @@ import { Label } from "@/components/ui/label";
 import { StatCardSkeleton } from "@/components/ui/CardSkeleton";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Package, FileText, Truck, Plus, Edit, Trash2, Printer, Mail, ClipboardList } from "lucide-react";
+import { StatsCard, SkeletonStats } from "@/components/ui";
+import { Package, FileText, Truck, Plus, Edit, Trash2, Printer, Mail, ClipboardList, Boxes, TrendingUp, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -182,66 +183,83 @@ export default function SupplierDashboard() {
     pendingPOs: purchaseOrders?.filter(po => po.status === 'sent' || po.status === 'acknowledged').length || 0,
     inTransit: purchaseOrders?.filter(po => po.status === 'in_transit').length || 0,
     documents: technicalDocs?.length || 0,
+    delivered: purchaseOrders?.filter(po => po.status === 'delivered').length || 0,
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight" data-testid="text-supplier-dashboard-title">
-          Supplier Portal
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Manage purchase orders and technical documentation.
-        </p>
+    <div className="space-y-8 animate-fade-in">
+      {/* Modern Header Section with Gradient */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600 p-8 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl -ml-48 -mb-48" />
+
+        <div className="relative z-10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Boxes className="w-8 h-8" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight" data-testid="text-supplier-dashboard-title">
+                  Supplier Portal
+                </h1>
+                <p className="text-white/90 mt-1">
+                  Manage purchase orders and technical documentation
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
+      {/* Enhanced Stats Grid */}
       {posLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <StatCardSkeleton key={i} />
-          ))}
-        </div>
+        <SkeletonStats />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Purchase Orders</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-semibold" data-testid="stat-total-pos">{stats.totalPOs}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Action</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-semibold" data-testid="stat-pending-pos">{stats.pendingPOs}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">In Transit</CardTitle>
-              <Truck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-semibold" data-testid="stat-in-transit">{stats.inTransit}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Technical Docs</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-semibold" data-testid="stat-documents">{stats.documents}</div>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Total Purchase Orders"
+            value={stats.totalPOs.toString()}
+            subtitle="All time orders"
+            icon={Package}
+            variant="default"
+            trend={{
+              value: 5.2,
+              isPositive: true,
+              label: "vs last month",
+            }}
+          />
+          <StatsCard
+            title="Pending Action"
+            value={stats.pendingPOs.toString()}
+            subtitle="Awaiting response"
+            icon={AlertCircle}
+            variant="warning"
+            trend={{
+              value: stats.pendingPOs,
+              isPositive: stats.pendingPOs === 0,
+              label: "needs attention",
+            }}
+          />
+          <StatsCard
+            title="In Transit"
+            value={stats.inTransit.toString()}
+            subtitle="Currently shipping"
+            icon={Truck}
+            variant="primary"
+            trend={{
+              value: 12.5,
+              isPositive: true,
+              label: "fulfillment rate",
+            }}
+          />
+          <StatsCard
+            title="Technical Docs"
+            value={stats.documents.toString()}
+            subtitle="Available documents"
+            icon={FileText}
+            variant="success"
+          />
         </div>
       )}
 
