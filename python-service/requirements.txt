@@ -1,19 +1,21 @@
 # Python Analytics Service Dependencies
+# Updated: November 2025
 
 # Web Framework
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic==2.5.0
-python-multipart==0.0.6
-python-dotenv==1.0.0
-httpx==0.25.1
+fastapi>=0.121.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.9.0
+python-multipart>=0.0.12
+python-dotenv>=1.0.1
+httpx>=0.27.0
 
 # Database (for real data integration)
-psycopg2-binary==2.9.9
-sqlalchemy==2.0.23
+psycopg2-binary>=2.9.9
+sqlalchemy>=2.0.35
 
 # Data Science & Analytics (for bi_analytics_ai.py)
-pandas==2.1.3
-numpy==1.26.2
-scikit-learn==1.3.2
-scipy==1.11.4
+# Note: NumPy 2.x has breaking changes - pinned to 2.1.x for stability
+pandas>=2.2.0
+numpy>=2.1.0,<2.4.0
+scikit-learn>=1.5.0
+scipy>=1.14.0

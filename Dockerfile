@@ -5,7 +5,7 @@
 # ----------------
 # Stage 1: Builder
 # ----------------
-FROM node:20-slim AS builder
+FROM node:22-slim AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
@@ -35,7 +35,7 @@ RUN npm run build
 # ----------------
 # Stage 2: Production
 # ----------------
-FROM node:20-slim AS production
+FROM node:22-slim AS production
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y \
