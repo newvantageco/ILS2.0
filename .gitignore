@@ -27,3 +27,8 @@ uploads/
 playwright-report/
 test-results/
 playwright/.cache/
+
+# Rust/Native module build artifacts
+native/target/
+native/ils-core/*.node
+native/Cargo.lock
