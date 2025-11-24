@@ -4316,8 +4316,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/github/create-repo', async (req, res) => {
     try {
       const { createGitHubRepo } = await import('./github-helper');
-      const { name, isPrivate, description } = req.body;
-      
+      const { name, isPrivate, description } = req.body as { name: string; isPrivate?: boolean; description?: string };
+
       if (!name) {
         return res.status(400).json({ message: "Repository name is required" });
       }
@@ -4334,7 +4334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/webhooks/lims-status', async (req, res) => {
     try {
       const { WebhookService } = await import('./services/WebhookService');
-      
+
       const webhookSecret = process.env.LIMS_WEBHOOK_SECRET || 'default-secret';
       const webhookService = new WebhookService(storage, {
         secret: webhookSecret,
@@ -4342,7 +4342,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify webhook signature
       const signature = req.headers['x-lims-signature'] as string;
-      const payload = JSON.stringify(req.body);
+      const webhookBody = req.body as Record<string, unknown>;
+      const payload = JSON.stringify(webhookBody);
 
       if (!webhookService.verifyWebhookSignature(payload, signature)) {
         logger.warn({ feature: 'webhook' }, 'Invalid webhook signature');
@@ -4350,7 +4351,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Process the status update
-      const success = await webhookService.handleStatusUpdate(req.body);
+      const success = await webhookService.handleStatusUpdate(webhookBody);
 
       if (success) {
         res.json({ message: 'Webhook processed successfully' });
@@ -4646,7 +4647,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role,
         contactPhone,
         address
-      } = req.body;
+      } = req.body as {
+        companyName: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        role: string;
+        contactPhone?: string;
+        address?: string;
+      };
 
       // Validate required fields
       if (!companyName || !email || !firstName || !lastName || !role) {
@@ -4969,8 +4978,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "User must belong to a company" });
       }
 
-      const { question, conversationId, context } = req.body;
-      
+      const { question, conversationId, context } = req.body as { question: string; conversationId?: string; context?: string };
+
       if (!question) {
         return res.status(400).json({ message: "Question is required" });
       }
@@ -5060,8 +5069,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "User must belong to a company" });
       }
 
-      const { fileName, fileContent, fileType, title, description } = req.body;
-      
+      const { fileName, fileContent, fileType, title, description } = req.body as {
+        fileName: string;
+        fileContent: string;
+        fileType?: string;
+        title?: string;
+        description?: string;
+      };
+
       if (!fileName || !fileContent) {
         return res.status(400).json({ message: "File name and content are required" });
       }
@@ -5171,8 +5186,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.claims?.sub || req.user?.id!;
       const user = await storage.getUserById_Internal(userId);
       const conversationId = req.params.id;
-      const { messageId, helpful, feedback } = req.body;
-      
+      const { messageId, helpful, feedback } = req.body as { messageId: string; helpful: boolean; feedback?: string };
+
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
       }
@@ -5283,8 +5298,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "User must belong to a company" });
       }
 
-      const { productId, timeframe } = req.body;
-      
+      const { productId, timeframe } = req.body as { productId?: string; timeframe?: number };
+
       const forecast = await biService.generateForecast(
         user.companyId,
         productId,
@@ -5308,15 +5323,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "ECP access required" });
       }
 
-      const prescriptionData = req.body;
-      
+      const prescriptionData = req.body as Record<string, unknown>;
+
       // Simple risk calculation without full PredictiveNonAdaptService
       // Calculate risk based on prescription complexity
       let riskScore = 0;
       let riskFactors: string[] = [];
-      
+
       // High add power
-      if (prescriptionData.odAdd > 2.5 || prescriptionData.osAdd > 2.5) {
+      if ((prescriptionData.odAdd as number) > 2.5 || (prescriptionData.osAdd as number) > 2.5) {
         riskScore += 0.25;
         riskFactors.push("High add power detected");
       }
@@ -5495,8 +5510,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
+      const equipmentBody = req.body as Record<string, unknown>;
       const equipmentData = {
-        ...req.body,
+        ...equipmentBody,
         companyId: user.companyId,
       };
 
@@ -5526,13 +5542,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const equipment = await equipmentStorage.updateEquipment(
         req.params.id,
         user.companyId,
-        req.body
+        req.body as Record<string, unknown>
       );
 
       if (!equipment) {
         return res.status(404).json({ message: 'Equipment not found' });
       }
-      
+
       res.json(equipment);
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error updating equipment:');
@@ -5582,11 +5598,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
+      const maintenanceBody = req.body as Record<string, unknown>;
       const maintenanceRecord = {
-        ...req.body,
-        date: new Date(req.body.date),
+        ...maintenanceBody,
+        date: new Date(maintenanceBody.date as string),
         performedBy: user.email || 'Unknown',
-        nextScheduledDate: req.body.nextScheduledDate ? new Date(req.body.nextScheduledDate) : undefined,
+        nextScheduledDate: maintenanceBody.nextScheduledDate ? new Date(maintenanceBody.nextScheduledDate as string) : undefined,
       };
 
       const equipment = await equipmentStorage.addMaintenanceRecord(
@@ -5621,7 +5638,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Engineer or admin access required" });
       }
 
-      const { calibrationDate, nextCalibrationDate, notes } = req.body;
+      const { calibrationDate, nextCalibrationDate, notes } = req.body as {
+        calibrationDate: string;
+        nextCalibrationDate?: string;
+        notes?: string;
+      };
 
       const equipment = await equipmentStorage.recordCalibration(
         req.params.id,
@@ -5722,7 +5743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
-      const { status, notes } = req.body;
+      const { status, notes } = req.body as { status: string; notes?: string };
       const order = await productionStorage.updateOrderStatus(
         req.params.id,
         user.companyId,
@@ -5757,7 +5778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
-      const { status, details, metadata } = req.body;
+      const { status, details, metadata } = req.body as { status: string; details?: string; metadata?: Record<string, unknown> };
       const event = await productionStorage.addTimelineEvent(
         req.params.id,
         user.companyId,
@@ -5927,7 +5948,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
-      const { status, defects, measurements, notes, images } = req.body;
+      const { status, defects, measurements, notes, images } = req.body as {
+        status: string;
+        defects?: unknown[];
+        measurements?: unknown[];
+        notes?: string;
+        images?: string[];
+      };
       const result = await qcStorage.performQCInspection(
         req.params.orderId,
         user.companyId,
