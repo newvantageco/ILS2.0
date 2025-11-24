@@ -3096,10 +3096,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { autoDetectTimezone } = await import("./lib/timezoneDetector.js");
       const ipAddressRaw = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
       const ipAddress = Array.isArray(ipAddressRaw) ? ipAddressRaw[0] : ipAddressRaw;
-      const timezoneInfo = await autoDetectTimezone(req.body.postcode, ipAddress);
+      const bodyData = req.body as Record<string, unknown>;
+      const timezoneInfo = await autoDetectTimezone(bodyData.postcode as string | undefined, ipAddress);
 
       const patientData = addCreationTimestamp({
-        ...req.body,
+        ...bodyData,
         companyId: user.companyId,
         ecpId: userId,
         timezone: timezoneInfo.timezone,
@@ -3151,12 +3152,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update timezone if postcode changed
+      const updateBodyData = req.body as Record<string, unknown>;
       let timezoneUpdate = {};
-      if (req.body.postcode && req.body.postcode !== patient.postcode) {
+      if (updateBodyData.postcode && updateBodyData.postcode !== patient.postcode) {
         const { autoDetectTimezone } = await import("./lib/timezoneDetector.js");
         const ipAddressRaw = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
         const ipAddress = Array.isArray(ipAddressRaw) ? ipAddressRaw[0] : ipAddressRaw;
-        const timezoneInfo = await autoDetectTimezone(req.body.postcode, ipAddress);
+        const timezoneInfo = await autoDetectTimezone(updateBodyData.postcode as string, ipAddress);
         timezoneUpdate = {
           timezone: timezoneInfo.timezone,
           timezoneOffset: timezoneInfo.offset,
@@ -3164,7 +3166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const patientData = addUpdateTimestamp({
-        ...req.body,
+        ...updateBodyData,
         ...timezoneUpdate,
         updatedAt: new Date(),
       }, req, patient);
@@ -3277,7 +3279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can configure Shopify" });
       }
 
-      const { shopUrl, accessToken, apiVersion } = req.body;
+      const { shopUrl, accessToken, apiVersion } = req.body as ShopifyConfigBody;
 
       if (!shopUrl || !accessToken) {
         return res.status(400).json({ message: "Shop URL and access token are required" });
@@ -3476,7 +3478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const updatedExamination = await storage.updateEyeExamination(req.params.id, req.body);
+      const updatedExamination = await storage.updateEyeExamination(req.params.id, req.body as Record<string, unknown>);
       res.json(updatedExamination);
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error updating examination');
@@ -3634,7 +3636,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Prescription is already signed" });
       }
 
-      const { signature } = req.body;
+      const { signature } = req.body as { signature: string };
       if (!signature) {
         return res.status(400).json({ message: "Signature is required" });
       }
@@ -3834,7 +3836,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const updatedProduct = await storage.updateProduct(req.params.id, req.body);
+      const updatedProduct = await storage.updateProduct(req.params.id, req.body as Record<string, unknown>);
       res.json(updatedProduct);
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error updating product');
@@ -3947,7 +3949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      const { lineItems, paymentMethod, ...invoiceData } = req.body;
+      const { lineItems, paymentMethod, ...invoiceData } = req.body as POSTransactionBody;
 
       if (!lineItems || !Array.isArray(lineItems) || lineItems.length === 0) {
         return res.status(400).json({ message: "Invoice must have at least one line item" });
@@ -3999,7 +4001,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const { status } = req.body;
+      const { status } = req.body as StatusUpdateBody;
       if (!status || !['draft', 'paid', 'void'].includes(status)) {
         return res.status(400).json({ message: "Invalid status" });
       }
@@ -4035,8 +4037,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const { amount } = req.body;
-      if (!amount || parseFloat(amount) <= 0) {
+      const { amount } = req.body as AmountBody;
+      if (!amount || parseFloat(String(amount)) <= 0) {
         return res.status(400).json({ message: "Invalid payment amount" });
       }
 
@@ -4399,7 +4401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only ECPs can manage alerts" });
       }
 
-      const { actionTaken } = req.body;
+      const { actionTaken } = req.body as ActionBody;
 
       const { PredictiveNonAdaptService } = await import('./services/PredictiveNonAdaptService');
       const alertService = PredictiveNonAdaptService.getInstance();
@@ -4436,7 +4438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         osAxis,
         osAdd,
         pd,
-      } = req.body;
+      } = req.body as LensParametersBody;
 
       if (!lensType || !lensMaterial || !odSphere || !osSphere) {
         return res.status(400).json({ message: 'Missing required prescription fields' });
