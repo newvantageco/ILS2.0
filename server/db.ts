@@ -4,7 +4,7 @@ import { drizzle as drizzleNeon } from 'drizzle-orm/neon-serverless';
 import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
 import ws from "ws";
 import * as schema from "@shared/schema";
-import logger from '../utils/logger';
+import logger from './utils/logger';
 
 
 if (!process.env.DATABASE_URL) {

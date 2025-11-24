@@ -19,7 +19,7 @@ import Stripe from "stripe";
 import { db } from "../../../db/index.js";
 import { companies } from "../../../shared/schema.js";
 import { eq } from "drizzle-orm";
-import logger from '../utils/logger';
+import logger from '../../utils/logger';
 
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {

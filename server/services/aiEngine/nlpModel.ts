@@ -16,7 +16,7 @@ import { db } from "../../db";
 import type { NlpClinicalAnalysis, InsertNlpClinicalAnalysis } from "@shared/schema";
 import { nlpClinicalAnalysis, nlpIntentTagEnum } from "@shared/schema";
 import { eq } from "drizzle-orm";
-import logger from '../utils/logger';
+import logger from '../../utils/logger';
 
 
 interface NlpExtractionResult {

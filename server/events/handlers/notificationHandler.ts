@@ -20,7 +20,7 @@ import type {
 } from '../events';
 import { db } from '../../db';
 import { notifications } from '../../../shared/schema';
-import logger from '../utils/logger';
+import logger from '../../utils/logger';
 
 
 /**

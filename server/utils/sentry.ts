@@ -7,7 +7,7 @@ import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import { Express, Request, Response, NextFunction } from 'express';
 import logger from './logger';
-import logger from '../utils/logger';
+import logger from './utils/logger';
 
 
 const isProduction = process.env.NODE_ENV === 'production';

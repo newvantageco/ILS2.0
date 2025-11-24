@@ -300,7 +300,7 @@ import {
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql, gt, lt, gte, lte, ne, asc } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
-import logger from '../utils/logger';
+import logger from './utils/logger';
 
 
 export interface IStorage {

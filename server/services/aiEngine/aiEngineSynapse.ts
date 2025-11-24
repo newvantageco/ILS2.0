@@ -21,7 +21,7 @@ import { LimsModel } from "./limsModel";
 import { NlpModel } from "./nlpModel";
 import { EcpCatalogModel } from "./ecpCatalogModel";
 import { eq } from "drizzle-orm";
-import logger from '../utils/logger';
+import logger from '../../utils/logger';
 
 
 interface RecommendationWithJustification {

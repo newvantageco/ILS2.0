@@ -8,7 +8,7 @@
 
 import { Router } from 'express';
 import { OMAValidationService } from '../../services/OMAValidationService';
-import logger from '../utils/logger';
+import logger from '../../utils/logger';
 
 
 const router = Router();

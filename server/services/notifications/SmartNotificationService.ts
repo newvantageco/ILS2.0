@@ -14,7 +14,7 @@ import { db } from "../../../db/index.js";
 import { appointments, patients, prescriptions, users, companies } from "../../../shared/schema.js";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { addDays, addMonths, addYears, format, isBefore } from "date-fns";
-import logger from '../utils/logger';
+import logger from '../../utils/logger';
 
 
 export interface NotificationTemplate {

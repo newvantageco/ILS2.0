@@ -15,7 +15,7 @@ import { db } from "../../../db/index.js";
 import { appointments, testRooms, users, patients, companies } from "../../../shared/schema.js";
 import { eq, and, gte, lte, or, sql, desc, asc } from "drizzle-orm";
 import { addDays, addMinutes, format, parseISO, startOfDay, endOfDay, setHours, setMinutes } from "date-fns";
-import logger from '../utils/logger';
+import logger from '../../utils/logger';
 
 
 export interface TimeSlot {

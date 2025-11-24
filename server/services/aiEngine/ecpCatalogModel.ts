@@ -14,7 +14,7 @@ import { db } from "../../db";
 import type { EcpCatalogData, InsertEcpCatalogData } from "@shared/schema";
 import { ecpCatalogData } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
-import logger from '../utils/logger';
+import logger from '../../utils/logger';
 
 
 export interface CatalogProduct {

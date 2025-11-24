@@ -32,7 +32,7 @@ import { eq, and, desc } from "drizzle-orm";
 import crypto from "crypto";
 import { FaceAnalysisService } from "../FaceAnalysisService.js";
 import { IntelligentLensRecommendationService } from "../recommendations/IntelligentLensRecommendationService.js";
-import logger from '../utils/logger';
+import logger from '../../utils/logger';
 
 
 export interface ShopifyConnection {

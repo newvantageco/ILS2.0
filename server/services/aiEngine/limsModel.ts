@@ -17,7 +17,7 @@ import { db } from "../../db";
 import type { LimsClinicalAnalytic } from "@shared/schema";
 import { limsClinicalAnalytics } from "@shared/schema";
 import { eq, and, gte } from "drizzle-orm";
-import logger from '../utils/logger';
+import logger from '../../utils/logger';
 
 
 interface LensConfiguration {

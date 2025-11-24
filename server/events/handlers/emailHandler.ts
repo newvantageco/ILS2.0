@@ -6,6 +6,7 @@
  */
 
 import { EventBus } from '../EventBus';
+import logger from '../../utils/logger';
 import type {
   OrderCreatedData,
   OrderShippedData,
@@ -19,8 +20,6 @@ import type {
   PaymentFailedData,
 } from '../events';
 import {
-import logger from '../utils/logger';
-
   queueOrderConfirmationEmail,
   queueOrderShipmentEmail,
   queueMarketplaceConnectionEmail,

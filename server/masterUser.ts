@@ -2,7 +2,7 @@ import { storage } from "./storage";
 import { hashPassword } from "./localAuth";
 import { roleEnum, type UpsertUser } from "@shared/schema";
 import { normalizeEmail } from "./utils/normalizeEmail";
-import logger from '../utils/logger';
+import logger from './utils/logger';
 
 
 const MASTER_ROLES = [...roleEnum.enumValues];
