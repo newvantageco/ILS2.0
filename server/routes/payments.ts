@@ -5,7 +5,7 @@
  * for the Integrated Lens System
  */
 
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction, Express } from "express";
 import Stripe from "stripe";
 import { storage } from "../storage";
 import { asyncHandler } from "../middleware/errorHandler";
@@ -17,6 +17,32 @@ import {
 } from "../utils/ApiError";
 import { withTransaction } from "../utils/transaction";
 import { createLogger } from "../utils/logger";
+import { z } from "zod";
+
+// Type definitions for authenticated requests
+interface AuthenticatedUser {
+  id: string;
+  email?: string;
+  companyId?: string;
+  role?: string;
+  claims?: {
+    sub?: string;
+  };
+}
+
+interface AuthenticatedRequest extends Request {
+  user: AuthenticatedUser;
+}
+
+// Zod schemas for request validation
+const createCheckoutSchema = z.object({
+  planId: z.string().min(1, "Plan ID is required"),
+  billingInterval: z.enum(["monthly", "yearly"], {
+    errorMap: () => ({ message: "Billing interval must be 'monthly' or 'yearly'" })
+  }),
+});
+
+type CreateCheckoutBody = z.infer<typeof createCheckoutSchema>;
 
 const router = Router();
 const logger = createLogger('payments');
@@ -44,8 +70,8 @@ const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
 /**
  * Middleware to check if user is authenticated
  */
-function isAuthenticated(req: any, res: Response, next: Function) {
-  if (req.user) {
+function isAuthenticated(req: Request, res: Response, next: NextFunction): void {
+  if ((req as AuthenticatedRequest).user) {
     return next();
   }
   throw new UnauthorizedError("Authentication required");
@@ -54,8 +80,9 @@ function isAuthenticated(req: any, res: Response, next: Function) {
 /**
  * Middleware to check if user is platform admin
  */
-function isPlatformAdmin(req: any, res: Response, next: Function) {
-  if (req.user && req.user.role === "platform_admin") {
+function isPlatformAdmin(req: Request, res: Response, next: NextFunction): void {
+  const authReq = req as AuthenticatedRequest;
+  if (authReq.user && authReq.user.role === "platform_admin") {
     return next();
   }
   throw new UnauthorizedError("Platform admin access required");
@@ -74,18 +101,18 @@ router.get("/subscription-plans", asyncHandler(async (req: Request, res: Respons
  * POST /api/payments/create-checkout-session
  * Create a Stripe Checkout session for subscription
  */
-router.post("/create-checkout-session", isAuthenticated, asyncHandler(async (req: any, res: Response) => {
-  const userId = req.user?.claims?.sub || req.user?.id;
+router.post("/create-checkout-session", isAuthenticated, asyncHandler(async (req: Request, res: Response) => {
+  const authReq = req as AuthenticatedRequest;
+  
+  // Validate request body
+  const validatedBody = createCheckoutSchema.parse(req.body);
+  const { planId, billingInterval } = validatedBody;
+  
+  const userId = authReq.user?.claims?.sub || authReq.user?.id;
   const user = await storage.getUserById_Internal(userId);
   
   if (!user || !user.companyId) {
     throw new BadRequestError("User must belong to a company");
-  }
-
-  const { planId, billingInterval } = req.body;
-
-  if (!planId || !billingInterval) {
-    throw new BadRequestError("Plan ID and billing interval required");
   }
 
   // Get company and plan details
@@ -125,8 +152,9 @@ router.post("/create-checkout-session", isAuthenticated, asyncHandler(async (req
         if (user.companyId) {
           await storage.updateCompany(user.companyId, { stripeCustomerId: customerId });
         }
-      } catch (stripeError: any) {
-        throw new StripeError("Failed to create customer", { error: stripeError.message });
+      } catch (stripeError) {
+        const errorMessage = stripeError instanceof Error ? stripeError.message : "Unknown error";
+        throw new StripeError("Failed to create customer", { error: errorMessage });
       }
     }
 
@@ -160,9 +188,10 @@ router.post("/create-checkout-session", isAuthenticated, asyncHandler(async (req
  * POST /api/payments/create-portal-session
  * Create a Stripe Customer Portal session for managing subscription
  */
-router.post("/create-portal-session", isAuthenticated, async (req: any, res: Response) => {
+router.post("/create-portal-session", isAuthenticated, async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.claims?.sub || req.user?.id;
+    const authReq = req as AuthenticatedRequest;
+    const userId = authReq.user?.claims?.sub || authReq.user?.id;
     const user = await storage.getUserById_Internal(userId);
     
     if (!user || !user.companyId) {
@@ -181,8 +210,9 @@ router.post("/create-portal-session", isAuthenticated, async (req: any, res: Res
     });
 
     res.json({ success: true, url: session.url });
-  } catch (error: any) {
-    logger.error({ error, userId, companyId: user?.companyId }, 'Error creating portal session');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'Error creating portal session');
     res.status(500).json({ error: "Failed to create portal session" });
   }
 });
@@ -191,9 +221,10 @@ router.post("/create-portal-session", isAuthenticated, async (req: any, res: Res
  * GET /api/payments/subscription-status
  * Get current subscription status for user's company
  */
-router.get("/subscription-status", isAuthenticated, async (req: any, res: Response) => {
+router.get("/subscription-status", isAuthenticated, async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.claims?.sub || req.user?.id;
+    const authReq = req as AuthenticatedRequest;
+    const userId = authReq.user?.claims?.sub || authReq.user?.id;
     const user = await storage.getUserById_Internal(userId);
     
     if (!user || !user.companyId) {
@@ -221,8 +252,9 @@ router.get("/subscription-status", isAuthenticated, async (req: any, res: Respon
       },
       history,
     });
-  } catch (error: any) {
-    logger.error({ error, userId, companyId: user?.companyId }, 'Error fetching subscription status');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'Error fetching subscription status');
     res.status(500).json({ error: "Failed to fetch subscription status" });
   }
 });
@@ -242,8 +274,9 @@ router.post("/webhook", async (req: Request, res: Response) => {
 
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
-  } catch (err: any) {
-    logger.error({ error: err }, 'Webhook signature verification failed');
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'Webhook signature verification failed');
     return res.status(400).json({ error: `Webhook Error: ${err.message}` });
   }
 
@@ -272,8 +305,9 @@ router.post("/webhook", async (req: Request, res: Response) => {
     }
 
     res.json({ received: true });
-  } catch (error: any) {
-    logger.error({ error, eventType: event.type }, 'Error handling webhook');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, eventType: event.type }, 'Error handling webhook');
     res.status(500).json({ error: "Webhook handler failed" });
   }
 });
@@ -290,13 +324,13 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   }
 
   const planId = subscription.metadata.planId || "professional";
-  const currentPeriodEnd = (subscription as any).current_period_end;
+  const currentPeriodEnd = subscription.current_period_end;
 
   await storage.updateCompany(companyId, {
     stripeSubscriptionId: subscription.id,
     stripeSubscriptionStatus: subscription.status,
     stripeCurrentPeriodEnd: currentPeriodEnd ? new Date(currentPeriodEnd * 1000) : undefined,
-    subscriptionPlan: planId as any,
+    subscriptionPlan: planId as "free" | "pro" | "premium" | "enterprise" | "full" | "free_ecp",
     subscriptionStartDate: new Date(subscription.created * 1000),
   });
 
@@ -341,7 +375,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
  */
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
   const customerId = invoice.customer as string;
-  const paymentIntent = (invoice as any).payment_intent;
+  const paymentIntent = invoice.payment_intent;
   
   // Record payment intent
   if (paymentIntent) {
@@ -355,7 +389,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
         currency: invoice.currency.toUpperCase(),
         status: "succeeded",
         customerId: customerId,
-        subscriptionId: (invoice as any).subscription as string,
+        subscriptionId: typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id || null,
         metadata: { invoiceId: invoice.id },
       });
     }
@@ -380,6 +414,6 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
   }
 }
 
-export function registerPaymentRoutes(app: any) {
+export function registerPaymentRoutes(app: Express): void {
   app.use("/api/payments", router);
 }
