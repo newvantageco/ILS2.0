@@ -5,7 +5,7 @@
 
 import { performance } from 'perf_hooks';
 import { trackQuery } from '../middleware/performance';
-import logger from './utils/logger';
+import logger from './logger';
 
 
 /**

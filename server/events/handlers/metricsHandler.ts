@@ -6,9 +6,8 @@
  */
 
 import { EventBus } from '../EventBus';
-import type {
 import logger from '../../utils/logger';
-
+import type {
   OrderCreatedData,
   UserLoginData,
   ProductLowStockData,
