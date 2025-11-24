@@ -118,7 +118,7 @@ router.post("/create-checkout-session", isAuthenticated, asyncHandler(async (req
   // Get company and plan details
   const company = await storage.getCompany(user.companyId);
   const plans = await storage.getSubscriptionPlans();
-  const plan = plans.find(p => p.id === planId);
+  const plan = plans.find((p: typeof plans[0]) => p.id === planId);
 
   if (!plan) {
     throw new NotFoundError("Subscription plan");
