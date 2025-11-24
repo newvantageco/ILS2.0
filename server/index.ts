@@ -41,6 +41,8 @@ import "./workers/aiWorker";
 import { initializeRedis, getRedisConnection } from "./queue/config";
 import { storage } from "./storage";
 import logger from "./utils/logger";
+import { db } from "../db";
+import { sql } from "drizzle-orm";
 // Order-created workers (Strangler refactor) - register explicitly below
 import { registerOrderCreatedLimsWorker } from "./workers/OrderCreatedLimsWorker";
 import { registerOrderCreatedPdfWorker } from "./workers/OrderCreatedPdfWorker";
@@ -213,15 +215,33 @@ app.use(performanceMonitoring);
 app.use(requestTimeout(30000));
 
 // ============== HEALTH CHECK ENDPOINTS ==============
-// Register health checks BEFORE async initialization so Railway can check immediately
-const healthCheck = (req: Request, res: Response) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    environment: app.get("env"),
-    uptime: process.uptime(),
-    memory: process.memoryUsage()
-  });
+// Health check verifies database connectivity so Railway waits for db:push
+let dbReady = false;
+
+const healthCheck = async (req: Request, res: Response) => {
+  try {
+    // Verify database tables exist by checking for users table
+    if (!dbReady) {
+      await db.execute(sql`SELECT 1 FROM users LIMIT 1`);
+      dbReady = true;
+    }
+    res.json({
+      status: 'ok',
+      database: 'connected',
+      timestamp: new Date().toISOString(),
+      environment: app.get("env"),
+      uptime: process.uptime(),
+      memory: process.memoryUsage()
+    });
+  } catch (error) {
+    // Database not ready yet - return 503
+    res.status(503).json({
+      status: 'starting',
+      database: 'initializing',
+      message: 'Database migrations in progress',
+      timestamp: new Date().toISOString()
+    });
+  }
 };
 app.get('/health', healthCheck);
 app.get('/api/health', healthCheck);
