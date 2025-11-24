@@ -4412,6 +4412,10 @@ export const nhsClaims = pgTable("nhs_claims", {
   // Timestamps
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+
+  // Soft Delete
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by", { length: 255 }),
 }, (table) => [
   index("idx_nhs_claims_company").on(table.companyId),
   index("idx_nhs_claims_patient").on(table.patientId),

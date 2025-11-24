@@ -592,9 +592,9 @@ export class NhsClaimsService {
   }
 
   /**
-   * Delete claim (only if draft)
+   * Delete claim (only if draft) - uses soft delete for healthcare compliance
    */
-  static async deleteClaim(claimId: string, companyId: string) {
+  static async deleteClaim(claimId: string, companyId: string, deletedBy?: string) {
     const [claim] = await db
       .select()
       .from(nhsClaims)
@@ -609,7 +609,14 @@ export class NhsClaimsService {
       throw new Error("Cannot delete claim that has been submitted");
     }
 
-    await db.delete(nhsClaims).where(eq(nhsClaims.id, claimId));
+    // Soft delete - preserve data for healthcare compliance/audit
+    await db
+      .update(nhsClaims)
+      .set({
+        deletedAt: new Date(),
+        deletedBy: deletedBy,
+      } as any)
+      .where(eq(nhsClaims.id, claimId));
   }
 
   /**

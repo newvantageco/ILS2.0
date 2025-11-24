@@ -212,17 +212,21 @@ router.post("/claims/batch-submit", requireAuth, async (req: Request, res: Respo
 
 /**
  * DELETE /api/nhs/claims/:id
- * Delete draft claim
+ * Delete draft claim (soft delete for healthcare compliance)
  */
 router.delete("/claims/:id", requireAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const user = (req as any).user;
     const companyId = user.companyId;
+    const userId = user.id || user.claims?.sub;
 
-    await NhsClaimsService.deleteClaim(id, companyId);
+    await NhsClaimsService.deleteClaim(id, companyId, userId);
 
-    res.json({ message: "Claim deleted successfully" });
+    res.json({
+      message: "Claim deleted successfully",
+      note: "Data has been soft-deleted and can be recovered if needed"
+    });
   } catch (error: any) {
     logger.error({ error, claimId: id }, 'Delete claim error');
     res.status(400).json({ error: error.message || "Failed to delete claim" });
