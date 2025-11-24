@@ -11,12 +11,11 @@ cmds = [
 
 [phases.build]
 cmds = [
-  "npm run build",
-  "npm run db:push"
+  "npm run build"
 ]
 
 [start]
-cmd = "node dist/index.js"
+cmd = "npm run db:push && node dist/index.js"
 
 [variables]
 NODE_ENV = "production"
