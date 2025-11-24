@@ -528,7 +528,7 @@ export default function WelcomePage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />
-            <CardTitle>What's New in ILS 2.0</CardTitle>
+            <CardTitle>What&apos;s New in ILS 2.0</CardTitle>
           </div>
           <CardDescription>Latest updates and improvements</CardDescription>
         </CardHeader>

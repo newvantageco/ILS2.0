@@ -489,7 +489,7 @@ export default function MyConnectionsPage() {
                 <Clock className="w-16 h-16 mx-auto mb-4 text-gray-300" />
                 <h3 className="text-xl font-semibold mb-2">No incoming requests</h3>
                 <p className="text-gray-600">
-                  You'll see connection requests from other companies here
+                  You&apos;ll see connection requests from other companies here
                 </p>
               </CardContent>
             </Card>

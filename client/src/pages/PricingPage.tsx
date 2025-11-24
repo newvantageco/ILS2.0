@@ -300,7 +300,7 @@ export default function PricingPage() {
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold mb-4">Detailed Feature Comparison</h2>
           <p className="text-muted-foreground">
-            See exactly what's included in each edition
+            See exactly what&apos;s included in each edition
           </p>
         </div>
 
@@ -428,7 +428,7 @@ export default function PricingPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">What's included in the free trial?</CardTitle>
+              <CardTitle className="text-lg">What&apos;s included in the free trial?</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">

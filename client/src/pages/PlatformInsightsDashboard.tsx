@@ -653,7 +653,7 @@ export default function PlatformInsightsDashboard() {
             {metrics.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No metrics available. Click "Refresh Metrics" to compute.</p>
+                <p>No metrics available. Click &ldquo;Refresh Metrics&rdquo; to compute.</p>
               </div>
             ) : (
               metrics.map((metric) => (

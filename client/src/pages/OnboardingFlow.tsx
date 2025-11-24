@@ -178,7 +178,7 @@ export default function OnboardingFlow() {
                 Welcome to IntegratedLensSystem
               </CardTitle>
               <CardDescription className="text-base mt-2">
-                Let's get you set up. Choose how you'd like to get started.
+                Let&apos;s get you set up. Choose how you&apos;d like to get started.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -200,7 +200,7 @@ export default function OnboardingFlow() {
                         Create a New Company
                       </Label>
                       <p className="text-sm text-muted-foreground mt-2">
-                        Start fresh by creating your own company profile. You'll be the administrator
+                        Start fresh by creating your own company profile. You&apos;ll be the administrator
                         and can invite team members later.
                       </p>
                       <div className="flex gap-2 mt-3">
@@ -228,7 +228,7 @@ export default function OnboardingFlow() {
                         Join an Existing Company
                       </Label>
                       <p className="text-sm text-muted-foreground mt-2">
-                        Connect with your team by joining a company that's already set up on the platform.
+                        Connect with your team by joining a company that&apos;s already set up on the platform.
                         Your access will be approved by an administrator.
                       </p>
                       <div className="flex gap-2 mt-3">
@@ -356,7 +356,7 @@ export default function OnboardingFlow() {
                 Join a Company
               </CardTitle>
               <CardDescription>
-                Search for and select the company you'd like to join.
+                Search for and select the company you&apos;d like to join.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">

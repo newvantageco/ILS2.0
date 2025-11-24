@@ -136,7 +136,7 @@ export default function SupplierDashboardModern() {
               £{(stats.monthlyRevenue / 1000).toFixed(1)}k
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              This month's orders
+              This month&apos;s orders
             </p>
             <div className="mt-2 flex items-center gap-1 text-xs text-green-600">
               <TrendingUp className="w-3 h-3" />
