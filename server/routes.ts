@@ -1,10 +1,25 @@
-import type { Express, Response } from "express";
+import type { Express, Response, Request } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth as setupReplitAuth, isAuthenticated } from "./replitAuth";
 import type { AuthenticatedRequest } from "./middleware/auth";
 import { hashPassword } from "./localAuth";
+import type {
+  RoleSelectionBody,
+  UserUpdateBody,
+  PasswordUpdateBody,
+  OMAFileBody,
+  EmailBody,
+  FeedbackResponseBody,
+  InvoiceBody,
+  ShopifyConfigBody,
+  POSTransactionBody,
+  StatusUpdateBody,
+  AmountBody,
+  ActionBody,
+  LensParametersBody,
+} from "./types/request";
 import passport from "passport";
 import { 
   insertOrderSchema, 
@@ -633,7 +648,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User already has a role assigned" });
       }
 
-  const { role, organizationName, adminSetupKey, subscriptionPlan, gocNumber } = req.body;
+  const { role, organizationName, adminSetupKey, subscriptionPlan, gocNumber } = req.body as RoleSelectionBody;
       
       if (!role || !['ecp', 'lab_tech', 'engineer', 'supplier', 'admin', 'optometrist'].includes(role)) {
         return res.status(400).json({ message: "Valid role is required" });
@@ -735,7 +750,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/add-role', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id!;
-      const { role } = req.body;
+      const { role } = req.body as { role: string };
       
       const user = await storage.getUserById_Internal(userId);
       
@@ -776,7 +791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/switch-role', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id!;
-      const { role } = req.body;
+      const { role } = req.body as { role: string };
 
       if (!role || !['ecp', 'lab_tech', 'engineer', 'supplier', 'admin'].includes(role)) {
         return res.status(400).json({ message: "Valid role is required" });
@@ -808,9 +823,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Email/Password Signup
-  app.post('/api/auth/signup-email', 
+  app.post('/api/auth/signup-email',
     asyncHandler(async (req, res) => {
-      const { email, password, firstName, lastName, role, organizationName, adminSetupKey, subscriptionPlan } = req.body;
+      const { email, password, firstName, lastName, role, organizationName, adminSetupKey, subscriptionPlan } = req.body as {
+        email: string;
+        password: string;
+        firstName: string;
+        lastName: string;
+        role: string;
+        organizationName?: string;
+        adminSetupKey?: string;
+        subscriptionPlan?: string;
+      };
 
       // Validation
       if (!email || !password || !firstName || !lastName || !role) {
@@ -916,10 +940,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Email/Password Login
-  app.post('/api/auth/login-email', 
+  app.post('/api/auth/login-email',
     validateRequest(loginSchema),
     (req, res, next) => {
-      req.body.email = normalizeEmail(req.body.email);
+      const body = req.body as { email: string; password: string };
+      body.email = normalizeEmail(body.email);
 
       passport.authenticate('local', (err: any, user: any, info: any) => {
         if (err) {
@@ -1193,8 +1218,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const { fileContent, filename } = req.body;
-      
+      const { fileContent, filename } = req.body as OMAFileBody;
+
       if (!fileContent || !filename) {
         return res.status(400).json({ message: "File content and filename are required" });
       }
@@ -1566,7 +1591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get recipient email from request body or use patient email
-      const { recipientEmail } = req.body;
+      const { recipientEmail } = req.body as EmailBody;
       const toEmail = recipientEmail || order.patient?.email;
 
       if (!toEmail) {
@@ -1852,7 +1877,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only lab staff can respond to consult logs" });
       }
 
-      const { response } = req.body;
+      const { response } = req.body as FeedbackResponseBody;
       if (!response || typeof response !== 'string') {
         return res.status(400).json({ message: "Response is required" });
       }
@@ -1884,8 +1909,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "User must belong to a company" });
       }
 
-      const { lineItems, ...poData } = req.body;
-      
+      const { lineItems, ...poData } = req.body as { lineItems: unknown[]; [key: string]: unknown };
+
       if (!lineItems || !Array.isArray(lineItems) || lineItems.length === 0) {
         return res.status(400).json({ message: "At least one line item is required" });
       }
@@ -2315,10 +2340,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const targetUserId = req.params.id;
-      const { role, accountStatus, statusReason } = req.body;
+      const { role, accountStatus, statusReason } = req.body as UserUpdateBody;
 
       // Validate updates
-      const updates: any = {};
+      const updates: Partial<UserUpdateBody> = {};
       if (role !== undefined && role !== null) {
         if (!['ecp', 'lab_tech', 'engineer', 'supplier', 'admin'].includes(role)) {
           return res.status(400).json({ message: "Invalid role" });
@@ -2435,7 +2460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Platform admin access required" });
       }
 
-      const updatedUser = await storage.updateUser(req.params.id, req.body);
+      const updatedUser = await storage.updateUser(req.params.id, req.body as Partial<UserUpdateBody>);
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2452,12 +2477,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user?.claims?.sub || req.user?.id!;
       const user = await storage.getUserById_Internal(userId);
-      
+
       if (!user || user.role !== 'platform_admin') {
         return res.status(403).json({ message: "Platform admin access required" });
       }
 
-      const { password } = req.body;
+      const { password } = req.body as PasswordUpdateBody;
       if (!password || password.length < 8) {
         return res.status(400).json({ message: "Password must be at least 8 characters" });
       }
@@ -2549,7 +2574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User not associated with a company" });
       }
 
-      const updatedCompany = await storage.updateCompany(user.companyId, req.body);
+      const updatedCompany = await storage.updateCompany(user.companyId, req.body as Record<string, unknown>);
       if (!updatedCompany) {
         return res.status(404).json({ message: "Company not found" });
       }
@@ -2620,18 +2645,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User not associated with a company" });
       }
 
-      const { 
-        firstName, 
-        lastName, 
-        email, 
-        role, 
+      const {
+        firstName,
+        lastName,
+        email,
+        role,
         enhancedRole,
         gocNumber,
         gocRegistrationNumber,
         gocRegistrationType,
         professionalQualifications,
         contactPhone
-      } = req.body;
+      } = req.body as UserUpdateBody;
 
       // Validate required fields
       if (!firstName || !lastName || !email) {
@@ -2728,16 +2753,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found in your company" });
       }
 
-      const updates: any = {};
+      const bodyData = req.body as Record<string, unknown>;
+      const updates: Record<string, unknown> = {};
       const allowedUpdates = [
-        'firstName', 'lastName', 'contactPhone', 'gocNumber', 
-        'gocRegistrationNumber', 'gocRegistrationType', 
+        'firstName', 'lastName', 'contactPhone', 'gocNumber',
+        'gocRegistrationNumber', 'gocRegistrationType',
         'professionalQualifications', 'accountStatus', 'enhancedRole'
       ];
 
       for (const field of allowedUpdates) {
-        if (req.body[field] !== undefined) {
-          updates[field] = req.body[field];
+        if (bodyData[field] !== undefined) {
+          updates[field] = bodyData[field];
         }
       }
 
