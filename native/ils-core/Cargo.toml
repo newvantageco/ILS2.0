@@ -12,6 +12,7 @@ napi = { workspace = true }
 napi-derive = { workspace = true }
 ndarray = { workspace = true }
 ndarray-stats = { workspace = true }
+noisy_float = { workspace = true }
 statrs = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }

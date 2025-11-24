@@ -294,7 +294,7 @@ describe.skip('ShopifyOrderSyncService (SKIPPED - needs API refactor)', () => {
 
       expect(results).toHaveLength(3);
       const succeeded = results.filter(r => r.status === 'synced');
-      expect(succeeded.length).toBe(2);
+      expect(succeeded).toHaveLength(2);
     });
   });
 

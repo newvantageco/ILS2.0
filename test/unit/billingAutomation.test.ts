@@ -58,7 +58,7 @@ describe('BillingAutomationService (unit)', () => {
     );
 
     expect(Array.isArray(charges)).toBe(true);
-    expect(charges.length).toBe(2);
+    expect(charges).toHaveLength(2);
 
     const first = charges[0];
     const second = charges[1];

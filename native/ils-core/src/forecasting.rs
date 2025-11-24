@@ -5,7 +5,6 @@
 //! - Simple exponential smoothing
 //! - Trend analysis
 
-use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use rayon::prelude::*;
 

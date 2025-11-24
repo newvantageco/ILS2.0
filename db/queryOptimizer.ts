@@ -68,7 +68,7 @@ class QueryOptimizer {
 
     const startTime = Date.now();
     let result: T;
-    let cached = false;
+    const cached = false;
 
     // Try cache first for read operations
     if (operation === 'read' && options?.cacheKey && !options.bypassCache) {

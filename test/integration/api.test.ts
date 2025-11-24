@@ -9,7 +9,7 @@ import { z } from 'zod';
  */
 
 // Mock database connection for testing
-let testDb: any = null;
+const testDb: any = null;
 
 export function setupTestDatabase() {
   // TODO: Connect to test database

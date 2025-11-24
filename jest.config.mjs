@@ -12,7 +12,7 @@ export default {
     // In Jest we want @/ to resolve to server code (server tests use '@/services/...').
     '^@/(.*)$': '<rootDir>/server/$1',
     '^@shared/(.*)$': '<rootDir>/shared/$1',
-    '^(\.{1,2}/.*)\.js$': '$1',
+    '^(\\.{1,2}/.*)\\.js$': '$1',
     // Fix drizzle-orm module resolution
     '^drizzle-orm/(.*)$': '<rootDir>/node_modules/drizzle-orm/$1'
   },

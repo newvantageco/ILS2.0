@@ -43,11 +43,8 @@ export const options = {
     // HTTP errors should be less than 1%
     'errors': ['rate<0.01'],
 
-    // 95% of requests should be below 500ms
-    'http_req_duration': ['p(95)<500'],
-
-    // 99% of requests should be below 1000ms
-    'http_req_duration': ['p(99)<1000'],
+    // 95% of requests should be below 500ms, 99% below 1000ms
+    'http_req_duration': ['p(95)<500', 'p(99)<1000'],
 
     // Health check should always be fast
     'health_check_duration': ['p(95)<200'],

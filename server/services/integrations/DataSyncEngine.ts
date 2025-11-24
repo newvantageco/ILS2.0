@@ -325,7 +325,7 @@ export class DataSyncEngine {
           break;
 
         case 'phone':
-          if (value && !/^\+?[\d\s\-\(\)]+$/.test(value)) {
+          if (value && !/^\+?[\d\s\-()]+$/.test(value)) {
             errors.push(rule.message || `Field '${rule.field}' must be a valid phone number`);
           }
           break;
