@@ -3884,7 +3884,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Invoice routes
-  app.get('/api/invoices', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/invoices', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -3905,7 +3905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/invoices/:id', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/invoices/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -3935,7 +3935,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/invoices', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/invoices', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -3981,7 +3981,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/invoices/:id/status', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.patch('/api/invoices/:id/status', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -4017,7 +4017,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/invoices/:id/payment', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/invoices/:id/payment', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -4054,7 +4054,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Email and PDF routes for invoices
-  app.get('/api/invoices/:id/pdf', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/invoices/:id/pdf', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -4116,7 +4116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/invoices/:id/email', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/invoices/:id/email', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -4206,7 +4206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Receipt PDF endpoint (for POS transactions)
-  app.get('/api/invoices/:id/receipt', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/invoices/:id/receipt', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -4972,7 +4972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const aiAssistantService = new AIAssistantService(storage);
 
   // Ask AI Assistant a question
-  app.post('/api/ai-assistant/ask', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/ai-assistant/ask', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5021,7 +5021,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all conversations for a user
-  app.get('/api/ai-assistant/conversations', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai-assistant/conversations', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5039,7 +5039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get a specific conversation with messages
-  app.get('/api/ai-assistant/conversations/:id', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai-assistant/conversations/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5063,7 +5063,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload document to knowledge base
-  app.post('/api/ai-assistant/knowledge/upload', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/ai-assistant/knowledge/upload', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5104,7 +5104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all knowledge base documents
-  app.get('/api/ai-assistant/knowledge', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai-assistant/knowledge', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5122,7 +5122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get learning progress
-  app.get('/api/ai-assistant/learning-progress', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai-assistant/learning-progress', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5140,7 +5140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get AI assistant statistics
-  app.get('/api/ai-assistant/stats', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai-assistant/stats', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5158,7 +5158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Usage Stats endpoint (for client compatibility)
-  app.get('/api/ai/usage/stats', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai/usage/stats', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5184,7 +5184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Provide feedback on AI response
-  app.post('/api/ai-assistant/conversations/:id/feedback', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/ai-assistant/conversations/:id/feedback', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5220,7 +5220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const biService = new BusinessIntelligenceService(storage);
 
   // Get BI Dashboard overview
-  app.get('/api/ai-intelligence/dashboard', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai-intelligence/dashboard', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5238,7 +5238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get AI-generated insights
-  app.get('/api/ai-intelligence/insights', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai-intelligence/insights', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5256,7 +5256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get growth opportunities
-  app.get('/api/ai-intelligence/opportunities', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai-intelligence/opportunities', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5274,7 +5274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get alerts
-  app.get('/api/ai-intelligence/alerts', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai-intelligence/alerts', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5292,7 +5292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate demand forecast
-  app.post('/api/ai-intelligence/forecast', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/ai-intelligence/forecast', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
