@@ -2,6 +2,7 @@
  * Google OAuth Authentication Routes
  * 
  * Provides Sign-in with Google functionality using passport-google-oauth20
+ * Auto-creates free-tier companies for new users
  */
 
 import { Router, Request, Response, NextFunction } from "express";
@@ -10,6 +11,8 @@ import { Strategy as GoogleStrategy, Profile } from "passport-google-oauth20";
 import { storage } from "../storage";
 import { createLogger } from "../utils/logger";
 import { normalizeEmail } from "../utils/normalizeEmail";
+import { db } from "../../db";
+import { companies } from "../../shared/schema";
 
 const router = Router();
 const logger = createLogger("google-auth");
@@ -44,7 +47,7 @@ if (isGoogleAuthConfigured) {
           const email = profile.emails?.[0]?.value;
           
           if (!email) {
-            logger.warn("Google login failed: No email provided", { profileId: profile.id });
+            logger.warn("Google login failed: No email provided");
             return done(null, false);
           }
 
@@ -61,28 +64,51 @@ if (isGoogleAuthConfigured) {
               });
             }
             
-            logger.info("User logged in via Google", { 
-              userId: user.id, 
-              email: normalizedEmail 
-            });
+            logger.info("User logged in via Google: " + normalizedEmail);
           } else {
-            // Create new user from Google profile
-            const newUserData = {
+            // NEW USER: Create a free-tier company for them automatically
+            const firstName = profile.name?.givenName || profile.displayName?.split(" ")[0] || "User";
+            const lastName = profile.name?.familyName || profile.displayName?.split(" ").slice(1).join(" ") || "";
+            const companyName = `${firstName}'s Practice`;
+
+            // Create free-tier company
+            const [newCompany] = await db
+              .insert(companies)
+              .values({
+                name: companyName,
+                type: "ecp",
+                email: normalizedEmail,
+                phone: "",
+                status: "active", // Auto-activate for free tier
+                subscriptionPlan: "free_ecp",
+                aiEnabled: true,
+                useExternalAi: true,
+                aiLearningProgress: 0,
+              })
+              .returning();
+
+            logger.info("Created free-tier company for Google user: " + companyName);
+
+            // Create new user with company association
+            user = await storage.upsertUser({
               email: normalizedEmail,
-              firstName: profile.name?.givenName || profile.displayName?.split(" ")[0] || "",
-              lastName: profile.name?.familyName || profile.displayName?.split(" ").slice(1).join(" ") || "",
+              firstName,
+              lastName,
               profileImageUrl: profile.photos?.[0]?.value || null,
-              googleId: profile.id,
-              accountStatus: "active" as const,
-              emailVerified: true, // Google emails are verified
-            };
+              role: "ecp", // Default role for free tier
+              roles: ["ecp"],
+              companyId: newCompany.id,
+              accountStatus: "active", // Auto-approve for free tier
+              subscriptionPlan: "free_ecp",
+              organizationName: companyName,
+            } as any);
             
-            user = await storage.createUser(newUserData);
+            if (!user) {
+              logger.error("Failed to create user via Google OAuth");
+              return done(new Error("Failed to create user"));
+            }
             
-            logger.info("New user created via Google OAuth", { 
-              userId: user.id, 
-              email: normalizedEmail 
-            });
+            logger.info("New user created via Google OAuth: " + normalizedEmail);
           }
 
           // Create session user object
@@ -104,16 +130,14 @@ if (isGoogleAuthConfigured) {
 
           return done(null, sessionUser);
         } catch (error) {
-          logger.error("Google OAuth error", error as Error);
+          logger.error("Google OAuth error: " + (error instanceof Error ? error.message : String(error)));
           return done(error as Error);
         }
       }
     )
   );
 } else {
-  logger.warn(
-    "Google OAuth is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable."
-  );
+  logger.warn("Google OAuth is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable.");
 }
 
 /**

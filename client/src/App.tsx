@@ -83,6 +83,7 @@ const AIForecastingDashboardPage = lazy(() => import("@/pages/AIForecastingDashb
 const NewOrderPage = lazy(() => import("@/pages/NewOrderPage"));
 const OrderDetailsPage = lazy(() => import("@/pages/OrderDetailsPage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
+const SubscriptionPage = lazy(() => import("@/pages/SubscriptionPage"));
 const AIAssistantPage = lazy(() => import("@/pages/AIAssistantPage"));
 const AIPurchaseOrdersPage = lazy(() => import("@/pages/AIPurchaseOrdersPage"));
 const BIDashboardPage = lazy(() => import("@/pages/BIDashboardPage"));
@@ -681,6 +682,8 @@ function AuthenticatedApp() {
         )}
 
         <Route path="/settings" component={SettingsPage} />
+        <Route path="/subscription" component={SubscriptionPage} />
+        <Route path="/billing" component={SubscriptionPage} />
         <Route path="/github-push" component={GitHubPushPage} />
         
         {/* Email System Routes - Common for all roles */}

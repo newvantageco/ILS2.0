@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Building2, User, Bell, Users, Beaker, Plus, Check, ShoppingCart } from "lucide-react";
+import { Loader2, Building2, User, Bell, Users, Beaker, Plus, Check, ShoppingCart, CreditCard } from "lucide-react";
+import { Link } from "wouter";
 import type { OrganizationSettings, UserPreferences } from "@shared/schema";
 import ShopifyIntegrationSettings from "@/components/ShopifyIntegrationSettings";
 
@@ -77,10 +78,14 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="organization" className="space-y-6">
-        <TabsList className={`grid w-full ${isEcp ? 'grid-cols-4' : 'grid-cols-3'}`} data-testid="tabs-settings">
+        <TabsList className={`grid w-full ${isEcp ? 'grid-cols-5' : 'grid-cols-4'}`} data-testid="tabs-settings">
           <TabsTrigger value="organization" data-testid="tab-organization">
             <Building2 className="mr-2 h-4 w-4" />
             Organization
+          </TabsTrigger>
+          <TabsTrigger value="billing" data-testid="tab-billing">
+            <CreditCard className="mr-2 h-4 w-4" />
+            Billing
           </TabsTrigger>
           <TabsTrigger value="roles" data-testid="tab-roles">
             <Users className="mr-2 h-4 w-4" />
@@ -105,6 +110,33 @@ export default function SettingsPage() {
             onSave={(data) => updateOrgMutation.mutate(data)}
             isSaving={updateOrgMutation.isPending}
           />
+        </TabsContent>
+
+        <TabsContent value="billing" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Subscription & Billing
+              </CardTitle>
+              <CardDescription>
+                Manage your subscription plan and billing preferences
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-muted-foreground">
+                  View and manage your subscription, upgrade to access more features, or manage your payment methods.
+                </p>
+                <Link href="/subscription">
+                  <Button>
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Manage Subscription
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="roles" className="space-y-6">
