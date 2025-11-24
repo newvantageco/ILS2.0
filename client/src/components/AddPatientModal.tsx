@@ -170,7 +170,7 @@ export default function AddPatientModal({ open, onOpenChange }: AddPatientModalP
             Add New Patient
           </DialogTitle>
           <DialogDescription>
-            Enter the patient's information below. Fields marked with * are required.
+            Enter the patient&apos;s information below. Fields marked with * are required.
           </DialogDescription>
         </DialogHeader>
 

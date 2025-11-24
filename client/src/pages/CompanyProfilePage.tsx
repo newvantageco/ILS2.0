@@ -245,7 +245,7 @@ export default function CompanyProfilePage() {
 
               {company.profile?.tagline && (
                 <CardDescription className="text-lg italic">
-                  "{company.profile.tagline}"
+                  &ldquo;{company.profile.tagline}&rdquo;
                 </CardDescription>
               )}
             </div>

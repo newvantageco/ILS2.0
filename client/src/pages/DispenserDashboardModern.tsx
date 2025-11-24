@@ -116,7 +116,7 @@ function MetricsGrid({ stats }: { stats: DispenserStats }) {
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card className="border-l-4 border-l-primary bg-gradient-to-br from-primary/5 to-transparent">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Today's Sales</CardTitle>
+          <CardTitle className="text-sm font-medium">Today&apos;s Sales</CardTitle>
           <ShoppingBag className="h-4 w-4 text-primary" />
         </CardHeader>
         <CardContent>
@@ -130,7 +130,7 @@ function MetricsGrid({ stats }: { stats: DispenserStats }) {
 
       <Card className="border-l-4 border-l-green-500 bg-gradient-to-br from-green-500/5 to-transparent">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Today's Revenue</CardTitle>
+          <CardTitle className="text-sm font-medium">Today&apos;s Revenue</CardTitle>
           <DollarSign className="h-4 w-4 text-green-500" />
         </CardHeader>
         <CardContent>
@@ -234,7 +234,7 @@ function RecentSales({ sales, isLoading }: { sales: Sale[]; isLoading: boolean }
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Today's Sales</CardTitle>
+            <CardTitle>Today&apos;s Sales</CardTitle>
             <CardDescription>Recent transactions and invoices</CardDescription>
           </div>
           <Button variant="outline" size="sm">View All</Button>
@@ -390,7 +390,7 @@ function SalesAnalytics({ stats }: { stats: DispenserStats }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Today's Summary</CardTitle>
+          <CardTitle>Today&apos;s Summary</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">

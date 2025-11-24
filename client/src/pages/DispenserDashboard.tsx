@@ -266,7 +266,7 @@ export default function DispenserDashboard() {
         <CardContent className="space-y-2 text-sm">
           <p className="flex items-start gap-2">
             <span className="text-primary font-semibold">•</span>
-            Accept patient handoffs from the "Patient Handoffs" section above
+            Accept patient handoffs from the &ldquo;Patient Handoffs&rdquo; section above
           </p>
           <p className="flex items-start gap-2">
             <span className="text-primary font-semibold">•</span>

@@ -299,10 +299,10 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                 <div className="text-left space-y-2">
                   <p className="font-semibold">Example questions:</p>
                   <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                    <li>"What are progressive lenses?"</li>
-                    <li>"What were our top 3 selling products last month?"</li>
-                    <li>"Which items are low in stock?"</li>
-                    <li>"What percentage of patients purchased progressive lenses?"</li>
+                    <li>&ldquo;What are progressive lenses?&rdquo;</li>
+                    <li>&ldquo;What were our top 3 selling products last month?&rdquo;</li>
+                    <li>&ldquo;Which items are low in stock?&rdquo;</li>
+                    <li>&ldquo;What percentage of patients purchased progressive lenses?&rdquo;</li>
                   </ul>
                 </div>
               </div>
