@@ -195,7 +195,7 @@ async function createMasterTestUser(config: TestUserConfig = {}) {
 
 // Check for command line arguments
 const args = process.argv.slice(2);
-let customConfig: TestUserConfig = {};
+const customConfig: TestUserConfig = {};
 
 // Parse command line arguments
 for (let i = 0; i < args.length; i++) {

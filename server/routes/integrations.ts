@@ -27,7 +27,7 @@ router.get('/connectors', authenticateUser, async (req: Request, res: Response) 
   try {
     const { type, isAvailable, tag, search } = req.query;
 
-    let connectors = search
+    const connectors = search
       ? ConnectorRegistry.searchConnectors(search as string)
       : ConnectorRegistry.getConnectors({
           type: type as any,

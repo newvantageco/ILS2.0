@@ -1018,7 +1018,7 @@ export class DbStorage implements IStorage {
   } = {}): Promise<OrderWithDetails[]> {
     const { ecpId, companyId, status, search, limit = 50, offset = 0 } = filters;
 
-    let conditions = [];
+    const conditions = [];
     
     if (companyId) {
       conditions.push(eq(orders.companyId, companyId));
@@ -1277,7 +1277,7 @@ export class DbStorage implements IStorage {
   } = {}): Promise<PurchaseOrderWithDetails[]> {
     const { supplierId, status, limit = 50, offset = 0 } = filters;
 
-    let conditions = [];
+    const conditions = [];
     
     if (supplierId) {
       conditions.push(eq(purchaseOrders.supplierId, supplierId));

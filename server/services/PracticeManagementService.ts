@@ -193,7 +193,7 @@ export class PracticeManagementService {
     try {
       logger.info({ companyId, options }, 'Getting staff schedules');
 
-      let whereConditions = [eq(schema.providerAvailability.companyId, companyId)];
+      const whereConditions = [eq(schema.providerAvailability.companyId, companyId)];
 
       if (options.staffId) {
         whereConditions.push(eq(schema.providerAvailability.providerId, options.staffId));

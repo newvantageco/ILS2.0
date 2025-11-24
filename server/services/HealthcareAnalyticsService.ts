@@ -80,7 +80,7 @@ export class HealthcareAnalyticsService {
       const { companyId, dateRange, providerId, departmentId, patientDemographics } = params;
 
       // Get patient outcomes based on appointments and clinical data
-      let whereConditions = [
+      const whereConditions = [
         eq(schema.appointments.companyId, companyId),
         between(schema.appointments.startTime, dateRange.dateFrom, dateRange.dateTo)
       ];

@@ -5328,7 +5328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Simple risk calculation without full PredictiveNonAdaptService
       // Calculate risk based on prescription complexity
       let riskScore = 0;
-      let riskFactors: string[] = [];
+      const riskFactors: string[] = [];
 
       // High add power
       if ((prescriptionData.odAdd as number) > 2.5 || (prescriptionData.osAdd as number) > 2.5) {

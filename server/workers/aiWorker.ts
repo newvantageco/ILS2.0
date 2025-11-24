@@ -755,7 +755,7 @@ async function processChatResponse(data: ChatResponseJobData): Promise<any> {
     const inventory = await storage.getInventoryMetrics(companyId);
 
     // Determine response type based on message keywords
-    let response = generateContextualResponse(message, {
+    const response = generateContextualResponse(message, {
       conversationHistory,
       dailyMetrics,
       inventory,

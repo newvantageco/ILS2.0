@@ -851,7 +851,7 @@ To get the most accurate assistance, please ensure your AI integration is config
   ): Promise<void> {
     try {
       // Create or get conversation
-      let conversation = await this.storage.getAiConversation(conversationId);
+      const conversation = await this.storage.getAiConversation(conversationId);
       
       if (!conversation) {
         // If conversation doesn't exist, we should create one without forcing an ID

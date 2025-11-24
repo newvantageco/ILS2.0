@@ -140,7 +140,7 @@ export class AdvancedBookingService {
         const [startHour, startMinute] = daySchedule.start.split(':').map(Number);
         const [endHour, endMinute] = daySchedule.end.split(':').map(Number);
 
-        let slotStart = setMinutes(setHours(currentDate, startHour), startMinute);
+        const slotStart = setMinutes(setHours(currentDate, startHour), startMinute);
         const dayEnd = setMinutes(setHours(currentDate, endHour), endMinute);
 
         // Generate slots for each provider

@@ -196,7 +196,7 @@ export class LaboratoryService {
     try {
       logger.info({ patientId, companyId, options }, 'Getting patient lab orders');
 
-      let whereConditions = [
+      const whereConditions = [
         eq(schema.orders.patientId, patientId), // Correct field name
         eq(schema.orders.companyId, companyId),
         eq(schema.orders.lensType, 'LAB_ORDER') // Filter by lensType for lab orders
@@ -248,7 +248,7 @@ export class LaboratoryService {
     try {
       logger.info({ patientId, companyId, options }, 'Getting patient lab results');
 
-      let whereConditions = [
+      const whereConditions = [
         eq(schema.labResults.patientId, patientId),
         eq(schema.labResults.companyId, companyId)
       ];

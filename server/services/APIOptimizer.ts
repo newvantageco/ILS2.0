@@ -592,7 +592,7 @@ ${this.optimizationRules.map(rule => `
 
     this.metrics.forEach((metrics) => {
       let score = 100;
-      let weight = 1;
+      const weight = 1;
 
       // Response time scoring (40% weight)
       if (metrics.averageResponseTime > 2000) {

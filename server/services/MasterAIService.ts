@@ -373,7 +373,7 @@ export class MasterAIService {
   ): Promise<MasterAIResponse> {
     // Get knowledge from Python service
     let knowledgeAnswer = "";
-    let sources: MasterAIResponse['sources'] = [];
+    const sources: MasterAIResponse['sources'] = [];
 
     try {
       if (!this.pythonAI) {
@@ -607,7 +607,7 @@ export class MasterAIService {
   private async toolSearchOrders(args: any, companyId: string): Promise<any> {
     const { search, status } = args;
     
-    let orders = await this.storage.getOrders({ ecpId: companyId, status, search });
+    const orders = await this.storage.getOrders({ ecpId: companyId, status, search });
     const filtered = orders.slice(0, 20);
 
     return {

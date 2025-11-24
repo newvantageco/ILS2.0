@@ -476,7 +476,7 @@ export class ShopifyIntegrationService {
     const customerName = `${customer.first_name || ""} ${customer.last_name || ""}`.trim();
 
     // Check if customer/patient already exists
-    let patient = await db
+    const patient = await db
       .select()
       .from(patients)
       .where(

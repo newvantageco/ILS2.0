@@ -318,7 +318,7 @@ export class EmailTrackingService {
       patientId?: string;
     }
   ): Promise<EmailAnalytics> {
-    let query = db
+    const query = db
       .select({
         status: emailLogs.status,
         openCount: emailLogs.openCount,

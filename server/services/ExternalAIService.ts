@@ -258,7 +258,7 @@ export class ExternalAIService {
     let completion = await this.openaiClient.chat.completions.create(requestConfig);
 
     // Handle tool calls
-    let toolCallResults: any[] = [];
+    const toolCallResults: any[] = [];
     while (completion.choices[0].finish_reason === 'tool_calls' && config.onToolCall) {
       const toolCalls = completion.choices[0].message.tool_calls || [];
       
