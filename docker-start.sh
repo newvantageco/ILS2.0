@@ -17,15 +17,25 @@ run_migrations() {
     return 1
   fi
 
-  # Run migrations with timeout (60 seconds)
-  # Using timeout command with fallback to continue if it fails
+  # Step 1: Run SQL migrations (custom migrations for Stripe, Google Auth, etc.)
+  echo "Step 1: Running SQL migrations..."
+  if timeout 60 npm run db:migrate 2>&1; then
+    echo "✓ SQL migrations completed successfully"
+  else
+    EXIT_CODE=$?
+    echo "WARNING: SQL migrations failed or timed out (exit code: $EXIT_CODE)"
+    echo "Continuing with schema sync..."
+  fi
+
+  # Step 2: Run drizzle-kit push to sync TypeScript schema
+  echo "Step 2: Syncing TypeScript schema with database..."
   if timeout 60 npm run db:push 2>&1; then
-    echo "✓ Database migrations completed successfully"
+    echo "✓ Schema sync completed successfully"
     return 0
   else
     EXIT_CODE=$?
-    echo "WARNING: Database migrations failed or timed out (exit code: $EXIT_CODE)"
-    echo "Attempting to start application anyway (migrations may be idempotent or already applied)"
+    echo "WARNING: Schema sync failed or timed out (exit code: $EXIT_CODE)"
+    echo "Attempting to start application anyway (schema may already be synced)"
     return 1
   fi
 }
