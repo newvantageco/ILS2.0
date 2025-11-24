@@ -41,6 +41,19 @@ import {
 } from "../../shared/schema.js";
 import { createLogger } from "../utils/logger.js";
 
+// Type definitions for authenticated requests
+interface AuthenticatedUser {
+  id: string;
+  companyId: string;
+  claims?: {
+    sub?: string;
+  };
+}
+
+interface AuthenticatedRequest extends Request {
+  user: AuthenticatedUser;
+}
+
 const router = express.Router();
 const logger = createLogger('nhs');
 
@@ -52,7 +65,7 @@ const logger = createLogger('nhs');
  */
 router.post("/claims/create", requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     // Validate request body
@@ -64,8 +77,9 @@ router.post("/claims/create", requireAuth, async (req: Request, res: Response) =
     const claim = await NhsClaimsService.createClaim(validatedData);
 
     res.json(claim);
-  } catch (error: any) {
-    logger.error({ error }, 'Create NHS claim error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'Create NHS claim error');
     res.status(400).json({ error: error.message || "Failed to create claim" });
   }
 });
@@ -77,7 +91,7 @@ router.post("/claims/create", requireAuth, async (req: Request, res: Response) =
 router.post("/claims/:id/submit", requireAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
 
     const claim = await NhsClaimsService.submitClaim({
       claimId: id,
@@ -85,8 +99,9 @@ router.post("/claims/:id/submit", requireAuth, async (req: Request, res: Respons
     });
 
     res.json(claim);
-  } catch (error: any) {
-    logger.error({ error, claimId: id }, 'Submit NHS claim error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, claimId: req.params.id }, 'Submit NHS claim error');
     res.status(400).json({ error: error.message || "Failed to submit claim" });
   }
 });
@@ -98,7 +113,7 @@ router.post("/claims/:id/submit", requireAuth, async (req: Request, res: Respons
 router.get("/claims/:id", requireAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const claim = await NhsClaimsService.getClaimById(id, companyId);
@@ -108,8 +123,9 @@ router.get("/claims/:id", requireAuth, async (req: Request, res: Response) => {
     }
 
     res.json(claim);
-  } catch (error: any) {
-    logger.error({ error, claimId: id }, 'Get NHS claim error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, claimId: req.params.id }, 'Get NHS claim error');
     res.status(500).json({ error: error.message || "Failed to get claim" });
   }
 });
@@ -120,7 +136,7 @@ router.get("/claims/:id", requireAuth, async (req: Request, res: Response) => {
  */
 router.get("/claims", requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const { status, startDate, endDate, limit, offset } = req.query;
@@ -134,8 +150,9 @@ router.get("/claims", requireAuth, async (req: Request, res: Response) => {
     });
 
     res.json(claims);
-  } catch (error: any) {
-    logger.error({ error }, 'Get NHS claims error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'Get NHS claims error');
     res.status(500).json({ error: error.message || "Failed to get claims" });
   }
 });
@@ -147,14 +164,15 @@ router.get("/claims", requireAuth, async (req: Request, res: Response) => {
 router.get("/claims/patient/:patientId", requireAuth, async (req: Request, res: Response) => {
   try {
     const { patientId } = req.params;
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const claims = await NhsClaimsService.getPatientClaims(patientId, companyId);
 
     res.json(claims);
-  } catch (error: any) {
-    logger.error({ error, patientId }, 'Get patient claims error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, patientId: req.params.patientId }, 'Get patient claims error');
     res.status(500).json({ error: error.message || "Failed to get patient claims" });
   }
 });
@@ -165,7 +183,7 @@ router.get("/claims/patient/:patientId", requireAuth, async (req: Request, res: 
  */
 router.get("/claims/summary", requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const { startDate, endDate } = req.query;
@@ -181,8 +199,9 @@ router.get("/claims/summary", requireAuth, async (req: Request, res: Response) =
     );
 
     res.json(summary);
-  } catch (error: any) {
-    logger.error({ error }, 'Get claims summary error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'Get claims summary error');
     res.status(500).json({ error: error.message || "Failed to get claims summary" });
   }
 });
@@ -193,7 +212,7 @@ router.get("/claims/summary", requireAuth, async (req: Request, res: Response) =
  */
 router.post("/claims/batch-submit", requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
     const { claimIds } = req.body;
 
@@ -204,8 +223,10 @@ router.post("/claims/batch-submit", requireAuth, async (req: Request, res: Respo
     const results = await NhsClaimsService.batchSubmitClaims(claimIds, user.id, companyId);
 
     res.json(results);
-  } catch (error: any) {
-    logger.error({ error, claimCount: claimIds?.length }, 'Batch submit claims error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const claimIds = req.body.claimIds;
+    logger.error({ error: errorMessage, claimCount: claimIds?.length }, 'Batch submit claims error');
     res.status(500).json({ error: error.message || "Failed to batch submit claims" });
   }
 });
@@ -217,7 +238,7 @@ router.post("/claims/batch-submit", requireAuth, async (req: Request, res: Respo
 router.delete("/claims/:id", requireAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
     const userId = user.id || user.claims?.sub;
 
@@ -227,8 +248,9 @@ router.delete("/claims/:id", requireAuth, async (req: Request, res: Response) =>
       message: "Claim deleted successfully",
       note: "Data has been soft-deleted and can be recovered if needed"
     });
-  } catch (error: any) {
-    logger.error({ error, claimId: id }, 'Delete claim error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, claimId: req.params.id }, 'Delete claim error');
     res.status(400).json({ error: error.message || "Failed to delete claim" });
   }
 });
@@ -241,7 +263,7 @@ router.delete("/claims/:id", requireAuth, async (req: Request, res: Response) =>
  */
 router.post("/vouchers/check-eligibility", requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const { patientId, dateOfBirth, isStudent } = req.body;
@@ -254,8 +276,9 @@ router.post("/vouchers/check-eligibility", requireAuth, async (req: Request, res
     });
 
     res.json(eligibility);
-  } catch (error: any) {
-    logger.error({ error, patientId }, 'Check voucher eligibility error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, patientId: req.body.patientId }, 'Check voucher eligibility error');
     res.status(500).json({ error: error.message || "Failed to check eligibility" });
   }
 });
@@ -266,7 +289,7 @@ router.post("/vouchers/check-eligibility", requireAuth, async (req: Request, res
  */
 router.post("/vouchers/calculate", requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const { prescriptionId, patientId, exemptionReason, requiresTint, requiresMedicalTint } =
@@ -282,8 +305,10 @@ router.post("/vouchers/calculate", requireAuth, async (req: Request, res: Respon
     });
 
     res.json(calculation);
-  } catch (error: any) {
-    logger.error({ error, prescriptionId, patientId }, 'Calculate voucher error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const { prescriptionId, patientId } = req.body;
+    logger.error({ error: errorMessage, prescriptionId, patientId }, 'Calculate voucher error');
     res.status(500).json({ error: error.message || "Failed to calculate voucher" });
   }
 });
@@ -294,7 +319,7 @@ router.post("/vouchers/calculate", requireAuth, async (req: Request, res: Respon
  */
 router.post("/vouchers/create", requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const validatedData = createNhsVoucherSchema.parse({
@@ -302,11 +327,12 @@ router.post("/vouchers/create", requireAuth, async (req: Request, res: Response)
       companyId,
     });
 
-    const voucher = await NhsVoucherService.createVoucher(validatedData as any);
+    const voucher = await NhsVoucherService.createVoucher(validatedData);
 
     res.json(voucher);
-  } catch (error: any) {
-    logger.error({ error }, 'Create voucher error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'Create voucher error');
     res.status(400).json({ error: error.message || "Failed to create voucher" });
   }
 });
@@ -318,7 +344,7 @@ router.post("/vouchers/create", requireAuth, async (req: Request, res: Response)
 router.post("/vouchers/:id/redeem", requireAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const { redeemedAmount, patientContribution, hasComplexSupplement, supplementAmount, supplementReason } = req.body;
@@ -332,8 +358,9 @@ router.post("/vouchers/:id/redeem", requireAuth, async (req: Request, res: Respo
     });
 
     res.json(voucher);
-  } catch (error: any) {
-    logger.error({ error, voucherId: id }, 'Redeem voucher error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, voucherId: req.params.id }, 'Redeem voucher error');
     res.status(400).json({ error: error.message || "Failed to redeem voucher" });
   }
 });
@@ -345,7 +372,7 @@ router.post("/vouchers/:id/redeem", requireAuth, async (req: Request, res: Respo
 router.get("/vouchers/:id", requireAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const voucher = await NhsVoucherService.getVoucherById(id, companyId);
@@ -355,8 +382,9 @@ router.get("/vouchers/:id", requireAuth, async (req: Request, res: Response) => 
     }
 
     res.json(voucher);
-  } catch (error: any) {
-    logger.error({ error, voucherId: id }, 'Get voucher error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, voucherId: req.params.id }, 'Get voucher error');
     res.status(500).json({ error: error.message || "Failed to get voucher" });
   }
 });
@@ -368,14 +396,15 @@ router.get("/vouchers/:id", requireAuth, async (req: Request, res: Response) => 
 router.get("/vouchers/patient/:patientId", requireAuth, async (req: Request, res: Response) => {
   try {
     const { patientId } = req.params;
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const vouchers = await NhsVoucherService.getPatientVouchers(patientId, companyId);
 
     res.json(vouchers);
-  } catch (error: any) {
-    logger.error({ error, patientId }, 'Get patient vouchers error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, patientId: req.params.patientId }, 'Get patient vouchers error');
     res.status(500).json({ error: error.message || "Failed to get patient vouchers" });
   }
 });
@@ -386,7 +415,7 @@ router.get("/vouchers/patient/:patientId", requireAuth, async (req: Request, res
  */
 router.get("/vouchers/statistics", requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const { startDate, endDate } = req.query;
@@ -402,8 +431,9 @@ router.get("/vouchers/statistics", requireAuth, async (req: Request, res: Respon
     );
 
     res.json(statistics);
-  } catch (error: any) {
-    logger.error({ error }, 'Get voucher statistics error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'Get voucher statistics error');
     res.status(500).json({ error: error.message || "Failed to get voucher statistics" });
   }
 });
@@ -416,7 +446,7 @@ router.get("/vouchers/statistics", requireAuth, async (req: Request, res: Respon
  */
 router.post("/exemptions/check", requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const { patientId } = req.body;
@@ -424,8 +454,9 @@ router.post("/exemptions/check", requireAuth, async (req: Request, res: Response
     const exemption = await NhsExemptionService.checkExemption(patientId, companyId);
 
     res.json(exemption);
-  } catch (error: any) {
-    logger.error({ error, patientId }, 'Check exemption error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, patientId: req.body.patientId }, 'Check exemption error');
     res.status(500).json({ error: error.message || "Failed to check exemption" });
   }
 });
@@ -436,7 +467,7 @@ router.post("/exemptions/check", requireAuth, async (req: Request, res: Response
  */
 router.post("/exemptions/auto-detect", requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const { patientId } = req.body;
@@ -444,8 +475,9 @@ router.post("/exemptions/auto-detect", requireAuth, async (req: Request, res: Re
     const detected = await NhsExemptionService.autoDetectExemptions(patientId, companyId);
 
     res.json(detected);
-  } catch (error: any) {
-    logger.error({ error, patientId }, 'Auto-detect exemptions error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, patientId: req.body.patientId }, 'Auto-detect exemptions error');
     res.status(500).json({ error: error.message || "Failed to auto-detect exemptions" });
   }
 });
@@ -456,7 +488,7 @@ router.post("/exemptions/auto-detect", requireAuth, async (req: Request, res: Re
  */
 router.post("/exemptions/create", requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const exemption = await NhsExemptionService.createExemption({
@@ -465,8 +497,9 @@ router.post("/exemptions/create", requireAuth, async (req: Request, res: Respons
     });
 
     res.json(exemption);
-  } catch (error: any) {
-    logger.error({ error }, 'Create exemption error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'Create exemption error');
     res.status(400).json({ error: error.message || "Failed to create exemption" });
   }
 });
@@ -478,7 +511,7 @@ router.post("/exemptions/create", requireAuth, async (req: Request, res: Respons
 router.post("/exemptions/:id/verify", requireAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
 
     const exemption = await NhsExemptionService.verifyExemption({
       exemptionId: id,
@@ -486,8 +519,9 @@ router.post("/exemptions/:id/verify", requireAuth, async (req: Request, res: Res
     });
 
     res.json(exemption);
-  } catch (error: any) {
-    logger.error({ error, exemptionId: id }, 'Verify exemption error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, exemptionId: req.params.id }, 'Verify exemption error');
     res.status(500).json({ error: error.message || "Failed to verify exemption" });
   }
 });
@@ -499,14 +533,15 @@ router.post("/exemptions/:id/verify", requireAuth, async (req: Request, res: Res
 router.get("/exemptions/patient/:patientId", requireAuth, async (req: Request, res: Response) => {
   try {
     const { patientId } = req.params;
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const exemptions = await NhsExemptionService.getPatientExemptions(patientId, companyId);
 
     res.json(exemptions);
-  } catch (error: any) {
-    logger.error({ error, patientId }, 'Get patient exemptions error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, patientId: req.params.patientId }, 'Get patient exemptions error');
     res.status(500).json({ error: error.message || "Failed to get patient exemptions" });
   }
 });
@@ -517,7 +552,7 @@ router.get("/exemptions/patient/:patientId", requireAuth, async (req: Request, r
  */
 router.get("/exemptions/expiring", requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const { days } = req.query;
@@ -526,8 +561,11 @@ router.get("/exemptions/expiring", requireAuth, async (req: Request, res: Respon
     const exemptions = await NhsExemptionService.getExpiringExemptions(companyId, daysAhead);
 
     res.json(exemptions);
-  } catch (error: any) {
-    logger.error({ error, daysAhead }, 'Get expiring exemptions error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const days = req.query.days;
+    const daysAhead = days ? parseInt(days as string) : 30;
+    logger.error({ error: errorMessage, daysAhead }, 'Get expiring exemptions error');
     res.status(500).json({ error: error.message || "Failed to get expiring exemptions" });
   }
 });
@@ -538,14 +576,15 @@ router.get("/exemptions/expiring", requireAuth, async (req: Request, res: Respon
  */
 router.get("/exemptions/statistics", requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
 
     const statistics = await NhsExemptionService.getExemptionStatistics(companyId);
 
     res.json(statistics);
-  } catch (error: any) {
-    logger.error({ error }, 'Get exemption statistics error');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'Get exemption statistics error');
     res.status(500).json({ error: error.message || "Failed to get exemption statistics" });
   }
 });
