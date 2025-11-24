@@ -316,8 +316,8 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   getUserStats(): Promise<{ total: number; pending: number; active: number; suspended: number }>;
   getSuppliers(): Promise<User[]>;
-  createSupplier(supplier: any): Promise<User>;
-  updateSupplier(id: string, updates: any): Promise<User | undefined>;
+  createSupplier(supplier: Partial<UpsertUser>): Promise<User>;
+  updateSupplier(id: string, updates: Partial<UpsertUser>): Promise<User | undefined>;
   deleteSupplier(id: string): Promise<boolean>;
   getUserAvailableRoles(userId: string): Promise<string[]>;
   addUserRole(userId: string, role: string): Promise<void>;
