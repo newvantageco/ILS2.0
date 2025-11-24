@@ -5,7 +5,7 @@
  */
 
 import { parse } from 'csv-parse/sync';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { createReadStream } from 'fs';
 import { readFile } from 'fs/promises';
 import { Readable } from 'stream';
@@ -13,7 +13,6 @@ import type { ValidationResult } from '../validation/import.js';
 import {
   validateExcelBuffer,
   validateWorkbookStructure,
-  sanitizeWorkbook,
   parseWithTimeout,
   isSecurityError,
   getSafeErrorMessage,
@@ -256,7 +255,7 @@ export class CSVParser {
 }
 
 /**
- * Excel Parser
+ * Excel Parser (using exceljs - no known vulnerabilities)
  */
 export class ExcelParser {
   private options: ParserOptions;
@@ -284,17 +283,16 @@ export class ExcelParser {
       validateExcelBuffer(buffer);
 
       // Parse with timeout protection
-      const workbook = await parseWithTimeout(() =>
-        XLSX.read(buffer, { type: 'buffer' })
-      );
+      const workbook = await parseWithTimeout(async () => {
+        const wb = new ExcelJS.Workbook();
+        await wb.xlsx.load(buffer);
+        return wb;
+      });
 
       // Validate workbook structure
       validateWorkbookStructure(workbook);
 
-      // Sanitize to prevent prototype pollution
-      const sanitized = sanitizeWorkbook(workbook);
-
-      return this.parseWorkbook(sanitized);
+      return this.parseWorkbook(workbook);
     } catch (error) {
       logger.error(
         { error, filePath },
@@ -330,17 +328,16 @@ export class ExcelParser {
       validateExcelBuffer(buffer);
 
       // Parse with timeout protection
-      const workbook = await parseWithTimeout(() =>
-        XLSX.read(buffer, { type: 'buffer' })
-      );
+      const workbook = await parseWithTimeout(async () => {
+        const wb = new ExcelJS.Workbook();
+        await wb.xlsx.load(buffer);
+        return wb;
+      });
 
       // Validate workbook structure
       validateWorkbookStructure(workbook);
 
-      // Sanitize to prevent prototype pollution
-      const sanitized = sanitizeWorkbook(workbook);
-
-      return this.parseWorkbook(sanitized);
+      return this.parseWorkbook(workbook);
     } catch (error) {
       logger.error({ error }, 'Excel buffer parsing failed with security error');
 
@@ -366,32 +363,21 @@ export class ExcelParser {
   /**
    * Parse Excel workbook
    */
-  private parseWorkbook(workbook: XLSX.WorkBook): ParseResult {
+  private parseWorkbook(workbook: ExcelJS.Workbook): ParseResult {
     const errors: ParseResult['errors'] = [];
     const warnings: ParseResult['warnings'] = [];
 
     // Get sheet
-    const sheetName =
-      this.options.sheetName || workbook.SheetNames[0];
+    let worksheet: ExcelJS.Worksheet | undefined;
 
-    if (!sheetName) {
-      errors.push({
-        row: 0,
-        message: 'No sheets found in workbook',
-      });
-
-      return {
-        records: [],
-        headers: [],
-        totalRows: 0,
-        errors,
-        warnings,
-      };
+    if (this.options.sheetName) {
+      worksheet = workbook.getWorksheet(this.options.sheetName);
+    } else {
+      worksheet = workbook.worksheets[0];
     }
 
-    const worksheet = workbook.Sheets[sheetName];
-
     if (!worksheet) {
+      const sheetName = this.options.sheetName || 'first sheet';
       errors.push({
         row: 0,
         message: `Sheet '${sheetName}' not found`,
@@ -406,11 +392,18 @@ export class ExcelParser {
       };
     }
 
-    // Convert to JSON
-    const rawData: any[][] = XLSX.utils.sheet_to_json(worksheet, {
-      header: 1,
-      defval: null,
-      blankrows: false,
+    // Convert worksheet to raw data array
+    const rawData: any[][] = [];
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      const rowValues: any[] = [];
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        // Pad with nulls if needed
+        while (rowValues.length < colNumber - 1) {
+          rowValues.push(null);
+        }
+        rowValues.push(this.getCellValue(cell));
+      });
+      rawData.push(rowValues);
     });
 
     if (rawData.length === 0) {
@@ -481,9 +474,9 @@ export class ExcelParser {
             value = null;
           }
 
-          // Convert Excel date serial numbers
-          if (typeof value === 'number' && header.toLowerCase().includes('date')) {
-            value = this.excelDateToISO(value);
+          // Convert dates to ISO strings
+          if (value instanceof Date && header.toLowerCase().includes('date')) {
+            value = value.toISOString().split('T')[0];
           }
 
           record[header] = value;
@@ -502,18 +495,36 @@ export class ExcelParser {
   }
 
   /**
-   * Convert Excel date serial number to ISO date string
+   * Get cell value, handling different cell types
    */
-  private excelDateToISO(serial: number): string {
-    const utc_days = Math.floor(serial - 25569);
-    const utc_value = utc_days * 86400;
-    const date_info = new Date(utc_value * 1000);
+  private getCellValue(cell: ExcelJS.Cell): any {
+    const value = cell.value;
 
-    const year = date_info.getFullYear();
-    const month = String(date_info.getMonth() + 1).padStart(2, '0');
-    const day = String(date_info.getDate()).padStart(2, '0');
+    if (value === null || value === undefined) {
+      return null;
+    }
 
-    return `${year}-${month}-${day}`;
+    // Handle rich text
+    if (typeof value === 'object' && 'richText' in value) {
+      return value.richText.map((rt: any) => rt.text).join('');
+    }
+
+    // Handle formulas (return result)
+    if (typeof value === 'object' && 'result' in value) {
+      return value.result;
+    }
+
+    // Handle hyperlinks
+    if (typeof value === 'object' && 'hyperlink' in value) {
+      return (value as any).text || (value as any).hyperlink;
+    }
+
+    // Handle dates
+    if (value instanceof Date) {
+      return value;
+    }
+
+    return value;
   }
 
   /**
@@ -525,14 +536,15 @@ export class ExcelParser {
       const buffer = await readFile(filePath);
       validateExcelBuffer(buffer);
 
-      const workbook = await parseWithTimeout(() =>
-        XLSX.read(buffer, { type: 'buffer' })
-      );
+      const workbook = await parseWithTimeout(async () => {
+        const wb = new ExcelJS.Workbook();
+        await wb.xlsx.load(buffer);
+        return wb;
+      });
 
       validateWorkbookStructure(workbook);
-      const sanitized = sanitizeWorkbook(workbook);
 
-      return sanitized.SheetNames;
+      return workbook.worksheets.map(ws => ws.name);
     } catch (error) {
       logger.error({ error, filePath }, 'Failed to get sheet names');
       throw error;
@@ -547,14 +559,15 @@ export class ExcelParser {
     try {
       validateExcelBuffer(buffer);
 
-      const workbook = await parseWithTimeout(() =>
-        XLSX.read(buffer, { type: 'buffer' })
-      );
+      const workbook = await parseWithTimeout(async () => {
+        const wb = new ExcelJS.Workbook();
+        await wb.xlsx.load(buffer);
+        return wb;
+      });
 
       validateWorkbookStructure(workbook);
-      const sanitized = sanitizeWorkbook(workbook);
 
-      return sanitized.SheetNames;
+      return workbook.worksheets.map(ws => ws.name);
     } catch (error) {
       logger.error({ error }, 'Failed to get sheet names from buffer');
       throw error;

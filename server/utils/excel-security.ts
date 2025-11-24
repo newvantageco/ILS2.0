@@ -2,10 +2,10 @@
  * Excel File Security Utilities
  *
  * Security wrappers and validation for Excel file processing
- * Mitigates xlsx package vulnerabilities (GHSA-4r6h-8v6p-xvw6, GHSA-5pgg-2g8v-p4x9)
+ * Using exceljs library (no known vulnerabilities)
  */
 
-import type { WorkBook } from 'xlsx';
+import type { Workbook } from 'exceljs';
 import { loggers } from './logger.js';
 
 const logger = loggers.security;
@@ -101,9 +101,9 @@ export function validateExcelBuffer(buffer: Buffer): void {
 /**
  * Validate workbook structure after parsing
  */
-export function validateWorkbookStructure(workbook: WorkBook): void {
+export function validateWorkbookStructure(workbook: Workbook): void {
   // Check number of sheets
-  const sheetCount = workbook.SheetNames.length;
+  const sheetCount = workbook.worksheets.length;
   if (sheetCount > EXCEL_SECURITY_LIMITS.MAX_SHEETS) {
     throw new ExcelSecurityError(
       `Too many sheets: ${sheetCount} (max: ${EXCEL_SECURITY_LIMITS.MAX_SHEETS})`,
@@ -114,12 +114,8 @@ export function validateWorkbookStructure(workbook: WorkBook): void {
   let totalCells = 0;
 
   // Validate each sheet
-  for (const sheetName of workbook.SheetNames) {
-    const sheet = workbook.Sheets[sheetName];
-
-    if (!sheet) {
-      continue;
-    }
+  for (const worksheet of workbook.worksheets) {
+    const sheetName = worksheet.name;
 
     // Check for prototype pollution attempts in sheet names
     if (sheetName === '__proto__' || sheetName === 'constructor' || sheetName === 'prototype') {
@@ -129,73 +125,46 @@ export function validateWorkbookStructure(workbook: WorkBook): void {
       );
     }
 
-    // Get sheet range
-    const range = sheet['!ref'];
-    if (!range) {
-      continue;
-    }
+    const rows = worksheet.rowCount;
+    const cols = worksheet.columnCount;
+    const cells = rows * cols;
 
-    // Parse range (e.g., "A1:Z100")
-    const match = range.match(/([A-Z]+)(\d+):([A-Z]+)(\d+)/);
-    if (match) {
-      const startCol = columnToNumber(match[1]);
-      const startRow = parseInt(match[2], 10);
-      const endCol = columnToNumber(match[3]);
-      const endRow = parseInt(match[4], 10);
-
-      const rows = endRow - startRow + 1;
-      const cols = endCol - startCol + 1;
-      const cells = rows * cols;
-
-      // Validate dimensions
-      if (rows > EXCEL_SECURITY_LIMITS.MAX_ROWS) {
-        throw new ExcelSecurityError(
-          `Sheet "${sheetName}" has too many rows: ${rows} (max: ${EXCEL_SECURITY_LIMITS.MAX_ROWS})`,
-          'TOO_MANY_ROWS'
-        );
-      }
-
-      if (cols > EXCEL_SECURITY_LIMITS.MAX_COLUMNS) {
-        throw new ExcelSecurityError(
-          `Sheet "${sheetName}" has too many columns: ${cols} (max: ${EXCEL_SECURITY_LIMITS.MAX_COLUMNS})`,
-          'TOO_MANY_COLUMNS'
-        );
-      }
-
-      totalCells += cells;
-
-      logger.debug(
-        { sheetName, rows, cols, cells },
-        'Sheet dimensions validated'
+    // Validate dimensions
+    if (rows > EXCEL_SECURITY_LIMITS.MAX_ROWS) {
+      throw new ExcelSecurityError(
+        `Sheet "${sheetName}" has too many rows: ${rows} (max: ${EXCEL_SECURITY_LIMITS.MAX_ROWS})`,
+        'TOO_MANY_ROWS'
       );
     }
 
-    // Validate cell contents for prototype pollution
-    for (const cellAddress in sheet) {
-      if (cellAddress.startsWith('!')) {
-        continue; // Skip metadata
-      }
-
-      const cell = sheet[cellAddress];
-
-      // Check for prototype pollution in cell addresses
-      if (cellAddress === '__proto__' || cellAddress === 'constructor') {
-        throw new ExcelSecurityError(
-          `Suspicious cell address detected: ${cellAddress}`,
-          'SUSPICIOUS_CELL_ADDRESS'
-        );
-      }
-
-      // Validate cell value length
-      if (cell && cell.v && typeof cell.v === 'string') {
-        if (cell.v.length > EXCEL_SECURITY_LIMITS.MAX_CELL_LENGTH) {
-          throw new ExcelSecurityError(
-            `Cell ${cellAddress} content too large: ${cell.v.length} chars (max: ${EXCEL_SECURITY_LIMITS.MAX_CELL_LENGTH})`,
-            'CELL_TOO_LARGE'
-          );
-        }
-      }
+    if (cols > EXCEL_SECURITY_LIMITS.MAX_COLUMNS) {
+      throw new ExcelSecurityError(
+        `Sheet "${sheetName}" has too many columns: ${cols} (max: ${EXCEL_SECURITY_LIMITS.MAX_COLUMNS})`,
+        'TOO_MANY_COLUMNS'
+      );
     }
+
+    totalCells += cells;
+
+    logger.debug(
+      { sheetName, rows, cols, cells },
+      'Sheet dimensions validated'
+    );
+
+    // Validate cell contents
+    worksheet.eachRow((row) => {
+      row.eachCell((cell) => {
+        const value = cell.value;
+        if (value && typeof value === 'string') {
+          if (value.length > EXCEL_SECURITY_LIMITS.MAX_CELL_LENGTH) {
+            throw new ExcelSecurityError(
+              `Cell ${cell.address} content too large: ${value.length} chars (max: ${EXCEL_SECURITY_LIMITS.MAX_CELL_LENGTH})`,
+              'CELL_TOO_LARGE'
+            );
+          }
+        }
+      });
+    });
   }
 
   // Check total cell count
@@ -213,64 +182,10 @@ export function validateWorkbookStructure(workbook: WorkBook): void {
 }
 
 /**
- * Convert Excel column letter to number
- */
-function columnToNumber(column: string): number {
-  let result = 0;
-  for (let i = 0; i < column.length; i++) {
-    result = result * 26 + (column.charCodeAt(i) - 64);
-  }
-  return result;
-}
-
-/**
- * Sanitize workbook to prevent prototype pollution
- */
-export function sanitizeWorkbook(workbook: WorkBook): WorkBook {
-  // Create a clean object without prototype chain vulnerabilities
-  const sanitized: WorkBook = {
-    SheetNames: [...workbook.SheetNames],
-    Sheets: {},
-  };
-
-  // Copy sheets with sanitization
-  for (const sheetName of workbook.SheetNames) {
-    // Skip dangerous property names
-    if (sheetName === '__proto__' || sheetName === 'constructor' || sheetName === 'prototype') {
-      logger.warn({ sheetName }, 'Skipping sheet with dangerous name');
-      continue;
-    }
-
-    const sheet = workbook.Sheets[sheetName];
-    if (!sheet) {
-      continue;
-    }
-
-    // Create clean sheet object
-    const sanitizedSheet: any = {};
-
-    for (const key in sheet) {
-      // Skip dangerous keys
-      if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
-        logger.warn({ sheetName, key }, 'Skipping dangerous property');
-        continue;
-      }
-
-      sanitizedSheet[key] = sheet[key];
-    }
-
-    sanitized.Sheets[sheetName] = sanitizedSheet;
-  }
-
-  logger.info('Workbook sanitized successfully');
-  return sanitized;
-}
-
-/**
  * Secure wrapper for xlsx parsing with timeout
  */
 export async function parseWithTimeout<T>(
-  parseFunction: () => T,
+  parseFunction: () => Promise<T>,
   timeout: number = EXCEL_SECURITY_LIMITS.PARSE_TIMEOUT
 ): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -283,14 +198,15 @@ export async function parseWithTimeout<T>(
       );
     }, timeout);
 
-    try {
-      const result = parseFunction();
-      clearTimeout(timer);
-      resolve(result);
-    } catch (error) {
-      clearTimeout(timer);
-      reject(error);
-    }
+    parseFunction()
+      .then((result) => {
+        clearTimeout(timer);
+        resolve(result);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
   });
 }
 
