@@ -1000,7 +1000,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Order routes
-  app.post('/api/orders', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/orders', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1020,7 +1020,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create patient record
-      const { patientName, patientDOB, omaFileContent, omaFilename, ...orderData } = validation.data as any;
+      const { patientName, patientDOB, omaFileContent, omaFilename, ...orderData } = validation.data as Record<string, unknown>;
       
       const patient = await storage.createPatient({
         name: patientName,
@@ -1053,7 +1053,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Use OrderService if LIMS is configured, otherwise fallback to direct storage
         if (limsClient && process.env.ENABLE_LIMS_VALIDATION !== 'false') {
-          const orderService = new OrderService(limsClient as any, storage, {
+          const orderService = new OrderService(limsClient, storage, {
             enableLimsValidation: true,
           });
           
@@ -1064,15 +1064,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ecpId: userId,
             omaFileContent: omaFileContent || null,
             omaFilename: omaFilename || null,
-            omaParsedData: omaParsedData as any,
-          } as any, userId);
+            omaParsedData,
+          } as InsertOrder, userId);
           
           return res.status(201).json(order);
         }
-      } catch (limsError: any) {
+      } catch (limsError) {
         // If LIMS is not available or OrderService fails, log but continue with direct storage
         // This allows the platform to work without LIMS in development/testing
-        logger.warn({ details: limsError.message }, 'LIMS integration unavailable, creating order directly:');
+        const errorMessage = limsError instanceof Error ? limsError.message : 'Unknown error';
+        logger.warn({ details: errorMessage }, 'LIMS integration unavailable, creating order directly:');
       }
 
       // Fallback: Create order directly if LIMS is not configured
@@ -1083,8 +1084,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ecpId: userId,
         omaFileContent: omaFileContent || null,
         omaFilename: omaFilename || null,
-        omaParsedData: omaParsedData as any,
-      } as any);
+        omaParsedData,
+      } as InsertOrder);
 
       // Log order placement activity
       try {
@@ -1103,15 +1104,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.status(201).json(order);
-    } catch (error: any) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error creating order');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error({ error: errorMessage }, 'Error creating order');
       
       // Handle LIMS validation errors specifically
-      if (error.message?.includes('LIMS') || error.message?.includes('validation') || error.message?.includes('LIMS')) {
+      const errorMsg = error instanceof Error ? error.message : '';
+      if (errorMsg?.includes('LIMS') || errorMsg?.includes('validation')) {
         return res.status(400).json({ 
           message: "Order validation failed", 
-          error: error.message,
-          details: error.details || undefined
+          error: errorMsg,
+          details: (error as {details?: unknown}).details || undefined
         });
       }
       
@@ -1119,7 +1122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/orders', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/orders', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
