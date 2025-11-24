@@ -798,7 +798,7 @@ export class DbStorage implements IStorage {
     return suppliers;
   }
 
-  async createSupplier(supplier: any): Promise<User> {
+  async createSupplier(supplier: Partial<UpsertUser>): Promise<User> {
     const [newSupplier] = await db
       .insert(users)
       .values({
@@ -806,12 +806,12 @@ export class DbStorage implements IStorage {
         role: 'supplier',
         createdAt: new Date(),
         updatedAt: new Date(),
-      } as any)
+      } as UpsertUser)
       .returning();
     return newSupplier;
   }
 
-  async updateSupplier(id: string, updates: any): Promise<User | undefined> {
+  async updateSupplier(id: string, updates: Partial<UpsertUser>): Promise<User | undefined> {
     const [updatedSupplier] = await db
       .update(users)
       .set({
@@ -1496,7 +1496,7 @@ export class DbStorage implements IStorage {
   }
 
   // Patient Activity Log methods
-  async createPatientActivity(activity: any): Promise<any> {
+  async createPatientActivity(activity: Record<string, unknown>): Promise<Record<string, unknown>> {
     const { patientActivityLog } = await import("@shared/schema");
     const [log] = await db.insert(patientActivityLog).values(activity).returning();
     return log;
@@ -2226,7 +2226,7 @@ export class DbStorage implements IStorage {
       .where(eq(subscriptionPlans.isActive, true));
   }
 
-  async createSubscriptionHistory(history: any) {
+  async createSubscriptionHistory(history: typeof subscriptionHistory.$inferInsert): Promise<typeof subscriptionHistory.$inferSelect> {
     const [created] = await db
       .insert(subscriptionHistory)
       .values(history)
@@ -2242,7 +2242,7 @@ export class DbStorage implements IStorage {
       .orderBy(desc(subscriptionHistory.createdAt));
   }
 
-  async createPaymentIntent(payment: any) {
+  async createPaymentIntent(payment: typeof stripePaymentIntents.$inferInsert): Promise<typeof stripePaymentIntents.$inferSelect> {
     const [created] = await db
       .insert(stripePaymentIntents)
       .values(payment)
@@ -2259,7 +2259,7 @@ export class DbStorage implements IStorage {
     return company;
   }
 
-  async createDispenseRecord(record: any) {
+  async createDispenseRecord(record: typeof dispenseRecords.$inferInsert): Promise<typeof dispenseRecords.$inferSelect> {
     const [created] = await db
       .insert(dispenseRecords)
       .values(record)
