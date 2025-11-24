@@ -453,7 +453,7 @@ export default function SystemConfigPage() {
                   <div className="flex-1">
                     <p className="font-medium">{change.key}</p>
                     <p className="text-sm text-muted-foreground">
-                      Changed from "{change.oldValue}" to "{change.newValue}"
+                      Changed from &ldquo;{change.oldValue}&rdquo; to &ldquo;{change.newValue}&rdquo;
                     </p>
                   </div>
                   <div className="text-right text-sm text-muted-foreground">

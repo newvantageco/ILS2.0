@@ -430,7 +430,7 @@ export function EnhancedCalendar({
   // Render Day Headers
   const renderDayHeaders = () => {
     const days = [];
-    let day = startOfWeek(currentDate);
+    const day = startOfWeek(currentDate);
     for (let i = 0; i < 7; i++) {
       days.push(
         <div key={i} className="text-center py-3 text-sm font-semibold text-muted-foreground">

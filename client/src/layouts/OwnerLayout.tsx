@@ -63,7 +63,7 @@ export function OwnerLayout({
               <div className="text-lg font-semibold text-gray-900">247</div>
             </div>
             <div className="bg-gray-50 rounded-md p-3">
-              <div className="text-xs font-medium text-gray-500">Today's Revenue</div>
+              <div className="text-xs font-medium text-gray-500">Today&apos;s Revenue</div>
               <div className="text-lg font-semibold text-gray-900">$12,847</div>
             </div>
             <div className="bg-gray-50 rounded-md p-3">

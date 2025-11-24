@@ -96,8 +96,8 @@ export default function PendingApprovalPage() {
         <CardContent className="space-y-4">
           <div className="rounded-md bg-muted p-4">
             <p className="text-sm text-muted-foreground">
-              Thank you for signing up! Your account is currently pending approval. 
-              You'll receive an email notification once an administrator reviews and 
+              Thank you for signing up! Your account is currently pending approval.
+              You&apos;ll receive an email notification once an administrator reviews and
               activates your account.
             </p>
           </div>

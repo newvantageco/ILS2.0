@@ -238,7 +238,7 @@ export function ColorBlindnessTest({ onComplete }: Props) {
               Submit Answer
             </Button>
             <Button onClick={handleSkip} variant="outline">
-              Can't See Number
+              Can&apos;t See Number
             </Button>
           </div>
         </div>

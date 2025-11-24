@@ -134,7 +134,7 @@ export default function LabDashboardModern() {
 
         <Card className="border-l-4 border-l-green-500 bg-gradient-to-br from-green-500/5 to-transparent">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Output</CardTitle>
+            <CardTitle className="text-sm font-medium">Today&apos;s Output</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -445,7 +445,7 @@ function AnalyticsDashboard({ stats }: { stats: ProductionStats }) {
               <span className="font-bold">{stats.avgProductionTime}h</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm">Today's Output</span>
+              <span className="text-sm">Today&apos;s Output</span>
               <span className="font-bold">{stats.todayOutput} orders</span>
             </div>
             <div className="flex items-center justify-between">

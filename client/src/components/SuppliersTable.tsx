@@ -176,7 +176,7 @@ export function SuppliersTable() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the supplier "{supplierToDelete?.organizationName}".
+              This will permanently delete the supplier &ldquo;{supplierToDelete?.organizationName}&rdquo;.
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -174,7 +174,7 @@ export function AIDispensingAssistant({
 
                 {/* Clinical Justification */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="text-sm font-semibold text-blue-900 mb-2">Why it's recommended:</div>
+                  <div className="text-sm font-semibold text-blue-900 mb-2">Why it&apos;s recommended:</div>
                   <p className="text-sm text-blue-900 leading-relaxed">
                     {tier.clinicalJustification}
                   </p>

@@ -147,7 +147,7 @@ export default function AddOutsideRx() {
                 <p className="font-medium text-amber-900">Outside Prescription</p>
                 <p className="text-sm text-amber-700 mt-1">
                   This feature allows you to record prescriptions obtained from other optometrists or opticians. 
-                  The record will be marked as "Outside Rx" and automatically finalized.
+                  The record will be marked as &ldquo;Outside Rx&rdquo; and automatically finalized.
                 </p>
               </div>
             </div>
@@ -399,7 +399,7 @@ export default function AddOutsideRx() {
               <div className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-amber-600" />
                 <p className="text-sm text-muted-foreground">
-                  This prescription will be saved as "Outside Rx" and automatically finalized
+                  This prescription will be saved as &ldquo;Outside Rx&rdquo; and automatically finalized
                 </p>
               </div>
               <div className="flex gap-2">

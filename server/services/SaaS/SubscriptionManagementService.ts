@@ -104,7 +104,7 @@ export class SubscriptionManagementService {
 
       // Handle proration
       let chargeAmount = 0;
-      let prorationCredit = 0;
+      const prorationCredit = 0;
 
       if (request.prorationMode === 'immediate') {
         // Calculate days remaining in billing cycle

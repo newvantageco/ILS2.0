@@ -685,7 +685,7 @@ export default function AdminDashboard() {
           <DialogHeader>
             <DialogTitle>Suspend User Account</DialogTitle>
             <DialogDescription>
-              This will suspend {actionDialog.user && getUserName(actionDialog.user)}'s account and prevent them from accessing the system.
+              This will suspend {actionDialog.user && getUserName(actionDialog.user)}&apos;s account and prevent them from accessing the system.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -770,7 +770,7 @@ export default function AdminDashboard() {
           <DialogHeader>
             <DialogTitle>Delete User Account</DialogTitle>
             <DialogDescription>
-              Are you sure you want to permanently delete {actionDialog.user && getUserName(actionDialog.user)}'s account? 
+              Are you sure you want to permanently delete {actionDialog.user && getUserName(actionDialog.user)}&apos;s account? 
               This action cannot be undone and will remove all associated data.
             </DialogDescription>
           </DialogHeader>

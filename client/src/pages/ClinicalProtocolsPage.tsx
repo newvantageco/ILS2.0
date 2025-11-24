@@ -581,7 +581,7 @@ export default function ClinicalProtocolsPage() {
           <DialogHeader>
             <DialogTitle>Delete Protocol</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{protocolToDelete?.title}"? This action cannot be undone.
+              Are you sure you want to delete &ldquo;{protocolToDelete?.title}&rdquo;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

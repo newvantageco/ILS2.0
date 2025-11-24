@@ -438,7 +438,7 @@ export default function PracticeManagementPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Activity className="h-5 w-5 mr-2 text-blue-500" />
-                    Today's Overview
+                    Today&apos;s Overview
                   </CardTitle>
                   <CardDescription>Real-time practice status</CardDescription>
                 </CardHeader>

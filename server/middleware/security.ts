@@ -242,8 +242,9 @@ export const auditLog = async (req: AuthenticatedRequest, res: Response, next: N
 
 // Patient data access control
 export const enforcePatientDataAccess = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  const patientId = req.params.patientId || req.body.patientId;
-  
+  const body = req.body as Record<string, unknown> | undefined;
+  const patientId = req.params.patientId || (body?.patientId as string | undefined);
+
   if (!patientId) {
     return next();
   }

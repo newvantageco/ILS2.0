@@ -458,7 +458,7 @@ export class DatabaseOptimizer {
     logger.info('Cleaning up old data...', { daysToKeep });
 
     let totalDeleted = 0;
-    let totalSpaceFreed = 0;
+    const totalSpaceFreed = 0;
 
     try {
       // Clean up old audit logs

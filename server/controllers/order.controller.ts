@@ -124,8 +124,9 @@ export class OrderController extends BaseController {
       return this.error(res, "Insufficient permissions to create orders", 403);
     }
 
+    const body = req.body as Record<string, unknown>;
     const orderData = {
-      ...req.body,
+      ...body,
       companyId: user.companyId!,
       ecpId: userId,
     };

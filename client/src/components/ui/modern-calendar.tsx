@@ -157,7 +157,7 @@ export function ModernCalendar({
   const renderDays = () => {
     const days = [];
     const dateFormat = "EEEE";
-    let startDate = startOfWeek(currentMonth);
+    const startDate = startOfWeek(currentMonth);
 
     for (let i = 0; i < 7; i++) {
       days.push(

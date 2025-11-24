@@ -218,11 +218,11 @@ export default function Landing() {
                   </p>
                   <div className="space-y-2">
                     <div className="bg-muted/50 rounded p-3 text-xs">
-                      <p className="text-primary font-medium mb-1">Q: "What is progressive lens design?"</p>
+                      <p className="text-primary font-medium mb-1">Q: &ldquo;What is progressive lens design?&rdquo;</p>
                       <p className="text-muted-foreground">Instant expert-level explanation...</p>
                     </div>
                     <div className="bg-muted/50 rounded p-3 text-xs">
-                      <p className="text-primary font-medium mb-1">Q: "Explain astigmatism correction"</p>
+                      <p className="text-primary font-medium mb-1">Q: &ldquo;Explain astigmatism correction&rdquo;</p>
                       <p className="text-muted-foreground">Detailed clinical guidance...</p>
                     </div>
                   </div>
@@ -249,11 +249,11 @@ export default function Landing() {
                   </p>
                   <div className="space-y-2">
                     <div className="bg-muted/50 rounded p-3 text-xs">
-                      <p className="text-primary font-medium mb-1">Q: "Top 3 selling products last month?"</p>
+                      <p className="text-primary font-medium mb-1">Q: &ldquo;Top 3 selling products last month?&rdquo;</p>
                       <p className="text-muted-foreground">Instant database insights...</p>
                     </div>
                     <div className="bg-muted/50 rounded p-3 text-xs">
-                      <p className="text-primary font-medium mb-1">Q: "Which items are low in stock?"</p>
+                      <p className="text-primary font-medium mb-1">Q: &ldquo;Which items are low in stock?&rdquo;</p>
                       <p className="text-muted-foreground">Real-time inventory status...</p>
                     </div>
                   </div>

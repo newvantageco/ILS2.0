@@ -625,7 +625,7 @@ const SummaryTab = memo(function SummaryTab({
               <div>
                 <h3 className="font-semibold text-lg mb-1">Ready to Finalize Examination?</h3>
                 <p className="text-sm text-slate-600">
-                  Once finalized, this examination will be marked as complete and saved to the patient's record.
+                  Once finalized, this examination will be marked as complete and saved to the patient&apos;s record.
                 </p>
               </div>
               <Button

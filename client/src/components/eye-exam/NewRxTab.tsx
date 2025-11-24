@@ -206,7 +206,7 @@ const NewRxTab = memo(function NewRxTab({ data, onChange, readonly = false }: Ne
           <CardTitle className="text-lg flex items-center gap-2">
             <Eye className="h-5 w-5 text-blue-600" />
             Subjective Refraction (Distance)
-            <Badge variant="secondary" className="ml-2">"Better 1 or 2?"</Badge>
+            <Badge variant="secondary" className="ml-2">&ldquo;Better 1 or 2?&rdquo;</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>

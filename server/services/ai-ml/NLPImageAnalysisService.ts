@@ -1144,7 +1144,7 @@ export class NLPImageAnalysisService {
 
     const findings: ImageFinding[] = [];
     const diagnosis: ImageAnalysisResult['diagnosis'] = [];
-    let quality = { score: 0.85, issues: [] as string[] };
+    const quality = { score: 0.85, issues: [] as string[] };
     const recommendations: string[] = [];
 
     switch (imageType) {

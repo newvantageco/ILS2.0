@@ -209,7 +209,7 @@ export class PatientPortalService {
 
       const { status = 'all', limit = 50, offset = 0 } = options;
 
-      let whereConditions = [
+      const whereConditions = [
         eq(schema.appointments.patientId, patientId),
         eq(schema.appointments.companyId, companyId)
       ];
@@ -522,7 +522,7 @@ export class PatientPortalService {
 
       const { folder = 'inbox', limit = 50, offset = 0 } = options;
 
-      let whereConditions = [eq(schema.messages.companyId, companyId)];
+      const whereConditions = [eq(schema.messages.companyId, companyId)];
 
       if (folder === 'inbox') {
         whereConditions.push(eq(schema.messages.recipientId, patientId));
@@ -613,7 +613,7 @@ export class PatientPortalService {
 
       const { documentType, limit = 50, offset = 0 } = options;
 
-      let whereConditions = [
+      const whereConditions = [
         eq(schema.patientDocuments.patientId, patientId),
         eq(schema.patientDocuments.companyId, companyId),
         eq(schema.patientDocuments.status, 'active')
@@ -672,7 +672,7 @@ export class PatientPortalService {
 
       const { metricType, dateFrom, dateTo, limit = 100 } = options;
 
-      let whereConditions = [
+      const whereConditions = [
         eq(schema.patientHealthMetrics.patientId, patientId),
         eq(schema.patientHealthMetrics.companyId, companyId)
       ];
@@ -754,7 +754,7 @@ export class PatientPortalService {
 
       const { unreadOnly = false, limit = 50, offset = 0 } = options;
 
-      let whereConditions = [
+      const whereConditions = [
         eq(schema.notifications.userId, patientId),
         eq(schema.notifications.companyId, companyId)
       ];

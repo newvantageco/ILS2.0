@@ -644,7 +644,7 @@ export class BackupService {
       const files = await fs.readdir(this.config.storage.localPath);
       
       let totalSize = 0;
-      let totalBackups = files.length;
+      const totalBackups = files.length;
       let successfulBackups = 0;
 
       for (const file of files) {

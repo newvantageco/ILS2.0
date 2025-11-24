@@ -262,7 +262,7 @@ export class DataTransformService {
         if (mapping.transform === 'custom' && mapping.customTransform) {
           try {
             // Execute custom transformation
-            // eslint-disable-next-line no-new-func
+             
             const transformFn = new Function('value', 'record', mapping.customTransform);
             value = transformFn(value, record);
           } catch (error) {

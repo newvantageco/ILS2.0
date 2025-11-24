@@ -349,7 +349,7 @@ export function TechnicalDocumentManager() {
           </Table>
         ) : (
           <div className="text-center py-8 text-muted-foreground" data-testid="text-no-documents">
-            No technical documents uploaded yet. Click "Upload Document" to add specifications, certificates, or compliance documents.
+            No technical documents uploaded yet. Click &ldquo;Upload Document&rdquo; to add specifications, certificates, or compliance documents.
           </div>
         )}
       </CardContent>

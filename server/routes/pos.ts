@@ -41,7 +41,7 @@ router.get('/products',
         return res.status(400).json({ error: 'User company not found. Please ensure you are associated with a company.' });
       }
 
-      let query = db.select({
+      const query = db.select({
         id: products.id,
         companyId: products.companyId,
         ecpId: products.ecpId,
@@ -178,7 +178,7 @@ router.post('/transactions',
 
         // Calculate totals
         let subtotal = 0;
-        let taxAmount = 0;
+        const taxAmount = 0;
 
         const itemsWithTotals = items.map((item: any) => {
           const unitPrice = parseFloat(item.unitPrice);

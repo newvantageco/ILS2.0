@@ -12,7 +12,7 @@ export function FeatureShowcase() {
             Built for Every Part of the Optical Industry
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Whether you're an eye care professional, lab, or supplier, ILS has you covered
+            Whether you&apos;re an eye care professional, lab, or supplier, ILS has you covered
           </p>
         </div>
 
@@ -109,7 +109,7 @@ export function FeatureShowcase() {
                           </div>
                           <div className="bg-green-100 rounded p-3">
                             <div className="text-2xl font-bold text-green-900">£4.2k</div>
-                            <div className="text-xs text-gray-600">Today's Sales</div>
+                            <div className="text-xs text-gray-600">Today&apos;s Sales</div>
                           </div>
                         </div>
                         <div className="space-y-2">

@@ -255,7 +255,7 @@ export function VisualFieldTest({ eye, onComplete }: Props) {
                 I See It
               </Button>
               <Button onClick={handleNotSeen} className="flex-1" variant="outline">
-                Don't See It
+                Don&apos;t See It
               </Button>
             </div>
             <p className="text-xs text-center text-muted-foreground">

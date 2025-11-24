@@ -124,7 +124,7 @@ export default function AIChatWidget() {
         {messages.length === 0 && (
           <div className="text-center text-gray-500 mt-8">
             <Bot className="h-12 w-12 mx-auto mb-3 text-indigo-300" />
-            <p className="text-sm font-medium">Hi! I'm your AI assistant.</p>
+            <p className="text-sm font-medium">Hi! I&apos;m your AI assistant.</p>
             <p className="text-xs mt-1">Ask me about patients, orders, inventory, or analytics.</p>
           </div>
         )}

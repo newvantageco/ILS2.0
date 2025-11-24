@@ -223,7 +223,7 @@ export default function GitHubPushPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 block p-3 bg-muted rounded text-sm font-mono">
-                      git commit -m "Initial commit"
+                      git commit -m &ldquo;Initial commit&rdquo;
                     </code>
                     <Button
                       size="icon"

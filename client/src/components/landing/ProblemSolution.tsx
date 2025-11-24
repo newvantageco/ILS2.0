@@ -48,7 +48,7 @@ export function ProblemSolution() {
             Stop Juggling Multiple Systems
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Running an optical practice shouldn't mean managing a dozen disconnected tools
+            Running an optical practice shouldn&apos;t mean managing a dozen disconnected tools
           </p>
         </div>
 

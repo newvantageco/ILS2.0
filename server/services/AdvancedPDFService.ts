@@ -398,7 +398,7 @@ class AdvancedPDFService {
         await this.drawHeader(doc, company, template, 'INVOICE');
 
         // Invoice details
-        let yPos = 140;
+        const yPos = 140;
         doc
           .fontSize(10)
           .font('Helvetica-Bold')

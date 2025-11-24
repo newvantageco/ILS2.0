@@ -528,7 +528,7 @@ export default function APIKeysManagementPage() {
                       <Alert>
                         <AlertTriangle className="h-4 w-4" />
                         <AlertDescription className="text-sm">
-                          You have unsaved changes. Click "Save" to apply them.
+                          You have unsaved changes. Click &ldquo;Save&rdquo; to apply them.
                         </AlertDescription>
                       </Alert>
                     )}

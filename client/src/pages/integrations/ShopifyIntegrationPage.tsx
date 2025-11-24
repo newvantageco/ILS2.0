@@ -220,7 +220,7 @@ export default function ShopifyIntegrationPage() {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Requirements</AlertTitle>
               <AlertDescription>
-                You'll need a Shopify store (any plan with API access) and an
+                You&apos;ll need a Shopify store (any plan with API access) and an
                 OpenAI API key for prescription OCR functionality.
               </AlertDescription>
             </Alert>
@@ -337,7 +337,7 @@ export default function ShopifyIntegrationPage() {
                   <li>
                     Go to your Shopify Admin → Online Store → Themes
                   </li>
-                  <li>Click "Actions" → "Edit code"</li>
+                  <li>Click &ldquo;Actions&rdquo; → &ldquo;Edit code&rdquo;</li>
                   <li>
                     Open the product template (usually{" "}
                     <code className="text-sm bg-muted px-1 py-0.5 rounded">

@@ -76,9 +76,9 @@ export class CustomerHealthService {
 
     // TODO: Query sessions and login events
     let score = 100;
-    let dayssinceLastLogin = 30;
-    let dailyActiveUsers = 0;
-    let sessionFrequency = 0;
+    const dayssinceLastLogin = 30;
+    const dailyActiveUsers = 0;
+    const sessionFrequency = 0;
 
     // Scoring logic
     // Days since login: >30 days = -50 points, >14 days = -25 points, >7 days = -10 points
@@ -155,10 +155,10 @@ export class CustomerHealthService {
 
     // TODO: Query NPS surveys and support tickets
     let score = 75; // Base score
-    let nps = 0; // -100 to +100
-    let supportTickets = 0;
-    let negativeTicketCount = 0;
-    let resolutionTime = 24; // hours
+    const nps = 0; // -100 to +100
+    const supportTickets = 0;
+    const negativeTicketCount = 0;
+    const resolutionTime = 24; // hours
 
     // NPS scoring
     // Detractors (0-6): -30 points

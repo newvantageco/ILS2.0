@@ -177,7 +177,7 @@ export class NhsVoucherService {
 
     // Determine voucher type
     let voucherType: "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H";
-    let hasSmallFrameSupplement = false;
+    const hasSmallFrameSupplement = false;
 
     if (requiresMedicalTint) {
       voucherType = "H"; // Tinted for medical condition

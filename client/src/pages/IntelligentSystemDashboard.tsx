@@ -144,7 +144,7 @@ export const IntelligentSystemDashboard: React.FC = () => {
                   Intelligent System
                 </h1>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Powered by our Principal Engineer's AI analysis
+                  Powered by our Principal Engineer&apos;s AI analysis
                 </p>
               </div>
             </div>
@@ -284,7 +284,7 @@ export const IntelligentSystemDashboard: React.FC = () => {
               Predictive Non-Adapt Alerts
             </h3>
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              Our Principal Engineer's AI analyzes complex prescriptions (high-add progressives,
+              Our Principal Engineer&apos;s AI analyzes complex prescriptions (high-add progressives,
               high-wrap frames, astigmatism) to flag combinations with high non-adapt risk. Get
               real-time recommendations to switch lens types or materials before problems occur.
             </p>

@@ -75,7 +75,7 @@ export class WebhookManager {
       .from(webhookSubscriptions)
       .where(eq(webhookSubscriptions.companyId, companyId));
 
-    return subs.map((s) => ({
+    return subs.map((s: typeof webhookSubscriptions.$inferSelect) => ({
       id: s.id,
       companyId: s.companyId,
       url: s.url,
@@ -88,7 +88,7 @@ export class WebhookManager {
   /**
    * Send event to all matching webhook subscriptions
    */
-  static async sendToSubscribers(event: any): Promise<void> {
+  static async sendToSubscribers(event: Event & { companyId?: string }): Promise<void> {
     // Get subscriptions for this company and event type
     const allSubs = await db
       .select()
@@ -96,14 +96,14 @@ export class WebhookManager {
       .where(eq(webhookSubscriptions.active, true));
 
     // Filter subscriptions that match event type and company
-    const matchingSubs = allSubs.filter((sub) => {
+    const matchingSubs = allSubs.filter((sub: typeof webhookSubscriptions.$inferSelect) => {
       const matchesCompany = !event.companyId || sub.companyId === event.companyId;
       const matchesEvent = sub.events?.includes(event.type) || sub.events?.includes('*');
       return matchesCompany && matchesEvent;
     });
 
     // Send to each matching subscription
-    const deliveries = matchingSubs.map((sub) =>
+    const deliveries = matchingSubs.map((sub: typeof webhookSubscriptions.$inferSelect) =>
       this.deliver(sub, event)
     );
 
@@ -115,7 +115,7 @@ export class WebhookManager {
    */
   static async deliver(
     subscription: typeof webhookSubscriptions.$inferSelect,
-    event: any
+    event: Event & { companyId?: string }
   ): Promise<void> {
     const deliveryId = crypto.randomUUID();
 
@@ -223,7 +223,7 @@ export class WebhookManager {
   private static async scheduleRetry(
     deliveryId: string,
     subscription: typeof webhookSubscriptions.$inferSelect,
-    event: any
+    event: Event & { companyId?: string }
   ): Promise<void> {
     // Get delivery record
     const delivery = await db
@@ -268,7 +268,7 @@ export class WebhookManager {
   private static async retryDelivery(
     deliveryId: string,
     subscription: typeof webhookSubscriptions.$inferSelect,
-    event: any
+    event: Event & { companyId?: string }
   ): Promise<void> {
     logger.info({ deliveryId, webhookId: subscription.id, eventType: event.type }, 'Retrying webhook delivery');
 
