@@ -47,19 +47,30 @@ type CreateCheckoutBody = z.infer<typeof createCheckoutSchema>;
 const router = Router();
 const logger = createLogger('payments');
 
-// Initialize Stripe
-// CRITICAL: STRIPE_SECRET_KEY must be set in production
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error(
-    "STRIPE_SECRET_KEY environment variable is required. " +
-    "Payment processing cannot function without it. " +
-    "Set this in your .env file or environment configuration."
-  );
+// Initialize Stripe (lazy initialization)
+let stripe: Stripe | null = null;
+
+function getStripe(): Stripe {
+  if (!stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error(
+        "STRIPE_SECRET_KEY environment variable is required. " +
+        "Payment processing cannot function without it."
+      );
+    }
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: "2025-10-29.clover" as any,
+    });
+  }
+  return stripe;
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-10-29.clover",
-});
+// Log warning at startup if Stripe is not configured
+if (!process.env.STRIPE_SECRET_KEY) {
+  logger.warn('STRIPE_SECRET_KEY is not set - payment routes will return errors until configured');
+} else {
+  logger.info('Stripe payment processing is configured');
+}
 
 if (!process.env.STRIPE_WEBHOOK_SECRET) {
   logger.warn('STRIPE_WEBHOOK_SECRET is not set - webhook signature verification will fail');
@@ -138,7 +149,7 @@ router.post("/create-checkout-session", isAuthenticated, asyncHandler(async (req
     
     if (!customerId) {
       try {
-        const customer = await stripe.customers.create({
+        const customer = await getStripe().customers.create({
           email: company?.email || user.email || undefined,
           name: company?.name,
           metadata: {
@@ -159,7 +170,7 @@ router.post("/create-checkout-session", isAuthenticated, asyncHandler(async (req
     }
 
     // Create Checkout Session
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
       payment_method_types: ["card"],
@@ -204,7 +215,7 @@ router.post("/create-portal-session", isAuthenticated, async (req: Request, res:
       return res.status(400).json({ error: "No active subscription found" });
     }
 
-    const session = await stripe.billingPortal.sessions.create({
+    const session = await getStripe().billingPortal.sessions.create({
       customer: company.stripeCustomerId,
       return_url: `${process.env.APP_URL || "http://localhost:3000"}/subscription`,
     });
@@ -273,7 +284,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+    event = getStripe().webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
     logger.error({ error: errorMessage }, 'Webhook signature verification failed');

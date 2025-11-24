@@ -551,4 +551,218 @@ router.get('/admin/statistics', async (req, res) => {
   }
 });
 
+// ========== External Service Connection Tests ==========
+
+/**
+ * Test Stripe connection
+ */
+router.get('/test-connection/stripe', async (req, res) => {
+  try {
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    
+    if (!stripeSecretKey) {
+      return res.json({
+        success: false,
+        connected: false,
+        error: 'STRIPE_SECRET_KEY not configured',
+        message: 'Stripe secret key is not set in environment variables'
+      });
+    }
+
+    // Dynamic import to avoid issues if stripe isn't loaded
+    const Stripe = (await import('stripe')).default;
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: '2025-10-29.clover' as any,
+    });
+
+    // Test connection by retrieving account info
+    const account = await stripe.accounts.retrieve();
+    
+    res.json({
+      success: true,
+      connected: true,
+      message: 'Stripe connection successful',
+      details: {
+        accountId: account.id,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled,
+        country: account.country,
+        defaultCurrency: account.default_currency,
+        businessType: account.business_type,
+      }
+    });
+  } catch (error: any) {
+    logger.error({ error }, 'Stripe connection test failed');
+    res.json({
+      success: false,
+      connected: false,
+      error: error.message || 'Unknown error',
+      message: 'Failed to connect to Stripe. Check your API key.'
+    });
+  }
+});
+
+/**
+ * Test OpenAI connection
+ */
+router.get('/test-connection/openai', async (req, res) => {
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    
+    if (!apiKey) {
+      return res.json({
+        success: false,
+        connected: false,
+        error: 'OPENAI_API_KEY not configured',
+        message: 'OpenAI API key is not set in environment variables'
+      });
+    }
+
+    // Test with a minimal API call
+    const response = await fetch('https://api.openai.com/v1/models', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      res.json({
+        success: true,
+        connected: true,
+        message: 'OpenAI connection successful',
+        details: {
+          modelsAvailable: data.data?.length || 0,
+        }
+      });
+    } else {
+      const errorData = await response.json().catch(() => ({}));
+      res.json({
+        success: false,
+        connected: false,
+        error: errorData.error?.message || `HTTP ${response.status}`,
+        message: 'Failed to connect to OpenAI'
+      });
+    }
+  } catch (error: any) {
+    logger.error({ error }, 'OpenAI connection test failed');
+    res.json({
+      success: false,
+      connected: false,
+      error: error.message || 'Unknown error',
+      message: 'Failed to connect to OpenAI'
+    });
+  }
+});
+
+/**
+ * Test Anthropic connection
+ */
+router.get('/test-connection/anthropic', async (req, res) => {
+  try {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    
+    if (!apiKey) {
+      return res.json({
+        success: false,
+        connected: false,
+        error: 'ANTHROPIC_API_KEY not configured',
+        message: 'Anthropic API key is not set in environment variables'
+      });
+    }
+
+    // Test with a minimal API call
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'Hi' }],
+      }),
+    });
+
+    if (response.ok || response.status === 400) {
+      // 400 might be returned for rate limits or other issues, but it means auth worked
+      res.json({
+        success: true,
+        connected: true,
+        message: 'Anthropic connection successful',
+        details: {
+          status: response.status,
+        }
+      });
+    } else if (response.status === 401) {
+      res.json({
+        success: false,
+        connected: false,
+        error: 'Invalid API key',
+        message: 'Anthropic API key is invalid'
+      });
+    } else {
+      res.json({
+        success: false,
+        connected: false,
+        error: `HTTP ${response.status}`,
+        message: 'Failed to connect to Anthropic'
+      });
+    }
+  } catch (error: any) {
+    logger.error({ error }, 'Anthropic connection test failed');
+    res.json({
+      success: false,
+      connected: false,
+      error: error.message || 'Unknown error',
+      message: 'Failed to connect to Anthropic'
+    });
+  }
+});
+
+/**
+ * Test Google OAuth configuration
+ */
+router.get('/test-connection/google-oauth', async (req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  
+  res.json({
+    success: Boolean(clientId && clientSecret),
+    connected: Boolean(clientId && clientSecret),
+    message: clientId && clientSecret 
+      ? 'Google OAuth is configured'
+      : 'Google OAuth credentials are not configured',
+    details: {
+      clientIdConfigured: Boolean(clientId),
+      clientSecretConfigured: Boolean(clientSecret),
+    }
+  });
+});
+
+/**
+ * Get all service connection statuses
+ */
+router.get('/test-connection/all', async (req, res) => {
+  const services = {
+    stripe: Boolean(process.env.STRIPE_SECRET_KEY),
+    openai: Boolean(process.env.OPENAI_API_KEY),
+    anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
+    googleOauth: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+    redis: Boolean(process.env.REDIS_URL || process.env.REDIS_HOST),
+    resend: Boolean(process.env.RESEND_API_KEY),
+    database: Boolean(process.env.DATABASE_URL),
+  };
+
+  res.json({
+    success: true,
+    services,
+    configured: Object.values(services).filter(Boolean).length,
+    total: Object.keys(services).length,
+  });
+});
+
 export default router;

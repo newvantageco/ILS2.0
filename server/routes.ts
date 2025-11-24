@@ -162,6 +162,7 @@ import importRoutes from "./routes/import";
 import biAnalyticsRoutes from "./routes/bi-analytics";
 import apiManagementRoutes from "./routes/api-management";
 import { registerPaymentRoutes } from "./routes/payments";
+import { registerGoogleAuthRoutes } from "./routes/google-auth";
 import aiMLRoutes from "./routes/ai-ml";
 import ophthalamicAIRoutes from "./routes/ophthalamicAI";
 import orderTrackingRoutes from "./routes/orderTracking";
@@ -250,6 +251,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   if (process.env.NODE_ENV !== 'development') {
     await setupReplitAuth(app);
   }
+
+  // Register Google OAuth routes (works in all environments)
+  registerGoogleAuthRoutes(app);
 
   // Logout route - works for both development and production
   app.get("/api/logout", (req, res) => {
