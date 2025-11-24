@@ -12,12 +12,14 @@
 
 | Metric | Before | Current | Target | Progress |
 |--------|--------|---------|--------|----------|
-| **Total 'any' types** | 1,354 | 1,262 | <500 | 6.8% ↓ |
-| **Critical files fixed** | 0 | 4 | 5 | 80% ✅ |
+| **Total 'any' types** | 1,354 | 1,240 | <500 | 8.4% ↓ |
+| **Critical files fixed** | 0 | 5 | 5 | 100% ✅ |
 | **Payment security** | ❌ Unsafe | ✅ Safe | ✅ Safe | 100% ✅ |
 | **NHS compliance** | ❌ Unsafe | ✅ Safe | ✅ Safe | 100% ✅ |
 | **Patient/Rx data** | ❌ Unsafe | ✅ Safe | ✅ Safe | 100% ✅ |
 | **Order management** | ❌ Unsafe | ✅ Safe | ✅ Safe | 100% ✅ |
+| **AI/ML features** | ❌ Unsafe | ✅ Safe | ✅ Safe | 100% ✅ |
+| **Invoice/Billing** | ❌ Unsafe | ✅ Safe | ✅ Safe | 100% ✅ |
 
 ---
 
