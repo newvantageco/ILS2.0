@@ -5499,7 +5499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new equipment
-  app.post('/api/equipment', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/equipment', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5528,7 +5528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update equipment
-  app.patch('/api/equipment/:id', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.patch('/api/equipment/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5560,7 +5560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete equipment
-  app.delete('/api/equipment/:id', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.delete('/api/equipment/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5587,7 +5587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add maintenance record
-  app.post('/api/equipment/:id/maintenance', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/equipment/:id/maintenance', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5627,7 +5627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Record calibration
-  app.post('/api/equipment/:id/calibration', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/equipment/:id/calibration', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5674,7 +5674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const productionStorage = await import('./storage/production');
 
   // Get production statistics
-  app.get('/api/production/stats', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/production/stats', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5692,7 +5692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get orders in production
-  app.get('/api/production/orders', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/production/orders', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5714,7 +5714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get order timeline
-  app.get('/api/production/orders/:id/timeline', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/production/orders/:id/timeline', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5732,7 +5732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update order status (with timeline event)
-  app.patch('/api/production/orders/:id/status', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.patch('/api/production/orders/:id/status', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5767,7 +5767,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add timeline event
-  app.post('/api/production/orders/:id/timeline', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/production/orders/:id/timeline', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5803,7 +5803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get production stages analysis
-  app.get('/api/production/stages', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/production/stages', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5821,7 +5821,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get production bottlenecks
-  app.get('/api/production/bottlenecks', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/production/bottlenecks', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5839,7 +5839,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get production velocity (orders completed per day)
-  app.get('/api/production/velocity', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/production/velocity', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5864,7 +5864,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const qcStorage = await import('./storage/qualityControl');
 
   // Get orders awaiting quality check
-  app.get('/api/quality-control/orders', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/quality-control/orders', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5882,7 +5882,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get QC statistics
-  app.get('/api/quality-control/stats', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/quality-control/stats', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5900,7 +5900,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get QC metrics
-  app.get('/api/quality-control/metrics', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/quality-control/metrics', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5918,7 +5918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get defect trends
-  app.get('/api/quality-control/defect-trends', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/quality-control/defect-trends', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5937,7 +5937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Perform quality inspection
-  app.post('/api/quality-control/inspect/:orderId', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/quality-control/inspect/:orderId', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -5981,7 +5981,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get inspection history for an order
-  app.get('/api/quality-control/orders/:orderId/history', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/quality-control/orders/:orderId/history', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
