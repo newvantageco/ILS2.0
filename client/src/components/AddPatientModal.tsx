@@ -70,7 +70,7 @@ export default function AddPatientModal({ open, onOpenChange }: AddPatientModalP
     }
 
     // Phone validation (if provided) - UK format
-    if (formData.phone && !/^[\d\s\+\-\(\)]+$/.test(formData.phone)) {
+    if (formData.phone && !/^[\d\s+\-()]+$/.test(formData.phone)) {
       newErrors.phone = "Please enter a valid phone number";
     }
 
