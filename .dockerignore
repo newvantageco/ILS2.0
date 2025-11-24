@@ -70,8 +70,9 @@ playwright.config.ts
 jest.config.mjs
 tsconfig.test.json
 
-# Scripts (development only)
+# Scripts (development only, except docker-start.sh)
 scripts/*.sh
+!scripts/docker-start.sh
 scripts/*.mjs
 check-*.sh
 test-*.sh

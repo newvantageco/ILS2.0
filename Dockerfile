@@ -71,7 +71,7 @@ COPY --from=builder --chown=nodejs:nodejs /app/migrations ./migrations
 COPY --from=builder --chown=nodejs:nodejs /app/public ./public
 
 # Copy startup script
-COPY --chown=nodejs:nodejs scripts/docker-start.sh ./docker-start.sh
+COPY --chown=nodejs:nodejs docker-start.sh ./docker-start.sh
 RUN chmod +x ./docker-start.sh
 
 # Create uploads directory with correct permissions
