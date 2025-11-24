@@ -6,11 +6,13 @@
  * - Retrieving historical data and reports
  * - Exporting old data
  * - Viewing audit trails
+ * - Restoring soft-deleted records
  */
 
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { archivalService } from "../services/ArchivalService";
+import { softDeleteService } from "../services/SoftDeleteService";
 import { isAuthenticated } from "../replitAuth";
 import { createLogger } from "../utils/logger";
 
@@ -429,6 +431,153 @@ router.get("/audit", async (req: Request, res: Response) => {
   } catch (error: any) {
     logger.error({ error }, 'Error fetching audit trail');
     res.status(500).json({ message: "Failed to fetch audit trail", error: error.message });
+  }
+});
+
+/**
+ * ==================================================
+ * SOFT DELETE MANAGEMENT
+ * ==================================================
+ */
+
+/**
+ * GET /api/archival/deleted/:tableName
+ * Get soft-deleted records from a specific table
+ */
+router.get("/deleted/:tableName", async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const companyId = user?.claims?.companyId || user?.companyId;
+    const { tableName } = req.params;
+    const { limit = "50", offset = "0" } = req.query;
+
+    const result = await softDeleteService.getDeletedRecords({
+      tableName,
+      companyId,
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    logger.error({ error, tableName: req.params.tableName }, 'Error fetching deleted records');
+    res.status(500).json({ message: "Failed to fetch deleted records", error: error.message });
+  }
+});
+
+/**
+ * POST /api/archival/restore/:tableName/:recordId
+ * Restore a soft-deleted record to its source table
+ */
+router.post("/restore/:tableName/:recordId", async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const userId = user?.claims?.sub || user?.id;
+    const { tableName, recordId } = req.params;
+
+    const result = await softDeleteService.restore({
+      tableName,
+      recordId,
+      restoredBy: userId,
+    });
+
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Failed to restore record",
+        error: result.error,
+      });
+    }
+
+    logger.info({ tableName, recordId, userId }, 'Record restored from soft delete');
+    res.json({
+      message: "Record restored successfully",
+      ...result,
+    });
+  } catch (error: any) {
+    logger.error({ error, tableName: req.params.tableName, recordId: req.params.recordId }, 'Error restoring record');
+    res.status(500).json({ message: "Failed to restore record", error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/archival/permanent/:tableName/:recordId
+ * Permanently delete a soft-deleted record (admin only)
+ * WARNING: This cannot be undone!
+ */
+router.delete("/permanent/:tableName/:recordId", async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const userId = user?.claims?.sub || user?.id;
+    const userRole = user?.role || user?.claims?.role;
+    const { tableName, recordId } = req.params;
+
+    // Only platform admins can permanently delete records
+    if (userRole !== 'platform_admin' && userRole !== 'admin') {
+      return res.status(403).json({
+        message: "Only administrators can permanently delete records",
+      });
+    }
+
+    const result = await softDeleteService.permanentDelete({
+      tableName,
+      recordId,
+      deletedBy: userId,
+    });
+
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Failed to permanently delete record",
+        error: result.error,
+      });
+    }
+
+    logger.warn({ tableName, recordId, userId }, 'Record permanently deleted');
+    res.json({
+      message: "Record permanently deleted. This action cannot be undone.",
+      success: true,
+    });
+  } catch (error: any) {
+    logger.error({ error, tableName: req.params.tableName, recordId: req.params.recordId }, 'Error permanently deleting record');
+    res.status(500).json({ message: "Failed to permanently delete record", error: error.message });
+  }
+});
+
+/**
+ * POST /api/archival/soft-delete/:tableName/:recordId
+ * Soft delete a record (for use by admin tools)
+ */
+router.post("/soft-delete/:tableName/:recordId", async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const userId = user?.claims?.sub || user?.id;
+    const companyId = user?.claims?.companyId || user?.companyId;
+    const { tableName, recordId } = req.params;
+    const { reason, tags } = req.body;
+
+    const result = await softDeleteService.softDelete({
+      tableName,
+      recordId,
+      companyId,
+      deletedBy: userId,
+      reason,
+      tags,
+    });
+
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Failed to soft delete record",
+        error: result.error,
+      });
+    }
+
+    logger.info({ tableName, recordId, userId, reason }, 'Record soft deleted via API');
+    res.json({
+      message: "Record soft deleted successfully",
+      ...result,
+    });
+  } catch (error: any) {
+    logger.error({ error, tableName: req.params.tableName, recordId: req.params.recordId }, 'Error soft deleting record');
+    res.status(500).json({ message: "Failed to soft delete record", error: error.message });
   }
 });
 
