@@ -18,6 +18,7 @@ napi-derive = "2.16"
 # Statistical and ML libraries
 ndarray = "0.15"
 ndarray-stats = "0.5"
+noisy_float = "0.2"
 statrs = "0.16"
 linfa = "0.7"
 linfa-linear = "0.7"

@@ -318,7 +318,7 @@ describe('Medical Billing & Insurance API', () => {
       expect(response.body.lineItems).toBeDefined();
       expect(response.body.claim.status).toBe('draft');
       expect(response.body.claim.totalCharge).toBe(claimData.totalCharge);
-      expect(response.body.lineItems.length).toBe(1);
+      expect(response.body.lineItems).toHaveLength(1);
       
       testClaimId = response.body.claim.id;
     });

@@ -18,9 +18,9 @@ import express, { Application } from 'express';
 
 describe('Healthcare Analytics API', () => {
   let app: Application;
-  let testCompanyId: string = 'test-company-id';
-  let testUserId: string = 'test-user-id';
-  let testProviderId: string = 'test-provider-id';
+  const testCompanyId: string = 'test-company-id';
+  const testUserId: string = 'test-user-id';
+  const testProviderId: string = 'test-provider-id';
 
   beforeAll(async () => {
     // Create test Express app

@@ -20,10 +20,10 @@ if (!redisUrl) {
     });
 
     afterEach(async () => {
-      try { await redis.flushdb(); } catch (_) {}
-      try { await redis.quit(); } catch (_) {}
-      try { await consumerClient.quit(); } catch (_) {}
-      try { if ((eventBus as any)?.redis) await (eventBus as any).redis.quit(); } catch (_) {}
+      try { await redis.flushdb(); } catch { /* ignore cleanup errors */ }
+      try { await redis.quit(); } catch { /* ignore cleanup errors */ }
+      try { await consumerClient.quit(); } catch { /* ignore cleanup errors */ }
+      try { if ((eventBus as any)?.redis) await (eventBus as any).redis.quit(); } catch { /* ignore cleanup errors */ }
     });
 
     it('reclaims a pending entry and processes it with the registered handler', async () => {
@@ -31,14 +31,14 @@ if (!redisUrl) {
       const streamKey = `stream:${eventName}`;
   const group = `grp-${Math.random().toString(36).slice(2,6)}`;
   // create consumer group before starting the eventBus to avoid XREADGROUP NOGROUP races
-  try { await redis.xgroup('CREATE', streamKey, group, '0', 'MKSTREAM'); } catch (_) {}
+  try { await redis.xgroup('CREATE', streamKey, group, '0', 'MKSTREAM'); } catch { /* group may exist */ }
   eventBus = new RedisStreamsEventBus(redisUrl, group, `consumer-${Math.random().toString(36).slice(2,6)}`);
       let processed: any = null;
       eventBus.subscribe(eventName, async (payload) => {
         processed = payload;
       });
 
-      try { await redis.xgroup('CREATE', streamKey, group, '0', 'MKSTREAM'); } catch (_) {}
+      try { await redis.xgroup('CREATE', streamKey, group, '0', 'MKSTREAM'); } catch { /* group may exist */ }
       await redis.xadd(streamKey, '*', 'p', JSON.stringify({ foo: 'bar1' }));
 
       await consumerClient.xreadgroup('GROUP', group, `other-${Math.random().toString(36).slice(2,6)}`, 'COUNT', 1, 'BLOCK', 500, 'STREAMS', streamKey, '>');
@@ -60,7 +60,7 @@ if (!redisUrl) {
       expect(processed).toEqual({ foo: 'bar1' });
 
       const pending = await redis.xpending(streamKey, group, '-', '+', 10);
-      expect(pending.length).toBe(0);
+      expect(pending).toHaveLength(0);
   }, 60000);
 
     it('moves failed reclaimed entry to DLQ', async () => {
@@ -68,7 +68,7 @@ if (!redisUrl) {
       const streamKey = `stream:${eventName}`;
   const group = `grp-${Math.random().toString(36).slice(2,6)}`;
       // create consumer group before starting the eventBus
-      try { await redis.xgroup('CREATE', streamKey, group, '0', 'MKSTREAM'); } catch (_) {}
+      try { await redis.xgroup('CREATE', streamKey, group, '0', 'MKSTREAM'); } catch { /* group may exist */ }
       await redis.xadd(streamKey, '*', 'p', JSON.stringify({ foo: 'bar2' }));
 
       // Consume into the PEL with another consumer so the eventBus's consumer hasn't processed it
@@ -103,7 +103,7 @@ if (!redisUrl) {
       expect(dlq.length).toBeGreaterThan(0);
 
       const pending = await redis.xpending(streamKey, group, '-', '+', 10);
-      expect(pending.length).toBe(0);
+      expect(pending).toHaveLength(0);
     }, 60000);
   });
 }

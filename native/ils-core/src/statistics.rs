@@ -3,12 +3,8 @@
 //! High-performance implementations of common statistical operations
 //! using SIMD optimizations and parallel processing where beneficial.
 
-use napi::bindgen_prelude::*;
 use napi_derive::napi;
-use ndarray::Array1;
-use ndarray_stats::QuantileExt;
 use rayon::prelude::*;
-use statrs::statistics::{Data, Distribution, OrderStatistics};
 
 /// Calculate the mean (average) of a dataset
 #[napi]
@@ -62,10 +58,24 @@ pub fn quantile(data: Vec<f64>, q: f64) -> f64 {
     if data.is_empty() || q < 0.0 || q > 1.0 {
         return 0.0;
     }
-    let arr = Array1::from(data);
-    arr.quantile_axis_skipnan_mut(ndarray::Axis(0), noisy_float::types::n64(q), &ndarray_stats::interpolate::Linear)
-        .map(|v| *v)
-        .unwrap_or(0.0)
+    let mut sorted: Vec<f64> = data.into_iter().filter(|x| !x.is_nan()).collect();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+    if sorted.is_empty() {
+        return 0.0;
+    }
+
+    let n = sorted.len();
+    let index = q * (n - 1) as f64;
+    let lower = index.floor() as usize;
+    let upper = index.ceil() as usize;
+
+    if lower == upper || upper >= n {
+        sorted[lower.min(n - 1)]
+    } else {
+        let frac = index - lower as f64;
+        sorted[lower] * (1.0 - frac) + sorted[upper] * frac
+    }
 }
 
 /// Calculate Interquartile Range (IQR)
@@ -158,7 +168,7 @@ pub fn linear_regression(x: Vec<f64>, y: Vec<f64>) -> LinearRegressionResult {
     let sum_y: f64 = y.iter().sum();
     let sum_xy: f64 = x.iter().zip(y.iter()).map(|(a, b)| a * b).sum();
     let sum_x2: f64 = x.iter().map(|a| a * a).sum();
-    let sum_y2: f64 = y.iter().map(|a| a * a).sum();
+    let _sum_y2: f64 = y.iter().map(|a| a * a).sum();
 
     let denominator = n * sum_x2 - sum_x * sum_x;
     if denominator == 0.0 {
