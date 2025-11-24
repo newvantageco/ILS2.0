@@ -1845,7 +1845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/orders/:orderId/consult-logs', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/orders/:orderId/consult-logs', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1871,7 +1871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/consult-logs/:id/respond', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.patch('/api/consult-logs/:id/respond', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1899,7 +1899,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Purchase Order routes (Phase 2)
-  app.post('/api/purchase-orders', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/purchase-orders', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1937,7 +1937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/purchase-orders', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/purchase-orders', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1967,7 +1967,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/purchase-orders/:id', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/purchase-orders/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1994,7 +1994,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/purchase-orders/:id/status', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.patch('/api/purchase-orders/:id/status', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2030,7 +2030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Technical Document routes (Phase 2)
-  app.post('/api/technical-documents', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/technical-documents', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2054,7 +2054,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/technical-documents', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/technical-documents', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2074,7 +2074,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/technical-documents/:id', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.delete('/api/technical-documents/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2097,7 +2097,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PDF and Email routes
-  app.get('/api/purchase-orders/:id/pdf', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/purchase-orders/:id/pdf', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2229,7 +2229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Settings routes
-  app.get('/api/settings/organization', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/settings/organization', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2246,7 +2246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/settings/organization', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.put('/api/settings/organization', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2269,7 +2269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/settings/preferences', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/settings/preferences', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const preferences = await storage.getUserPreferences(userId);
@@ -2280,7 +2280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/settings/preferences', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.put('/api/settings/preferences', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       
@@ -2299,7 +2299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin routes
-  app.get('/api/admin/users', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/admin/users', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2316,7 +2316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/stats', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/admin/stats', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2333,7 +2333,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/admin/users/:id', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.patch('/api/admin/users/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2375,7 +2375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/admin/users/:id', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.delete('/api/admin/users/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2418,7 +2418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== Platform Admin Routes ====================
   
   // Platform admin - Get all users across all companies
-  app.get('/api/platform-admin/users', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/platform-admin/users', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2436,7 +2436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Platform admin - Get all companies
-  app.get('/api/platform-admin/companies', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/platform-admin/companies', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2454,7 +2454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Platform admin - Update any user
-  app.patch('/api/platform-admin/users/:id', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.patch('/api/platform-admin/users/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2476,7 +2476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Platform admin - Reset user password
-  app.post('/api/platform-admin/users/:id/reset-password', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/platform-admin/users/:id/reset-password', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2507,7 +2507,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Platform admin - Delete any user
-  app.delete('/api/platform-admin/users/:id', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.delete('/api/platform-admin/users/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2538,7 +2538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== Company Admin Routes ====================
   
   // Company admin - Get company profile
-  app.get('/api/company-admin/profile', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/company-admin/profile', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2564,7 +2564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Company admin - Update company profile
-  app.patch('/api/company-admin/profile', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.patch('/api/company-admin/profile', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2590,7 +2590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Company admin - Get company users
-  app.get('/api/company-admin/users', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/company-admin/users', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2613,7 +2613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Company admin - Get supplier relationships
-  app.get('/api/company-admin/suppliers', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/company-admin/suppliers', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2736,7 +2736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Company admin - Update user in company
-  app.patch('/api/company-admin/users/:userId', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.patch('/api/company-admin/users/:userId', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const adminUserId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(adminUserId);
@@ -4603,7 +4603,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
 
   // Get all companies (admin only)
-  app.get('/api/admin/companies', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/admin/companies', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
