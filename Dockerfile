@@ -70,6 +70,10 @@ COPY --from=builder --chown=nodejs:nodejs /app/migrations ./migrations
 # Copy public assets
 COPY --from=builder --chown=nodejs:nodejs /app/public ./public
 
+# Copy startup script
+COPY --chown=nodejs:nodejs scripts/docker-start.sh ./docker-start.sh
+RUN chmod +x ./docker-start.sh
+
 # Create uploads directory with correct permissions
 RUN mkdir -p /app/uploads /app/logs && chown -R nodejs:nodejs /app/uploads /app/logs
 
@@ -92,5 +96,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the application (run migrations first)
-CMD ["sh", "-c", "npm run db:push && node dist/index.js"]
+# Start the application (runs migrations via startup script)
+CMD ["./docker-start.sh"]
