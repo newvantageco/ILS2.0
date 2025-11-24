@@ -144,7 +144,7 @@ export function SmartSearch({
           animate={{ opacity: 1, y: 0 }}
           className="absolute z-50 w-full mt-2 bg-popover border rounded-lg shadow-lg p-6 text-center"
         >
-          <p className="text-sm text-muted-foreground">No results found for "{query}"</p>
+          <p className="text-sm text-muted-foreground">No results found for &ldquo;{query}&rdquo;</p>
         </motion.div>
       )}
     </div>

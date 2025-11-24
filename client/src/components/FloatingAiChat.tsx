@@ -210,7 +210,7 @@ export function FloatingAiChat() {
               <div className="flex flex-col items-center justify-center h-full text-center p-6">
                 <Bot className="w-12 h-12 text-muted-foreground mb-4" />
                 <p className="text-sm text-muted-foreground">
-                  Hello! I'm your AI assistant. Ask me anything about your
+                  Hello! I&apos;m your AI assistant. Ask me anything about your
                   business, inventory, patients, or how to use the system.
                 </p>
               </div>

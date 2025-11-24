@@ -134,7 +134,7 @@ export default function ExaminationList() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Today's Exams
+                Today&apos;s Exams
               </CardTitle>
             </CardHeader>
             <CardContent>

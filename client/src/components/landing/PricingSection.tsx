@@ -14,7 +14,7 @@ export function PricingSection() {
             Simple, Transparent Pricing
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Start free and upgrade when you're ready for advanced features
+            Start free and upgrade when you&apos;re ready for advanced features
           </p>
         </div>
 

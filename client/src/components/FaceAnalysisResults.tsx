@@ -325,7 +325,7 @@ export function FaceAnalysisResults({ analysis }: FaceAnalysisResultsProps) {
           </h3>
 
           <p className="text-sm text-purple-800 mb-4">
-            Based on your {formatFaceShape(faceShape)} face shape, we've curated personalized
+            Based on your {formatFaceShape(faceShape)} face shape, we&apos;ve curated personalized
             frame recommendations that will complement your features beautifully.
           </p>
 
