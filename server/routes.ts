@@ -1573,7 +1573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Email order sheet
-  app.post('/api/orders/:id/email', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/orders/:id/email', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2137,7 +2137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/purchase-orders/:id/email', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/purchase-orders/:id/email', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -4255,7 +4255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Order confirmation email route
-  app.post('/api/orders/:id/send-confirmation', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/orders/:id/send-confirmation', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -4419,7 +4419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Analyze order for non-adapt risk (called during order creation)
-  app.post('/api/orders/analyze-risk', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/orders/analyze-risk', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
