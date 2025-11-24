@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { eyeExaminations, patients, users } from '../../shared/schema';
-import { eq, and, desc, sql, gte, lt } from 'drizzle-orm';
+import { eq, and, desc, sql, gte, lt, isNull } from 'drizzle-orm';
 import { authenticateUser } from '../middleware/auth';
 import { z } from 'zod';
 import { createLogger } from '../utils/logger';
@@ -38,7 +38,11 @@ router.get('/recent', async (req, res) => {
     cutoffTime.setHours(cutoffTime.getHours() - hours);
 
     // Build query conditions explicitly to satisfy Drizzle's typing
-    const conditions: any[] = [eq(eyeExaminations.companyId, companyId as string)];
+    // Filter out soft-deleted records
+    const conditions: any[] = [
+      eq(eyeExaminations.companyId, companyId as string),
+      isNull(eyeExaminations.deletedAt)
+    ];
     if (status && status !== 'all') {
       conditions.push(eq(eyeExaminations.status, status as any));
     }
@@ -462,10 +466,11 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete examination (soft delete for finalized, hard delete for in_progress)
+// Delete examination (soft delete - data is preserved for healthcare compliance)
 router.delete('/:id', async (req, res) => {
   try {
     const companyId = req.user!.companyId;
+    const userId = req.user!.id;
     const { id } = req.params;
     if (!companyId) {
       return res.status(403).json({ error: 'Company context missing' });
@@ -485,18 +490,32 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Examination not found' });
     }
 
-    // Only allow deletion of in_progress examinations
+    // Check if already soft deleted
+    if (examination.deletedAt) {
+      return res.status(400).json({ error: 'Examination already deleted' });
+    }
+
+    // Only allow deletion of in_progress examinations (finalized are protected)
     if (examination.status === 'finalized') {
-      return res.status(403).json({ 
-        error: 'Cannot delete finalized examinations' 
+      return res.status(403).json({
+        error: 'Cannot delete finalized examinations. Finalized records must be retained for healthcare compliance.'
       });
     }
 
+    // Soft delete - set deletedAt timestamp instead of removing data
     await db
-      .delete(eyeExaminations)
+      .update(eyeExaminations)
+      .set({
+        deletedAt: new Date(),
+        deletedBy: userId,
+      })
       .where(eq(eyeExaminations.id, id));
 
-    res.json({ message: 'Examination deleted successfully' });
+    logger.info({ examinationId: id, userId, companyId }, 'Examination soft deleted');
+    res.json({
+      message: 'Examination deleted successfully',
+      note: 'Data has been soft-deleted and can be recovered if needed'
+    });
   } catch (error) {
     logger.error({ error }, 'Error deleting examination');
     res.status(500).json({ error: 'Failed to delete examination' });

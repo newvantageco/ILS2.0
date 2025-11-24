@@ -1552,6 +1552,10 @@ export const eyeExaminations = pgTable("eye_examinations", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+
+  // Soft Delete
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by", { length: 255 }),
 });
 
 export const prescriptions = pgTable("prescriptions", {
@@ -1672,6 +1676,10 @@ export const prescriptions = pgTable("prescriptions", {
   createdBy: varchar("created_by", { length: 255 }),
   updatedBy: varchar("updated_by", { length: 255 }),
   changeHistory: jsonb("change_history").default(sql`'[]'::jsonb`),
+
+  // Soft Delete
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by", { length: 255 }),
 }, (table) => [
   index("idx_prescriptions_test_room").on(table.testRoomName),
   index("idx_prescriptions_goc_number").on(table.prescriberGocNumber),
@@ -1734,9 +1742,13 @@ export const testRoomBookings = pgTable("test_room_bookings", {
   // Remote access tracking
   isRemoteSession: boolean("is_remote_session").default(false),
   remoteAccessUrl: text("remote_access_url"),
-  
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+
+  // Soft Delete
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by", { length: 255 }),
 }, (table) => [
   index("idx_bookings_test_room").on(table.testRoomId),
   index("idx_bookings_date").on(table.bookingDate),
@@ -1890,6 +1902,10 @@ export const invoices = pgTable("invoices", {
   invoiceDate: timestamp("invoice_date").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+
+  // Soft Delete
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by", { length: 255 }),
 });
 
 export const invoiceLineItems = pgTable("invoice_line_items", {
@@ -4396,6 +4412,10 @@ export const nhsClaims = pgTable("nhs_claims", {
   // Timestamps
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+
+  // Soft Delete
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by", { length: 255 }),
 }, (table) => [
   index("idx_nhs_claims_company").on(table.companyId),
   index("idx_nhs_claims_patient").on(table.patientId),
@@ -8847,6 +8867,10 @@ export const appointments = pgTable(
     // Rescheduling details
     rescheduledFrom: varchar("rescheduled_from").references(() => appointments.id),
     rescheduledTo: varchar("rescheduled_to").references(() => appointments.id),
+
+    // Soft Delete
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    deletedBy: varchar("deleted_by").references(() => users.id),
   },
   (table) => [
     index("idx_appointments_company").on(table.companyId),
@@ -9236,6 +9260,10 @@ export const clinicalNotes = pgTable(
     // Attachments and references
     appointmentId: varchar("appointment_id").references(() => appointments.id),
     attachments: jsonb("attachments"), // Array of file references
+
+    // Soft Delete
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    deletedBy: varchar("deleted_by").references(() => users.id),
   },
   (table) => [
     index("idx_clinical_notes_company").on(table.companyId),
@@ -9278,6 +9306,10 @@ export const vitalSigns = pgTable(
     // Device information
     deviceId: varchar("device_id", { length: 100 }),
     deviceType: varchar("device_type", { length: 100 }),
+
+    // Soft Delete
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    deletedBy: varchar("deleted_by").references(() => users.id),
   },
   (table) => [
     index("idx_vital_signs_company").on(table.companyId),

@@ -28,7 +28,7 @@ import {
   insertPrescriptionTemplateSchema,
   insertClinicalProtocolSchema,
 } from "@shared/schema";
-import { eq, and, desc, sql, between, gte, lte } from "drizzle-orm";
+import { eq, and, desc, sql, between, gte, lte, isNull } from "drizzle-orm";
 import { isAuthenticated } from "../replitAuth";
 
 const router = Router();
@@ -427,7 +427,7 @@ router.patch('/test-room-bookings/:id/status', isAuthenticated, async (req: any,
   }
 });
 
-// Delete booking
+// Delete booking (soft delete - booking data preserved for audit)
 router.delete('/test-room-bookings/:id', isAuthenticated, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
@@ -435,11 +435,16 @@ router.delete('/test-room-bookings/:id', isAuthenticated, async (req: any, res: 
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    // Soft delete - set deletedAt timestamp instead of hard delete
     await db
-      .delete(testRoomBookings)
+      .update(testRoomBookings)
+      .set({
+        deletedAt: new Date(),
+        deletedBy: userId,
+      } as any)
       .where(eq(testRoomBookings.id, req.params.id));
 
-    res.json({ message: "Booking deleted" });
+    res.json({ message: "Booking deleted successfully" });
   } catch (error) {
     logger.error({ error: error instanceof Error ? error.message : String(error) }, "Error deleting booking");
     res.status(500).json({ message: "Failed to delete booking" });
