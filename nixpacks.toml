@@ -11,7 +11,8 @@ cmds = [
 
 [phases.build]
 cmds = [
-  "npm run build"
+  "npm run build",
+  "npm run db:push"
 ]
 
 [start]
