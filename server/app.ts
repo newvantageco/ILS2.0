@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
+import logger from '../utils/logger';
+
 
 const app = express();
 
@@ -57,7 +59,7 @@ app.use((req, res) => {
 });
 
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error(err);
+  logger.error(err);
   res.status(500).json({ error: 'Internal Server Error' });
 });
 

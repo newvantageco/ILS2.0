@@ -3,6 +3,8 @@ import { db } from '../db';
 import * as schema from '../../shared/schema';
 import { analyticsEventTypeEnum } from '../../shared/schema';
 import { InferModel } from 'drizzle-orm';
+import logger from '../utils/logger';
+
 
 type AnalyticsEventType = typeof analyticsEventTypeEnum.enumValues[number];
 type AnalyticsEvent = InferModel<typeof schema.analyticsEvents>;
@@ -74,7 +76,7 @@ export class DataAggregationServiceImpl implements DataAggregationService {
 
       return created as AnalyticsEvent;
     } catch (error) {
-      console.error('Error recording analytics event:', error);
+      logger.error('Error recording analytics event:', error);
       throw error;
     }
   }
@@ -124,7 +126,7 @@ export class DataAggregationServiceImpl implements DataAggregationService {
 
       return await baseQuery.where(and(...conditions));
     } catch (error) {
-      console.error('Error fetching analytics events:', error);
+      logger.error('Error fetching analytics events:', error);
       throw error;
     }
   }
@@ -182,7 +184,7 @@ export class DataAggregationServiceImpl implements DataAggregationService {
         };
       });
     } catch (error) {
-      console.error('Error getting aggregated metrics:', error);
+      logger.error('Error getting aggregated metrics:', error);
       throw error;
     }
   }
@@ -238,7 +240,7 @@ export class DataAggregationServiceImpl implements DataAggregationService {
         topIssueTypes: row.top_issue_types || []
       };
     } catch (error) {
-      console.error('Error getting quality metrics:', error);
+      logger.error('Error getting quality metrics:', error);
       throw error;
     }
   }

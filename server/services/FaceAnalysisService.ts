@@ -19,6 +19,8 @@ import { db } from "../../db/index.js";
 import { patientFaceAnalysis } from "../../shared/schema.js";
 import { eq, and, desc } from "drizzle-orm";
 import OpenAI from "openai";
+import logger from '../utils/logger';
+
 
 /**
  * Note: This service uses OpenAI directly (not ExternalAIService) because:
@@ -80,7 +82,7 @@ export class FaceAnalysisService {
         processingTime,
       };
     } catch (error: any) {
-      console.error("Face analysis error:", error);
+      logger.error("Face analysis error:", error);
       throw new Error(`Face analysis failed: ${error.message}`);
     }
   }
@@ -217,7 +219,7 @@ Photo quality requirements:
         calibrationDetails: parsed.calibration,
       };
     } catch (error: any) {
-      console.error("PD measurement error:", error);
+      logger.error("PD measurement error:", error);
       throw new Error(`PD measurement failed: ${error.message}`);
     }
   }

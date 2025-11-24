@@ -5,18 +5,20 @@
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { createDefaultRoles } from '../services/DefaultRolesService';
+import logger from '../utils/logger';
+
 
 async function createRolesForAllCompanies() {
-  console.log('🚀 Creating default roles for all companies...\n');
+  logger.info('🚀 Creating default roles for all companies...\n');
   
   try {
     // Get all companies
     const companies = await db.execute(sql`SELECT id, name FROM companies`);
     
-    console.log(`Found ${companies.rows.length} companies\n`);
+    logger.info(`Found ${companies.rows.length} companies\n`);
     
     for (const company of companies.rows) {
-      console.log(`📦 Creating roles for: ${company.name}`);
+      logger.info(`📦 Creating roles for: ${company.name}`);
       
       try {
         await createDefaultRoles(company.id as string);
@@ -30,30 +32,30 @@ async function createRolesForAllCompanies() {
           GROUP BY dr.id, dr.name
         `);
         
-        console.log(`   ✅ Created ${rolesResult.rows.length} roles`);
+        logger.info(`   ✅ Created ${rolesResult.rows.length} roles`);
         
         // Show created roles
         for (const role of rolesResult.rows) {
-          console.log(`      - ${role.name} (${role.permission_count} permissions)`);
+          logger.info(`      - ${role.name} (${role.permission_count} permissions)`);
         }
         
       } catch (error) {
         const err = error as Error;
         if (err.message.includes('already exist')) {
-          console.log(`   ⚠️  Roles already exist for this company`);
+          logger.info(`   ⚠️  Roles already exist for this company`);
         } else {
-          console.log(`   ❌ Error: ${err.message}`);
+          logger.info(`   ❌ Error: ${err.message}`);
         }
       }
       
-      console.log('');
+      logger.info('');
     }
     
-    console.log('✅ Done! All companies now have default roles.\n');
+    logger.info('✅ Done! All companies now have default roles.\n');
     process.exit(0);
     
   } catch (error) {
-    console.error('❌ Failed to create roles:', error);
+    logger.error('❌ Failed to create roles:', error);
     process.exit(1);
   }
 }

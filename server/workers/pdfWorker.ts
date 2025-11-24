@@ -5,6 +5,8 @@ import { orders } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import fs from 'fs/promises';
 import path from 'path';
+import logger from '../utils/logger';
+
 
 /**
  * PDF Job Data Types
@@ -50,14 +52,14 @@ export function createPDFWorker() {
   const connection = getRedisConnection();
   
   if (!connection) {
-    console.warn('⚠️  PDF worker not started - Redis not available');
+    logger.warn('⚠️  PDF worker not started - Redis not available');
     return null;
   }
 
   const worker = new Worker<PDFJobData>(
     'pdfs',
     async (job: Job<PDFJobData>) => {
-      console.log(`📄 Processing PDF job ${job.id}: ${job.data.type}`);
+      logger.info(`📄 Processing PDF job ${job.id}: ${job.data.type}`);
       
       try {
         let pdfPath: string;
@@ -87,14 +89,14 @@ export function createPDFWorker() {
             throw new Error(`Unknown PDF type: ${(job.data as any).type}`);
         }
         
-        console.log(`✅ PDF job ${job.id} completed: ${pdfPath}`);
+        logger.info(`✅ PDF job ${job.id} completed: ${pdfPath}`);
         return { 
           success: true, 
           path: pdfPath,
           generatedAt: new Date().toISOString()
         };
       } catch (error) {
-        console.error(`❌ PDF job ${job.id} failed:`, error);
+        logger.error(`❌ PDF job ${job.id} failed:`, error);
         throw error;
       }
     },
@@ -111,18 +113,18 @@ export function createPDFWorker() {
 
   // Worker event handlers
   worker.on('completed', (job) => {
-    console.log(`✅ PDF job ${job.id} completed`);
+    logger.info(`✅ PDF job ${job.id} completed`);
   });
 
   worker.on('failed', (job, err) => {
-    console.error(`❌ PDF job ${job?.id} failed:`, err.message);
+    logger.error(`❌ PDF job ${job?.id} failed:`, err.message);
   });
 
   worker.on('error', (err) => {
-    console.error('PDF worker error:', err);
+    logger.error('PDF worker error:', err);
   });
 
-  console.log('✅ PDF worker started');
+  logger.info('✅ PDF worker started');
   return worker;
 }
 
@@ -163,7 +165,7 @@ async function generateOrderSheet(data: OrderSheetPDFData): Promise<string> {
   // Write HTML to file (PDF generation will be added later with Puppeteer)
   await fs.writeFile(filepath.replace('.pdf', '.html'), html);
   
-  console.log(`✅ Order sheet HTML generated: ${filepath}`);
+  logger.info(`✅ Order sheet HTML generated: ${filepath}`);
   return filepath;
 }
 
@@ -193,7 +195,7 @@ async function generateLabWorkTicket(data: LabWorkTicketPDFData): Promise<string
   const html = generateLabTicketHTML(order);
   await fs.writeFile(filepath.replace('.pdf', '.html'), html);
   
-  console.log(`✅ Lab work ticket HTML generated: ${filepath}`);
+  logger.info(`✅ Lab work ticket HTML generated: ${filepath}`);
   return filepath;
 }
 
@@ -227,7 +229,7 @@ async function generateExaminationForm(data: ExaminationFormPDFData): Promise<st
   const html = generateExaminationFormHTML(patient, examination);
   await fs.writeFile(filepath.replace('.pdf', '.html'), html);
   
-  console.log(`✅ Examination form HTML generated: ${filepath}`);
+  logger.info(`✅ Examination form HTML generated: ${filepath}`);
   return filepath;
 }
 
@@ -257,7 +259,7 @@ async function generateInvoice(data: InvoicePDFData): Promise<string> {
   const html = generateInvoiceHTML(order);
   await fs.writeFile(filepath.replace('.pdf', '.html'), html);
   
-  console.log(`✅ Invoice HTML generated: ${filepath}`);
+  logger.info(`✅ Invoice HTML generated: ${filepath}`);
   return filepath;
 }
 
@@ -287,7 +289,7 @@ async function generateReceipt(data: ReceiptPDFData): Promise<string> {
   const html = generateReceiptHTML(order);
   await fs.writeFile(filepath.replace('.pdf', '.html'), html);
   
-  console.log(`✅ Receipt HTML generated: ${filepath}`);
+  logger.info(`✅ Receipt HTML generated: ${filepath}`);
   return filepath;
 }
 
@@ -400,7 +402,7 @@ function generateReceiptHTML(order: any): string {
  * Fallback: Generate PDF immediately if queue not available
  */
 export async function generatePDFImmediate(data: PDFJobData): Promise<string> {
-  console.log(`⚠️  [FALLBACK] Generating PDF immediately: ${data.type}`);
+  logger.info(`⚠️  [FALLBACK] Generating PDF immediately: ${data.type}`);
   
   switch (data.type) {
     case 'order-sheet':

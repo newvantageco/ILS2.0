@@ -2,6 +2,8 @@ import { sql, desc, eq, and } from 'drizzle-orm';
 import { db } from '../db';
 import * as schema from '../../shared/schema';
 import { InferModel } from 'drizzle-orm';
+import logger from '../utils/logger';
+
 
 type Return = InferModel<typeof schema.returns>;
 type NonAdaptation = InferModel<typeof schema.nonAdapts>;
@@ -84,7 +86,7 @@ export class ReturnsServiceImpl implements ReturnsService {
 
       return created;
     } catch (error) {
-      console.error('Error recording return:', error);
+      logger.error('Error recording return:', error);
       throw error;
     }
   }
@@ -128,7 +130,7 @@ export class ReturnsServiceImpl implements ReturnsService {
 
       return await query;
     } catch (error) {
-      console.error('Error fetching returns:', error);
+      logger.error('Error fetching returns:', error);
       throw error;
     }
   }
@@ -142,7 +144,7 @@ export class ReturnsServiceImpl implements ReturnsService {
         })
         .where(eq(schema.returns.id, returnId));
     } catch (error) {
-      console.error('Error updating return status:', error);
+      logger.error('Error updating return status:', error);
       throw error;
     }
   }
@@ -158,7 +160,7 @@ export class ReturnsServiceImpl implements ReturnsService {
 
       return created;
     } catch (error) {
-      console.error('Error recording non-adaptation:', error);
+      logger.error('Error recording non-adaptation:', error);
       throw error;
     }
   }
@@ -197,7 +199,7 @@ export class ReturnsServiceImpl implements ReturnsService {
 
       return await query;
     } catch (error) {
-      console.error('Error fetching non-adaptations:', error);
+      logger.error('Error fetching non-adaptations:', error);
       throw error;
     }
   }
@@ -211,7 +213,7 @@ export class ReturnsServiceImpl implements ReturnsService {
         })
         .where(eq(schema.nonAdapts.id, id));
     } catch (error) {
-      console.error('Error updating non-adaptation resolution:', error);
+      logger.error('Error updating non-adaptation resolution:', error);
       throw error;
     }
   }
@@ -259,7 +261,7 @@ export class ReturnsServiceImpl implements ReturnsService {
         count: Number(row.count)
       }));
     } catch (error) {
-      console.error('Error calculating return rate:', error);
+      logger.error('Error calculating return rate:', error);
       throw error;
     }
   }
@@ -314,7 +316,7 @@ export class ReturnsServiceImpl implements ReturnsService {
         byReason: row.by_reason || []
       };
     } catch (error) {
-      console.error('Error getting non-adaptation analytics:', error);
+      logger.error('Error getting non-adaptation analytics:', error);
       throw error;
     }
   }

@@ -233,7 +233,7 @@ export const auditLog = async (req: AuthenticatedRequest, res: Response, next: N
     };
 
     if (process.env.NODE_ENV !== 'test') {
-      console.info('request.audit', logEntry);
+      logger.info('request.audit', logEntry);
     }
   });
 
@@ -267,7 +267,7 @@ export const enforcePatientDataAccess = async (req: AuthenticatedRequest, res: R
     
     next();
   } catch (error) {
-    console.error('Error checking patient access:', error);
+    logger.error('Error checking patient access:', error);
     res.status(500).json({ error: 'Failed to verify patient access' });
   }
 };
@@ -287,7 +287,7 @@ export const enforceRetentionPolicy = async (req: AuthenticatedRequest, res: Res
     
     next();
   } catch (error) {
-    console.error('Error enforcing retention policy:', error);
+    logger.error('Error enforcing retention policy:', error);
     res.status(500).json({ error: 'Failed to verify retention policy' });
   }
 };

@@ -6,6 +6,8 @@
  */
 
 import { Response } from 'express';
+import logger from '../utils/logger';
+
 
 export enum ErrorCode {
   // Authentication & Authorization
@@ -271,7 +273,7 @@ export function errorHandler(
   }
 
   // Default internal server error
-  console.error('Unhandled error:', error);
+  logger.error('Unhandled error:', error);
   return ErrorResponses.internalError(
     res, 
     process.env.NODE_ENV === 'production' 

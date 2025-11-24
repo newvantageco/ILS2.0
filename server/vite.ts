@@ -5,6 +5,8 @@ import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
+import logger from '../utils/logger';
+
 
 const viteLogger = createLogger();
 
@@ -16,7 +18,7 @@ export function log(message: string, source = "express") {
     hour12: true,
   });
 
-  console.log(`${formattedTime} [${source}] ${message}`);
+  logger.info(`${formattedTime} [${source}] ${message}`);
 }
 
 export async function setupVite(app: Express, server: Server) {
@@ -66,7 +68,7 @@ export async function setupVite(app: Express, server: Server) {
 
       // Check if the template exists
       if (!fs.existsSync(clientTemplate)) {
-        console.error(`Template file not found: ${clientTemplate}`);
+        logger.error(`Template file not found: ${clientTemplate}`);
         return res.status(500).send('Server configuration error');
       }
 

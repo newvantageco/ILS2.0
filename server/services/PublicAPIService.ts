@@ -21,6 +21,8 @@
 import { storage } from "../storage";
 import { eventBus } from "./EventBus";
 import crypto from "crypto";
+import logger from '../utils/logger';
+
 
 export interface APIKey {
   id?: number;
@@ -91,7 +93,7 @@ export class PublicAPIService {
       const created = await (this.storage as any).createAPIKey(apiKey);
       apiKey.id = created.id;
     } else {
-      console.log("API Key created (storage method not available):", apiKey);
+      logger.info("API Key created (storage method not available):", apiKey);
       apiKey.id = Math.floor(Math.random() * 100000);
     }
 
@@ -114,7 +116,7 @@ export class PublicAPIService {
       if (typeof (this.storage as any).getAPIKeyByHash === "function") {
         apiKey = await (this.storage as any).getAPIKeyByHash(hashedKey);
       } else {
-        console.log("API Key lookup (storage method not available)");
+        logger.info("API Key lookup (storage method not available)");
         return { valid: false, error: "API key validation unavailable" };
       }
 
@@ -134,7 +136,7 @@ export class PublicAPIService {
 
       return { valid: true, apiKey };
     } catch (error) {
-      console.error("API key validation error:", error);
+      logger.error("API key validation error:", error);
       return { valid: false, error: "Validation failed" };
     }
   }
@@ -246,7 +248,7 @@ export class PublicAPIService {
 
         next();
       } catch (error) {
-        console.error("Authentication middleware error:", error);
+        logger.error("Authentication middleware error:", error);
         res.status(500).json({
           error: "Authentication failed",
           message: error instanceof Error ? error.message : "Unknown error",
@@ -306,7 +308,7 @@ export class PublicAPIService {
       const created = await (this.storage as any).createWebhook(webhook);
       return { id: created.id, secret: webhookSecret };
     } else {
-      console.log("Webhook registered (storage method not available):", webhook);
+      logger.info("Webhook registered (storage method not available):", webhook);
       return { id: Math.floor(Math.random() * 100000), secret: webhookSecret };
     }
   }
@@ -328,7 +330,7 @@ export class PublicAPIService {
           eventType
         );
       } else {
-        console.log("Webhook lookup (storage method not available)");
+        logger.info("Webhook lookup (storage method not available)");
         return;
       }
 
@@ -373,9 +375,9 @@ export class PublicAPIService {
             });
           }
 
-          console.log(`Webhook delivered to ${webhook.url}: ${response.status}`);
+          logger.info(`Webhook delivered to ${webhook.url}: ${response.status}`);
         } catch (error) {
-          console.error(`Webhook delivery failed (${webhook.url}):`, error);
+          logger.error(`Webhook delivery failed (${webhook.url}):`, error);
 
           // Log failed delivery
           if (typeof (this.storage as any).createWebhookDelivery === "function") {
@@ -390,7 +392,7 @@ export class PublicAPIService {
         }
       }
     } catch (error) {
-      console.error("Webhook sending error:", error);
+      logger.error("Webhook sending error:", error);
     }
   }
 
@@ -422,7 +424,7 @@ export class PublicAPIService {
       });
     }
 
-    console.log(`Webhook listeners setup for ${eventTypes.length} event types`);
+    logger.info(`Webhook listeners setup for ${eventTypes.length} event types`);
   }
 
   /**

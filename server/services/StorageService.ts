@@ -8,6 +8,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { promisify } from 'util';
 import { cacheService } from './CacheService';
+import logger from '../utils/logger';
+
 
 const writeFile = promisify(fs.writeFile);
 const unlink = promisify(fs.unlink);
@@ -27,7 +29,7 @@ try {
   DeleteObjectCommand = AWS.DeleteObjectCommand;
   GetObjectCommand = AWS.GetObjectCommand;
 } catch (e) {
-  console.warn('@aws-sdk/client-s3 not installed. S3 storage unavailable.');
+  logger.warn('@aws-sdk/client-s3 not installed. S3 storage unavailable.');
 }
 
 interface UploadOptions {
@@ -85,8 +87,8 @@ class StorageService {
 
   private initializeS3(): void {
     if (!S3Client) {
-      console.error('S3 provider selected but @aws-sdk/client-s3 not installed');
-      console.log('Falling back to local storage');
+      logger.error('S3 provider selected but @aws-sdk/client-s3 not installed');
+      logger.info('Falling back to local storage');
       this.provider = 'local';
       this.initializeLocal();
       return;
@@ -96,8 +98,8 @@ class StorageService {
     this.s3Region = process.env.AWS_REGION || 'us-east-1';
 
     if (!this.s3Bucket) {
-      console.error('AWS_S3_BUCKET not configured');
-      console.log('Falling back to local storage');
+      logger.error('AWS_S3_BUCKET not configured');
+      logger.info('Falling back to local storage');
       this.provider = 'local';
       this.initializeLocal();
       return;
@@ -111,13 +113,13 @@ class StorageService {
       },
     });
 
-    console.log(`✓ S3 storage initialized (bucket: ${this.s3Bucket}, region: ${this.s3Region})`);
+    logger.info(`✓ S3 storage initialized (bucket: ${this.s3Bucket}, region: ${this.s3Region})`);
   }
 
   private initializeR2(): void {
     if (!S3Client) {
-      console.error('Cloudflare R2 requires @aws-sdk/client-s3');
-      console.log('Falling back to local storage');
+      logger.error('Cloudflare R2 requires @aws-sdk/client-s3');
+      logger.info('Falling back to local storage');
       this.provider = 'local';
       this.initializeLocal();
       return;
@@ -129,8 +131,8 @@ class StorageService {
     this.s3Bucket = process.env.CLOUDFLARE_R2_BUCKET;
 
     if (!accountId || !accessKeyId || !secretAccessKey || !this.s3Bucket) {
-      console.error('Cloudflare R2 not fully configured');
-      console.log('Falling back to local storage');
+      logger.error('Cloudflare R2 not fully configured');
+      logger.info('Falling back to local storage');
       this.provider = 'local';
       this.initializeLocal();
       return;
@@ -145,7 +147,7 @@ class StorageService {
       },
     });
 
-    console.log(`✓ Cloudflare R2 storage initialized (bucket: ${this.s3Bucket})`);
+    logger.info(`✓ Cloudflare R2 storage initialized (bucket: ${this.s3Bucket})`);
   }
 
   private initializeLocal(): void {
@@ -153,7 +155,7 @@ class StorageService {
     if (!fs.existsSync(this.localBasePath)) {
       fs.mkdirSync(this.localBasePath, { recursive: true });
     }
-    console.log(`✓ Local storage initialized (path: ${this.localBasePath})`);
+    logger.info(`✓ Local storage initialized (path: ${this.localBasePath})`);
   }
 
   /**
@@ -268,7 +270,7 @@ class StorageService {
         return this.deleteCloud(key);
       }
     } catch (error) {
-      console.error(`Failed to delete file ${key}:`, error);
+      logger.error(`Failed to delete file ${key}:`, error);
       return false;
     }
   }
@@ -319,7 +321,7 @@ class StorageService {
 
       return await getSignedUrl(this.s3Client, command, { expiresIn });
     } catch (error) {
-      console.error('Failed to generate signed URL:', error);
+      logger.error('Failed to generate signed URL:', error);
       // Fallback to regular URL
       return `https://${this.s3Bucket}.s3.${this.s3Region}.amazonaws.com/${key}`;
     }
@@ -359,7 +361,7 @@ class StorageService {
           lastModified: response.LastModified,
         };
       } catch (error) {
-        console.error('Failed to get metadata:', error);
+        logger.error('Failed to get metadata:', error);
         return null;
       }
     }
@@ -394,7 +396,7 @@ class StorageService {
         return true;
       }
     } catch (error) {
-      console.error('Failed to copy file:', error);
+      logger.error('Failed to copy file:', error);
       return false;
     }
   }
@@ -450,7 +452,7 @@ class StorageService {
       const response = await this.s3Client.send(command);
       return (response.Contents || []).map((obj: any) => obj.Key);
     } catch (error) {
-      console.error('Failed to list files:', error);
+      logger.error('Failed to list files:', error);
       return [];
     }
   }

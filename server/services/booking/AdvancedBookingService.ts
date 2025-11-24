@@ -15,6 +15,8 @@ import { db } from "../../../db/index.js";
 import { appointments, testRooms, users, patients, companies } from "../../../shared/schema.js";
 import { eq, and, gte, lte, or, sql, desc, asc } from "drizzle-orm";
 import { addDays, addMinutes, format, parseISO, startOfDay, endOfDay, setHours, setMinutes } from "date-fns";
+import logger from '../utils/logger';
+
 
 export interface TimeSlot {
   start: Date;
@@ -260,7 +262,7 @@ export class AdvancedBookingService {
     // This would integrate with your notification service
     // For now, we'll create a reminder record
 
-    console.log(`Reminder scheduled for appointment ${appointmentId}:`, config);
+    logger.info(`Reminder scheduled for appointment ${appointmentId}:`, config);
 
     // Implementation would:
     // 1. Calculate reminder send time (appointment date - advanceDays)
@@ -294,7 +296,7 @@ export class AdvancedBookingService {
     // 3. Notify patients in priority order
     // 4. Mark entries as notified
 
-    console.log(`Processing waitlist for company ${companyId}`);
+    logger.info(`Processing waitlist for company ${companyId}`);
   }
 
   /**
@@ -373,7 +375,7 @@ export class AdvancedBookingService {
     `;
 
     // Send via appropriate channel(s)
-    console.log(`Sending confirmation for appointment ${appointmentId}:`, message);
+    logger.info(`Sending confirmation for appointment ${appointmentId}:`, message);
   }
 
   /**

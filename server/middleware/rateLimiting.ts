@@ -6,6 +6,8 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { cacheService } from '../services/CacheService';
+import logger from '../utils/logger';
+
 
 interface RateLimitConfig {
   windowMs: number;      // Time window in milliseconds
@@ -176,7 +178,7 @@ export function createCompanyRateLimiter(config: RateLimitConfig) {
 
       next();
     } catch (error) {
-      console.error('Rate limiting error:', error);
+      logger.error('Rate limiting error:', error);
       // On error, allow the request to proceed (fail open)
       next();
     }
@@ -257,7 +259,7 @@ export async function getCompanyRateLimitStatus(
   try {
     return await getRateLimitInfo(companyId, windowMs);
   } catch (error) {
-    console.error('Failed to get rate limit status:', error);
+    logger.error('Failed to get rate limit status:', error);
     return null;
   }
 }

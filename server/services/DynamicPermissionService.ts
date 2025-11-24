@@ -7,6 +7,8 @@
 
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
+import logger from '../utils/logger';
+
 
 export interface UserPermissions {
   userId: string;
@@ -122,7 +124,7 @@ export async function getUserPermissions(userId: string): Promise<UserPermission
     };
 
   } catch (error) {
-    console.error('Error fetching user permissions:', error);
+    logger.error('Error fetching user permissions:', error);
     throw error;
   }
 }
@@ -175,7 +177,7 @@ export async function hasPermission(
     const permissions = await getUserPermissions(userId);
     return permissions.sessionPermissions.includes(permissionSlug);
   } catch (error) {
-    console.error('Error checking permission:', error);
+    logger.error('Error checking permission:', error);
     return false;
   }
 }
@@ -193,7 +195,7 @@ export async function hasAllPermissions(
       permissions.sessionPermissions.includes(slug)
     );
   } catch (error) {
-    console.error('Error checking permissions:', error);
+    logger.error('Error checking permissions:', error);
     return false;
   }
 }
@@ -211,7 +213,7 @@ export async function hasAnyPermission(
       permissions.sessionPermissions.includes(slug)
     );
   } catch (error) {
-    console.error('Error checking permissions:', error);
+    logger.error('Error checking permissions:', error);
     return false;
   }
 }
@@ -240,7 +242,7 @@ export async function cachePermissionsInSession(
       WHERE sid = ${sessionId}
     `);
   } catch (error) {
-    console.error('Error caching permissions:', error);
+    logger.error('Error caching permissions:', error);
     // Don't throw - this is not critical
   }
 }
@@ -256,7 +258,7 @@ export async function invalidatePermissionCache(userId: string): Promise<void> {
       WHERE user_id = ${userId}
     `);
   } catch (error) {
-    console.error('Error invalidating permission cache:', error);
+    logger.error('Error invalidating permission cache:', error);
   }
 }
 
@@ -273,7 +275,7 @@ export async function getLockedPermissions(userId: string): Promise<string[]> {
       perm => !permissions.sessionPermissions.includes(perm)
     );
   } catch (error) {
-    console.error('Error getting locked permissions:', error);
+    logger.error('Error getting locked permissions:', error);
     return [];
   }
 }
@@ -311,7 +313,7 @@ export async function getPermissionDetails(permissionSlug: string): Promise<{
       category: row.category as string
     };
   } catch (error) {
-    console.error('Error getting permission details:', error);
+    logger.error('Error getting permission details:', error);
     return null;
   }
 }
@@ -357,7 +359,7 @@ export async function assignRoleToUser(
       WHERE u.id = ${userId}
     `);
   } catch (error) {
-    console.error('Error assigning role:', error);
+    logger.error('Error assigning role:', error);
     throw error;
   }
 }
@@ -398,7 +400,7 @@ export async function removeRoleFromUser(
       WHERE u.id = ${userId}
     `);
   } catch (error) {
-    console.error('Error removing role:', error);
+    logger.error('Error removing role:', error);
     throw error;
   }
 }

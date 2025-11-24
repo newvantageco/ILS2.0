@@ -10,6 +10,8 @@ import { db } from '../db';
 import { orders, companies, patients, emailTemplates, emailLogs } from '../../shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { emailTrackingService } from './EmailTrackingService';
+import logger from '../utils/logger';
+
 
 export type OrderStatus = 'pending' | 'in_production' | 'quality_check' | 'shipped' | 'completed' | 'on_hold' | 'cancelled';
 
@@ -56,14 +58,14 @@ class OrderEmailService {
     try {
       // Skip emails for on_hold and cancelled
       if (newStatus === 'on_hold' || newStatus === 'cancelled') {
-        console.log(`[OrderEmailService] Skipping email for status: ${newStatus}`);
+        logger.info(`[OrderEmailService] Skipping email for status: ${newStatus}`);
         return;
       }
 
       // Get order details
       const order = await this.getOrderWithDetails(orderId);
       if (!order) {
-        console.error(`[OrderEmailService] Order ${orderId} not found`);
+        logger.error(`[OrderEmailService] Order ${orderId} not found`);
         return;
       }
 
@@ -74,7 +76,7 @@ class OrderEmailService {
         .limit(1);
 
       if (!company.length) {
-        console.error(`[OrderEmailService] Company ${order.companyId} not found`);
+        logger.error(`[OrderEmailService] Company ${order.companyId} not found`);
         return;
       }
 
@@ -87,7 +89,7 @@ class OrderEmailService {
         .limit(1);
 
       if (!patient.length) {
-        console.error(`[OrderEmailService] Patient ${order.patientId} not found`);
+        logger.error(`[OrderEmailService] Patient ${order.patientId} not found`);
         return;
       }
 
@@ -99,7 +101,7 @@ class OrderEmailService {
       // Get template name for this status
       const templateName = this.statusToTemplateName[newStatus];
       if (!templateName) {
-        console.log(`[OrderEmailService] No template configured for status: ${newStatus}`);
+        logger.info(`[OrderEmailService] No template configured for status: ${newStatus}`);
         return;
       }
 
@@ -115,7 +117,7 @@ class OrderEmailService {
         .limit(1);
 
       if (!template) {
-        console.error(`[OrderEmailService] Template not found: ${templateName}`);
+        logger.error(`[OrderEmailService] Template not found: ${templateName}`);
         return;
       }
 
@@ -136,9 +138,9 @@ class OrderEmailService {
         }
       );
 
-      console.log(`[OrderEmailService] Sent ${newStatus} email for order ${order.orderNumber} to ${emailContext.customerEmail}`);
+      logger.info(`[OrderEmailService] Sent ${newStatus} email for order ${order.orderNumber} to ${emailContext.customerEmail}`);
     } catch (error) {
-      console.error('[OrderEmailService] Error sending order status email:', error);
+      logger.error('[OrderEmailService] Error sending order status email:', error);
       // Don't throw - we don't want email failures to break order updates
     }
   }

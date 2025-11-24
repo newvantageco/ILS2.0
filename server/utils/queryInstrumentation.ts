@@ -5,6 +5,8 @@
 
 import { performance } from 'perf_hooks';
 import { trackQuery } from '../middleware/performance';
+import logger from '../utils/logger';
+
 
 /**
  * Instrument a database query with performance tracking
@@ -31,13 +33,13 @@ export async function instrumentQuery<T>(
 
     // Log in development
     if (process.env.NODE_ENV === 'development' && duration > 50) {
-      console.debug(`🔍 Query "${queryName}": ${duration.toFixed(2)}ms`);
+      logger.debug(`🔍 Query "${queryName}": ${duration.toFixed(2)}ms`);
     }
 
     return result;
   } catch (error) {
     const duration = performance.now() - startTime;
-    console.error(`❌ Query "${queryName}" failed after ${duration.toFixed(2)}ms:`, error);
+    logger.error(`❌ Query "${queryName}" failed after ${duration.toFixed(2)}ms:`, error);
     throw error;
   }
 }
@@ -83,9 +85,9 @@ export class QueryBatch {
     const totalDuration = performance.now() - this.batchStartTime;
 
     if (totalDuration > 200 || process.env.NODE_ENV === 'development') {
-      console.log(`📦 Batch "${this.batchName}": ${totalDuration.toFixed(2)}ms total`);
+      logger.info(`📦 Batch "${this.batchName}": ${totalDuration.toFixed(2)}ms total`);
       this.queries.forEach(q => {
-        console.log(`  - ${q.name}: ${q.duration.toFixed(2)}ms`);
+        logger.info(`  - ${q.name}: ${q.duration.toFixed(2)}ms`);
       });
     }
 
@@ -137,16 +139,16 @@ export function createQueryMonitor(context: string) {
 
     log: () => {
       const summary = this.summary();
-      console.log(`📊 Query Monitor [${context}]:`, {
+      logger.info(`📊 Query Monitor [${context}]:`, {
         total: `${summary.totalDuration}ms`,
         queries: summary.queryCount,
         avg: `${summary.avgDuration}ms`,
       });
 
       if (summary.queries.length > 0) {
-        console.log('  Queries:');
+        logger.info('  Queries:');
         summary.queries.forEach(q => {
-          console.log(`    - ${q.query}: ${q.duration}ms`);
+          logger.info(`    - ${q.query}: ${q.duration}ms`);
         });
       }
     },
@@ -192,7 +194,7 @@ export async function cachedQuery<T>(
   // Check cache
   const cached = queryCache.get(options.key);
   if (cached && cached.expiry > now) {
-    console.debug(`🎯 Cache hit: ${options.key}`);
+    logger.debug(`🎯 Cache hit: ${options.key}`);
     return cached.data as T;
   }
 
@@ -205,7 +207,7 @@ export async function cachedQuery<T>(
     expiry: now + options.ttl * 1000,
   });
 
-  console.debug(`💾 Cache set: ${options.key} (TTL: ${options.ttl}s)`);
+  logger.debug(`💾 Cache set: ${options.key} (TTL: ${options.ttl}s)`);
 
   return result;
 }
@@ -216,11 +218,11 @@ export async function cachedQuery<T>(
 export function clearQueryCache(key?: string) {
   if (key) {
     queryCache.delete(key);
-    console.debug(`🗑️  Cache cleared: ${key}`);
+    logger.debug(`🗑️  Cache cleared: ${key}`);
   } else {
     const size = queryCache.size;
     queryCache.clear();
-    console.debug(`🗑️  Cache cleared: ${size} entries`);
+    logger.debug(`🗑️  Cache cleared: ${size} entries`);
   }
 }
 
@@ -239,7 +241,7 @@ export function cleanupExpiredCache() {
   });
 
   if (cleaned > 0) {
-    console.debug(`🧹 Cleaned up ${cleaned} expired cache entries`);
+    logger.debug(`🧹 Cleaned up ${cleaned} expired cache entries`);
   }
 }
 

@@ -96,7 +96,7 @@ export function errorHandler(
     });
   } catch (logError) {
     // If logging fails, just console.error it
-    console.error('Error handler logging failed:', logError);
+    logger.error('Error handler logging failed:', logError);
   }
 
   // Send error response
@@ -105,7 +105,7 @@ export function errorHandler(
       res.status(apiError.statusCode).json(apiError.toJSON());
     }
   } catch (responseError) {
-    console.error('Error sending response:', responseError);
+    logger.error('Error sending response:', responseError);
   }
 }
 

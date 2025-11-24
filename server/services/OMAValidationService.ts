@@ -21,6 +21,8 @@
 import { storage } from "../storage";
 import { eventBus } from "./EventBus";
 import { parseOMAFile, isValidOMAFile, type OMAData } from "@shared/omaParser";
+import logger from '../utils/logger';
+
 
 // Validation result types
 export interface ValidationResult {
@@ -488,11 +490,11 @@ export class OMAValidationService {
       if (typeof (this.storage as any).createOMAValidation === "function") {
         await (this.storage as any).createOMAValidation(validationRecord);
       } else {
-        console.log("OMA Validation result (storage method not available):", validationRecord);
+        logger.info("OMA Validation result (storage method not available):", validationRecord);
         // In production, you'd want to implement storage.createOMAValidation()
       }
     } catch (error) {
-      console.error("Failed to store OMA validation result:", error);
+      logger.error("Failed to store OMA validation result:", error);
       // Don't throw - validation should succeed even if storage fails
     }
   }
@@ -532,18 +534,18 @@ export class OMAValidationService {
             stats.needsReview++;
           }
         } catch (error) {
-          console.error(`Failed to validate order ${order.id}:`, error);
+          logger.error(`Failed to validate order ${order.id}:`, error);
           stats.errors++;
         }
       }
 
       // Emit batch completion event
       // Note: Remove this event as it's not in EventTypeMap
-      console.log("Batch validation complete:", stats);
+      logger.info("Batch validation complete:", stats);
 
       return stats;
     } catch (error) {
-      console.error("Batch validation failed:", error);
+      logger.error("Batch validation failed:", error);
       throw error;
     }
   }

@@ -7,6 +7,8 @@
 
 import fetch from 'node-fetch';
 import { TenantContext } from '../middleware/tenantContext';
+import logger from '../utils/logger';
+
 
 export class AIService {
   private aiServiceUrl: string;
@@ -70,7 +72,7 @@ export class AIService {
       };
       
     } catch (error) {
-      console.error('[AIService] Ophthalmic knowledge query failed:', error);
+      logger.error('[AIService] Ophthalmic knowledge query failed:', error);
       return {
         success: false,
         error: 'Failed to retrieve ophthalmic knowledge',
@@ -114,7 +116,7 @@ export class AIService {
       };
       
     } catch (error) {
-      console.error('[AIService] Sales query failed:', error);
+      logger.error('[AIService] Sales query failed:', error);
       return {
         success: false,
         error: 'Failed to query sales data',
@@ -158,7 +160,7 @@ export class AIService {
       };
       
     } catch (error) {
-      console.error('[AIService] Inventory query failed:', error);
+      logger.error('[AIService] Inventory query failed:', error);
       return {
         success: false,
         error: 'Failed to query inventory data',
@@ -213,7 +215,7 @@ export class AIService {
       };
       
     } catch (error) {
-      console.error('[AIService] Patient analytics query failed:', error);
+      logger.error('[AIService] Patient analytics query failed:', error);
       return {
         success: false,
         error: 'Failed to query patient analytics',
@@ -255,7 +257,7 @@ export class AIService {
       return result;
       
     } catch (error) {
-      console.error('[AIService] Product recommendation failed:', error);
+      logger.error('[AIService] Product recommendation failed:', error);
       return {
         success: false,
         error: 'Failed to generate recommendation',
@@ -294,7 +296,7 @@ export class AIService {
       };
       
     } catch (error) {
-      console.error('[AIService] Health check failed:', error);
+      logger.error('[AIService] Health check failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         healthy: false,

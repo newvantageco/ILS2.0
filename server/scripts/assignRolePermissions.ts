@@ -5,6 +5,8 @@
 
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
+import logger from '../utils/logger';
+
 
 const COMPANY_ID = 'e635e4d5-0a44-4acf-a798-5ca3a450f601';
 
@@ -54,11 +56,11 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
 };
 
 async function assignRolePermissions() {
-  console.log('🔐 Assigning permissions to default roles...\n');
+  logger.info('🔐 Assigning permissions to default roles...\n');
 
   for (const [roleName, permissionSlugs] of Object.entries(ROLE_PERMISSIONS)) {
     try {
-      console.log(`📋 Processing role: ${roleName}`);
+      logger.info(`📋 Processing role: ${roleName}`);
 
       // Get role ID
       const roleResult = await db.execute(sql`
@@ -69,7 +71,7 @@ async function assignRolePermissions() {
       `);
 
       if (roleResult.rows.length === 0) {
-        console.log(`   ⚠️  Role not found, skipping...\n`);
+        logger.info(`   ⚠️  Role not found, skipping...\n`);
         continue;
       }
 
@@ -101,22 +103,22 @@ async function assignRolePermissions() {
         assigned++;
       }
 
-      console.log(`   ✅ Assigned ${assigned} permissions`);
+      logger.info(`   ✅ Assigned ${assigned} permissions`);
       if (notFound > 0) {
-        console.log(`   ⚠️  ${notFound} permissions not found in database`);
+        logger.info(`   ⚠️  ${notFound} permissions not found in database`);
       }
-      console.log('');
+      logger.info('');
 
     } catch (error: any) {
-      console.error(`   ❌ Error assigning permissions:`, error.message);
-      console.log('');
+      logger.error(`   ❌ Error assigning permissions:`, error.message);
+      logger.info('');
     }
   }
 
   // Verify the results
-  console.log('═══════════════════════════════════════════════════════════');
-  console.log('📊 Permission Assignment Summary');
-  console.log('═══════════════════════════════════════════════════════════\n');
+  logger.info('═══════════════════════════════════════════════════════════');
+  logger.info('📊 Permission Assignment Summary');
+  logger.info('═══════════════════════════════════════════════════════════\n');
 
   const summaryResult = await db.execute(sql`
     SELECT 
@@ -130,14 +132,14 @@ async function assignRolePermissions() {
   `);
 
   summaryResult.rows.forEach((row: any) => {
-    console.log(`   • ${row.role}: ${row.permission_count} permissions`);
+    logger.info(`   • ${row.role}: ${row.permission_count} permissions`);
   });
 
-  console.log('\n✅ Permission assignment complete!\n');
+  logger.info('\n✅ Permission assignment complete!\n');
   process.exit(0);
 }
 
 assignRolePermissions().catch(error => {
-  console.error('❌ Failed to assign permissions:', error);
+  logger.error('❌ Failed to assign permissions:', error);
   process.exit(1);
 });

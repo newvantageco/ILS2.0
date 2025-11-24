@@ -8,6 +8,8 @@
 import bcrypt from 'bcryptjs';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
+import logger from '../utils/logger';
+
 
 const TEST_PASSWORD = 'Test123!@#';
 const COMPANY_ID = 'e635e4d5-0a44-4acf-a798-5ca3a450f601'; // Master Test Company
@@ -59,13 +61,13 @@ const TEST_USERS: TestUser[] = [
 ];
 
 async function createTestUsers() {
-  console.log('🚀 Creating test users with different roles...\n');
+  logger.info('🚀 Creating test users with different roles...\n');
 
   const hashedPassword = await bcrypt.hash(TEST_PASSWORD, 10);
 
   for (const testUser of TEST_USERS) {
     try {
-      console.log(`📝 Creating user: ${testUser.email} (${testUser.roleName})`);
+      logger.info(`📝 Creating user: ${testUser.email} (${testUser.roleName})`);
 
       // Step 1: Get the role ID
       const roleResult = await db.execute(sql`
@@ -76,7 +78,7 @@ async function createTestUsers() {
       `);
 
       if (roleResult.rows.length === 0) {
-        console.log(`   ⚠️  Role "${testUser.roleName}" not found, skipping...`);
+        logger.info(`   ⚠️  Role "${testUser.roleName}" not found, skipping...`);
         continue;
       }
 
@@ -130,39 +132,39 @@ async function createTestUsers() {
         SET is_primary = true
       `);
 
-      console.log(`   ✅ Created user: ${testUser.email}`);
-      console.log(`      User ID: ${userId}`);
-      console.log(`      Role ID: ${roleId}\n`);
+      logger.info(`   ✅ Created user: ${testUser.email}`);
+      logger.info(`      User ID: ${userId}`);
+      logger.info(`      Role ID: ${roleId}\n`);
 
     } catch (error: any) {
-      console.error(`   ❌ Error creating user ${testUser.email}:`, error.message);
-      console.error(`      Details:`, error.detail || error.cause?.message || 'Unknown error');
-      console.log('');
+      logger.error(`   ❌ Error creating user ${testUser.email}:`, error.message);
+      logger.error(`      Details:`, error.detail || error.cause?.message || 'Unknown error');
+      logger.info('');
     }
   }
 
   // Show summary
-  console.log('═══════════════════════════════════════════════════════════');
-  console.log('📊 Test Users Summary');
-  console.log('═══════════════════════════════════════════════════════════');
-  console.log('');
-  console.log('🔑 All users have password: Test123!@#');
-  console.log('');
-  console.log('Test Users Created:');
+  logger.info('═══════════════════════════════════════════════════════════');
+  logger.info('📊 Test Users Summary');
+  logger.info('═══════════════════════════════════════════════════════════');
+  logger.info('');
+  logger.info('🔑 All users have password: Test123!@#');
+  logger.info('');
+  logger.info('Test Users Created:');
   TEST_USERS.forEach(user => {
-    console.log(`   • ${user.email} - ${user.roleName}`);
+    logger.info(`   • ${user.email} - ${user.roleName}`);
   });
-  console.log('');
-  console.log('Master User (Owner):');
-  console.log('   • test@master.com - Full Access (Owner)');
-  console.log('');
-  console.log('🎯 Login at: http://localhost:5173');
-  console.log('═══════════════════════════════════════════════════════════\n');
+  logger.info('');
+  logger.info('Master User (Owner):');
+  logger.info('   • test@master.com - Full Access (Owner)');
+  logger.info('');
+  logger.info('🎯 Login at: http://localhost:5173');
+  logger.info('═══════════════════════════════════════════════════════════\n');
 
   process.exit(0);
 }
 
 createTestUsers().catch(error => {
-  console.error('❌ Failed to create test users:', error);
+  logger.error('❌ Failed to create test users:', error);
   process.exit(1);
 });

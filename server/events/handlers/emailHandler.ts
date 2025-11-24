@@ -19,6 +19,8 @@ import type {
   PaymentFailedData,
 } from '../events';
 import {
+import logger from '../utils/logger';
+
   queueOrderConfirmationEmail,
   queueOrderShipmentEmail,
   queueMarketplaceConnectionEmail,
@@ -96,7 +98,7 @@ export function initializeEmailHandlers() {
     
     // Send to company admins - would need to fetch admin emails from DB
     // For now, this is a placeholder showing the pattern
-    console.log(`Low stock alert: ${name} (${currentStock}/${threshold})`);
+    logger.info(`Low stock alert: ${name} (${currentStock}/${threshold})`);
   });
 
   // Out of stock alerts (critical)
@@ -104,7 +106,7 @@ export function initializeEmailHandlers() {
     const { name, sku } = event.data;
     
     // Send to company admins - would need to fetch admin emails from DB
-    console.log(`OUT OF STOCK: ${name} (SKU: ${sku})`);
+    logger.info(`OUT OF STOCK: ${name} (SKU: ${sku})`);
   });
 
   // AI anomaly alerts
@@ -113,7 +115,7 @@ export function initializeEmailHandlers() {
     
     // Only log for high/critical severity - would email company admins in production
     if (severity === 'high' || severity === 'critical') {
-      console.log(`AI ANOMALY (${severity}): ${type} - ${description}`);
+      logger.info(`AI ANOMALY (${severity}): ${type} - ${description}`);
     }
   });
 
@@ -147,5 +149,5 @@ export function initializeEmailHandlers() {
     );
   });
 
-  console.log('✅ Email event handlers initialized');
+  logger.info('✅ Email event handlers initialized');
 }

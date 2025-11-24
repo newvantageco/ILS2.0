@@ -8,16 +8,18 @@
 import { initializeAllEventHandlers } from './handlers';
 import { WebhookManager } from './webhooks/WebhookManager';
 import { WebSocketBroadcaster } from './websocket/WebSocketBroadcaster';
+import logger from '../utils/logger';
+
 
 /**
  * Initialize complete event system
  */
 export function initializeEventSystem() {
-  console.log('');
-  console.log('═══════════════════════════════════════════════════');
-  console.log('🚀 Initializing Event-Driven Architecture (Chunk 9)');
-  console.log('═══════════════════════════════════════════════════');
-  console.log('');
+  logger.info('');
+  logger.info('═══════════════════════════════════════════════════');
+  logger.info('🚀 Initializing Event-Driven Architecture (Chunk 9)');
+  logger.info('═══════════════════════════════════════════════════');
+  logger.info('');
 
   // Initialize event handlers
   initializeAllEventHandlers();
@@ -28,10 +30,10 @@ export function initializeEventSystem() {
   // Initialize WebSocket broadcaster
   WebSocketBroadcaster.initialize();
 
-  console.log('');
-  console.log('✅ Event system fully initialized');
-  console.log('═══════════════════════════════════════════════════');
-  console.log('');
+  logger.info('');
+  logger.info('✅ Event system fully initialized');
+  logger.info('═══════════════════════════════════════════════════');
+  logger.info('');
 }
 
 export { EventBus } from './EventBus';

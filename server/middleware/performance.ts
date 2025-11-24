@@ -6,6 +6,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { performance } from 'perf_hooks';
 import type { AuthenticatedRequest } from './auth';
+import logger from '../utils/logger';
+
 
 // Performance metrics storage (in-memory, will move to Redis/DB later)
 interface PerformanceMetric {
@@ -109,7 +111,7 @@ function logPerformanceMetric(
 
   // Log slow requests
   if (duration > SLOW_REQUEST_THRESHOLD) {
-    console.warn('⚠️  Slow request detected:', {
+    logger.warn('⚠️  Slow request detected:', {
       endpoint: `${req.method} ${req.path}`,
       duration: `${duration.toFixed(2)}ms`,
       queryCount,
@@ -121,7 +123,7 @@ function logPerformanceMetric(
   // Log in development
   if (process.env.NODE_ENV === 'development') {
     const emoji = duration > SLOW_REQUEST_THRESHOLD ? '🐌' : duration > 500 ? '⚡' : '✅';
-    console.log(
+    logger.info(
       `${emoji} ${req.method} ${req.path} - ${duration.toFixed(2)}ms` +
       (queryCount > 0 ? ` (${queryCount} queries, ${queriesDuration.toFixed(2)}ms)` : '')
     );
@@ -145,7 +147,7 @@ export function trackQuery(query: string, duration: number, endpoint?: string) {
       slowQueries.shift();
     }
 
-    console.warn('⚠️  Slow query detected:', {
+    logger.warn('⚠️  Slow query detected:', {
       query: metric.query,
       duration: `${duration.toFixed(2)}ms`,
       endpoint,
@@ -276,7 +278,7 @@ export function clearOldMetrics(hoursAgo: number = 24) {
     }
   }
 
-  console.log(`🧹 Cleaned up ${beforeSize - metricsBuffer.length} old metrics and ${beforeSlowSize - slowQueries.length} old slow queries`);
+  logger.info(`🧹 Cleaned up ${beforeSize - metricsBuffer.length} old metrics and ${beforeSlowSize - slowQueries.length} old slow queries`);
 }
 
 /**

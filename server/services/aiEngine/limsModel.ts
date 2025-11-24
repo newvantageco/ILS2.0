@@ -17,6 +17,8 @@ import { db } from "../../db";
 import type { LimsClinicalAnalytic } from "@shared/schema";
 import { limsClinicalAnalytics } from "@shared/schema";
 import { eq, and, gte } from "drizzle-orm";
+import logger from '../utils/logger';
+
 
 interface LensConfiguration {
   lensType: string;
@@ -134,7 +136,7 @@ export class LimsModel {
         ),
       };
     } catch (error) {
-      console.error("Error analyzing prescription patterns:", error);
+      logger.error("Error analyzing prescription patterns:", error);
       throw new Error("Failed to analyze prescription patterns");
     }
   }
@@ -159,7 +161,7 @@ export class LimsModel {
 
       return existing || null;
     } catch (error) {
-      console.error("Error fetching configuration analytics:", error);
+      logger.error("Error fetching configuration analytics:", error);
       return null;
     }
   }
@@ -237,7 +239,7 @@ export class LimsModel {
         });
       }
     } catch (error) {
-      console.error("Error recording order outcome:", error);
+      logger.error("Error recording order outcome:", error);
       // Don't throw - log and continue
     }
   }

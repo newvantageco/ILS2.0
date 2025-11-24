@@ -6,6 +6,8 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { cacheService } from '../services/CacheService';
+import logger from '../utils/logger';
+
 
 interface RequestMetrics {
   timestamp: number;
@@ -177,7 +179,7 @@ class MetricsCollectorService {
 
       return aggregated;
     } catch (error) {
-      console.error('Error getting company metrics:', error);
+      logger.error('Error getting company metrics:', error);
       return null;
     }
   }
@@ -268,7 +270,7 @@ class MetricsCollectorService {
         );
       }
     } catch (error) {
-      console.error('Error flushing metrics:', error);
+      logger.error('Error flushing metrics:', error);
     }
   }
 
@@ -282,7 +284,7 @@ class MetricsCollectorService {
 
     this.flushTimer = setInterval(() => {
       this.flushMetrics().catch(err => {
-        console.error('Metrics flush error:', err);
+        logger.error('Metrics flush error:', err);
       });
     }, this.METRICS_FLUSH_INTERVAL);
   }

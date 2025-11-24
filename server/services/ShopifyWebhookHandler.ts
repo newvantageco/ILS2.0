@@ -3,6 +3,8 @@ import { ShopifyOrderSyncService } from "./ShopifyOrderSyncService";
 import { db } from "../db";
 import { shopifyStores, shopifyProducts, shopifyOrders } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
+import logger from '../utils/logger';
+
 
 export class ShopifyWebhookHandler {
   /**
@@ -50,7 +52,7 @@ export class ShopifyWebhookHandler {
           break;
 
         default:
-          console.log(`Unhandled webhook topic: ${webhook.webhookTopic}`);
+          logger.info(`Unhandled webhook topic: ${webhook.webhookTopic}`);
       }
 
       // Mark as processed
@@ -58,7 +60,7 @@ export class ShopifyWebhookHandler {
 
       return { success: true, message: "Webhook processed successfully" };
     } catch (error: any) {
-      console.error("Webhook processing error:", error);
+      logger.error("Webhook processing error:", error);
 
       // Increment retry count
       await ShopifyService.incrementWebhookRetry(webhookId);
@@ -116,7 +118,7 @@ export class ShopifyWebhookHandler {
       orderData
     );
 
-    console.log(`Order created: ${orderData.shopifyOrderName}`);
+    logger.info(`Order created: ${orderData.shopifyOrderName}`);
   }
 
   /**
@@ -163,7 +165,7 @@ export class ShopifyWebhookHandler {
       orderData
     );
 
-    console.log(`Order updated: ${orderData.shopifyOrderName}`);
+    logger.info(`Order updated: ${orderData.shopifyOrderName}`);
   }
 
   /**
@@ -190,7 +192,7 @@ export class ShopifyWebhookHandler {
         })
         .where(eq(shopifyOrders.id, order.id));
 
-      console.log(`Order fulfilled: ${order.shopifyOrderName}`);
+      logger.info(`Order fulfilled: ${order.shopifyOrderName}`);
     }
   }
 
@@ -217,7 +219,7 @@ export class ShopifyWebhookHandler {
         })
         .where(eq(shopifyOrders.id, order.id));
 
-      console.log(`Order cancelled: ${order.shopifyOrderName}`);
+      logger.info(`Order cancelled: ${order.shopifyOrderName}`);
     }
   }
 
@@ -239,7 +241,7 @@ export class ShopifyWebhookHandler {
     // Trigger product sync
     await ShopifyService.syncProducts(storeId, store.companyId);
 
-    console.log(`Product synced: ${payload.title}`);
+    logger.info(`Product synced: ${payload.title}`);
   }
 
   /**
@@ -278,7 +280,7 @@ export class ShopifyWebhookHandler {
         .where(eq(shopifyProducts.id, product.id));
     }
 
-    console.log(`Product deleted: ${payload.title}`);
+    logger.info(`Product deleted: ${payload.title}`);
   }
 
   /**
@@ -291,13 +293,13 @@ export class ShopifyWebhookHandler {
       orderBy: (webhooks, { asc }) => [asc(webhooks.receivedAt)],
     });
 
-    console.log(`Processing ${unprocessedWebhooks.length} unprocessed webhooks`);
+    logger.info(`Processing ${unprocessedWebhooks.length} unprocessed webhooks`);
 
     for (const webhook of unprocessedWebhooks) {
       try {
         await this.processWebhook(webhook.id);
       } catch (error) {
-        console.error(`Failed to process webhook ${webhook.id}:`, error);
+        logger.error(`Failed to process webhook ${webhook.id}:`, error);
         // Continue with next webhook
       }
     }

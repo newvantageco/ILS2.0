@@ -1,5 +1,7 @@
 import { db } from '../db';
 import { eq } from 'drizzle-orm';
+import logger from '../utils/logger';
+
 
 // Note: aiUsageLogs table needs to be created in schema
 // For now, we'll use console logging as a fallback
@@ -22,7 +24,7 @@ export interface UsageLogEntry {
 export const trackUsage = async (entry: UsageLogEntry): Promise<void> => {
   try {
     // TODO: Insert into aiUsageLogs table once schema is created
-    console.log('[AI Usage]', {
+    logger.info('[AI Usage]', {
       tenantId: entry.tenantId,
       userId: entry.userId,
       queryType: entry.queryType,
@@ -47,7 +49,7 @@ export const trackUsage = async (entry: UsageLogEntry): Promise<void> => {
     });
     */
   } catch (error) {
-    console.error('Error tracking AI usage:', error);
+    logger.error('Error tracking AI usage:', error);
     // Don't throw - we don't want to fail the request if logging fails
   }
 };
@@ -62,7 +64,7 @@ export const getTenantUsageStats = async (
 ) => {
   try {
     // TODO: Query aiUsageLogs table once schema is created
-    console.log('[AI Usage Stats] Query for tenant:', tenantId);
+    logger.info('[AI Usage Stats] Query for tenant:', tenantId);
     
     return {
       totalQueries: 0,
@@ -83,7 +85,7 @@ export const getTenantUsageStats = async (
     // ... process logs
     */
   } catch (error) {
-    console.error('Error fetching usage stats:', error);
+    logger.error('Error fetching usage stats:', error);
     throw error;
   }
 };
@@ -98,7 +100,7 @@ export const getBillingUsage = async (
 ) => {
   try {
     // TODO: Query aiUsageLogs table once schema is created
-    console.log('[AI Billing] Query for tenant:', tenantId, 'period:', billingPeriodStart, 'to', billingPeriodEnd);
+    logger.info('[AI Billing] Query for tenant:', tenantId, 'period:', billingPeriodStart, 'to', billingPeriodEnd);
     
     return {
       tenantId,
@@ -118,7 +120,7 @@ export const getBillingUsage = async (
     // Filter by date range and process
     */
   } catch (error) {
-    console.error('Error fetching billing usage:', error);
+    logger.error('Error fetching billing usage:', error);
     throw error;
   }
 };
@@ -132,10 +134,10 @@ export const cleanupOldLogs = async (daysToKeep: number = 90): Promise<number> =
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 
     // Note: Implement deletion logic when needed
-    console.log(`Would delete logs older than ${cutoffDate.toISOString()}`);
+    logger.info(`Would delete logs older than ${cutoffDate.toISOString()}`);
     return 0;
   } catch (error) {
-    console.error('Error cleaning up old logs:', error);
+    logger.error('Error cleaning up old logs:', error);
     throw error;
   }
 };

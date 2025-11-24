@@ -10,6 +10,8 @@ import {
   eyeExaminations
 } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
+import logger from '../utils/logger';
+
 
 /**
  * Professional PDF Service for Optical Practice Documents
@@ -39,7 +41,7 @@ class ProfessionalPDFService {
         margin: 1,
       });
     } catch (error) {
-      console.error('QR code generation error:', error);
+      logger.error('QR code generation error:', error);
       return '';
     }
   }
@@ -496,7 +498,7 @@ class ProfessionalPDFService {
 
         doc.end();
       } catch (error) {
-        console.error('Error generating prescription PDF:', error);
+        logger.error('Error generating prescription PDF:', error);
         reject(error);
       }
     });
@@ -756,7 +758,7 @@ class ProfessionalPDFService {
 
         doc.end();
       } catch (error) {
-        console.error('Error generating order slip PDF:', error);
+        logger.error('Error generating order slip PDF:', error);
         reject(error);
       }
     });
@@ -1091,7 +1093,7 @@ class ProfessionalPDFService {
 
         doc.end();
       } catch (error) {
-        console.error('Error generating customer info PDF:', error);
+        logger.error('Error generating customer info PDF:', error);
         reject(error);
       }
     });

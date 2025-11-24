@@ -8,6 +8,8 @@ import {
   type UserCustomPermission 
 } from "../../shared/schema";
 import { eq, and, or } from "drizzle-orm";
+import logger from '../utils/logger';
+
 
 export class PermissionService {
   /**
@@ -39,7 +41,7 @@ export class PermissionService {
       });
 
       if (!permission) {
-        console.warn(`Permission not found: ${permissionKey}`);
+        logger.warn(`Permission not found: ${permissionKey}`);
         return false;
       }
 
@@ -70,7 +72,7 @@ export class PermissionService {
 
       return false;
     } catch (error) {
-      console.error('Error checking permission:', error);
+      logger.error('Error checking permission:', error);
       return false;
     }
   }
@@ -175,7 +177,7 @@ export class PermissionService {
 
       return perms.map(p => p.permissionKey);
     } catch (error) {
-      console.error('Error getting user permissions:', error);
+      logger.error('Error getting user permissions:', error);
       return [];
     }
   }
@@ -223,7 +225,7 @@ export class PermissionService {
 
       return true;
     } catch (error) {
-      console.error('Error granting custom permission:', error);
+      logger.error('Error granting custom permission:', error);
       return false;
     }
   }
@@ -271,7 +273,7 @@ export class PermissionService {
 
       return true;
     } catch (error) {
-      console.error('Error revoking custom permission:', error);
+      logger.error('Error revoking custom permission:', error);
       return false;
     }
   }
@@ -313,7 +315,7 @@ export class PermissionService {
 
       return true;
     } catch (error) {
-      console.error('Error updating role permissions:', error);
+      logger.error('Error updating role permissions:', error);
       return false;
     }
   }
@@ -335,7 +337,7 @@ export class PermissionService {
 
       return grouped;
     } catch (error) {
-      console.error('Error getting permissions by category:', error);
+      logger.error('Error getting permissions by category:', error);
       return {};
     }
   }
@@ -362,7 +364,7 @@ export class PermissionService {
 
       return perms.map(p => p.permissionKey);
     } catch (error) {
-      console.error('Error getting role permissions:', error);
+      logger.error('Error getting role permissions:', error);
       return [];
     }
   }

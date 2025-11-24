@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodSchema, ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
+import logger from '../utils/logger';
+
 
 /**
  * Middleware factory to validate request body against a Zod schema
@@ -102,7 +104,7 @@ export function validateDatabaseOutput<T>(schema: ZodSchema<T>, data: unknown): 
     return schema.parse(data);
   } catch (error) {
     if (error instanceof ZodError) {
-      console.error("Database output validation failed:", fromZodError(error).message);
+      logger.error("Database output validation failed:", fromZodError(error).message);
       throw new Error("Data integrity error: Database returned invalid data");
     }
     throw error;
@@ -118,7 +120,7 @@ export function validateDatabaseArray<T>(schema: ZodSchema<T>, data: unknown[]):
       return schema.parse(item);
     } catch (error) {
       if (error instanceof ZodError) {
-        console.error(`Database array validation failed at index ${index}:`, fromZodError(error).message);
+        logger.error(`Database array validation failed at index ${index}:`, fromZodError(error).message);
         throw new Error(`Data integrity error at record ${index}: Database returned invalid data`);
       }
       throw error;

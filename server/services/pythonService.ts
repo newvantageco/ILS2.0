@@ -1,4 +1,6 @@
 import axios from 'axios';
+import logger from '../utils/logger';
+
 
 const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || 'http://localhost:8000';
 
@@ -11,7 +13,7 @@ async function callPythonService(endpoint: string, data?: any, method: 'GET' | '
       : await axios.post(url, data, { timeout: 10000 });
     return response.data;
   } catch (error: any) {
-    console.error(`Python service error (${endpoint}):`, error.message);
+    logger.error(`Python service error (${endpoint}):`, error.message);
     
     // Check if service is unreachable
     if (error.code === 'ECONNREFUSED') {

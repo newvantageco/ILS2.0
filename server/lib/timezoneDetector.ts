@@ -1,3 +1,6 @@
+import logger from '../utils/logger';
+
+
 /**
  * Timezone Detection Utility
  * Auto-detects timezone from postcode (UK-specific) or IP address
@@ -47,7 +50,7 @@ export async function detectTimezoneFromIP(ipAddress: string | null | undefined)
     // TODO: Implement IP geolocation API integration
     return getTimezoneInfo(UK_TIMEZONE);
   } catch (error) {
-    console.error("Error detecting timezone from IP:", error);
+    logger.error("Error detecting timezone from IP:", error);
     return getTimezoneInfo(UK_TIMEZONE);
   }
 }
@@ -79,7 +82,7 @@ export function getTimezoneInfo(timezone: string): TimezoneInfo {
       isDST,
     };
   } catch (error) {
-    console.error(`Invalid timezone: ${timezone}`, error);
+    logger.error(`Invalid timezone: ${timezone}`, error);
     // Fallback to UTC
     return {
       timezone: "UTC",

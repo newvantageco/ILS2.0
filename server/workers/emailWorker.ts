@@ -3,6 +3,8 @@ import { getRedisConnection } from '../queue/config';
 import { db } from '../../db';
 import { users, companies, orders } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
+import logger from '../utils/logger';
+
 
 /**
  * Email Job Data Types
@@ -57,14 +59,14 @@ export function createEmailWorker() {
   const connection = getRedisConnection();
   
   if (!connection) {
-    console.warn('⚠️  Email worker not started - Redis not available');
+    logger.warn('⚠️  Email worker not started - Redis not available');
     return null;
   }
 
   const worker = new Worker<EmailJobData>(
     'emails',
     async (job: Job<EmailJobData>) => {
-      console.log(`📧 Processing email job ${job.id}: ${job.data.type}`);
+      logger.info(`📧 Processing email job ${job.id}: ${job.data.type}`);
       
       try {
         switch (job.data.type) {
@@ -92,10 +94,10 @@ export function createEmailWorker() {
             throw new Error(`Unknown email type: ${(job.data as any).type}`);
         }
         
-        console.log(`✅ Email job ${job.id} completed successfully`);
+        logger.info(`✅ Email job ${job.id} completed successfully`);
         return { success: true, sentAt: new Date().toISOString() };
       } catch (error) {
-        console.error(`❌ Email job ${job.id} failed:`, error);
+        logger.error(`❌ Email job ${job.id} failed:`, error);
         throw error;
       }
     },
@@ -111,18 +113,18 @@ export function createEmailWorker() {
 
   // Worker event handlers
   worker.on('completed', (job) => {
-    console.log(`✅ Email job ${job.id} completed`);
+    logger.info(`✅ Email job ${job.id} completed`);
   });
 
   worker.on('failed', (job, err) => {
-    console.error(`❌ Email job ${job?.id} failed:`, err.message);
+    logger.error(`❌ Email job ${job?.id} failed:`, err.message);
   });
 
   worker.on('error', (err) => {
-    console.error('Email worker error:', err);
+    logger.error('Email worker error:', err);
   });
 
-  console.log('✅ Email worker started');
+  logger.info('✅ Email worker started');
   return worker;
 }
 
@@ -333,7 +335,7 @@ async function processGenericEmail(data: GenericEmailData): Promise<void> {
  * Fallback: Execute email immediately if queue not available
  */
 export async function sendEmailImmediate(data: EmailJobData): Promise<void> {
-  console.log(`⚠️  [FALLBACK] Sending email immediately: ${data.type}`);
+  logger.info(`⚠️  [FALLBACK] Sending email immediately: ${data.type}`);
   
   switch (data.type) {
     case 'order-confirmation':

@@ -7,6 +7,8 @@
 
 import { doubleCsrf } from 'csrf-csrf';
 import type { Request, Response, NextFunction } from 'express';
+import logger from '../utils/logger';
+
 
 const CSRF_SECRET = process.env.CSRF_SECRET || 'your-secret-csrf-token-change-in-production';
 
@@ -45,7 +47,7 @@ export const generateCsrfToken = (req: Request, res: Response, next: NextFunctio
     res.locals.csrfToken = res.locals.csrfToken || '';
     next();
   } catch (err) {
-    console.error('CSRF token generation error:', err);
+    logger.error('CSRF token generation error:', err);
     next(err);
   }
 };

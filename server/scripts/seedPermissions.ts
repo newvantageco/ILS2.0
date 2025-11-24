@@ -7,6 +7,8 @@
 
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
+import logger from '../utils/logger';
+
 
 interface PermissionCategory {
   name: string;
@@ -572,11 +574,11 @@ const PERMISSIONS: Permission[] = [
  * Main seeding function
  */
 export async function seedPermissions() {
-  console.log('🌱 Starting permission seeding...\n');
+  logger.info('🌱 Starting permission seeding...\n');
 
   try {
     // Step 1: Insert permission categories
-    console.log('📁 Creating permission categories...');
+    logger.info('📁 Creating permission categories...');
     
     for (const category of PERMISSION_CATEGORIES) {
       await db.execute(sql`
@@ -588,7 +590,7 @@ export async function seedPermissions() {
       `);
     }
     
-    console.log(`✅ Created ${PERMISSION_CATEGORIES.length} categories\n`);
+    logger.info(`✅ Created ${PERMISSION_CATEGORIES.length} categories\n`);
 
     // Step 2: Get category IDs for reference
     const categoryMap = new Map<string, string>();
@@ -599,7 +601,7 @@ export async function seedPermissions() {
     }
 
     // Step 3: Insert permissions
-    console.log('🔐 Creating permissions...');
+    logger.info('🔐 Creating permissions...');
     let insertedCount = 0;
     let updatedCount = 0;
 
@@ -607,7 +609,7 @@ export async function seedPermissions() {
       const categoryId = categoryMap.get(perm.category);
       
       if (!categoryId) {
-        console.warn(`⚠️  Category not found: ${perm.category} for permission ${perm.slug}`);
+        logger.warn(`⚠️  Category not found: ${perm.category} for permission ${perm.slug}`);
         continue;
       }
 
@@ -644,17 +646,17 @@ export async function seedPermissions() {
       }
     }
 
-    console.log(`✅ Created ${insertedCount} new permissions`);
-    console.log(`🔄 Updated ${updatedCount} existing permissions\n`);
+    logger.info(`✅ Created ${insertedCount} new permissions`);
+    logger.info(`🔄 Updated ${updatedCount} existing permissions\n`);
 
     // Step 4: Summary
-    console.log('📊 Permission Seeding Summary:');
-    console.log(`   • ${PERMISSION_CATEGORIES.length} categories`);
-    console.log(`   • ${PERMISSIONS.length} total permissions`);
-    console.log(`   • ${PERMISSIONS.filter(p => p.planLevel === 'free').length} free permissions`);
-    console.log(`   • ${PERMISSIONS.filter(p => p.planLevel === 'full').length} full plan permissions`);
-    console.log(`   • ${PERMISSIONS.filter(p => p.planLevel === 'add_on_analytics').length} analytics add-on permissions`);
-    console.log('\n✅ Permission seeding complete!\n');
+    logger.info('📊 Permission Seeding Summary:');
+    logger.info(`   • ${PERMISSION_CATEGORIES.length} categories`);
+    logger.info(`   • ${PERMISSIONS.length} total permissions`);
+    logger.info(`   • ${PERMISSIONS.filter(p => p.planLevel === 'free').length} free permissions`);
+    logger.info(`   • ${PERMISSIONS.filter(p => p.planLevel === 'full').length} full plan permissions`);
+    logger.info(`   • ${PERMISSIONS.filter(p => p.planLevel === 'add_on_analytics').length} analytics add-on permissions`);
+    logger.info('\n✅ Permission seeding complete!\n');
 
     return {
       success: true,
@@ -665,7 +667,7 @@ export async function seedPermissions() {
     };
 
   } catch (error) {
-    console.error('❌ Permission seeding failed:', error);
+    logger.error('❌ Permission seeding failed:', error);
     throw error;
   }
 }
@@ -681,11 +683,11 @@ const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 if (isMainModule) {
   seedPermissions()
     .then(() => {
-      console.log('Done!');
+      logger.info('Done!');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('Seeding failed:', error);
+      logger.error('Seeding failed:', error);
       process.exit(1);
     });
 }

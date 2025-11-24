@@ -3,6 +3,8 @@ import { db } from '../db';
 import { users, companies } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 import { isPlatformAdmin } from '../utils/rbac';
+import logger from '../utils/logger';
+
 
 export interface SubscriptionInfo {
   userPlan: 'free_ecp' | 'full';
@@ -152,8 +154,8 @@ export const checkSubscription: RequestHandler = async (req, res, next) => {
 
     next();
   } catch (error: any) {
-    console.error('Subscription check error:', error);
-    console.error('Error details:', {
+    logger.error('Subscription check error:', error);
+    logger.error('Error details:', {
       message: error.message,
       stack: error.stack,
       userId: (req as any).user?.id,

@@ -15,6 +15,8 @@ import { Request, Response, NextFunction } from 'express';
 import { db } from '../../db';
 import { auditLogs } from '../../shared/schema';
 import type { InsertAuditLog } from '../../shared/schema';
+import logger from '../utils/logger';
+
 
 // Resources that contain PHI (Protected Health Information)
 const PHI_RESOURCES = [
@@ -231,7 +233,7 @@ export async function auditMiddleware(req: Request, res: Response, next: NextFun
       
     } catch (error) {
       // Log error but don't fail the request
-      console.error('[AUDIT] Failed to create audit log:', error);
+      logger.error('[AUDIT] Failed to create audit log:', error);
     }
   });
 
@@ -284,7 +286,7 @@ export async function auditAuthAttempt(req: Request, email: string, success: boo
       retentionDate: calculateRetentionDate(),
     });
   } catch (error) {
-    console.error('[AUDIT] Failed to log auth attempt:', error);
+    logger.error('[AUDIT] Failed to log auth attempt:', error);
   }
 }
 
@@ -318,7 +320,7 @@ export async function auditLogout(userId: string, userEmail: string): Promise<vo
       retentionDate: calculateRetentionDate(),
     });
   } catch (error) {
-    console.error('[AUDIT] Failed to log logout:', error);
+    logger.error('[AUDIT] Failed to log logout:', error);
   }
 }
 
@@ -358,7 +360,7 @@ export async function createAuditLog(entry: Partial<InsertAuditLog> & {
       retentionDate: calculateRetentionDate(),
     });
   } catch (error) {
-    console.error('[AUDIT] Failed to create manual audit log:', error);
+    logger.error('[AUDIT] Failed to create manual audit log:', error);
   }
 }
 

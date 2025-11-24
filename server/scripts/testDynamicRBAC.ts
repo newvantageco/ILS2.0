@@ -13,6 +13,8 @@
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { createDefaultRoles, DEFAULT_ROLE_TEMPLATES } from '../services/DefaultRolesService';
+import logger from '../utils/logger';
+
 
 interface TestResult {
   test: string;
@@ -26,14 +28,14 @@ const results: TestResult[] = [];
 function logTest(test: string, status: 'PASS' | 'FAIL' | 'WARN', message: string, details?: any) {
   results.push({ test, status, message, details });
   const emoji = status === 'PASS' ? '✅' : status === 'FAIL' ? '❌' : '⚠️';
-  console.log(`${emoji} ${test}: ${message}`);
+  logger.info(`${emoji} ${test}: ${message}`);
   if (details) {
-    console.log('   Details:', JSON.stringify(details, null, 2));
+    logger.info('   Details:', JSON.stringify(details, null, 2));
   }
 }
 
 async function testDatabaseSchema() {
-  console.log('\n🔍 Testing Database Schema...\n');
+  logger.info('\n🔍 Testing Database Schema...\n');
   
   try {
     // Test permission_categories table
@@ -115,7 +117,7 @@ async function testDatabaseSchema() {
 }
 
 async function testPermissionSeeding() {
-  console.log('\n🌱 Testing Permission Seeding...\n');
+  logger.info('\n🌱 Testing Permission Seeding...\n');
   
   try {
     // Check permission distribution by plan level
@@ -181,7 +183,7 @@ async function testPermissionSeeding() {
 }
 
 async function testDefaultRoles() {
-  console.log('\n👥 Testing Default Roles Creation...\n');
+  logger.info('\n👥 Testing Default Roles Creation...\n');
   
   try {
     // Get first company to test with
@@ -206,7 +208,7 @@ async function testDefaultRoles() {
     
     if (existingCount === 0) {
       // Create default roles
-      console.log('   Creating default roles...');
+      logger.info('   Creating default roles...');
       await createDefaultRoles(testCompany.id as string);
       
       const newRoles = await db.execute(sql`
@@ -255,7 +257,7 @@ async function testDefaultRoles() {
 }
 
 async function testUserRoleAssignment() {
-  console.log('\n🔐 Testing User Role Assignment...\n');
+  logger.info('\n🔐 Testing User Role Assignment...\n');
   
   try {
     // Get a test user
@@ -300,7 +302,7 @@ async function testUserRoleAssignment() {
     
     if (assignmentCount === 0) {
       // Assign role to user
-      console.log(`   Assigning role "${testRole.name}" to user...`);
+      logger.info(`   Assigning role "${testRole.name}" to user...`);
       await db.execute(sql`
         INSERT INTO user_dynamic_roles (user_id, role_id, is_primary)
         VALUES (${testUser.id}, ${testRole.id}, true)
@@ -330,7 +332,7 @@ async function testUserRoleAssignment() {
 }
 
 async function testPermissionResolution() {
-  console.log('\n🎯 Testing Permission Resolution (Sum of Permissions)...\n');
+  logger.info('\n🎯 Testing Permission Resolution (Sum of Permissions)...\n');
   
   try {
     // Get a user with roles
@@ -396,7 +398,7 @@ async function testPermissionResolution() {
 }
 
 async function testMultiRoleScenario() {
-  console.log('\n🔄 Testing Multi-Role Scenario (Sum Logic)...\n');
+  logger.info('\n🔄 Testing Multi-Role Scenario (Sum Logic)...\n');
   
   try {
     // Get a user with roles
@@ -492,54 +494,54 @@ async function testMultiRoleScenario() {
 }
 
 async function printSummary() {
-  console.log('\n' + '='.repeat(60));
-  console.log('📊 TEST SUMMARY');
-  console.log('='.repeat(60) + '\n');
+  logger.info('\n' + '='.repeat(60));
+  logger.info('📊 TEST SUMMARY');
+  logger.info('='.repeat(60) + '\n');
 
   const passed = results.filter(r => r.status === 'PASS').length;
   const failed = results.filter(r => r.status === 'FAIL').length;
   const warned = results.filter(r => r.status === 'WARN').length;
   const total = results.length;
 
-  console.log(`Total Tests: ${total}`);
-  console.log(`✅ Passed: ${passed}`);
-  console.log(`❌ Failed: ${failed}`);
-  console.log(`⚠️  Warnings: ${warned}`);
-  console.log();
+  logger.info(`Total Tests: ${total}`);
+  logger.info(`✅ Passed: ${passed}`);
+  logger.info(`❌ Failed: ${failed}`);
+  logger.info(`⚠️  Warnings: ${warned}`);
+  logger.info();
 
   if (failed > 0) {
-    console.log('Failed Tests:');
+    logger.info('Failed Tests:');
     results.filter(r => r.status === 'FAIL').forEach(r => {
-      console.log(`  ❌ ${r.test}: ${r.message}`);
+      logger.info(`  ❌ ${r.test}: ${r.message}`);
     });
-    console.log();
+    logger.info();
   }
 
   if (warned > 0) {
-    console.log('Warnings:');
+    logger.info('Warnings:');
     results.filter(r => r.status === 'WARN').forEach(r => {
-      console.log(`  ⚠️  ${r.test}: ${r.message}`);
+      logger.info(`  ⚠️  ${r.test}: ${r.message}`);
     });
-    console.log();
+    logger.info();
   }
 
   const successRate = ((passed / total) * 100).toFixed(1);
-  console.log(`Success Rate: ${successRate}%`);
-  console.log();
+  logger.info(`Success Rate: ${successRate}%`);
+  logger.info();
 
   if (failed === 0) {
-    console.log('🎉 All critical tests passed! Dynamic RBAC system is working correctly.');
+    logger.info('🎉 All critical tests passed! Dynamic RBAC system is working correctly.');
   } else {
-    console.log('⚠️  Some tests failed. Please review the issues above.');
+    logger.info('⚠️  Some tests failed. Please review the issues above.');
   }
   
-  console.log('\n' + '='.repeat(60) + '\n');
+  logger.info('\n' + '='.repeat(60) + '\n');
 }
 
 // Main test runner
 async function runTests() {
-  console.log('\n🚀 Dynamic RBAC System Test Suite\n');
-  console.log('='.repeat(60));
+  logger.info('\n🚀 Dynamic RBAC System Test Suite\n');
+  logger.info('='.repeat(60));
   
   try {
     await testDatabaseSchema();
@@ -554,7 +556,7 @@ async function runTests() {
     process.exit(results.filter(r => r.status === 'FAIL').length > 0 ? 1 : 0);
     
   } catch (error) {
-    console.error('\n❌ Test suite failed with error:', error);
+    logger.error('\n❌ Test suite failed with error:', error);
     process.exit(1);
   }
 }

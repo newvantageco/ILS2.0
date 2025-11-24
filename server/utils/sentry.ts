@@ -7,6 +7,8 @@ import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import { Express, Request, Response, NextFunction } from 'express';
 import logger from './logger';
+import logger from '../utils/logger';
+
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isEnabled = process.env.SENTRY_DSN && process.env.SENTRY_DSN !== '';
@@ -46,7 +48,7 @@ export function initSentry(app: Express) {
         onFatalError: async (err) => {
           logger.fatal({ err }, 'Uncaught exception, shutting down');
           if (isProduction) {
-            console.error('Fatal error:', err);
+            logger.error('Fatal error:', err);
             process.exit(1);
           }
         },

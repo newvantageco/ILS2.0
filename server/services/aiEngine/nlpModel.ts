@@ -16,6 +16,8 @@ import { db } from "../../db";
 import type { NlpClinicalAnalysis, InsertNlpClinicalAnalysis } from "@shared/schema";
 import { nlpClinicalAnalysis, nlpIntentTagEnum } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import logger from '../utils/logger';
+
 
 interface NlpExtractionResult {
   intentTags: Array<{
@@ -80,7 +82,7 @@ export class NlpModel {
         overallConfidence,
       };
     } catch (error) {
-      console.error("Error analyzing clinical notes:", error);
+      logger.error("Error analyzing clinical notes:", error);
       throw new Error("Failed to analyze clinical notes");
     }
   }
@@ -108,7 +110,7 @@ export class NlpModel {
 
       return result[0];
     } catch (error) {
-      console.error("Error saving NLP analysis:", error);
+      logger.error("Error saving NLP analysis:", error);
       throw new Error("Failed to save NLP analysis");
     }
   }
@@ -123,7 +125,7 @@ export class NlpModel {
       });
       return result || null;
     } catch (error) {
-      console.error("Error retrieving NLP analysis:", error);
+      logger.error("Error retrieving NLP analysis:", error);
       return null;
     }
   }

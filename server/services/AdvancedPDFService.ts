@@ -13,6 +13,8 @@ import {
   patients
 } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
+import logger from '../utils/logger';
+
 
 interface PDFOptions {
   companyId: string;
@@ -105,7 +107,7 @@ class AdvancedPDFService {
         margin: 1,
       });
     } catch (error) {
-      console.error('QR code generation error:', error);
+      logger.error('QR code generation error:', error);
       return '';
     }
   }

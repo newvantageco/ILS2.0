@@ -27,6 +27,8 @@ export interface AuthenticatedRequest<
 
 // Import qs types for query string parsing
 import type * as qs from 'qs';
+import logger from '../utils/logger';
+
 
 // Helper type for authenticated route handlers (Express 5 compatible)
 export type AuthenticatedRequestHandler<
@@ -64,7 +66,7 @@ export const authenticateUser: RequestHandler = async (req, res, next) => {
     };
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
+    logger.error('Authentication error:', error);
     res.status(401).json({ error: 'Authentication failed' });
   }
 };
@@ -124,7 +126,7 @@ async function validateToken(token: string) {
 
     return session || null;
   } catch (error) {
-    console.error('Token validation error:', error);
+    logger.error('Token validation error:', error);
     return null;
   }
 }

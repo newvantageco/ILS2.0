@@ -142,7 +142,7 @@ export class NotificationServiceImpl implements NotificationService {
         this.notifySubscribers(fullNotification)
       ]);
     } catch (error) {
-      console.error('Error sending notification:', error);
+      logger.error('Error sending notification:', error);
       throw error;
     }
   }
@@ -227,7 +227,7 @@ export class NotificationServiceImpl implements NotificationService {
       });
       return user?.role === roleId;
     } catch (error) {
-      console.error('Error checking user role:', error);
+      logger.error('Error checking user role:', error);
       return false;
     }
   }
@@ -239,7 +239,7 @@ export class NotificationServiceImpl implements NotificationService {
       });
       return user?.companyId === orgId;
     } catch (error) {
-      console.error('Error checking user organization:', error);
+      logger.error('Error checking user organization:', error);
       return false;
     }
   }

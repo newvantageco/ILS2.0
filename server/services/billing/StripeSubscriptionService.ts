@@ -19,6 +19,8 @@ import Stripe from "stripe";
 import { db } from "../../../db/index.js";
 import { companies } from "../../../shared/schema.js";
 import { eq } from "drizzle-orm";
+import logger from '../utils/logger';
+
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2024-11-20.acacia",
@@ -422,7 +424,7 @@ export class StripeSubscriptionService {
     invoice: Stripe.Invoice
   ): Promise<{ processed: boolean; message: string }> {
     // Send receipt email, update payment history, etc.
-    console.log(`Invoice ${invoice.id} paid successfully`);
+    logger.info(`Invoice ${invoice.id} paid successfully`);
     return { processed: true, message: "Invoice paid" };
   }
 
@@ -433,7 +435,7 @@ export class StripeSubscriptionService {
     invoice: Stripe.Invoice
   ): Promise<{ processed: boolean; message: string }> {
     // Send payment failure notification, suspend account, etc.
-    console.log(`Invoice ${invoice.id} payment failed`);
+    logger.info(`Invoice ${invoice.id} payment failed`);
     return { processed: true, message: "Invoice payment failed" };
   }
 
@@ -444,7 +446,7 @@ export class StripeSubscriptionService {
     subscription: Stripe.Subscription
   ): Promise<{ processed: boolean; message: string }> {
     // Send trial ending notification
-    console.log(`Trial ending soon for subscription ${subscription.id}`);
+    logger.info(`Trial ending soon for subscription ${subscription.id}`);
     return { processed: true, message: "Trial ending notification sent" };
   }
 

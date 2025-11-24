@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { PermissionService } from '../services/PermissionService';
+import logger from '../utils/logger';
+
 
 /**
  * Middleware to require specific permission(s)
@@ -33,7 +35,7 @@ export function requirePermission(
 
       next();
     } catch (error) {
-      console.error('Permission check error:', error);
+      logger.error('Permission check error:', error);
       return res.status(500).json({ 
         error: 'Internal Server Error',
         message: 'Failed to check permissions'
@@ -70,7 +72,7 @@ export function requireAnyPermission(permissionKeys: string[]) {
 
       next();
     } catch (error) {
-      console.error('Permission check error:', error);
+      logger.error('Permission check error:', error);
       return res.status(500).json({ 
         error: 'Internal Server Error',
         message: 'Failed to check permissions'
@@ -107,7 +109,7 @@ export function requireOwner() {
 
       next();
     } catch (error) {
-      console.error('Owner check error:', error);
+      logger.error('Owner check error:', error);
       return res.status(500).json({ 
         error: 'Internal Server Error',
         message: 'Failed to verify owner status'
@@ -134,7 +136,7 @@ export async function attachPermissions(
 
     next();
   } catch (error) {
-    console.error('Error attaching permissions:', error);
+    logger.error('Error attaching permissions:', error);
     next(); // Don't block the request
   }
 }

@@ -8,6 +8,8 @@ import qrcode from 'qrcode';
 import { db } from '../db';
 import { users } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import logger from '../utils/logger';
+
 
 // Configure TOTP settings
 authenticator.options = {
@@ -208,7 +210,7 @@ export class TwoFactorAuthService {
     try {
       return authenticator.verify({ token, secret });
     } catch (error) {
-      console.error('2FA token verification error:', error);
+      logger.error('2FA token verification error:', error);
       return false;
     }
   }

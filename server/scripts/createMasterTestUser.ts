@@ -12,6 +12,8 @@ import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { createDefaultRoles } from '../services/DefaultRolesService';
 import crypto from 'crypto';
+import logger from '../utils/logger';
+
 
 interface TestUserConfig {
   email?: string;
@@ -30,7 +32,7 @@ async function createMasterTestUser(config: TestUserConfig = {}) {
     companyName = 'Master Test Company'
   } = config;
 
-  console.log('🚀 Creating Master Test User...\n');
+  logger.info('🚀 Creating Master Test User...\n');
 
   try {
     // Step 1: Check if user already exists
@@ -39,9 +41,9 @@ async function createMasterTestUser(config: TestUserConfig = {}) {
     `);
 
     if (existingUser.rows.length > 0) {
-      console.log('⚠️  User already exists with email:', email);
-      console.log('   User ID:', existingUser.rows[0].id);
-      console.log('\n   To reset, delete the user first or use a different email.\n');
+      logger.info('⚠️  User already exists with email:', email);
+      logger.info('   User ID:', existingUser.rows[0].id);
+      logger.info('\n   To reset, delete the user first or use a different email.\n');
       return;
     }
 
@@ -53,8 +55,8 @@ async function createMasterTestUser(config: TestUserConfig = {}) {
 
     if (existingCompany.rows.length > 0) {
       companyId = existingCompany.rows[0].id as string;
-      console.log(`✅ Using existing company: ${companyName}`);
-      console.log(`   Company ID: ${companyId}\n`);
+      logger.info(`✅ Using existing company: ${companyName}`);
+      logger.info(`   Company ID: ${companyId}\n`);
     } else {
       // Create test company
       const companyResult = await db.execute(sql`
@@ -82,13 +84,13 @@ async function createMasterTestUser(config: TestUserConfig = {}) {
       `);
 
       companyId = companyResult.rows[0].id as string;
-      console.log(`✅ Created test company: ${companyName}`);
-      console.log(`   Company ID: ${companyId}\n`);
+      logger.info(`✅ Created test company: ${companyName}`);
+      logger.info(`   Company ID: ${companyId}\n`);
 
       // Step 3: Create default roles for the company
-      console.log('📋 Creating default roles...');
+      logger.info('📋 Creating default roles...');
       await createDefaultRoles(companyId);
-      console.log('✅ Default roles created\n');
+      logger.info('✅ Default roles created\n');
     }
 
     // Step 4: Hash password
@@ -142,20 +144,20 @@ async function createMasterTestUser(config: TestUserConfig = {}) {
     const user = userResult.rows[0];
     const userId = user.id as string;
 
-    console.log('✅ Master test user created successfully!\n');
-    console.log('═══════════════════════════════════════════════════════════');
-    console.log('📧 Email:     ', email);
-    console.log('🔑 Password:  ', password);
-    console.log('👤 Name:      ', `${firstName} ${lastName}`);
-    console.log('🏢 Company:   ', companyName);
-    console.log('🆔 User ID:   ', userId);
-    console.log('🆔 Company ID:', companyId);
-    console.log('👑 Owner:     ', user.is_owner ? 'Yes' : 'No');
-    console.log('═══════════════════════════════════════════════════════════');
-    console.log('\n✨ This user has FULL ACCESS to all features!\n');
-    console.log('📝 Permissions: As an owner, this user has ALL permissions');
-    console.log('   automatically, regardless of role assignments.\n');
-    console.log('🎯 Use these credentials to test all frontend features.\n');
+    logger.info('✅ Master test user created successfully!\n');
+    logger.info('═══════════════════════════════════════════════════════════');
+    logger.info('📧 Email:     ', email);
+    logger.info('🔑 Password:  ', password);
+    logger.info('👤 Name:      ', `${firstName} ${lastName}`);
+    logger.info('🏢 Company:   ', companyName);
+    logger.info('🆔 User ID:   ', userId);
+    logger.info('🆔 Company ID:', companyId);
+    logger.info('👑 Owner:     ', user.is_owner ? 'Yes' : 'No');
+    logger.info('═══════════════════════════════════════════════════════════');
+    logger.info('\n✨ This user has FULL ACCESS to all features!\n');
+    logger.info('📝 Permissions: As an owner, this user has ALL permissions');
+    logger.info('   automatically, regardless of role assignments.\n');
+    logger.info('🎯 Use these credentials to test all frontend features.\n');
 
     // Step 6: Verify permissions
     const permissionsResult = await db.execute(sql`
@@ -164,8 +166,8 @@ async function createMasterTestUser(config: TestUserConfig = {}) {
     `);
 
     const totalPerms = permissionsResult.rows[0].total_permissions;
-    console.log(`✅ Total permissions in system: ${totalPerms}`);
-    console.log(`✅ User has access to: ALL ${totalPerms} permissions\n`);
+    logger.info(`✅ Total permissions in system: ${totalPerms}`);
+    logger.info(`✅ User has access to: ALL ${totalPerms} permissions\n`);
 
     // Step 7: Get available roles for this company
     const rolesResult = await db.execute(sql`
@@ -176,17 +178,17 @@ async function createMasterTestUser(config: TestUserConfig = {}) {
     `);
 
     if (rolesResult.rows.length > 0) {
-      console.log('📋 Available roles in this company:');
+      logger.info('📋 Available roles in this company:');
       rolesResult.rows.forEach((role: any) => {
-        console.log(`   - ${role.name}: ${role.description}`);
+        logger.info(`   - ${role.name}: ${role.description}`);
       });
-      console.log('\n');
+      logger.info('\n');
     }
 
-    console.log('🎉 Setup complete! You can now login to the frontend.\n');
+    logger.info('🎉 Setup complete! You can now login to the frontend.\n');
 
   } catch (error) {
-    console.error('❌ Error creating master test user:', error);
+    logger.error('❌ Error creating master test user:', error);
     throw error;
   } finally {
     process.exit(0);

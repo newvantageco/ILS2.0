@@ -6,6 +6,8 @@
 import type { InferInsertModel } from "drizzle-orm";
 import type { patientActivityLog } from "@shared/schema";
 import { storage } from "../storage.js";
+import logger from '../utils/logger';
+
 
 type ActivityType = 
   | "profile_created"
@@ -93,7 +95,7 @@ export class PatientActivityLogger {
       await storage.createPatientActivity(activity);
     } catch (error) {
       // Log error but don't throw - activity logging should not break main operations
-      console.error("Error logging patient activity:", error);
+      logger.error("Error logging patient activity:", error);
     }
   }
   

@@ -6,6 +6,8 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { APIAnalyticsService } from '../services/api/APIAnalyticsService.js';
+import logger from '../utils/logger';
+
 
 /**
  * Middleware to log API requests to analytics service
@@ -51,7 +53,7 @@ export function apiAnalyticsMiddleware(
         errorMessage: res.statusCode >= 400 ? res.statusMessage : undefined,
         timestamp: new Date(),
       }).catch((error) => {
-        console.error('Failed to log API request:', error);
+        logger.error('Failed to log API request:', error);
       });
     }
 
@@ -83,7 +85,7 @@ export async function rateLimitHeadersMiddleware(
       res.setHeader('X-RateLimit-Reset', rateLimitUsage.resetAt.toISOString());
     } catch (error) {
       // Silently fail - don't break the request
-      console.error('Failed to get rate limit usage:', error);
+      logger.error('Failed to get rate limit usage:', error);
     }
   }
 

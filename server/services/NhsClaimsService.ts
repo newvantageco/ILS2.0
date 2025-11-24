@@ -24,6 +24,8 @@ import { nhsClaims, nhsPractitioners, nhsPatientExemptions, nhsPayments } from "
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
 import crypto from "crypto";
 import fs from "fs/promises";
+import logger from '../utils/logger';
+
 
 // GOS claim amounts (as of 2024)
 const GOS_CLAIM_AMOUNTS = {
@@ -207,7 +209,7 @@ export class NhsClaimsService {
       return updatedClaim;
     } catch (error) {
       // Log the error and update claim status
-      console.error('PCSE submission failed:', error);
+      logger.error('PCSE submission failed:', error);
       
       await db
         .update(nhsClaims)
@@ -311,7 +313,7 @@ export class NhsClaimsService {
       return result.reference;
     } catch (error) {
       // Fallback to XML generation if API fails
-      console.warn('PCSE API failed, falling back to XML generation:', error.message);
+      logger.warn('PCSE API failed, falling back to XML generation:', error.message);
       return await this.generatePCSEXML(claimData, claimId);
     }
   }

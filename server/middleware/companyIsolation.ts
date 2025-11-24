@@ -10,6 +10,8 @@ import { db } from '../db';
 import { users } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 import { isPlatformAdmin, canAccessCompany, ROLES } from '../utils/rbac';
+import logger from '../utils/logger';
+
 
 export interface CompanyIsolatedRequest extends Request {
   user?: {
@@ -76,7 +78,7 @@ export const enforceCompanyIsolation: RequestHandler = async (req, res, next) =>
 
     next();
   } catch (error) {
-    console.error('Company isolation error:', error);
+    logger.error('Company isolation error:', error);
     res.status(500).json({ error: 'Authorization failed' });
   }
 };

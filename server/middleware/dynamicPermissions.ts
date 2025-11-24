@@ -7,6 +7,8 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { DynamicPermissionService } from '../services/DynamicPermissionService';
+import logger from '../utils/logger';
+
 
 /**
  * Extended request with user and permissions
@@ -59,7 +61,7 @@ export function requirePermission(permissionSlug: string) {
 
       next();
     } catch (error) {
-      console.error('Permission check error:', error);
+      logger.error('Permission check error:', error);
       return res.status(500).json({
         error: 'Internal Server Error',
         message: 'Failed to verify permissions'
@@ -108,7 +110,7 @@ export function requireAllPermissions(permissionSlugs: string[]) {
 
       next();
     } catch (error) {
-      console.error('Permission check error:', error);
+      logger.error('Permission check error:', error);
       return res.status(500).json({ error: 'Failed to verify permissions' });
     }
   };
@@ -154,7 +156,7 @@ export function requireAnyPermission(permissionSlugs: string[]) {
 
       next();
     } catch (error) {
-      console.error('Permission check error:', error);
+      logger.error('Permission check error:', error);
       return res.status(500).json({ error: 'Failed to verify permissions' });
     }
   };
@@ -232,7 +234,7 @@ export async function attachPermissions(
 
     next();
   } catch (error) {
-    console.error('Error attaching permissions:', error);
+    logger.error('Error attaching permissions:', error);
     // Don't block the request
     next();
   }
@@ -263,7 +265,7 @@ export function isFeatureLocked(req: Request, permissionSlug: string): boolean {
  * This helps you gradually migrate from requireRole() to requirePermission()
  */
 export function requireRole(roles: string[]) {
-  console.warn('⚠️  requireRole() is deprecated. Migrate to requirePermission()');
+  logger.warn('⚠️  requireRole() is deprecated. Migrate to requirePermission()');
   
   return (req: Request, res: Response, next: NextFunction) => {
     const userRoles = req.user?.roles?.map(r => r.name.toLowerCase()) || [];

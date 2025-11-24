@@ -14,6 +14,8 @@ import { db } from "../../db";
 import type { EcpCatalogData, InsertEcpCatalogData } from "@shared/schema";
 import { ecpCatalogData } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
+import logger from '../utils/logger';
+
 
 export interface CatalogProduct {
   sku: string;
@@ -69,11 +71,11 @@ export class EcpCatalogModel {
         } as InsertEcpCatalogData);
       }
 
-      console.log(
+      logger.info(
         `Uploaded ${csvData.length} catalog items for ECP ${ecpId}`
       );
     } catch (error) {
-      console.error("Error uploading catalog:", error);
+      logger.error("Error uploading catalog:", error);
       throw new Error("Failed to upload catalog");
     }
   }
@@ -102,7 +104,7 @@ export class EcpCatalogModel {
         isInStock: item.isInStock,
       }));
     } catch (error) {
-      console.error("Error retrieving catalog:", error);
+      logger.error("Error retrieving catalog:", error);
       return [];
     }
   }
@@ -172,7 +174,7 @@ export class EcpCatalogModel {
 
       return pricePoints;
     } catch (error) {
-      console.error("Error finding matching products:", error);
+      logger.error("Error finding matching products:", error);
       return [];
     }
   }
@@ -208,7 +210,7 @@ export class EcpCatalogModel {
           );
       }
     } catch (error) {
-      console.error("Error updating inventory:", error);
+      logger.error("Error updating inventory:", error);
     }
   }
 
@@ -258,7 +260,7 @@ export class EcpCatalogModel {
         outOfStockCount: outOfStock,
       };
     } catch (error) {
-      console.error("Error calculating price statistics:", error);
+      logger.error("Error calculating price statistics:", error);
       return {
         averagePrice: 0,
         minPrice: 0,
@@ -288,7 +290,7 @@ export class EcpCatalogModel {
           (p.brand && p.brand.toLowerCase().includes(queryLower))
       );
     } catch (error) {
-      console.error("Error searching products:", error);
+      logger.error("Error searching products:", error);
       return [];
     }
   }

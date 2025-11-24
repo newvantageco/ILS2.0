@@ -13,6 +13,8 @@ import { EventEmitter } from 'events';
 import { db } from '../db';
 import { eventLog, type InsertEventLog } from '../../shared/schema';
 import { eq, and, gte, lte, desc, inArray } from 'drizzle-orm';
+import logger from '../utils/logger';
+
 
 /**
  * Event metadata structure
@@ -111,7 +113,7 @@ class EventBusClass extends EventEmitter {
           timestamp: event.timestamp,
         });
       } catch (error) {
-        console.error(`Failed to store event ${type}:`, error);
+        logger.error(`Failed to store event ${type}:`, error);
         // Continue even if storage fails - don't block event handlers
       }
     }
@@ -136,7 +138,7 @@ class EventBusClass extends EventEmitter {
       try {
         await handler(event);
       } catch (error) {
-        console.error(`Error in event handler for ${type}:`, error);
+        logger.error(`Error in event handler for ${type}:`, error);
         // Handlers don't block each other
       }
     });
@@ -153,7 +155,7 @@ class EventBusClass extends EventEmitter {
       try {
         await handler(event);
       } catch (error) {
-        console.error(`Error in one-time event handler for ${type}:`, error);
+        logger.error(`Error in one-time event handler for ${type}:`, error);
       }
     });
   }

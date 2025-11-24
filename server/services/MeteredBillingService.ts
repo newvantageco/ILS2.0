@@ -23,6 +23,8 @@
 import { storage } from "../storage";
 import { eventBus } from "./EventBus";
 import Stripe from "stripe";
+import logger from '../utils/logger';
+
 
 // Initialize Stripe (use your Stripe secret key)
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_...", {
@@ -122,7 +124,7 @@ export class MeteredBillingService {
       if (typeof (this.storage as any).createUsageRecord === "function") {
         await (this.storage as any).createUsageRecord(usageRecord);
       } else {
-        console.log("Usage tracked (storage method not available):", usageRecord);
+        logger.info("Usage tracked (storage method not available):", usageRecord);
       }
 
       // Emit usage event
@@ -137,7 +139,7 @@ export class MeteredBillingService {
       // Check thresholds
       await this.checkUsageThresholds(companyId, metric);
     } catch (error) {
-      console.error("Failed to track usage:", error);
+      logger.error("Failed to track usage:", error);
       // Don't throw - usage tracking should not break main functionality
     }
   }
@@ -207,7 +209,7 @@ export class MeteredBillingService {
       // Get Stripe subscription (stored in company metadata or separate subscriptions table)
       const stripeSubscriptionId = (company as any).stripeSubscriptionId;
       if (!stripeSubscriptionId) {
-        console.log(`No Stripe subscription for company ${companyId}`);
+        logger.info(`No Stripe subscription for company ${companyId}`);
         return;
       }
 
@@ -256,9 +258,9 @@ export class MeteredBillingService {
         });
       }
 
-      console.log(`Reported daily usage to Stripe for company ${companyId}`);
+      logger.info(`Reported daily usage to Stripe for company ${companyId}`);
     } catch (error) {
-      console.error("Failed to report usage to Stripe:", error);
+      logger.error("Failed to report usage to Stripe:", error);
       throw error;
     }
   }
@@ -295,10 +297,10 @@ export class MeteredBillingService {
         }
       }
 
-      console.log("Batch usage reporting complete:", result);
+      logger.info("Batch usage reporting complete:", result);
       return result;
     } catch (error) {
-      console.error("Batch usage reporting failed:", error);
+      logger.error("Batch usage reporting failed:", error);
       throw error;
     }
   }
@@ -385,7 +387,7 @@ export class MeteredBillingService {
 
       return gigabytes;
     } catch (error) {
-      console.error("Failed to calculate storage usage:", error);
+      logger.error("Failed to calculate storage usage:", error);
       return 0;
     }
   }

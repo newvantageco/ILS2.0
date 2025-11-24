@@ -23,6 +23,8 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Server, IncomingMessage } from 'http';
 import { EventBus } from '../events/EventBus';
 import { PatientJourneyEvent } from '../events/PatientJourneyEvents';
+import logger from '../utils/logger';
+
 
 interface AuthenticatedWebSocket extends WebSocket {
   userId?: string;
@@ -74,7 +76,7 @@ export function setupWebSocket(server: Server, sessionMiddleware: any) {
 
   // Handle new WebSocket connections
   wss.on('connection', (ws: AuthenticatedWebSocket, request: IncomingMessage, userId: string) => {
-    console.log(`[WebSocket] New connection from user: ${userId}`);
+    logger.info(`[WebSocket] New connection from user: ${userId}`);
 
     // Store user info on WebSocket connection
     ws.userId = userId;
@@ -102,7 +104,7 @@ export function setupWebSocket(server: Server, sessionMiddleware: any) {
           }
           companyRooms.get(companyId)!.add(ws);
           
-          console.log(`[WebSocket] User ${userId} joined company room: ${companyId}`);
+          logger.info(`[WebSocket] User ${userId} joined company room: ${companyId}`);
           
           ws.send(JSON.stringify({
             type: 'room-joined',
@@ -116,7 +118,7 @@ export function setupWebSocket(server: Server, sessionMiddleware: any) {
           ws.send(JSON.stringify({ type: 'pong' }));
         }
       } catch (error) {
-        console.error('[WebSocket] Error processing message:', error);
+        logger.error('[WebSocket] Error processing message:', error);
       }
     });
 
@@ -127,7 +129,7 @@ export function setupWebSocket(server: Server, sessionMiddleware: any) {
 
     // Handle disconnection
     ws.on('close', () => {
-      console.log(`[WebSocket] User ${userId} disconnected`);
+      logger.info(`[WebSocket] User ${userId} disconnected`);
       
       // Remove from company room
       if (ws.companyId && companyRooms.has(ws.companyId)) {
@@ -141,7 +143,7 @@ export function setupWebSocket(server: Server, sessionMiddleware: any) {
     });
 
     ws.on('error', (error) => {
-      console.error('[WebSocket] Connection error:', error);
+      logger.error('[WebSocket] Connection error:', error);
     });
   });
 
@@ -164,7 +166,7 @@ export function setupWebSocket(server: Server, sessionMiddleware: any) {
   // Subscribe to order events and broadcast to company rooms
   setupEventListeners();
 
-  console.log('[WebSocket] WebSocket server initialized on /ws endpoint');
+  logger.info('[WebSocket] WebSocket server initialized on /ws endpoint');
 }
 
 /**
@@ -207,7 +209,7 @@ function setupEventListeners() {
     });
   });
 
-  console.log('[WebSocket] Event listeners registered for real-time broadcasts');
+  logger.info('[WebSocket] Event listeners registered for real-time broadcasts');
 }
 
 /**
@@ -231,7 +233,7 @@ function broadcastToCompany(companyId: string, message: any) {
   });
 
   if (sentCount > 0) {
-    console.log(`[WebSocket] Broadcast ${message.type} to ${sentCount} clients in company ${companyId}`);
+    logger.info(`[WebSocket] Broadcast ${message.type} to ${sentCount} clients in company ${companyId}`);
   }
 }
 
@@ -251,7 +253,7 @@ export function broadcastToAll(message: any) {
     });
   });
 
-  console.log(`[WebSocket] Broadcast to ${sentCount} total clients`);
+  logger.info(`[WebSocket] Broadcast to ${sentCount} total clients`);
 }
 
 /**

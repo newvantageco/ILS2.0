@@ -135,7 +135,7 @@ class EventBus {
    * 
    * @example
    * eventBus.subscribeAll((event) => {
-   *   console.log(`Event: ${event.type}`, event.data);
+   *   logger.info(`Event: ${event.type}`, event.data);
    * });
    */
   subscribeAll(

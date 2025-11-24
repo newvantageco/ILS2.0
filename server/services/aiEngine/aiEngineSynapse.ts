@@ -21,6 +21,8 @@ import { LimsModel } from "./limsModel";
 import { NlpModel } from "./nlpModel";
 import { EcpCatalogModel } from "./ecpCatalogModel";
 import { eq } from "drizzle-orm";
+import logger from '../utils/logger';
+
 
 interface RecommendationWithJustification {
   tier: "BEST" | "BETTER" | "GOOD";
@@ -121,7 +123,7 @@ export class AiEngineSynapse {
         },
       };
     } catch (error) {
-      console.error("Error in AI Engine analysis:", error);
+      logger.error("Error in AI Engine analysis:", error);
       throw new Error("Failed to generate recommendations");
     }
   }
@@ -140,7 +142,7 @@ export class AiEngineSynapse {
       );
       return recommendations || null;
     } catch (error) {
-      console.error("Error retrieving recommendations:", error);
+      logger.error("Error retrieving recommendations:", error);
       return null;
     }
   }
@@ -172,7 +174,7 @@ export class AiEngineSynapse {
         .set(updateData)
         .where(eq(aiDispensingRecommendations.id, recommendationId));
     } catch (error) {
-      console.error("Error updating recommendation status:", error);
+      logger.error("Error updating recommendation status:", error);
     }
   }
 
@@ -518,7 +520,7 @@ export class AiEngineSynapse {
 
       return result[0];
     } catch (error) {
-      console.error("Error saving recommendations:", error);
+      logger.error("Error saving recommendations:", error);
       throw error;
     }
   }

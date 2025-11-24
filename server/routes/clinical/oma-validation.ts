@@ -8,6 +8,8 @@
 
 import { Router } from 'express';
 import { OMAValidationService } from '../../services/OMAValidationService';
+import logger from '../utils/logger';
+
 
 const router = Router();
 const omaValidationService = new OMAValidationService();
@@ -35,7 +37,7 @@ router.post('/validate', async (req, res) => {
       data: result
     });
   } catch (error) {
-    console.error('OMA validation error:', error);
+    logger.error('OMA validation error:', error);
     res.status(500).json({
       error: 'Failed to validate OMA prescription',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -64,7 +66,7 @@ router.get('/stats', async (req, res) => {
       companyId
     });
   } catch (error) {
-    console.error('OMA stats error:', error);
+    logger.error('OMA stats error:', error);
     res.status(500).json({
       error: 'Failed to get OMA stats',
       message: error instanceof Error ? error.message : 'Unknown error'

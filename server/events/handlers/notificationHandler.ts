@@ -20,6 +20,8 @@ import type {
 } from '../events';
 import { db } from '../../db';
 import { notifications } from '../../../shared/schema';
+import logger from '../utils/logger';
+
 
 /**
  * Helper to create notification
@@ -49,7 +51,7 @@ async function createNotification(data: {
       read: false,
     });
   } catch (error) {
-    console.error('Failed to create notification:', error);
+    logger.error('Failed to create notification:', error);
   }
 }
 
@@ -215,5 +217,5 @@ export function initializeNotificationHandlers() {
     ]);
   });
 
-  console.log('✅ Notification event handlers initialized');
+  logger.info('✅ Notification event handlers initialized');
 }

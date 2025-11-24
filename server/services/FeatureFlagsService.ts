@@ -5,6 +5,8 @@
  */
 
 import { cacheService } from './CacheService';
+import logger from '../utils/logger';
+
 
 type FeatureFlagTarget = 'global' | 'company' | 'user';
 
@@ -63,7 +65,7 @@ class FeatureFlagsService {
     // Maintenance mode
     this.createFlag('maintenance-mode', false, 'Maintenance mode', 'global');
 
-    console.log(`✓ Initialized ${this.flags.size} feature flags`);
+    logger.info(`✓ Initialized ${this.flags.size} feature flags`);
   }
 
   /**
@@ -185,7 +187,7 @@ class FeatureFlagsService {
     if (flag) {
       flag.enabled = true;
       flag.updatedAt = new Date();
-      console.log(`Feature flag '${flagKey}' enabled`);
+      logger.info(`Feature flag '${flagKey}' enabled`);
     }
   }
 
@@ -198,7 +200,7 @@ class FeatureFlagsService {
     if (flag) {
       flag.enabled = false;
       flag.updatedAt = new Date();
-      console.log(`Feature flag '${flagKey}' disabled`);
+      logger.info(`Feature flag '${flagKey}' disabled`);
     }
   }
 
@@ -211,7 +213,7 @@ class FeatureFlagsService {
     if (flag) {
       flag.rolloutPercentage = Math.max(0, Math.min(100, percentage));
       flag.updatedAt = new Date();
-      console.log(`Feature flag '${flagKey}' rollout set to ${percentage}%`);
+      logger.info(`Feature flag '${flagKey}' rollout set to ${percentage}%`);
     }
   }
 
@@ -229,7 +231,7 @@ class FeatureFlagsService {
       if (!flag.allowList.includes(targetId)) {
         flag.allowList.push(targetId);
         flag.updatedAt = new Date();
-        console.log(`Added ${targetId} to '${flagKey}' allow list`);
+        logger.info(`Added ${targetId} to '${flagKey}' allow list`);
       }
     }
   }
@@ -243,7 +245,7 @@ class FeatureFlagsService {
     if (flag && flag.allowList) {
       flag.allowList = flag.allowList.filter(id => id !== targetId);
       flag.updatedAt = new Date();
-      console.log(`Removed ${targetId} from '${flagKey}' allow list`);
+      logger.info(`Removed ${targetId} from '${flagKey}' allow list`);
     }
   }
 
@@ -261,7 +263,7 @@ class FeatureFlagsService {
       if (!flag.blockList.includes(targetId)) {
         flag.blockList.push(targetId);
         flag.updatedAt = new Date();
-        console.log(`Added ${targetId} to '${flagKey}' block list`);
+        logger.info(`Added ${targetId} to '${flagKey}' block list`);
       }
     }
   }
@@ -275,7 +277,7 @@ class FeatureFlagsService {
     if (flag && flag.blockList) {
       flag.blockList = flag.blockList.filter(id => id !== targetId);
       flag.updatedAt = new Date();
-      console.log(`Removed ${targetId} from '${flagKey}' block list`);
+      logger.info(`Removed ${targetId} from '${flagKey}' block list`);
     }
   }
 
@@ -342,9 +344,9 @@ class FeatureFlagsService {
         this.flags.set(flag.key, flag);
       }
       
-      console.log(`Imported ${flags.length} feature flags`);
+      logger.info(`Imported ${flags.length} feature flags`);
     } catch (error) {
-      console.error('Failed to import feature flags:', error);
+      logger.error('Failed to import feature flags:', error);
     }
   }
 

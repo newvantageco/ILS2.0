@@ -300,6 +300,8 @@ import {
 } from "@shared/schema";
 import { eq, desc, and, or, like, sql, gt, lt, gte, lte, ne, asc } from "drizzle-orm";
 import { normalizeEmail } from "./utils/normalizeEmail";
+import logger from '../utils/logger';
+
 
 export interface IStorage {
   getUser(id: string, companyId: string): Promise<User | undefined>;
@@ -7441,12 +7443,12 @@ export class DbStorage implements IStorage {
   // They log warnings and return empty/mock data until full implementation.
 
   async createClinicalAnomaly(data: any) {
-    console.warn('[PLACEHOLDER] createClinicalAnomaly not yet implemented. Run migration first.');
+    logger.warn('[PLACEHOLDER] createClinicalAnomaly not yet implemented. Run migration first.');
     return { id: 'placeholder', ...data };
   }
 
   async createNotification(data: any) {
-    console.warn('[PLACEHOLDER] createNotification not yet implemented. Run migration first.');
+    logger.warn('[PLACEHOLDER] createNotification not yet implemented. Run migration first.');
     return { id: 'placeholder', ...data };
   }
 }

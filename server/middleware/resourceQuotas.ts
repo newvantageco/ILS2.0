@@ -9,6 +9,8 @@ import { db } from '../../db';
 import { orders, patients, users, products, eyeExaminations } from '@shared/schema';
 import { eq, and, count, sql } from 'drizzle-orm';
 import { cacheService } from '../services/CacheService';
+import logger from '../utils/logger';
+
 
 /**
  * Resource quotas by subscription plan
@@ -89,7 +91,7 @@ async function getCompanyPlan(companyId: string): Promise<keyof typeof Subscript
 
     return plan;
   } catch (error) {
-    console.error('Error fetching company plan:', error);
+    logger.error('Error fetching company plan:', error);
     return 'FREE'; // Fail safe to most restrictive plan
   }
 }
@@ -196,7 +198,7 @@ async function checkQuota(
         : `You have reached the ${quotaType} limit (${limit}) for your ${plan} plan. Upgrade to continue.`,
     };
   } catch (error) {
-    console.error(`Error checking quota ${quotaType}:`, error);
+    logger.error(`Error checking quota ${quotaType}:`, error);
     // On error, allow the operation (fail open)
     return { allowed: true, current: 0, limit, quotaType };
   }
@@ -230,7 +232,7 @@ export function checkUserQuota() {
 
       next();
     } catch (error) {
-      console.error('User quota check error:', error);
+      logger.error('User quota check error:', error);
       next(); // Fail open
     }
   };
@@ -264,7 +266,7 @@ export function checkPatientQuota() {
 
       next();
     } catch (error) {
-      console.error('Patient quota check error:', error);
+      logger.error('Patient quota check error:', error);
       next();
     }
   };
@@ -298,7 +300,7 @@ export function checkOrderQuota() {
 
       next();
     } catch (error) {
-      console.error('Order quota check error:', error);
+      logger.error('Order quota check error:', error);
       next();
     }
   };
@@ -332,7 +334,7 @@ export function checkProductQuota() {
 
       next();
     } catch (error) {
-      console.error('Product quota check error:', error);
+      logger.error('Product quota check error:', error);
       next();
     }
   };
@@ -366,7 +368,7 @@ export function checkExaminationQuota() {
 
       next();
     } catch (error) {
-      console.error('Examination quota check error:', error);
+      logger.error('Examination quota check error:', error);
       next();
     }
   };

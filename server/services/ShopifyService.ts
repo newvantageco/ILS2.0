@@ -2,6 +2,8 @@ import { db } from "../db";
 import { shopifyStores, shopifyProducts, shopifyWebhooks } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import crypto from "crypto";
+import logger from '../utils/logger';
+
 
 interface ShopifyStoreConfig {
   shopifyDomain: string;
@@ -168,7 +170,7 @@ export class ShopifyService {
           },
         });
       } catch (error: any) {
-        console.error(`Failed to register webhook ${topic}:`, error.message);
+        logger.error(`Failed to register webhook ${topic}:`, error.message);
       }
     }
   }
@@ -184,7 +186,7 @@ export class ShopifyService {
         await this.makeShopifyRequest(apiConfig, "DELETE", `/admin/api/webhooks/${webhook.id}.json`);
       }
     } catch (error: any) {
-      console.error("Failed to unregister webhooks:", error.message);
+      logger.error("Failed to unregister webhooks:", error.message);
     }
   }
 
@@ -592,7 +594,7 @@ export class ShopifyService {
           await this.syncProducts(storeId, companyId);
           break;
         default:
-          console.log(`Unhandled webhook topic: ${topic}`);
+          logger.info(`Unhandled webhook topic: ${topic}`);
       }
 
       await this.markWebhookProcessed(webhook.id);

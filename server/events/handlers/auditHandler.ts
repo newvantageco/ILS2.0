@@ -8,6 +8,8 @@
 
 import { EventBus } from '../EventBus';
 import type {
+import logger from '../utils/logger';
+
   UserCreatedData,
   UserUpdatedData,
   UserLoginData,
@@ -22,37 +24,37 @@ import type {
 export function initializeAuditHandlers() {
   // Audit user creation
   EventBus.subscribe<UserCreatedData>('user.created', async (event) => {
-    console.log(`[AUDIT] User created: ${event.data.email} by ${event.data.createdBy || 'system'}`);
+    logger.info(`[AUDIT] User created: ${event.data.email} by ${event.data.createdBy || 'system'}`);
   });
 
   // Audit user updates
   EventBus.subscribe<UserUpdatedData>('user.updated', async (event) => {
-    console.log(`[AUDIT] User ${event.data.userId} updated by ${event.data.updatedBy}:`, event.data.changes);
+    logger.info(`[AUDIT] User ${event.data.userId} updated by ${event.data.updatedBy}:`, event.data.changes);
   });
 
   // Audit login attempts
   EventBus.subscribe<UserLoginData>('user.login', async (event) => {
     if (event.data.success) {
-      console.log(`[AUDIT] Successful login: ${event.data.email} via ${event.data.loginMethod}`);
+      logger.info(`[AUDIT] Successful login: ${event.data.email} via ${event.data.loginMethod}`);
     } else {
-      console.log(`[AUDIT] Failed login: ${event.data.email} - ${event.data.failureReason}`);
+      logger.info(`[AUDIT] Failed login: ${event.data.email} - ${event.data.failureReason}`);
     }
   });
 
   // Audit order creation (financial transaction)
   EventBus.subscribe<OrderCreatedData>('order.created', async (event) => {
-    console.log(`[AUDIT] Order created: ${event.data.orderId} - Total: ${event.data.total}`);
+    logger.info(`[AUDIT] Order created: ${event.data.orderId} - Total: ${event.data.total}`);
   });
 
   // Audit order cancellations
   EventBus.subscribe<OrderCancelledData>('order.cancelled', async (event) => {
-    console.log(`[AUDIT] Order cancelled: ${event.data.orderId} by ${event.data.cancelledBy} - Reason: ${event.data.reason}`);
+    logger.info(`[AUDIT] Order cancelled: ${event.data.orderId} by ${event.data.cancelledBy} - Reason: ${event.data.reason}`);
   });
 
   // Audit marketplace connections
   EventBus.subscribe<MarketplaceConnectionApprovedData>('marketplace.connection_approved', async (event) => {
-    console.log(`[AUDIT] Marketplace connection approved: ${event.data.requestorCompanyId} -> ${event.data.targetCompanyId}`);
+    logger.info(`[AUDIT] Marketplace connection approved: ${event.data.requestorCompanyId} -> ${event.data.targetCompanyId}`);
   });
 
-  console.log('✅ Audit event handlers initialized');
+  logger.info('✅ Audit event handlers initialized');
 }

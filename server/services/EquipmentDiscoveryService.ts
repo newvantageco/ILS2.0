@@ -5,6 +5,8 @@ import { db } from '../db';
 import { eq } from 'drizzle-orm';
 import * as schema from '@shared/schema';
 import { equipmentStatusEnum } from '@shared/schema';
+import logger from '../utils/logger';
+
 
 type EquipmentStatus = typeof equipmentStatusEnum.enumValues[number];
 type EquipmentProtocol = 'DICOM' | 'RS232' | 'TCP' | 'HTTP';
@@ -49,7 +51,7 @@ class EquipmentDiscoveryService extends EventEmitter {
     });
 
     this.socket.on('error', (err) => {
-      console.error('Discovery socket error:', err);
+      logger.error('Discovery socket error:', err);
       this.emit('error', err);
     });
   }
@@ -81,7 +83,7 @@ class EquipmentDiscoveryService extends EventEmitter {
 
       await this.updateEquipmentStatus(equipment);
     } catch (error) {
-      console.error('Error handling discovery response:', error);
+      logger.error('Error handling discovery response:', error);
     }
   }
 
@@ -128,7 +130,7 @@ class EquipmentDiscoveryService extends EventEmitter {
           }
         });
     } catch (error) {
-      console.error('Error updating equipment status:', error);
+      logger.error('Error updating equipment status:', error);
     }
   }
 
@@ -190,7 +192,7 @@ class EquipmentDiscoveryService extends EventEmitter {
         metadata: (e.metadata ?? {}) as Record<string, unknown>
       }));
     } catch (error) {
-      console.error('Error fetching equipment:', error);
+      logger.error('Error fetching equipment:', error);
       return [];
     }
   }
@@ -217,7 +219,7 @@ class EquipmentDiscoveryService extends EventEmitter {
         metadata: (equipment.metadata ?? {}) as Record<string, unknown>
       };
     } catch (error) {
-      console.error('Error fetching equipment:', error);
+      logger.error('Error fetching equipment:', error);
       return null;
     }
   }

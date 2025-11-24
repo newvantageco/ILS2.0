@@ -8,6 +8,8 @@
 
 import { Router } from 'express';
 import { clinicalWorkflowService } from '../../services/ClinicalWorkflowService';
+import logger from '../utils/logger';
+
 
 const router = Router();
 
@@ -38,7 +40,7 @@ router.post('/recommendations', async (req, res) => {
       data: recommendations
     });
   } catch (error) {
-    console.error('Clinical workflow error:', error);
+    logger.error('Clinical workflow error:', error);
     res.status(500).json({
       error: 'Failed to generate recommendations',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -69,7 +71,7 @@ router.post('/analyze', async (req, res) => {
       prescriptionId
     });
   } catch (error) {
-    console.error('Prescription analysis error:', error);
+    logger.error('Prescription analysis error:', error);
     res.status(500).json({
       error: 'Failed to analyze prescription',
       message: error instanceof Error ? error.message : 'Unknown error'

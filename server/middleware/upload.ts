@@ -6,6 +6,8 @@
 import multer from 'multer';
 import { Request } from 'express';
 import { storageService } from '../services/StorageService';
+import logger from '../utils/logger';
+
 
 // Configure multer to use memory storage
 // Files are kept in memory temporarily, then uploaded to configured storage
@@ -195,7 +197,7 @@ export async function replaceFile(
   // Delete old file if exists
   if (oldKey) {
     await storageService.delete(oldKey).catch((err) => {
-      console.error('Failed to delete old file:', err);
+      logger.error('Failed to delete old file:', err);
       // Non-fatal error, continue
     });
   }

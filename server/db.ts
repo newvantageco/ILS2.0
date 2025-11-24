@@ -4,6 +4,8 @@ import { drizzle as drizzleNeon } from 'drizzle-orm/neon-serverless';
 import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
 import ws from "ws";
 import * as schema from "@shared/schema";
+import logger from '../utils/logger';
+
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -24,12 +26,12 @@ let db: any;
 
 if (isLocalPostgres) {
   // Use standard PostgreSQL driver for local/Docker databases
-  console.log('🔧 Using standard PostgreSQL driver (pg) for local database');
+  logger.info('🔧 Using standard PostgreSQL driver (pg) for local database');
   pool = new PgPool({ connectionString: process.env.DATABASE_URL });
   db = drizzlePg(pool, { schema });
 } else {
   // Use Neon serverless driver for cloud database
-  console.log('🔧 Using Neon serverless driver for cloud database');
+  logger.info('🔧 Using Neon serverless driver for cloud database');
   neonConfig.webSocketConstructor = ws;
   pool = new NeonPool({ connectionString: process.env.DATABASE_URL });
   db = drizzleNeon({ client: pool, schema });

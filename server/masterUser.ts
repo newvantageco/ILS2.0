@@ -2,6 +2,8 @@ import { storage } from "./storage";
 import { hashPassword } from "./localAuth";
 import { roleEnum, type UpsertUser } from "@shared/schema";
 import { normalizeEmail } from "./utils/normalizeEmail";
+import logger from '../utils/logger';
+
 
 const MASTER_ROLES = [...roleEnum.enumValues];
 
@@ -21,7 +23,7 @@ export async function ensureMasterUser(): Promise<void> {
   const email = normalizeEmail(emailEnv);
 
   if (password.length < 12) {
-    console.warn("[master-user] MASTER_USER_PASSWORD must be at least 12 characters; skipping master user bootstrap.");
+    logger.warn("[master-user] MASTER_USER_PASSWORD must be at least 12 characters; skipping master user bootstrap.");
     return;
   }
 
@@ -53,8 +55,8 @@ export async function ensureMasterUser(): Promise<void> {
       }),
     );
 
-    console.info(`[master-user] Bootstrap user ensured for ${email}`);
+    logger.info(`[master-user] Bootstrap user ensured for ${email}`);
   } catch (error) {
-    console.error("[master-user] Failed to bootstrap master user", error);
+    logger.error("[master-user] Failed to bootstrap master user", error);
   }
 }

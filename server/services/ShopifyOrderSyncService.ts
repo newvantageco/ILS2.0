@@ -3,6 +3,8 @@ import { shopifyOrders, shopifyStores, orders, patients } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { ShopifyService } from "./ShopifyService";
 import { OphthalamicAIService } from "./OphthalamicAIService";
+import logger from '../utils/logger';
+
 
 interface ShopifyOrderData {
   shopifyOrderId: string;
@@ -80,7 +82,7 @@ export class ShopifyOrderSyncService {
       try {
         aiRecommendations = await this.generateAIRecommendations(orderData.orderItems);
       } catch (error) {
-        console.error("Failed to generate AI recommendations:", error);
+        logger.error("Failed to generate AI recommendations:", error);
       }
     }
 
@@ -266,7 +268,7 @@ export class ShopifyOrderSyncService {
 
       return recommendations;
     } catch (error) {
-      console.error("AI recommendations failed:", error);
+      logger.error("AI recommendations failed:", error);
       return null;
     }
   }
@@ -608,7 +610,7 @@ export class ShopifyOrderSyncService {
         break;
 
       default:
-        console.log(`Unhandled order webhook: ${topic}`);
+        logger.info(`Unhandled order webhook: ${topic}`);
     }
 
     return null;

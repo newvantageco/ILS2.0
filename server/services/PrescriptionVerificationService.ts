@@ -3,6 +3,8 @@ import { prescriptionUploads, prescriptions, patients } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
+import logger from '../utils/logger';
+
 
 /**
  * ENHANCED Multi-Model Prescription OCR Service
@@ -103,7 +105,7 @@ export class PrescriptionVerificationService {
 
       return updated;
     } catch (error: any) {
-      console.error("AI extraction failed:", error);
+      logger.error("AI extraction failed:", error);
 
       // Mark as requiring review
       await db
@@ -124,7 +126,7 @@ export class PrescriptionVerificationService {
    * Uses both GPT-4 Vision and Claude 3 Vision for consensus
    */
   private static async extractPrescriptionDataAI(imageUrl: string): Promise<AIExtractionResult> {
-    console.log('Starting multi-model prescription extraction...');
+    logger.info('Starting multi-model prescription extraction...');
 
     // Run both models in parallel for faster response
     const [gptResult, claudeResult] = await Promise.allSettled([
@@ -142,16 +144,16 @@ export class PrescriptionVerificationService {
 
     // If only one model succeeded, use its result
     if (gptSuccess && !claudeSuccess) {
-      console.log('Using GPT-4 Vision result only (Claude failed)');
+      logger.info('Using GPT-4 Vision result only (Claude failed)');
       return gptResult.value;
     }
     if (!gptSuccess && claudeSuccess) {
-      console.log('Using Claude Vision result only (GPT-4 failed)');
+      logger.info('Using Claude Vision result only (GPT-4 failed)');
       return claudeResult.value;
     }
 
     // Both models succeeded - cross-validate and merge results
-    console.log('Both models succeeded - performing cross-validation');
+    logger.info('Both models succeeded - performing cross-validation');
     return this.crossValidateResults(
       gptResult.value as AIExtractionResult,
       claudeResult.value as AIExtractionResult
@@ -663,7 +665,7 @@ Return as JSON with structure:
       reviewNotes.push(`Low model consensus (${(consensusRate * 100).toFixed(0)}%) - requires review`);
     }
 
-    console.log(`Cross-validation complete: ${agreementCount}/${totalFields} fields match (${(consensusRate * 100).toFixed(0)}%)`);
+    logger.info(`Cross-validation complete: ${agreementCount}/${totalFields} fields match (${(consensusRate * 100).toFixed(0)}%)`);
 
     return {
       prescriptionData: mergedData,

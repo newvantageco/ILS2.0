@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { db } from '../db';
 import { companies } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import logger from '../utils/logger';
+
 
 interface RateLimitStore {
   [tenantId: string]: {
@@ -96,7 +98,7 @@ export const aiRateLimiter = async (
 
     next();
   } catch (error) {
-    console.error('Rate limiting error:', error);
+    logger.error('Rate limiting error:', error);
     res.status(500).json({
       success: false,
       error: 'Rate limiting service error'

@@ -14,6 +14,8 @@ import { db } from "../../../db/index.js";
 import { appointments, patients, prescriptions, users, companies } from "../../../shared/schema.js";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { addDays, addMonths, addYears, format, isBefore } from "date-fns";
+import logger from '../utils/logger';
+
 
 export interface NotificationTemplate {
   id: string;
@@ -342,7 +344,7 @@ Keep your eyes healthy with fresh lenses!`,
     // 3. Process at scheduled time
     // 4. Send via appropriate channel(s)
 
-    console.log('Notification scheduled:', notification);
+    logger.info('Notification scheduled:', notification);
 
     // Example implementation with BullMQ:
     // await notificationQueue.add('send-notification', notification, {
@@ -388,7 +390,7 @@ Keep your eyes healthy with fresh lenses!`,
    */
   private async sendEmail(recipientId: string, subject: string, message: string): Promise<void> {
     // Integrate with your email service (Resend, SendGrid, etc.)
-    console.log(`Email to ${recipientId}:`, subject, message);
+    logger.info(`Email to ${recipientId}:`, subject, message);
   }
 
   /**
@@ -396,7 +398,7 @@ Keep your eyes healthy with fresh lenses!`,
    */
   private async sendSMS(recipientId: string, message: string): Promise<void> {
     // Integrate with SMS service (Twilio, etc.)
-    console.log(`SMS to ${recipientId}:`, message);
+    logger.info(`SMS to ${recipientId}:`, message);
   }
 
   /**
@@ -404,7 +406,7 @@ Keep your eyes healthy with fresh lenses!`,
    */
   private async sendPush(recipientId: string, title: string, message: string): Promise<void> {
     // Integrate with push notification service (Firebase, etc.)
-    console.log(`Push to ${recipientId}:`, title, message);
+    logger.info(`Push to ${recipientId}:`, title, message);
   }
 
   /**

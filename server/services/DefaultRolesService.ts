@@ -7,6 +7,8 @@
 
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
+import logger from '../utils/logger';
+
 
 /**
  * Role templates define which permissions each default role gets
@@ -334,7 +336,7 @@ const DEFAULT_ROLE_TEMPLATES: RoleTemplate[] = [
  * Create default roles for a new company
  */
 export async function createDefaultRoles(companyId: string): Promise<void> {
-  console.log(`🏭 Creating default roles for company: ${companyId}`);
+  logger.info(`🏭 Creating default roles for company: ${companyId}`);
 
   try {
     for (const template of DEFAULT_ROLE_TEMPLATES) {
@@ -373,7 +375,7 @@ export async function createDefaultRoles(companyId: string): Promise<void> {
         if (permResult.rows.length > 0) {
           permissionIds.push(permResult.rows[0].id as string);
         } else {
-          console.warn(`⚠️  Permission not found: ${slug} for role ${template.name}`);
+          logger.warn(`⚠️  Permission not found: ${slug} for role ${template.name}`);
         }
       }
 
@@ -386,13 +388,13 @@ export async function createDefaultRoles(companyId: string): Promise<void> {
         `);
       }
 
-      console.log(`✅ Created role: ${template.name} with ${permissionIds.length} permissions`);
+      logger.info(`✅ Created role: ${template.name} with ${permissionIds.length} permissions`);
     }
 
-    console.log(`🎉 Successfully created ${DEFAULT_ROLE_TEMPLATES.length} default roles\n`);
+    logger.info(`🎉 Successfully created ${DEFAULT_ROLE_TEMPLATES.length} default roles\n`);
 
   } catch (error) {
-    console.error('❌ Failed to create default roles:', error);
+    logger.error('❌ Failed to create default roles:', error);
     throw error;
   }
 }
@@ -472,11 +474,11 @@ export async function cloneRole(
       )
     `);
 
-    console.log(`✅ Cloned role: ${source.name} -> ${newName}`);
+    logger.info(`✅ Cloned role: ${source.name} -> ${newName}`);
     return newRoleId;
 
   } catch (error) {
-    console.error('❌ Failed to clone role:', error);
+    logger.error('❌ Failed to clone role:', error);
     throw error;
   }
 }
@@ -578,11 +580,11 @@ export async function updateRolePermissions(
       }
     }
 
-    console.log(`✅ Updated permissions for role: ${role.name}`);
-    console.log(`   Added: ${permissionSlugsToAdd.length}, Removed: ${permissionSlugsToRemove.length}`);
+    logger.info(`✅ Updated permissions for role: ${role.name}`);
+    logger.info(`   Added: ${permissionSlugsToAdd.length}, Removed: ${permissionSlugsToRemove.length}`);
 
   } catch (error) {
-    console.error('❌ Failed to update role permissions:', error);
+    logger.error('❌ Failed to update role permissions:', error);
     throw error;
   }
 }
@@ -628,10 +630,10 @@ export async function assignDefaultAdminRole(userId: string, companyId: string):
       WHERE id = ${userId}
     `);
 
-    console.log(`✅ Assigned Admin role to user ${userId} and marked as owner`);
+    logger.info(`✅ Assigned Admin role to user ${userId} and marked as owner`);
 
   } catch (error) {
-    console.error('❌ Failed to assign admin role:', error);
+    logger.error('❌ Failed to assign admin role:', error);
     throw error;
   }
 }
