@@ -552,7 +552,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/auth/user', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) {
@@ -567,7 +567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bootstrap endpoint - returns user and role-based redirect path
-  app.get('/api/auth/bootstrap', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/auth/bootstrap', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserWithRoles_Internal(userId);
@@ -634,7 +634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Complete signup endpoint
-  app.post('/api/auth/complete-signup', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/auth/complete-signup', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -735,7 +735,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's available roles
-  app.get('/api/auth/available-roles', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/auth/available-roles', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const roles = await storage.getUserAvailableRoles(userId);
@@ -747,7 +747,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add a role to user
-  app.post('/api/auth/add-role', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/auth/add-role', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const { role } = req.body as { role: string };
@@ -788,7 +788,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Switch active role
-  app.post('/api/auth/switch-role', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/auth/switch-role', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const { role } = req.body as { role: string };
@@ -1163,7 +1163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/orders/:id', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/orders/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1196,7 +1196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // OMA file upload endpoint
-  app.patch('/api/orders/:id/oma', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.patch('/api/orders/:id/oma', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1254,7 +1254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get OMA file endpoint
-  app.get('/api/orders/:id/oma', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/orders/:id/oma', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1296,7 +1296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete OMA file endpoint
-  app.delete('/api/orders/:id/oma', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.delete('/api/orders/:id/oma', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1339,7 +1339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/orders/:id/status', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.patch('/api/orders/:id/status', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1404,7 +1404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate order sheet PDF
-  app.get('/api/orders/:id/pdf', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/orders/:id/pdf', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1464,7 +1464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate lab work ticket PDF
-  app.get('/api/orders/:id/lab-ticket', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/orders/:id/lab-ticket', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1666,7 +1666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Suppliers routes
-  app.get('/api/suppliers', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/suppliers', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1683,7 +1683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/suppliers', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/suppliers', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1706,7 +1706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/suppliers/:id', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.patch('/api/suppliers/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1734,7 +1734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/suppliers/:id', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.delete('/api/suppliers/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1757,7 +1757,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Stats routes
-  app.get('/api/stats', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/stats', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1783,7 +1783,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Consult Log routes (Phase 2)
-  app.post('/api/consult-logs', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/consult-logs', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -1819,7 +1819,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/consult-logs', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/consult-logs', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
@@ -2188,7 +2188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     trackingNumber: z.string().min(1, "Tracking number is required"),
   });
 
-  app.patch('/api/orders/:id/ship', isAuthenticated, async (req: AuthenticatedRequest, res: any) => {
+  app.patch('/api/orders/:id/ship', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
