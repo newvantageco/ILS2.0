@@ -179,6 +179,7 @@ import verificationRoutes from "./routes/verification";
 import backupRoutes from "./routes/backup";
 import returnsAndNonAdaptsRoutes from "./routes/returnsAndNonAdaptsRoutes";
 import clinicalProtocolsRoutes from "./routes/clinical-protocols";
+import notificationsRoutes from "./routes/notifications";
 import {
   publicApiLimiter,
   authLimiter,
@@ -547,6 +548,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // User Feedback & NPS routes
   app.use('/api', feedbackRoutes);
+
+  // Notifications routes
+  app.use(notificationsRoutes);
 
   const FULL_PLAN = "full" as const;
   const FREE_ECP_PLAN = "free_ecp" as const;
