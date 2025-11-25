@@ -243,6 +243,16 @@ router.post('/', requireCompanyOrPlatformAdmin, async (req, res) => {
       })
       .returning();
 
+    // If creating a company_admin, add both company_admin and ecp roles for role switching
+    if (role === 'company_admin') {
+      const { userRoles } = await import('@shared/schema');
+      await db.insert(userRoles).values([
+        { userId: newUser.id, role: 'company_admin' },
+        { userId: newUser.id, role: 'ecp' }
+      ]);
+      logger.info({ userId: newUser.id }, 'Added company_admin and ecp roles for role switching');
+    }
+
     // Don't send password
     const { password: _, ...userWithoutPassword } = newUser;
 

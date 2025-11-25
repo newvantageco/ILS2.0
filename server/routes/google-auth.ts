@@ -11,8 +11,8 @@ import { Strategy as GoogleStrategy, Profile } from "passport-google-oauth20";
 import { storage } from "../storage";
 import { createLogger } from "../utils/logger";
 import { normalizeEmail } from "../utils/normalizeEmail";
-import { db } from "../../db";
-import { companies } from "../../shared/schema";
+import { db } from "../db";
+import { companies } from "@shared/schema";
 
 const router = Router();
 const logger = createLogger("google-auth");
