@@ -43,7 +43,7 @@ import { createAIWorker } from "./workers/aiWorker";
 import { initializeRedis, getRedisConnection } from "./queue/config";
 import { storage } from "./storage";
 import logger from "./utils/logger";
-import { db } from "../db";
+import { db, closePool } from "./db";
 import { sql } from "drizzle-orm";
 // Order-created workers (Strangler refactor) - register explicitly below
 import { registerOrderCreatedLimsWorker } from "./workers/OrderCreatedLimsWorker";
@@ -192,7 +192,7 @@ const sessionConfig = {
     sameSite: 'strict' as const, // CSRF protection
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
   },
-  store: undefined as any, // Will be set below if Redis available
+  store: undefined as session.Store | undefined, // Will be set below if Redis available
 };
 
 // Add Redis store if available, otherwise use default memory store
@@ -390,7 +390,7 @@ app.get('/api/health', healthCheck);
     if (workersEnabled) {
       try {
         // Create LIMS client if configuration is present
-        let limsClient: any = null;
+        let limsClient: InstanceType<typeof LimsClient> | null = null;
         if (process.env.LIMS_API_BASE_URL && process.env.LIMS_API_KEY) {
           limsClient = new LimsClient({
             baseUrl: process.env.LIMS_API_BASE_URL,
@@ -412,11 +412,14 @@ app.get('/api/health', healthCheck);
         // Build optional analytics client. If ANALYTICS_WEBHOOK_URL is provided,
         // we'll POST events to that URL. Otherwise the worker will use the
         // placeholder logging behavior.
-        let analyticsClient: any = null;
+        interface AnalyticsClient {
+          sendEvent: (payload: Record<string, unknown>) => Promise<void>;
+        }
+        let analyticsClient: AnalyticsClient | null = null;
         const analyticsWebhook = process.env.ANALYTICS_WEBHOOK_URL;
         if (analyticsWebhook) {
           analyticsClient = {
-            sendEvent: async (payload: any) => {
+            sendEvent: async (payload: Record<string, unknown>) => {
               try {
                 // Node 18+ has global fetch; keep this lightweight to avoid new deps
                 await fetch(analyticsWebhook, {
@@ -444,15 +447,17 @@ app.get('/api/health', healthCheck);
         const backend = process.env.WORKERS_QUEUE_BACKEND || 'in-memory';
         if (backend === 'redis-streams' && process.env.REDIS_URL) {
           try {
-            const eventBus = (await import('./lib/eventBus')).default as any;
+            const eventBusModule = await import('./lib/eventBus');
+            const eventBus = eventBusModule.default as { reclaimAndProcess?: (stream: string, idleMs: number) => Promise<void> };
             const reclaimStreams = (process.env.REDIS_STREAMS_RECLAIM_STREAMS || 'order.submitted').split(',').map(s => s.trim()).filter(Boolean);
             const idleMs = Number(process.env.REDIS_STREAMS_RECLAIM_IDLE_MS || '60000');
             const intervalMs = Number(process.env.REDIS_STREAMS_RECLAIM_INTERVAL_MS || String(5 * 60 * 1000)); // 5m
 
-            if (typeof eventBus.reclaimAndProcess === 'function') {
+            if (eventBus.reclaimAndProcess) {
+              const reclaimFn = eventBus.reclaimAndProcess;
               setInterval(() => {
                 for (const s of reclaimStreams) {
-                  eventBus.reclaimAndProcess(s, idleMs).catch((err: any) => logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Reclaim error'));
+                  reclaimFn(s, idleMs).catch((err: unknown) => logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Reclaim error'));
                 }
               }, intervalMs);
               logger.info({}, `✅ Redis Streams reclaimer scheduled for streams: ${reclaimStreams.join(', ')}`);
@@ -553,8 +558,8 @@ app.get('/api/health', healthCheck);
     });
 
     // Handle server errors
-    server.on('error', (error: any) => {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Server error:');
+    server.on('error', (error: NodeJS.ErrnoException) => {
+      logger.error({ error: error.message }, 'Server error:');
       if (error.code === 'EADDRINUSE') {
         logger.error({ port }, 'Port is already in use');
       }
@@ -572,8 +577,7 @@ app.get('/api/health', healthCheck);
 
         try {
           // Close database connections
-          const { db } = await import('./db');
-          await db.$client.end();
+          await closePool();
           log('Database connections closed');
 
           // Close Redis connections

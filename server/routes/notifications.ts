@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { isAuthenticated } from '../replitAuth';
 import NotificationService from '../services/NotificationService';
 import { createLogger } from '../utils/logger';
@@ -8,18 +8,50 @@ const router = Router();
 const logger = createLogger('notifications');
 const notificationService = NotificationService.getInstance();
 
+// Type for authenticated request with user info
+// Using intersection to avoid incompatibility with Express.User
+interface AuthenticatedUser {
+  id: string;
+  role: string;
+  email?: string;
+}
+
+interface AuthenticatedRequest extends Omit<Request, 'user'> {
+  user: AuthenticatedUser;
+}
+
+/**
+ * Validate UUID format for notification IDs
+ * Prevents injection attacks and ensures valid IDs
+ */
+function isValidUUID(id: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+}
+
+/**
+ * Validate and sanitize limit parameter
+ */
+function sanitizeLimit(limit: unknown): number {
+  const parsed = parseInt(String(limit), 10);
+  if (isNaN(parsed) || parsed < 1) return 50;
+  return Math.min(parsed, 200); // Cap at 200 to prevent abuse
+}
+
 // Get user notifications
 router.get(
   '/api/notifications',
   isAuthenticated,
-  async (req: any, res) => {
+  async (req: Request, res: Response) => {
     try {
-      const userId = req.user.id;
-      const limit = parseInt(req.query.limit as string) || 50;
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user.id;
+      const limit = sanitizeLimit(req.query.limit);
       const notifications = await notificationService.getUserNotifications(userId, limit);
       res.json({ notifications, userId, limit });
     } catch (error) {
-      logger.error({ error, userId: req.user?.id, limit: req.query?.limit }, 'Error fetching notifications');
+      const authReq = req as AuthenticatedRequest;
+      logger.error({ error, userId: authReq.user?.id, limit: req.query?.limit }, 'Error fetching notifications');
       res.status(500).json({ error: 'Failed to fetch notifications' });
     }
   }
@@ -29,9 +61,14 @@ router.get(
 router.post(
   '/api/notifications/:id/read',
   isAuthenticated,
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
+
+      // Validate notification ID format
+      if (!isValidUUID(id)) {
+        return res.status(400).json({ error: 'Invalid notification ID format' });
+      }
 
       await notificationService.markNotificationAsRead(id);
 
@@ -47,15 +84,17 @@ router.post(
 router.post(
   '/api/notifications/read-all',
   isAuthenticated,
-  async (req: any, res) => {
+  async (req: Request, res: Response) => {
     try {
-      const userId = req.user.id;
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user.id;
 
       await notificationService.markAllNotificationsAsRead(userId);
 
       res.json({ message: 'All notifications marked as read', userId });
     } catch (error) {
-      logger.error({ error, userId: req.user?.id }, 'Error marking notifications as read');
+      const authReq = req as AuthenticatedRequest;
+      logger.error({ error, userId: authReq.user?.id }, 'Error marking notifications as read');
       res.status(500).json({ error: 'Failed to update notifications' });
     }
   }
@@ -65,9 +104,14 @@ router.post(
 router.delete(
   '/api/notifications/:id',
   isAuthenticated,
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
+
+      // Validate notification ID format
+      if (!isValidUUID(id)) {
+        return res.status(400).json({ error: 'Invalid notification ID format' });
+      }
 
       await notificationService.deleteNotification(id);
 
@@ -83,15 +127,17 @@ router.delete(
 router.delete(
   '/api/notifications',
   isAuthenticated,
-  async (req: any, res) => {
+  async (req: Request, res: Response) => {
     try {
-      const userId = req.user.id;
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user.id;
 
       await notificationService.clearNotifications(userId);
 
       res.json({ message: 'All notifications cleared', userId });
     } catch (error) {
-      logger.error({ error, userId: req.user?.id }, 'Error clearing notifications');
+      const authReq = req as AuthenticatedRequest;
+      logger.error({ error, userId: authReq.user?.id }, 'Error clearing notifications');
       res.status(500).json({ error: 'Failed to clear notifications' });
     }
   }
@@ -101,7 +147,7 @@ router.delete(
 router.get(
   '/api/notifications/stats',
   isAuthenticated,
-  async (req: any, res) => {
+  async (_req: Request, res: Response) => {
     try {
       const webSocketService = getWebSocketService();
       const stats = webSocketService?.getStats() || {
@@ -123,13 +169,19 @@ router.get(
 router.post(
   '/api/notifications/test',
   isAuthenticated,
-  async (req: any, res) => {
+  async (req: Request, res: Response) => {
     try {
-      if (req.user.role !== 'admin') {
+      const authReq = req as AuthenticatedRequest;
+      if (authReq.user.role !== 'admin') {
         return res.status(403).json({ error: 'Admin access required' });
       }
 
-      const { type = 'system', userId = req.user.id } = req.body;
+      const { type = 'system', userId = authReq.user.id } = req.body;
+      
+      // Validate userId if provided in body
+      if (typeof userId !== 'string' || !isValidUUID(userId)) {
+        return res.status(400).json({ error: 'Invalid userId format' });
+      }
       
       await notificationService.createEnhancedNotification({
         userId,
@@ -142,7 +194,8 @@ router.post(
       
       res.json({ success: true, message: 'Test notification sent' });
     } catch (error) {
-      logger.error({ error, userId: req.user.id }, 'Error sending test notification');
+      const authReq = req as AuthenticatedRequest;
+      logger.error({ error, userId: authReq.user.id }, 'Error sending test notification');
       res.status(500).json({ error: 'Failed to send test notification' });
     }
   }

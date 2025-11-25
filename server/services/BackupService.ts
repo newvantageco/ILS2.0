@@ -19,7 +19,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { GlacierClient, ArchiveJobCommand } from '@aws-sdk/client-glacier';
-import { logger } from '../utils/logger';
+import logger from '../utils/logger';
 import { db } from '../db';
 
 const execAsync = promisify(exec);
@@ -60,6 +60,13 @@ interface BackupConfig {
   };
 }
 
+interface BackupMetadata {
+  filename: string;
+  compression?: string;
+  format?: string;
+  sourcePaths?: string[];
+}
+
 interface BackupResult {
   id: string;
   type: 'database' | 'files' | 'redis';
@@ -68,7 +75,7 @@ interface BackupResult {
   size: number;
   location: string;
   checksum: string;
-  metadata: any;
+  metadata: BackupMetadata;
   error?: string;
 }
 
@@ -84,8 +91,9 @@ interface BackupMetrics {
 
 export class BackupService {
   private config: BackupConfig;
-  private s3?: AWS.S3;
-  private glacier?: AWS.Glacier;
+  private s3?: S3Client;
+  private glacier?: GlacierClient;
+  private initialized: Promise<void>;
 
   constructor(config: Partial<BackupConfig> = {}) {
     this.config = {
@@ -146,8 +154,8 @@ export class BackupService {
       });
     }
 
-    // Ensure backup directory exists
-    this.ensureBackupDirectory();
+    // Ensure backup directory exists (async initialization)
+    this.initialized = this.ensureBackupDirectory();
   }
 
   /**
@@ -175,9 +183,17 @@ export class BackupService {
   }
 
   /**
+   * Wait for service initialization to complete
+   */
+  async waitForInit(): Promise<void> {
+    await this.initialized;
+  }
+
+  /**
    * Perform full system backup
    */
   async performFullBackup(): Promise<BackupResult[]> {
+    await this.waitForInit();
     const results: BackupResult[] = [];
     const backupId = this.generateBackupId();
 
@@ -230,11 +246,21 @@ export class BackupService {
     try {
       logger.info({ backupId, filename }, 'Starting database backup');
 
-      // Create pg_dump command
-      const dumpCommand = `PGPASSWORD="${this.config.database.password}" pg_dump -h ${this.config.database.host} -p ${this.config.database.port} -U ${this.config.database.username} -d ${this.config.database} --verbose --clean --no-owner --no-privileges --format=custom | gzip > "${filepath}"`;
+      // Create pg_dump command using .pgpass file or PGPASSFILE for security
+      // Avoid passing password on command line (visible in process list)
+      const pgpassFile = `/tmp/.pgpass-${backupId}`;
+      const pgpassContent = `${this.config.database.host}:${this.config.database.port}:${this.config.database.database}:${this.config.database.username}:${this.config.database.password}`;
+      await fs.writeFile(pgpassFile, pgpassContent, { mode: 0o600 });
+      
+      const dumpCommand = `PGPASSFILE="${pgpassFile}" pg_dump -h ${this.config.database.host} -p ${this.config.database.port} -U ${this.config.database.username} -d ${this.config.database.database} --verbose --clean --no-owner --no-privileges --format=custom | gzip > "${filepath}"`;
 
       // Execute backup
-      await execAsync(dumpCommand);
+      try {
+        await execAsync(dumpCommand);
+      } finally {
+        // Clean up pgpass file
+        await fs.unlink(pgpassFile).catch(() => {});
+      }
 
       // Get file stats
       const stats = await fs.stat(filepath);
@@ -605,7 +631,7 @@ export class BackupService {
   /**
    * Send backup error notification
    */
-  private async sendErrorNotification(error: any, backupId: string): Promise<void> {
+  private async sendErrorNotification(error: Error | unknown, backupId: string): Promise<void> {
     const message = {
       text: `🚨 ILS 2.0 Backup Failed`,
       attachments: [{
@@ -624,7 +650,7 @@ export class BackupService {
   /**
    * Send notification to configured channels
    */
-  private async sendNotification(message: any): Promise<void> {
+  private async sendNotification(message: Record<string, unknown>): Promise<void> {
     // Slack notification
     if (this.config.notifications.slackWebhook) {
       try {
@@ -727,9 +753,19 @@ export class BackupService {
     try {
       logger.info({ backupFile }, 'Starting database restore');
 
-      const restoreCommand = `gunzip -c "${backupFile}" | PPASSWORD="${this.config.database.password}" psql -h ${this.config.database.host} -p ${this.config.database.port} -U ${this.config.database.username} -d ${this.config.database}`;
+      // Use PGPASSFILE for secure password handling (avoids exposing password in process list)
+      const pgpassFile = `/tmp/.pgpass-restore-${Date.now()}`;
+      const pgpassContent = `${this.config.database.host}:${this.config.database.port}:${this.config.database.database}:${this.config.database.username}:${this.config.database.password}`;
+      await fs.writeFile(pgpassFile, pgpassContent, { mode: 0o600 });
+      
+      const restoreCommand = `gunzip -c "${backupFile}" | PGPASSFILE="${pgpassFile}" psql -h ${this.config.database.host} -p ${this.config.database.port} -U ${this.config.database.username} -d ${this.config.database.database}`;
 
-      await execAsync(restoreCommand);
+      try {
+        await execAsync(restoreCommand);
+      } finally {
+        // Clean up pgpass file
+        await fs.unlink(pgpassFile).catch(() => {});
+      }
 
       logger.info({ backupFile }, 'Database restore completed');
 

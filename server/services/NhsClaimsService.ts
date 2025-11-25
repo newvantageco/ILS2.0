@@ -149,12 +149,12 @@ export class NhsClaimsService {
 
   /**
    * Submit claim to PCSE
-   * In production, this would call PCSE API or generate XML file for email submission
+   * Calls PCSE API or generates XML file for manual submission as fallback
    */
   static async submitClaim(data: SubmitClaimData) {
     const { claimId, submittedBy } = data;
 
-    // Get claim
+    // Get claim with related data
     const [claim] = await db
       .select()
       .from(nhsClaims)
@@ -172,24 +172,10 @@ export class NhsClaimsService {
     // Validation checks
     await this.validateClaim(claim);
 
-    // Generate PCSE reference
-    const pcseReference = `PCSE-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
+    // Build claim data for PCSE submission
+    const claimData = await this.buildPCSEClaimData(claim);
 
-    // Update claim status
-    const [updatedClaim] = await db
-      .update(nhsClaims)
-      .set({
-        status: "submitted",
-        submittedAt: new Date(),
-        submittedBy,
-        pcseReference,
-        pcseStatus: "pending",
-        updatedAt: new Date(),
-      })
-      .where(eq(nhsClaims.id, claimId))
-      .returning();
-
-    // IMPLEMENTED: Actual PCSE submission
+    // Submit to PCSE
     try {
       const pcseReference = await this.submitToPCSE(claimData, claimId);
       
@@ -197,6 +183,7 @@ export class NhsClaimsService {
       const [updatedClaim] = await db
         .update(nhsClaims)
         .set({
+          status: "submitted",
           pcseReference,
           pcseStatus: "submitted",
           submittedAt: new Date(),
@@ -206,30 +193,70 @@ export class NhsClaimsService {
         .where(eq(nhsClaims.id, claimId))
         .returning();
 
+      logger.info({ claimId, pcseReference }, 'NHS claim submitted to PCSE');
       return updatedClaim;
     } catch (error) {
       // Log the error and update claim status
-      logger.error('PCSE submission failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error({ claimId, error: errorMessage }, 'PCSE submission failed');
       
       await db
         .update(nhsClaims)
         .set({
           pcseStatus: "failed",
-          pcseError: error.message,
+          pcseError: errorMessage,
           updatedAt: new Date(),
         })
         .where(eq(nhsClaims.id, claimId));
       
-      throw new Error(`PCSE submission failed: ${error.message}`);
+      throw new Error(`PCSE submission failed: ${errorMessage}`);
     }
+  }
 
-    return updatedClaim;
+  /**
+   * Build PCSE claim data from database claim record
+   */
+  private static async buildPCSEClaimData(claim: typeof nhsClaims.$inferSelect) {
+    // Get practitioner details
+    const [practitioner] = await db
+      .select()
+      .from(nhsPractitioners)
+      .where(eq(nhsPractitioners.id, claim.practitionerId))
+      .limit(1);
+
+    return {
+      claimType: claim.claimType,
+      practitionerGocNumber: practitioner?.gocNumber || '',
+      practitionerName: practitioner?.name || '',
+      practitionerPhone: practitioner?.phone || '',
+      patientNhsNumber: claim.patientNhsNumber,
+      patientFirstName: '', // Would be joined from patients table
+      patientLastName: '',
+      patientDateOfBirth: '',
+      patientAddress: {},
+      testDate: claim.testDate,
+      examinationFindings: claim.clinicalNotes,
+      visualAcuity: '',
+      odSphere: null,
+      odCylinder: null,
+      odAxis: null,
+      odAdd: null,
+      osSphere: null,
+      osCylinder: null,
+      osAxis: null,
+      osAdd: null,
+      nhsVoucherCode: '',
+      patientExemptionReason: claim.patientExemptionReason,
+      patientExemptionEvidence: claim.patientExemptionEvidence,
+      organisationOdsCode: '', // Would come from company settings
+      organisationName: '',
+    };
   }
 
   /**
    * Submit claim to PCSE API
    */
-  private static async submitToPCSE(claimData: any, claimId: string): Promise<string> {
+  private static async submitToPCSE(claimData: Record<string, unknown>, claimId: string): Promise<string> {
     const pcseApiUrl = process.env.PCSE_API_URL || 'https://api.pcse.nhs.uk/v1';
     const apiKey = process.env.PCSE_API_KEY;
     
@@ -313,7 +340,8 @@ export class NhsClaimsService {
       return result.reference;
     } catch (error) {
       // Fallback to XML generation if API fails
-      logger.warn('PCSE API failed, falling back to XML generation:', error.message);
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
+      logger.warn({ error: errMsg }, 'PCSE API failed, falling back to XML generation');
       return await this.generatePCSEXML(claimData, claimId);
     }
   }
@@ -321,7 +349,7 @@ export class NhsClaimsService {
   /**
    * Generate PCSE XML for manual submission (fallback)
    */
-  private static async generatePCSEXML(claimData: any, claimId: string): Promise<string> {
+  private static async generatePCSEXML(claimData: Record<string, unknown>, claimId: string): Promise<string> {
     const reference = `PCSE-${Date.now()}-${claimId.slice(-8)}`;
     
     const xmlTemplate = `<?xml version="1.0" encoding="UTF-8"?>
@@ -381,7 +409,7 @@ export class NhsClaimsService {
 </GOSClaim>`;
 
     // Store XML for manual submission
-    await fs.promises.writeFile(
+    await fs.writeFile(
       `/tmp/pcse-claim-${reference}.xml`,
       xmlTemplate,
       'utf8'
