@@ -105,6 +105,9 @@ import { registerAdminRoutes } from "./routes/admin";
 import userManagementRoutes from "./routes/userManagement";
 import ecpRoutes from "./routes/ecp";
 import posRoutes from "./routes/pos";
+import authJWTRoutes from "./routes/auth-jwt.js";
+import { jwtService } from "./services/JWTService.js";
+import { authenticateHybrid } from "./middleware/auth-hybrid.js";
 import analyticsRoutes from "./routes/analytics";
 import pdfGenerationRoutes from "./routes/pdfGeneration";
 import companiesRoutes from "./routes/companies";
@@ -174,6 +177,63 @@ import medicalBillingRoutes from "./routes/medical-billing";
 import patientPortalV2Routes from "./routes/patient-portal-v2";
 import healthcareAnalyticsRoutes from "./routes/healthcare-analytics";
 import laboratoryRoutes from "./routes/laboratory";
+
+/**
+ * Helper function to get user permissions based on role
+ */
+function getUserPermissions(role: string): string[] {
+  const rolePermissions: Record<string, string[]> = {
+    'super_admin': [
+      'admin.all',
+      'company.all',
+      'user.all',
+      'data.all',
+      'settings.all',
+      'reports.all',
+      'ai.all'
+    ],
+    'admin': [
+      'company.manage',
+      'user.manage',
+      'data.all',
+      'settings.manage',
+      'reports.all',
+      'ai.use'
+    ],
+    'manager': [
+      'user.view',
+      'data.manage',
+      'reports.view',
+      'ai.use'
+    ],
+    'ecp': [
+      'data.view',
+      'data.create',
+      'data.update',
+      'reports.view',
+      'ai.use'
+    ],
+    'lab_tech': [
+      'data.view',
+      'data.create',
+      'data.update',
+      'reports.view'
+    ],
+    'staff': [
+      'data.view',
+      'data.create',
+      'data.update',
+      'reports.view',
+      'ai.use'
+    ],
+    'user': [
+      'data.view',
+      'reports.view'
+    ]
+  };
+
+  return rolePermissions[role] || rolePermissions['user'];
+}
 import practiceManagementRoutes from "./routes/practice-management";
 import verificationRoutes from "./routes/verification";
 import backupRoutes from "./routes/backup";
@@ -247,6 +307,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Service verification endpoints
   app.use('/api/verification', verificationRoutes);
   app.use('/api/backup', backupRoutes);
+
+  // JWT Authentication routes (works in all environments)
+  app.use('/api/auth', authJWTRoutes);
 
   if (process.env.NODE_ENV !== 'development') {
     await setupReplitAuth(app);
@@ -972,6 +1035,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return res.status(404).json({ message: "User not found" });
             }
 
+            // Get user permissions based on role
+            const permissions = getUserPermissions(dbUser.role);
+
+            // Generate JWT tokens for parallel authentication
+            let tokens;
+            try {
+              tokens = jwtService.generateTokenPair({
+                userId: dbUser.id,
+                companyId: dbUser.companyId,
+                email: dbUser.email,
+                role: dbUser.role,
+                permissions
+              });
+              logger.info(`Generated JWT tokens for user: ${dbUser.email}`);
+            } catch (jwtError) {
+              logger.warn(`Failed to generate JWT tokens: ${jwtError instanceof Error ? jwtError.message : String(jwtError)}`);
+              // Continue without JWT tokens - session still works
+            }
+
             res.json({
               message: "Login successful",
               user: {
@@ -982,7 +1064,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 role: dbUser.role,
                 accountStatus: dbUser.accountStatus,
                 subscriptionPlan: dbUser.subscriptionPlan,
-              }
+                permissions
+              },
+              // Include JWT tokens if generated
+              ...(tokens && {
+                accessToken: tokens.accessToken,
+                refreshToken: tokens.refreshToken,
+                expiresIn: tokens.expiresIn
+              })
             });
           }).catch((dbErr) => {
             logger.error({ error: dbErr instanceof Error ? dbErr.message : String(dbErr) }, 'Database error');
