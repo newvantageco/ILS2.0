@@ -617,4 +617,175 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
       });
     }
   });
+
+  /**
+   * GET /api/master-ai/company-stats
+   * Get company-level AI statistics for model management
+   */
+  app.get("/api/master-ai/company-stats", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const companyId = req.user?.companyId || req.user?.claims?.companyId;
+      
+      // Get basic company stats - placeholder implementation
+      // In production, this would query actual company data
+      const stats = {
+        totalCompanies: 1, // Current company
+        aiEnabledCompanies: 1,
+        byModelVersion: {
+          'v1.0': 1,
+        },
+        averageLearningProgress: 25, // Percentage
+      };
+
+      res.json({ stats });
+    } catch (error: any) {
+      logger.error({ error }, 'Get company stats error');
+      res.status(500).json({
+        error: "Failed to retrieve company statistics",
+        message: error.message,
+      });
+    }
+  });
+
+  /**
+   * GET /api/master-ai/versions
+   * Get AI model versions
+   */
+  app.get("/api/master-ai/versions", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      // Placeholder - would query actual model versions
+      const versions = [
+        {
+          id: 'v1.0',
+          versionNumber: '1.0.0',
+          modelName: 'ILS Optical AI',
+          status: 'active',
+          description: 'Initial release with optical expertise',
+          createdAt: new Date().toISOString(),
+          approvedAt: new Date().toISOString(),
+        }
+      ];
+
+      res.json({ versions });
+    } catch (error: any) {
+      logger.error({ error }, 'Get versions error');
+      res.status(500).json({
+        error: "Failed to retrieve model versions",
+        message: error.message,
+      });
+    }
+  });
+
+  /**
+   * POST /api/master-ai/versions
+   * Create a new model version
+   */
+  app.post("/api/master-ai/versions", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { versionNumber, description, modelName } = req.body;
+      
+      if (!versionNumber || !modelName) {
+        return res.status(400).json({
+          error: "Version number and model name are required",
+        });
+      }
+
+      const newVersion = {
+        id: `v${Date.now()}`,
+        versionNumber,
+        modelName,
+        status: 'pending',
+        description: description || '',
+        createdAt: new Date().toISOString(),
+      };
+
+      res.json(newVersion);
+    } catch (error: any) {
+      logger.error({ error }, 'Create version error');
+      res.status(500).json({
+        error: "Failed to create model version",
+        message: error.message,
+      });
+    }
+  });
+
+  /**
+   * PUT /api/master-ai/versions/:id/approve
+   * Approve a model version
+   */
+  app.put("/api/master-ai/versions/:id/approve", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      
+      res.json({
+        success: true,
+        message: `Version ${id} approved`,
+        approvedAt: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      logger.error({ error }, 'Approve version error');
+      res.status(500).json({
+        error: "Failed to approve version",
+        message: error.message,
+      });
+    }
+  });
+
+  /**
+   * GET /api/master-ai/deployments
+   * Get AI model deployments
+   */
+  app.get("/api/master-ai/deployments", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      // Placeholder - would query actual deployments
+      const deployments = [
+        {
+          id: 'deploy-1',
+          versionId: 'v1.0',
+          versionNumber: '1.0.0',
+          deploymentStatus: 'active',
+          deployedAt: new Date().toISOString(),
+        }
+      ];
+
+      res.json({ deployments });
+    } catch (error: any) {
+      logger.error({ error }, 'Get deployments error');
+      res.status(500).json({
+        error: "Failed to retrieve deployments",
+        message: error.message,
+      });
+    }
+  });
+
+  /**
+   * POST /api/master-ai/deployments
+   * Deploy a model version
+   */
+  app.post("/api/master-ai/deployments", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { versionId } = req.body;
+      
+      if (!versionId) {
+        return res.status(400).json({
+          error: "Version ID is required",
+        });
+      }
+
+      const deployment = {
+        id: `deploy-${Date.now()}`,
+        versionId,
+        deploymentStatus: 'active',
+        deployedAt: new Date().toISOString(),
+      };
+
+      res.json(deployment);
+    } catch (error: any) {
+      logger.error({ error }, 'Create deployment error');
+      res.status(500).json({
+        error: "Failed to create deployment",
+        message: error.message,
+      });
+    }
+  });
 }
