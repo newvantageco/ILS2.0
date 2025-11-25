@@ -11,15 +11,23 @@ import { loggers } from '../utils/logger';
 import { SystemMonitoringService } from '../services/admin/SystemMonitoringService';
 import { ConfigurationService } from '../services/admin/ConfigurationService';
 import { AdminOperationsService } from '../services/admin/AdminOperationsService';
-import { requireAuth, requireRole } from '../middleware/auth';
-
 const router = express.Router();
 const logger = loggers.api;
 
 // ========== SECURITY MIDDLEWARE ==========
 // Apply authentication and authorization to ALL system admin routes
-router.use(requireAuth);
-router.use(requireRole(['platform_admin']));
+// Use session-based auth (not Bearer token) for web app compatibility
+const requirePlatformAdmin = (req: any, res: any, next: any) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  if (req.user.role !== 'platform_admin') {
+    return res.status(403).json({ error: 'Platform admin access required' });
+  }
+  next();
+};
+
+router.use(requirePlatformAdmin);
 
 // ========== System Monitoring ==========
 

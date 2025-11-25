@@ -2238,8 +2238,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
       
-      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
-        return res.status(403).json({ message: "Only lab staff can view organization settings" });
+      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer' && user.role !== 'platform_admin' && user.role !== 'admin')) {
+        return res.status(403).json({ message: "Only lab staff or admins can view organization settings" });
       }
 
       const settings = await storage.getOrganizationSettings();
@@ -2255,8 +2255,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
       
-      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
-        return res.status(403).json({ message: "Only lab staff can update organization settings" });
+      if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer' && user.role !== 'platform_admin' && user.role !== 'admin')) {
+        return res.status(403).json({ message: "Only lab staff or admins can update organization settings" });
       }
 
       const validation = updateOrganizationSettingsSchema.safeParse(req.body);

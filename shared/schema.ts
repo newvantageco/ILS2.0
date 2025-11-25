@@ -5500,6 +5500,7 @@ export const claimLineItems = pgTable("claim_line_items", {
   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
 
   // References
+  companyId: varchar("company_id", { length: 255 }).references(() => companies.id, { onDelete: "cascade" }),
   claimId: varchar("claim_id", { length: 255 }).notNull().references(() => insuranceClaims.id, { onDelete: "cascade" }),
 
   // Line Item Details
@@ -9572,3 +9573,241 @@ export type PatientPortalAccessLog = typeof patientPortalAccessLogs.$inferSelect
 export type InsertPatientPortalAccessLog = typeof patientPortalAccessLogs.$inferInsert;
 
 // ========== End Patient Portal Tables ==========
+
+// ========== Backward Compatibility Tables & Aliases ==========
+// These aliases and tables ensure backward compatibility with services
+// that reference older table names or expected tables that were not yet created
+
+// Alias: activityLogs -> auditLogs
+export const activityLogs = auditLogs;
+export type ActivityLog = AuditLog;
+export type InsertActivityLog = InsertAuditLog;
+
+// Alias: examinations -> eyeExaminations
+export const examinations = eyeExaminations;
+export type Examination = EyeExamination;
+export type InsertExamination = InsertEyeExamination;
+
+// Insurance Companies Table (for BillingService)
+export const insuranceCompanies = pgTable("insurance_companies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 255 }).notNull(),
+  displayName: varchar("display_name", { length: 255 }),
+  payerId: varchar("payer_id", { length: 100 }),
+  npi: varchar("npi", { length: 20 }),
+  address: jsonb("address"),
+  phone: varchar("phone", { length: 50 }),
+  fax: varchar("fax", { length: 50 }),
+  email: varchar("email", { length: 255 }),
+  website: varchar("website", { length: 500 }),
+  ediTradingPartnerId: varchar("edi_trading_partner_id", { length: 100 }),
+  clearinghouse: varchar("clearinghouse", { length: 100 }),
+  claimSubmissionMethod: varchar("claim_submission_method", { length: 50 }),
+  attachmentRequirements: jsonb("attachment_requirements"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type InsuranceCompany = typeof insuranceCompanies.$inferSelect;
+export type InsertInsuranceCompany = typeof insuranceCompanies.$inferInsert;
+
+// Insurance Plans Table (for BillingService)
+export const insurancePlans = pgTable("insurance_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  insuranceCompanyId: varchar("insurance_company_id").references(() => insuranceCompanies.id, { onDelete: 'cascade' }),
+  planName: varchar("plan_name", { length: 255 }).notNull(),
+  planType: varchar("plan_type", { length: 50 }).notNull(), // hmo, ppo, pos, epo, medicare, medicaid, etc.
+  planId: varchar("plan_id", { length: 100 }),
+  groupId: varchar("group_id", { length: 100 }),
+  copaymentAmount: decimal("copayment_amount", { precision: 10, scale: 2 }),
+  deductibleAmount: decimal("deductible_amount", { precision: 10, scale: 2 }),
+  coinsurancePercentage: decimal("coinsurance_percentage", { precision: 5, scale: 2 }),
+  outOfPocketMaximum: decimal("out_of_pocket_maximum", { precision: 10, scale: 2 }),
+  visionCoverage: jsonb("vision_coverage"),
+  examCoverage: jsonb("exam_coverage"),
+  materialsCoverage: jsonb("materials_coverage"),
+  preauthorizationRequired: boolean("preauthorization_required").default(false),
+  referralRequired: boolean("referral_required").default(false),
+  timelyFilingDays: integer("timely_filing_days"),
+  effectiveDate: timestamp("effective_date"),
+  terminationDate: timestamp("termination_date"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type InsurancePlan = typeof insurancePlans.$inferSelect;
+export type InsertInsurancePlan = typeof insurancePlans.$inferInsert;
+
+// AI Analyses Table (for AnalyticsService)
+export const aiAnalyses = pgTable("ai_analyses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+  modelType: varchar("model_type", { length: 100 }).notNull(),
+  analysisType: varchar("analysis_type", { length: 100 }).notNull(),
+  confidence: decimal("confidence", { precision: 5, scale: 4 }),
+  inputData: jsonb("input_data"),
+  outputData: jsonb("output_data"),
+  processingTimeMs: integer("processing_time_ms"),
+  errorMessage: text("error_message"),
+  userId: varchar("user_id").references(() => users.id),
+  resourceType: varchar("resource_type", { length: 50 }),
+  resourceId: varchar("resource_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type AiAnalysis = typeof aiAnalyses.$inferSelect;
+export type InsertAiAnalysis = typeof aiAnalyses.$inferInsert;
+
+// Patient Insurance Table (for BillingService)
+export const patientInsurance = pgTable("patient_insurance", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  patientId: varchar("patient_id").notNull().references(() => patients.id, { onDelete: 'cascade' }),
+  insurancePlanId: varchar("insurance_plan_id").references(() => insurancePlans.id),
+  memberId: varchar("member_id", { length: 100 }),
+  subscriberId: varchar("subscriber_id", { length: 100 }),
+  groupNumber: varchar("group_number", { length: 100 }),
+  subscriberFirstName: varchar("subscriber_first_name", { length: 100 }),
+  subscriberLastName: varchar("subscriber_last_name", { length: 100 }),
+  subscriberDob: timestamp("subscriber_dob"),
+  relationshipToSubscriber: varchar("relationship_to_subscriber", { length: 50 }),
+  priority: integer("priority").default(1),
+  status: varchar("status", { length: 50 }).default("active"),
+  effectiveDate: timestamp("effective_date"),
+  terminationDate: timestamp("termination_date"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type PatientInsurance = typeof patientInsurance.$inferSelect;
+export type InsertPatientInsurance = typeof patientInsurance.$inferInsert;
+
+// Eligibility Verifications Table (for BillingService)
+export const eligibilityVerifications = pgTable("eligibility_verifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  patientId: varchar("patient_id").notNull().references(() => patients.id, { onDelete: 'cascade' }),
+  insurancePlanId: varchar("insurance_plan_id").references(() => insurancePlans.id),
+  verificationDate: timestamp("verification_date").defaultNow().notNull(),
+  verifiedBy: varchar("verified_by").references(() => users.id),
+  status: varchar("status", { length: 50 }).default("pending"),
+  eligibilityStatus: varchar("eligibility_status", { length: 50 }),
+  coverageDetails: jsonb("coverage_details"),
+  copayAmount: decimal("copay_amount", { precision: 10, scale: 2 }),
+  deductibleRemaining: decimal("deductible_remaining", { precision: 10, scale: 2 }),
+  outOfPocketRemaining: decimal("out_of_pocket_remaining", { precision: 10, scale: 2 }),
+  responseData: jsonb("response_data"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type EligibilityVerification = typeof eligibilityVerifications.$inferSelect;
+export type InsertEligibilityVerification = typeof eligibilityVerifications.$inferInsert;
+
+// Preauthorizations Table (for BillingService)
+export const preauthorizations = pgTable("preauthorizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  patientId: varchar("patient_id").notNull().references(() => patients.id, { onDelete: 'cascade' }),
+  insurancePlanId: varchar("insurance_plan_id").references(() => insurancePlans.id),
+  requestDate: timestamp("request_date").defaultNow().notNull(),
+  requestedBy: varchar("requested_by").references(() => users.id),
+  serviceType: varchar("service_type", { length: 100 }),
+  procedureCodes: jsonb("procedure_codes"),
+  diagnosisCodes: jsonb("diagnosis_codes"),
+  status: varchar("status", { length: 50 }).default("pending"),
+  authorizationNumber: varchar("authorization_number", { length: 100 }),
+  approvedUnits: integer("approved_units"),
+  approvedAmount: decimal("approved_amount", { precision: 10, scale: 2 }),
+  effectiveDate: timestamp("effective_date"),
+  expirationDate: timestamp("expiration_date"),
+  denialReason: text("denial_reason"),
+  notes: text("notes"),
+  responseData: jsonb("response_data"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Preauthorization = typeof preauthorizations.$inferSelect;
+export type InsertPreauthorization = typeof preauthorizations.$inferInsert;
+
+// Medical Claims Table (for BillingService)
+export const medicalClaims = pgTable("medical_claims", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  patientId: varchar("patient_id").notNull().references(() => patients.id, { onDelete: 'cascade' }),
+  insurancePlanId: varchar("insurance_plan_id").references(() => insurancePlans.id),
+  claimNumber: varchar("claim_number", { length: 50 }).notNull(),
+  claimType: varchar("claim_type", { length: 50 }).default("professional"),
+  status: varchar("status", { length: 50 }).default("draft"),
+  serviceDate: timestamp("service_date").notNull(),
+  placeOfService: varchar("place_of_service", { length: 10 }),
+  diagnosisCodes: jsonb("diagnosis_codes"),
+  totalCharges: decimal("total_charges", { precision: 10, scale: 2 }),
+  allowedAmount: decimal("allowed_amount", { precision: 10, scale: 2 }),
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }),
+  patientResponsibility: decimal("patient_responsibility", { precision: 10, scale: 2 }),
+  adjustmentAmount: decimal("adjustment_amount", { precision: 10, scale: 2 }),
+  adjustmentReasons: jsonb("adjustment_reasons"),
+  submittedAt: timestamp("submitted_at"),
+  processedAt: timestamp("processed_at"),
+  denialReason: text("denial_reason"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type MedicalClaim = typeof medicalClaims.$inferSelect;
+export type InsertMedicalClaim = typeof medicalClaims.$inferInsert;
+
+// Payments Table (for BillingService)
+export const payments = pgTable("payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  patientId: varchar("patient_id").references(() => patients.id),
+  claimId: varchar("claim_id").references(() => medicalClaims.id),
+  paymentDate: timestamp("payment_date").defaultNow().notNull(),
+  paymentMethod: varchar("payment_method", { length: 50 }),
+  paymentSource: varchar("payment_source", { length: 50 }),
+  checkNumber: varchar("check_number", { length: 50 }),
+  referenceNumber: varchar("reference_number", { length: 100 }),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: varchar("status", { length: 50 }).default("pending"),
+  processedDate: timestamp("processed_date"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = typeof payments.$inferInsert;
+
+// Billing Codes Table (for BillingService)
+export const billingCodes = pgTable("billing_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  code: varchar("code", { length: 20 }).notNull(),
+  codeType: varchar("code_type", { length: 20 }).notNull(), // CPT, HCPCS, ICD10
+  description: text("description"),
+  shortDescription: varchar("short_description", { length: 255 }),
+  category: varchar("category", { length: 100 }),
+  defaultFee: decimal("default_fee", { precision: 10, scale: 2 }),
+  unitType: varchar("unit_type", { length: 20 }),
+  modifiers: jsonb("modifiers"),
+  isActive: boolean("is_active").default(true).notNull(),
+  effectiveDate: timestamp("effective_date"),
+  terminationDate: timestamp("termination_date"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type BillingCode = typeof billingCodes.$inferSelect;
+export type InsertBillingCode = typeof billingCodes.$inferInsert;
+
+// ========== End Backward Compatibility Tables ==========

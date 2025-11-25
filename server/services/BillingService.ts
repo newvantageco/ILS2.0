@@ -209,7 +209,7 @@ export class BillingService {
         .select()
         .from(schema.insuranceCompanies)
         .where(and(...conditions))
-        .order_by(asc(schema.insuranceCompanies.name));
+        .orderBy(asc(schema.insuranceCompanies.name));
 
       return insuranceCompanies;
     } catch (error) {
@@ -269,7 +269,7 @@ export class BillingService {
         .select()
         .from(schema.insurancePlans)
         .where(and(...conditions))
-        .order_by(asc(schema.insurancePlans.planName));
+        .orderBy(asc(schema.insurancePlans.planName));
 
       return insurancePlans;
     } catch (error) {
@@ -326,7 +326,7 @@ export class BillingService {
           eq(schema.patientInsurance.patientId, patientId),
           eq(schema.patientInsurance.status, "active")
         ))
-        .order_by(asc(schema.patientInsurance.priority));
+        .orderBy(asc(schema.patientInsurance.priority));
 
       return patientInsurance;
     } catch (error) {
@@ -387,7 +387,7 @@ export class BillingService {
           eq(schema.eligibilityVerifications.companyId, companyId),
           eq(schema.eligibilityVerifications.patientId, patientId)
         ))
-        .order_by(desc(schema.eligibilityVerifications.verificationDate));
+        .orderBy(desc(schema.eligibilityVerifications.verificationDate));
 
       return eligibilityVerifications;
     } catch (error) {
@@ -529,7 +529,7 @@ export class BillingService {
         .select()
         .from(schema.preauthorizations)
         .where(and(...conditions))
-        .order_by(desc(schema.preauthorizations.requestDate));
+        .orderBy(desc(schema.preauthorizations.requestDate));
 
       return preauthorizations;
     } catch (error) {
@@ -747,7 +747,7 @@ export class BillingService {
         .select()
         .from(schema.medicalClaims)
         .where(and(...conditions))
-        .order_by(desc(schema.medicalClaims.createdAt))
+        .orderBy(desc(schema.medicalClaims.createdAt))
         .limit(limit)
         .offset((page - 1) * limit);
 
@@ -778,7 +778,7 @@ export class BillingService {
           eq(schema.claimLineItems.companyId, companyId),
           eq(schema.claimLineItems.claimId, claimId)
         ))
-        .order_by(asc(schema.claimLineItems.lineNumber));
+        .orderBy(asc(schema.claimLineItems.lineNumber));
 
       return lineItems;
     } catch (error) {
@@ -918,7 +918,7 @@ export class BillingService {
         .select()
         .from(schema.payments)
         .where(and(...conditions))
-        .order_by(desc(schema.payments.paymentDate));
+        .orderBy(desc(schema.payments.paymentDate));
 
       return payments;
     } catch (error) {
@@ -1005,7 +1005,7 @@ export class BillingService {
         .select()
         .from(schema.billingCodes)
         .where(and(...conditions))
-        .order_by(asc(schema.billingCodes.code));
+        .orderBy(asc(schema.billingCodes.code));
 
       return billingCodes;
     } catch (error) {
@@ -1115,7 +1115,7 @@ export class BillingService {
           eq(schema.medicalClaims.companyId, companyId),
           ilike(schema.medicalClaims.claimNumber, `${prefix}%`)
         ))
-        .order_by(desc(schema.medicalClaims.claimNumber))
+        .orderBy(desc(schema.medicalClaims.claimNumber))
         .limit(1);
 
       let sequence = 1;
