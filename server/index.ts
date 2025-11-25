@@ -222,12 +222,37 @@ if (process.env.NODE_ENV === "development") {
 
 // ============== CSRF PROTECTION ==============
 // Protect against Cross-Site Request Forgery attacks
-// Applied to all routes (ignores GET, HEAD, OPTIONS by default)
+// Applied to all routes EXCEPT auth endpoints (login/signup don't have sessions yet)
 // Controlled by CSRF_ENABLED environment variable (default: true)
 const csrfEnabled = process.env.CSRF_ENABLED !== 'false';
+
+// Routes that should skip CSRF (unauthenticated routes that don't have sessions)
+const csrfExemptPaths = [
+  '/api/auth/login',
+  '/api/auth/login-email',
+  '/api/auth/signup',
+  '/api/auth/signup-email',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password',
+  '/api/auth/verify-email',
+  '/api/auth/google',
+  '/api/auth/google/callback',
+  '/api/onboarding',
+  '/api/health',
+  '/health',
+  '/api/webhooks', // Webhooks have their own signature verification
+];
+
 if (csrfEnabled) {
-  app.use(csrfProtection);
-  log("✅ CSRF protection enabled", "security");
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Skip CSRF for exempt paths
+    if (csrfExemptPaths.some(path => req.path.startsWith(path))) {
+      return next();
+    }
+    // Apply CSRF protection for all other routes
+    return csrfProtection(req, res, next);
+  });
+  log("✅ CSRF protection enabled (auth routes exempt)", "security");
 } else {
   log("⚠️  CSRF protection disabled via CSRF_ENABLED=false", "security");
 }
