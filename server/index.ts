@@ -59,6 +59,7 @@ import { metricsHandler } from "./lib/metrics";
 
 // Import Redis session store (Chunk 10)
 import RedisStore from "connect-redis";
+import Redis from 'ioredis';
 
 const app = express();
 
@@ -162,8 +163,23 @@ if (!sessionSecret) {
   );
 }
 
-// Use Redis for session store (Chunk 10: Infrastructure Scale)
-const redisClient = getRedisConnection();
+// Session store: Use Redis if REDIS_URL is configured, otherwise memory
+// Note: Redis connection is created synchronously here for session store
+const REDIS_URL = process.env.REDIS_URL;
+let sessionRedisClient: Redis | null = null;
+
+if (REDIS_URL) {
+  try {
+    sessionRedisClient = new Redis(REDIS_URL, {
+      maxRetriesPerRequest: null,
+      lazyConnect: false, // Connect immediately
+    });
+    log("✅ Session Redis client created", "express");
+  } catch (err) {
+    log(`⚠️  Failed to create session Redis client: ${err}`, "express");
+  }
+}
+
 const sessionConfig = {
   secret: sessionSecret,
   resave: false,
@@ -178,9 +194,9 @@ const sessionConfig = {
 };
 
 // Add Redis store if available, otherwise use default memory store
-if (redisClient) {
+if (sessionRedisClient) {
   sessionConfig.store = new RedisStore({
-    client: redisClient,
+    client: sessionRedisClient,
     prefix: "session:",
   });
   log("✅ Using Redis for session storage (fast, scalable)", "express");

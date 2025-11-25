@@ -420,6 +420,5 @@ export async function generatePDFImmediate(data: PDFJobData): Promise<string> {
   }
 }
 
-// Export the factory function - worker is initialized after Redis connects
+// Worker is initialized by server/index.ts AFTER Redis connects
 // Do NOT auto-create at import time to avoid boot order issues
-export { createPDFWorker };

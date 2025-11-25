@@ -152,13 +152,25 @@ export class BackupService {
 
   /**
    * Create backup directory if it doesn't exist
+   * Skipped in production (read-only filesystem) unless BACKUP_LOCAL_PATH explicitly set
    */
   private async ensureBackupDirectory(): Promise<void> {
+    // Skip in production unless explicitly configured - Railway has read-only filesystem
+    if (process.env.NODE_ENV === 'production' && !process.env.BACKUP_LOCAL_PATH) {
+      logger.info('Skipping local backup directory in production (use S3 for backups)');
+      return;
+    }
+    
     try {
       await fs.mkdir(this.config.storage.localPath, { recursive: true });
       logger.info({ path: this.config.storage.localPath }, 'Backup directory ensured');
     } catch (error) {
-      logger.error({ error }, 'Failed to create backup directory');
+      // Log warning instead of error in production - this is expected on read-only filesystems
+      if (process.env.NODE_ENV === 'production') {
+        logger.warn({ error }, 'Could not create backup directory (expected on Railway)');
+      } else {
+        logger.error({ error }, 'Failed to create backup directory');
+      }
     }
   }
 
