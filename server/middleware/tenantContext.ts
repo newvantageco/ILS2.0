@@ -1,12 +1,17 @@
 /**
  * Multi-Tenant Context Middleware
- * Ensures all database queries are scoped to the user's company
+ * Layer 2: The Gatekeeper - Sets PostgreSQL session variables for RLS
+ *
+ * This middleware implements the second layer of the Defense-in-Depth architecture:
+ * - Sets app.current_tenant session variable for Row-Level Security (RLS)
+ * - Sets app.current_user_role for platform admin bypass
+ * - Ensures all database queries are scoped to the user's company at the database level
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../db';
 import { users, companies } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { createLogger, type Logger } from '../utils/logger';
 
 // Extend Express Request to include tenant context
@@ -35,6 +40,11 @@ export interface TenantContext {
 /**
  * Middleware to set tenant context from authenticated user
  * Must be used AFTER authentication middleware
+ *
+ * SECURITY: This middleware sets PostgreSQL session variables that enforce
+ * Row-Level Security (RLS) at the database kernel level. Even if a developer
+ * writes SELECT * FROM patients, the database will only return rows belonging
+ * to the active tenant.
  */
 const logger = createLogger('TenantContext');
 
@@ -51,7 +61,7 @@ export const setTenantContext = async (
       });
     }
 
-    // Get user's company ID
+    // Get user's company ID and role
     const user = await db.query.users.findFirst({
       where: eq(users.id, req.user.id),
       columns: {
@@ -61,43 +71,101 @@ export const setTenantContext = async (
       },
     });
 
-    if (!user || !user.companyId) {
+    if (!user) {
+      return res.status(403).json({
+        error: 'User not found'
+      });
+    }
+
+    // Platform admins can operate without a tenant (they see all data via RLS bypass)
+    const isPlatformAdmin = user.role === 'platform_admin';
+
+    if (!user.companyId && !isPlatformAdmin) {
       return res.status(403).json({
         error: 'User not associated with any company'
       });
     }
 
-    // Set tenant context
-    req.tenantId = user.companyId;
-    req.user.companyId = user.companyId;
+    // Set tenant context on request
+    req.tenantId = user.companyId || undefined;
+    req.user.companyId = user.companyId || undefined;
+    req.user.role = user.role;
 
-    // Optionally, load full company data for branding/settings
-    const company = await db.query.companies.findFirst({
-      where: eq(companies.id, user.companyId),
-    });
+    // ============================================
+    // LAYER 2: SET POSTGRESQL SESSION VARIABLES
+    // ============================================
+    // This is the critical security layer. We set session variables that
+    // PostgreSQL RLS policies will read to enforce tenant isolation.
+    //
+    // Defense-in-Depth: Even if application code forgets to filter by company_id,
+    // the database will enforce isolation automatically.
 
-    if (!company) {
-      return res.status(404).json({
-        error: 'Company not found'
+    try {
+      // Set session variables for this connection/transaction
+      // These are scoped to the current request and will be cleared after
+      if (user.companyId) {
+        await db.execute(sql`SET LOCAL app.current_tenant = ${user.companyId}`);
+      }
+
+      await db.execute(sql`SET LOCAL app.current_user_role = ${user.role}`);
+
+      logger.debug({
+        userId: user.id,
+        tenantId: user.companyId,
+        role: user.role
+      }, 'PostgreSQL session variables set for RLS');
+
+    } catch (sessionError) {
+      logger.error({ err: sessionError }, 'Failed to set PostgreSQL session variables');
+      // This is a critical security failure - do not proceed
+      return res.status(500).json({
+        error: 'Failed to initialize database security context'
       });
     }
 
-    req.companyData = company;
+    // Optionally, load full company data for branding/settings
+    // Only load if user has a company (platform admins might not)
+    if (user.companyId) {
+      const company = await db.query.companies.findFirst({
+        where: eq(companies.id, user.companyId),
+      });
 
-    // Set enhanced tenant context for AI operations
-    const companyAny = company as any;
-    req.tenantContext = {
-      tenantId: user.companyId,
-      tenantCode: companyAny.code || company.id,
-      subscriptionTier: companyAny.subscriptionTier || 'basic',
-      aiQueriesLimit: companyAny.aiQueriesLimit || 1000,
-      aiQueriesUsed: companyAny.aiQueriesUsed || 0,
-      features: {
-        sales_queries: true,
-        inventory_queries: true,
-        patient_analytics: companyAny.subscriptionTier === 'professional' || companyAny.subscriptionTier === 'enterprise'
+      if (!company) {
+        return res.status(404).json({
+          error: 'Company not found'
+        });
       }
-    };
+
+      req.companyData = company;
+
+      // Set enhanced tenant context for AI operations
+      const companyAny = company as any;
+      req.tenantContext = {
+        tenantId: user.companyId,
+        tenantCode: companyAny.code || company.id,
+        subscriptionTier: companyAny.subscriptionTier || 'basic',
+        aiQueriesLimit: companyAny.aiQueriesLimit || 1000,
+        aiQueriesUsed: companyAny.aiQueriesUsed || 0,
+        features: {
+          sales_queries: true,
+          inventory_queries: true,
+          patient_analytics: companyAny.subscriptionTier === 'professional' || companyAny.subscriptionTier === 'enterprise'
+        }
+      };
+    } else if (isPlatformAdmin) {
+      // Platform admin without company - create minimal context
+      req.tenantContext = {
+        tenantId: 'platform_admin',
+        subscriptionTier: 'enterprise',
+        aiQueriesLimit: 999999,
+        aiQueriesUsed: 0,
+        features: {
+          sales_queries: true,
+          inventory_queries: true,
+          patient_analytics: true
+        }
+      };
+    }
 
     next();
   } catch (error) {
