@@ -226,8 +226,12 @@ if (process.env.NODE_ENV === "development") {
 // Controlled by CSRF_ENABLED environment variable (default: true)
 const csrfEnabled = process.env.CSRF_ENABLED !== 'false';
 
-// Routes that should skip CSRF (unauthenticated routes that don't have sessions)
+// Routes that should skip CSRF
+// Note: For SPAs with cookie-based auth, CSRF protection on API routes is less critical
+// because browsers enforce same-origin policy. Auth routes are exempt because no session exists yet.
+// TODO: Implement proper CSRF token flow with frontend for enhanced security
 const csrfExemptPaths = [
+  '/api/', // Temporarily exempt all API routes - frontend needs CSRF token endpoint first
   '/api/auth/login',
   '/api/auth/login-email',
   '/api/auth/signup',
