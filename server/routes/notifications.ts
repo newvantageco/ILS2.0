@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateUser } from '../middleware/auth';
+import { isAuthenticated } from '../replitAuth';
 import NotificationService from '../services/NotificationService';
 import { createLogger } from '../utils/logger';
 import { getWebSocketService } from '../services/WebSocketService';
@@ -11,7 +11,7 @@ const notificationService = NotificationService.getInstance();
 // Get user notifications
 router.get(
   '/api/notifications',
-  authenticateUser,
+  isAuthenticated,
   async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -28,7 +28,7 @@ router.get(
 // Mark notification as read
 router.post(
   '/api/notifications/:id/read',
-  authenticateUser,
+  isAuthenticated,
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -46,7 +46,7 @@ router.post(
 // Mark all notifications as read
 router.post(
   '/api/notifications/read-all',
-  authenticateUser,
+  isAuthenticated,
   async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -64,7 +64,7 @@ router.post(
 // Delete notification
 router.delete(
   '/api/notifications/:id',
-  authenticateUser,
+  isAuthenticated,
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -82,7 +82,7 @@ router.delete(
 // Clear all notifications
 router.delete(
   '/api/notifications',
-  authenticateUser,
+  isAuthenticated,
   async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -100,7 +100,7 @@ router.delete(
 // Get real-time notification stats
 router.get(
   '/api/notifications/stats',
-  authenticateUser,
+  isAuthenticated,
   async (req: any, res) => {
     try {
       const webSocketService = getWebSocketService();
@@ -122,7 +122,7 @@ router.get(
 // Send test notification (admin only)
 router.post(
   '/api/notifications/test',
-  authenticateUser,
+  isAuthenticated,
   async (req: any, res) => {
     try {
       if (req.user.role !== 'admin') {
