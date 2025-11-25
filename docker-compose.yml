@@ -1,10 +1,28 @@
 
 services:
   # PostgreSQL Database
+  # Tuning is done HERE via command args, NOT in application code
   postgres:
     image: postgres:16-alpine
     container_name: ils-postgres
     restart: unless-stopped
+    # Infrastructure-level tuning (NOT in app code)
+    command:
+      - "postgres"
+      - "-c" 
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=768MB"
+      - "-c"
+      - "work_mem=16MB"
+      - "-c"
+      - "maintenance_work_mem=128MB"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "log_min_duration_statement=1000"
     environment:
       POSTGRES_DB: ils_db
       POSTGRES_USER: ils_user
