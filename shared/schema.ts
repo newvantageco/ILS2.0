@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, timestamp, jsonb, index, pgEnum, integer, decimal, numeric, real, boolean, date, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { vector } from "./schema-pgvector";
 
 // Enums
 export const roleEnum = pgEnum("role", ["ecp", "admin", "lab_tech", "engineer", "supplier", "platform_admin", "company_admin", "dispenser"]);
@@ -764,8 +765,11 @@ export const aiKnowledgeBase = pgTable("ai_knowledge_base", {
   content: text("content"), // Extracted text content
   summary: text("summary"), // AI-generated summary
   tags: jsonb("tags"), // Extracted tags/keywords
-  embeddings: jsonb("embeddings"), // Vector embeddings for semantic search
-  
+
+  // Embeddings (both formats during migration)
+  embeddings: jsonb("embeddings"), // Legacy: JSONB format (will be deprecated)
+  embedding: vector("embedding", 1536), // NEW: pgvector format for semantic search
+
   // Metadata
   category: varchar("category"), // pricing, procedures, policies, etc.
   isActive: boolean("is_active").default(true),
