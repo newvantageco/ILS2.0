@@ -742,15 +742,38 @@ export class DbStorage implements IStorage {
       email: userData.email ? normalizeEmail(userData.email) : userData.email,
     };
 
+    // For update on conflict, only update specific fields (exclude id and createdAt)
+    const updatePayload: Partial<UpsertUser> = {
+      companyId: payload.companyId,
+      accountStatus: payload.accountStatus,
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      role: payload.role,
+      enhancedRole: payload.enhancedRole,
+      subscriptionPlan: payload.subscriptionPlan,
+      gocNumber: payload.gocNumber,
+      gocRegistrationNumber: payload.gocRegistrationNumber,
+      gocRegistrationType: payload.gocRegistrationType,
+      professionalQualifications: payload.professionalQualifications,
+      contactPhone: payload.contactPhone,
+      isVerified: payload.isVerified,
+      password: payload.password,
+      updatedAt: new Date(),
+    };
+
+    // Remove undefined values from update payload
+    Object.keys(updatePayload).forEach(key => {
+      if ((updatePayload as any)[key] === undefined) {
+        delete (updatePayload as any)[key];
+      }
+    });
+
     const [user] = await db
       .insert(users)
       .values(payload)
       .onConflictDoUpdate({
         target: users.email,
-        set: {
-          ...payload,
-          updatedAt: new Date(),
-        },
+        set: updatePayload,
       })
       .returning();
     return user;
