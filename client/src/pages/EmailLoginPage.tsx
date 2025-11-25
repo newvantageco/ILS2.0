@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Lock, AlertCircle, ArrowLeft } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { setAuthTokens } from "@/lib/api";
 
 export default function EmailLoginPage() {
   const [, setLocation] = useLocation();
@@ -24,7 +25,18 @@ export default function EmailLoginPage() {
 
     try {
       const response = await apiRequest("POST", "/api/auth/login-email", { email, password });
-      const data = await response.json() as { message: string; user: any };
+      const data = await response.json() as {
+        message: string;
+        user: any;
+        accessToken?: string;
+        refreshToken?: string;
+        expiresIn?: number;
+      };
+
+      // Store JWT tokens if returned
+      if (data.accessToken && data.refreshToken && data.expiresIn) {
+        setAuthTokens(data.accessToken, data.refreshToken, data.expiresIn);
+      }
 
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
 

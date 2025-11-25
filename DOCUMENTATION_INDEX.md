@@ -77,6 +77,16 @@ Archived implementation reports, session summaries, and completion reports:
 
 ### By Topic
 
+**Architecture & Design:**
+- `/docs/ARCHITECTURE.md` - System architecture overview
+- `/docs/MULTITENANT_AI_SYSTEM.md` - Multi-tenant AI system technical documentation
+
+**AI & Machine Learning:**
+- `/docs/MULTITENANT_AI_SYSTEM.md` - Multi-tenant AI architecture and workflows
+- `/docs/AI_ML_VERIFICATION_REPORT.md` - AI/ML implementation verification
+- `/docs/guides/ML_MODELS_TESTING_GUIDE.md` - ML model testing
+- `/docs/guides/AI_OCR_TESTING_GUIDE.md` - OCR testing
+
 **Authentication & Security:**
 - `/docs/guides/SSL_SECURITY_GUIDE.md`
 - `/docs/guides/RATE_LIMITING_GUIDE.md`
@@ -141,6 +151,9 @@ Archived implementation reports, session summaries, and completion reports:
 ---
 
 ## 🚀 Common Tasks
+
+### "I want to understand the multi-tenant AI architecture"
+→ `/docs/MULTITENANT_AI_SYSTEM.md`
 
 ### "I want to deploy to Railway"
 → `/docs/deployment/RAILWAY_QUICK_START.md`
