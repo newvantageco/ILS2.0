@@ -357,23 +357,17 @@ export class PatientPortalService {
       const records: any = {};
 
       if (recordType === 'all' || recordType === 'medications') {
-        records.medications = await db.query.patientMedications.findMany({
-          where: eq(schema.patientMedications.patientId, patientId),
-          with: {
-            medication: true
-          },
-          orderBy: [desc(schema.patientMedications.startDate)],
+        records.medications = await db.query.medications.findMany({
+          where: eq(schema.medications.patientId, patientId),
+          orderBy: [desc(schema.medications.startDate)],
           limit
         });
       }
 
       if (recordType === 'all' || recordType === 'allergies') {
-        records.allergies = await db.query.patientAllergies.findMany({
-          where: eq(schema.patientAllergies.patientId, patientId),
-          with: {
-            allergen: true
-          },
-          orderBy: [desc(schema.patientAllergies.recordedAt)],
+        records.allergies = await db.query.allergies.findMany({
+          where: eq(schema.allergies.patientId, patientId),
+          orderBy: [desc(schema.allergies.reportedDate)],
           limit
         });
       }
@@ -381,7 +375,7 @@ export class PatientPortalService {
       if (recordType === 'all' || recordType === 'vital_signs') {
         records.vitalSigns = await db.query.vitalSigns.findMany({
           where: eq(schema.vitalSigns.patientId, patientId),
-          orderBy: [desc(schema.vitalSigns.measuredAt)],
+          orderBy: [desc(schema.vitalSigns.measurementDate)],
           limit
         });
       }
@@ -395,12 +389,9 @@ export class PatientPortalService {
       }
 
       if (recordType === 'all' || recordType === 'immunizations') {
-        records.immunizations = await db.query.patientImmunizations.findMany({
-          where: eq(schema.patientImmunizations.patientId, patientId),
-          with: {
-            vaccine: true
-          },
-          orderBy: [desc(schema.patientImmunizations.administeredAt)],
+        records.immunizations = await db.query.immunizations.findMany({
+          where: eq(schema.immunizations.patientId, patientId),
+          orderBy: [desc(schema.immunizations.administrationDate)],
           limit
         });
       }
@@ -846,14 +837,11 @@ export class PatientPortalService {
       });
 
       // Get active medications
-      const activeMedications = await db.query.patientMedications.findMany({
+      const activeMedications = await db.query.medications.findMany({
         where: and(
-          eq(schema.patientMedications.patientId, patientId),
-          eq(schema.patientMedications.status, 'active')
+          eq(schema.medications.patientId, patientId),
+          eq(schema.medications.status, 'active')
         ),
-        with: {
-          medication: true
-        },
         limit: 10
       });
 

@@ -9421,7 +9421,57 @@ export const labResults = pgTable(
   ],
 );
 
+// Lab Orders - for tracking laboratory test orders
+export const labOrders = pgTable(
+  "lab_orders",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+    patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
+    practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
+    
+    // Order details
+    orderNumber: varchar("order_number", { length: 100 }).notNull(),
+    orderType: varchar("order_type", { length: 50 }),
+    priority: varchar("priority", { length: 20 }).default("routine"),
+    
+    // Dates
+    orderedDate: timestamp("ordered_date", { withTimezone: true }).notNull().defaultNow(),
+    scheduledDate: timestamp("scheduled_date", { withTimezone: true }),
+    completedDate: timestamp("completed_date", { withTimezone: true }),
+    
+    // Status
+    status: varchar("status", { length: 50 }).default("pending"),
+    
+    // Laboratory information
+    performingLab: varchar("performing_lab", { length: 255 }),
+    
+    // Clinical information
+    diagnosis: text("diagnosis"),
+    clinicalNotes: text("clinical_notes"),
+    specialInstructions: text("special_instructions"),
+    
+    // Metadata
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("idx_lab_orders_company").on(table.companyId),
+    index("idx_lab_orders_patient").on(table.patientId),
+    index("idx_lab_orders_practitioner").on(table.practitionerId),
+    index("idx_lab_orders_order_number").on(table.orderNumber),
+    index("idx_lab_orders_status").on(table.status),
+    index("idx_lab_orders_ordered_date").on(table.orderedDate),
+  ],
+);
+
 // Zod schemas for validation
+export const insertLabOrderSchema = createInsertSchema(labOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
 export const insertMedicationSchema = createInsertSchema(medications).omit({
   id: true,
   createdAt: true,
@@ -9471,6 +9521,8 @@ export type Immunization = typeof immunizations.$inferSelect;
 export type InsertImmunization = typeof immunizations.$inferInsert;
 export type LabResult = typeof labResults.$inferSelect;
 export type InsertLabResult = typeof labResults.$inferInsert;
+export type LabOrder = typeof labOrders.$inferSelect;
+export type InsertLabOrder = typeof labOrders.$inferInsert;
 
 // ========== End EHR System Tables ==========
 

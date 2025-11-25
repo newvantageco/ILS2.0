@@ -84,7 +84,7 @@ export class PythonRAGService {
     if (!this.enabled) {
       logger.warn('⚠️  Python RAG Service is DISABLED via RAG_SERVICE_ENABLED=false');
     } else {
-      logger.info(\`Python RAG Service configured: \${this.baseUrl}\`);
+      logger.info(`Python RAG Service configured: ${this.baseUrl}`);
     }
   }
 
@@ -98,14 +98,14 @@ export class PythonRAGService {
 
     try {
       const response = await this.fetchWithTimeout<HealthCheckResponse>(
-        \`\${this.baseUrl}/health\`,
+        `${this.baseUrl}/health`,
         { method: 'GET' },
         5000 // Short timeout for health check
       );
 
       return response.status === 'healthy';
     } catch (error) {
-      logger.warn('Python RAG Service health check failed:', error);
+      logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Python RAG Service health check failed');
       return false;
     }
   }
@@ -120,10 +120,10 @@ export class PythonRAGService {
     this.ensureEnabled();
 
     try {
-      logger.debug(\`Generating embedding for text (length: \${text.length})\`);
+      logger.debug(`Generating embedding for text (length: ${text.length})`);
 
       const response = await this.fetchWithRetry<EmbeddingResponse>(
-        \`\${this.baseUrl}/api/embeddings/generate\`,
+        `${this.baseUrl}/api/embeddings/generate`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -131,11 +131,11 @@ export class PythonRAGService {
         }
       );
 
-      logger.debug(\`Embedding generated: \${response.dimensions} dimensions\`);
+      logger.debug(`Embedding generated: ${response.dimensions} dimensions`);
       return response.embedding;
 
     } catch (error) {
-      logger.error('Failed to generate embedding:', error);
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Failed to generate embedding');
       throw this.wrapError(error, 'Embedding generation failed');
     }
   }
@@ -150,10 +150,10 @@ export class PythonRAGService {
     this.ensureEnabled();
 
     try {
-      logger.debug(\`Generating batch embeddings for \${texts.length} texts\`);
+      logger.debug(`Generating batch embeddings for ${texts.length} texts`);
 
       const response = await this.fetchWithRetry<BatchEmbeddingResponse>(
-        \`\${this.baseUrl}/api/embeddings/generate-batch\`,
+        `${this.baseUrl}/api/embeddings/generate-batch`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -161,11 +161,11 @@ export class PythonRAGService {
         }
       );
 
-      logger.debug(\`Batch embeddings generated: \${response.count} embeddings\`);
+      logger.debug(`Batch embeddings generated: ${response.count} embeddings`);
       return response.embeddings;
 
     } catch (error) {
-      logger.error('Failed to generate batch embeddings:', error);
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Failed to generate batch embeddings');
       throw this.wrapError(error, 'Batch embedding generation failed');
     }
   }
@@ -187,10 +187,10 @@ export class PythonRAGService {
     const threshold = options.threshold || 0.7;
 
     try {
-      logger.debug(\`RAG search: company=\${companyId}, query="\${query.slice(0, 50)}..."\`);
+      logger.debug(`RAG search: company=${companyId}, query="${query.slice(0, 50)}..."`);
 
       const response = await this.fetchWithRetry<RAGSearchResponse>(
-        \`\${this.baseUrl}/api/rag/search\`,
+        `${this.baseUrl}/api/rag/search`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -203,11 +203,11 @@ export class PythonRAGService {
         }
       );
 
-      logger.info(\`RAG search returned \${response.results.length} results\`);
+      logger.info(`RAG search returned ${response.results.length} results`);
       return response.results;
 
     } catch (error) {
-      logger.error('RAG search failed:', error);
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'RAG search failed');
       throw this.wrapError(error, 'Knowledge base search failed');
     }
   }
@@ -225,10 +225,10 @@ export class PythonRAGService {
     this.ensureEnabled();
 
     try {
-      logger.debug(\`Indexing document: \${doc.filename} for company \${doc.companyId}\`);
+      logger.debug(`Indexing document: ${doc.filename} for company ${doc.companyId}`);
 
       const response = await this.fetchWithRetry<IndexDocumentResponse>(
-        \`\${this.baseUrl}/api/rag/index-document\`,
+        `${this.baseUrl}/api/rag/index-document`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -242,11 +242,11 @@ export class PythonRAGService {
         }
       );
 
-      logger.info(\`Document indexed: \${response.document_id}\`);
+      logger.info(`Document indexed: ${response.document_id}`);
       return response.document_id;
 
     } catch (error) {
-      logger.error('Document indexing failed:', error);
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Document indexing failed');
       throw this.wrapError(error, 'Document indexing failed');
     }
   }
@@ -300,7 +300,7 @@ export class PythonRAGService {
       if (!response.ok) {
         const errorText = await response.text().catch(() => response.statusText);
         throw new RAGServiceError(
-          \`HTTP \${response.status}: \${errorText}\`,
+          `HTTP ${response.status}: ${errorText}`,
           response.status
         );
       }
@@ -312,7 +312,7 @@ export class PythonRAGService {
 
       if (error instanceof Error && error.name === 'AbortError') {
         throw new RAGServiceError(
-          \`Request timeout after \${timeout}ms\`,
+          `Request timeout after ${timeout}ms`,
           408
         );
       }
@@ -346,7 +346,7 @@ export class PythonRAGService {
 
         // Exponential backoff: 100ms, 200ms, 400ms, etc.
         const delay = Math.min(100 * Math.pow(2, attempt), 5000);
-        logger.warn(\`Request failed, retrying in \${delay}ms (attempt \${attempt + 1}/\${retries})...\`);
+        logger.warn(`Request failed, retrying in ${delay}ms (attempt ${attempt + 1}/${retries})...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
@@ -361,7 +361,7 @@ export class PythonRAGService {
 
     if (error instanceof Error) {
       return new RAGServiceError(
-        \`\${message}: \${error.message}\`,
+        `${message}: ${error.message}`,
         undefined
       );
     }
