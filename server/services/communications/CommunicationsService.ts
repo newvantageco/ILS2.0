@@ -28,7 +28,7 @@ const logger = loggers.api;
 /**
  * Communication channel
  */
-export type CommunicationChannel = 'email' | 'sms' | 'push' | 'in_app';
+export type CommunicationChannel = 'email' | 'sms' | 'push' | 'in_app' | 'whatsapp';
 
 /**
  * Message status
@@ -223,6 +223,73 @@ Thank you,
       `.trim(),
       variables: ['firstName', 'lastName', 'invoiceNumber', 'amountDue', 'dueDate', 'billingPhone', 'clinicName'],
       category: 'billing',
+      active: true,
+    });
+
+    // WhatsApp: Order Ready for Collection
+    this.createTemplate(companyId, {
+      name: 'Order Ready - WhatsApp',
+      description: 'WhatsApp notification when glasses/lenses are ready for collection',
+      channel: 'whatsapp',
+      subject: null,
+      body: `Hi {{firstName}}! 👓
+
+Great news! Your order is ready for collection.
+
+📦 Order: {{orderNumber}}
+🏪 Location: {{locationName}}
+📍 Address: {{locationAddress}}
+🕐 Hours: {{openingHours}}
+
+Please bring your ID when collecting. Questions? Reply to this message or call {{clinicPhone}}.
+
+{{clinicName}}`,
+      variables: ['firstName', 'orderNumber', 'locationName', 'locationAddress', 'openingHours', 'clinicPhone', 'clinicName'],
+      category: 'transactional',
+      active: true,
+    });
+
+    // WhatsApp: Annual Recall Reminder
+    this.createTemplate(companyId, {
+      name: 'Annual Checkup Reminder - WhatsApp',
+      description: 'WhatsApp reminder for annual eye examination',
+      channel: 'whatsapp',
+      subject: null,
+      body: `Hi {{firstName}}! 👁️
+
+It's been over a year since your last eye exam. Regular checkups help maintain healthy vision.
+
+📅 Last exam: {{lastExamDate}}
+
+Book online: {{bookingUrl}}
+Or call: {{clinicPhone}}
+
+{{clinicName}}`,
+      variables: ['firstName', 'lastExamDate', 'bookingUrl', 'clinicPhone', 'clinicName'],
+      category: 'appointment',
+      active: true,
+    });
+
+    // WhatsApp: Appointment Reminder
+    this.createTemplate(companyId, {
+      name: 'Appointment Reminder - WhatsApp',
+      description: 'WhatsApp reminder for upcoming appointment',
+      channel: 'whatsapp',
+      subject: null,
+      body: `Hi {{firstName}}! 📅
+
+Reminder: You have an appointment scheduled.
+
+📆 Date: {{appointmentDate}}
+🕐 Time: {{appointmentTime}}
+👨‍⚕️ With: {{providerName}}
+📍 Location: {{locationName}}
+
+Need to reschedule? Reply or call {{clinicPhone}}.
+
+{{clinicName}}`,
+      variables: ['firstName', 'appointmentDate', 'appointmentTime', 'providerName', 'locationName', 'clinicPhone', 'clinicName'],
+      category: 'appointment',
       active: true,
     });
   }
@@ -443,8 +510,14 @@ Thank you,
       // - Email: SendGrid, AWS SES, Mailgun
       // - SMS: Twilio, AWS SNS
       // - Push: Firebase Cloud Messaging, AWS SNS
+      // - WhatsApp: Twilio WhatsApp Business API
 
-      // Simulate delivery - update status in database
+      // Handle WhatsApp delivery via Twilio
+      if (message.channel === 'whatsapp') {
+        await this.deliverWhatsAppMessage(message);
+      }
+
+      // Simulate delivery for other channels - update status in database
       await this.db.updateMessage(message.id, companyId, {
         status: 'sent',
         sentAt: new Date(),
@@ -479,6 +552,72 @@ Thank you,
           this.deliverMessage(companyId, message);
         }, this.RETRY_DELAY_MS * (message.retryCount + 1));
       }
+    }
+  }
+
+  /**
+   * Deliver WhatsApp message via Twilio Business API
+   * Requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_WHATSAPP_NUMBER env vars
+   */
+  private static async deliverWhatsAppMessage(message: Message): Promise<void> {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const whatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER;
+
+    // Validate Twilio configuration
+    if (!accountSid || !authToken || !whatsappNumber) {
+      logger.warn(
+        { messageId: message.id },
+        'WhatsApp not configured: Missing TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, or TWILIO_WHATSAPP_NUMBER'
+      );
+      // In development, log the message but don't fail
+      if (process.env.NODE_ENV === 'development') {
+        logger.info(
+          { 
+            messageId: message.id, 
+            to: message.to, 
+            body: message.body?.substring(0, 100) 
+          },
+          '[DEV] WhatsApp message would be sent'
+        );
+        return;
+      }
+      throw new Error('WhatsApp configuration missing');
+    }
+
+    // Format phone numbers for WhatsApp (must include 'whatsapp:' prefix)
+    const fromNumber = whatsappNumber.startsWith('whatsapp:') 
+      ? whatsappNumber 
+      : `whatsapp:${whatsappNumber}`;
+    const toNumber = message.to.startsWith('whatsapp:') 
+      ? message.to 
+      : `whatsapp:${message.to}`;
+
+    try {
+      // Dynamically import Twilio to avoid runtime errors if not installed
+      const twilio = await import('twilio');
+      const client = twilio.default(accountSid, authToken);
+
+      const twilioMessage = await client.messages.create({
+        from: fromNumber,
+        to: toNumber,
+        body: message.body,
+      });
+
+      logger.info(
+        { 
+          messageId: message.id, 
+          twilioSid: twilioMessage.sid,
+          status: twilioMessage.status 
+        },
+        'WhatsApp message sent via Twilio'
+      );
+    } catch (error) {
+      logger.error(
+        { error, messageId: message.id, to: toNumber },
+        'Failed to send WhatsApp message via Twilio'
+      );
+      throw error;
     }
   }
 

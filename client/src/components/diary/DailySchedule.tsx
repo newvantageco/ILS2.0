@@ -6,10 +6,12 @@
  * - Appointment blocks
  * - Color-coded events
  * - Time conflict detection
+ * - Current time indicator
+ * - Running late alerts
  * - Drag-and-drop ready
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,7 +37,8 @@ interface ScheduleEvent {
     name: string;
   };
   location?: string;
-  status?: "confirmed" | "pending" | "completed" | "cancelled";
+  status?: "confirmed" | "pending" | "completed" | "cancelled" | string;
+  isRunningLate?: boolean;
 }
 
 interface DailyScheduleProps {
@@ -45,6 +48,9 @@ interface DailyScheduleProps {
   onTimeSlotClick?: (time: Date) => void;
   onDateChange?: (date: Date) => void;
 }
+
+// Pixels per minute for positioning
+const PIXELS_PER_MINUTE = 1.33; // 80px per hour / 60 minutes
 
 export function DailySchedule({
   date,
@@ -56,6 +62,24 @@ export function DailySchedule({
   const [startHour] = useState(8); // 8 AM
   const [endHour] = useState(18); // 6 PM
   const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
+  
+  // Current time state for the indicator
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // Update current time every minute
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+  
+  // Calculate if current time line should be visible (only on today's schedule)
+  const showCurrentTimeLine = isToday(date);
+  const currentHour = currentTime.getHours();
+  const currentMinute = currentTime.getMinutes();
+  const isWithinScheduleHours = currentHour >= startHour && currentHour < endHour;
+  
+  // Calculate top position for current time line
+  const currentTimeTopPosition = ((currentHour - startHour) * 60 + currentMinute) * PIXELS_PER_MINUTE;
 
   const getEventColor = (type: ScheduleEvent["type"]) => {
     switch (type) {
@@ -157,7 +181,23 @@ export function DailySchedule({
 
       <CardContent>
         {/* Timeline */}
-        <div className="space-y-0 border rounded-lg overflow-hidden">
+        <div className="relative space-y-0 border rounded-lg overflow-hidden">
+          {/* Current Time Indicator */}
+          {showCurrentTimeLine && isWithinScheduleHours && (
+            <div 
+              className="absolute w-full z-20 pointer-events-none flex items-center"
+              style={{ top: `${currentTimeTopPosition}px` }}
+            >
+              {/* Red dot */}
+              <div className="w-3 h-3 bg-red-500 rounded-full -ml-1.5 shadow-md" />
+              {/* Red line */}
+              <div className="flex-1 border-t-2 border-red-500" />
+              {/* Time label */}
+              <div className="bg-red-500 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-l shadow-md">
+                {format(currentTime, 'h:mm a')}
+              </div>
+            </div>
+          )}
           {hours.map((hour) => {
             const hourEvents = getEventsForHour(hour);
 
@@ -236,7 +276,7 @@ export function DailySchedule({
   );
 }
 
-// Schedule Event Card
+// Schedule Event Card with Running Late Support
 function ScheduleEventCard({
   event,
   onClick,
@@ -258,14 +298,18 @@ function ScheduleEventCard({
         onClick();
       }}
       className={cn(
-        "p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md hover:scale-105",
-        getEventColor(event.type)
+        "p-3 rounded-lg cursor-pointer transition-all hover:shadow-md hover:scale-[1.02]",
+        // Thicker left border for status indication
+        "border-l-4",
+        event.isRunningLate 
+          ? "border-l-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800" 
+          : cn("border-2", getEventColor(event.type))
       )}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            {event.status && (
+            {event.status && !event.isRunningLate && (
               <div
                 className={cn(
                   "w-2 h-2 rounded-full",
@@ -274,6 +318,14 @@ function ScheduleEventCard({
               />
             )}
             <h4 className="font-medium text-sm truncate">{event.title}</h4>
+            {event.isRunningLate && (
+              <Badge 
+                variant="destructive" 
+                className="animate-pulse text-[10px] px-1.5 py-0"
+              >
+                Running Late
+              </Badge>
+            )}
           </div>
 
           {event.patient && (
@@ -301,7 +353,7 @@ function ScheduleEventCard({
         </div>
 
         <Badge
-          variant="secondary"
+          variant={event.isRunningLate ? "destructive" : "secondary"}
           className="text-xs capitalize flex-shrink-0"
         >
           {event.type}

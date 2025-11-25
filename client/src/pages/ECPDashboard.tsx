@@ -12,6 +12,8 @@
 import { SearchBar } from "@/components/SearchBar";
 import { QuickActionCards } from "@/components/QuickActionCards";
 import { lazy, Suspense } from "react";
+import { LiveWaitingRoom } from "@/components/dashboard/LiveWaitingRoom";
+import { UpNextTimeline } from "@/components/dashboard/UpNextTimeline";
 
 // Lazy load heavy components for better performance
 const ConsultLogManager = lazy(() => import("@/components/ConsultLogManager").then(m => ({ default: m.ConsultLogManager })));
@@ -384,6 +386,12 @@ export default function ECPDashboardModern() {
         </GradientCardActions>
       </GradientCard>
       )}
+
+      {/* Live Appointments Section - Waiting Room & Up Next */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <LiveWaitingRoom className="lg:col-span-2" maxItems={4} />
+        <UpNextTimeline hoursAhead={3} />
+      </div>
 
       {/* Additional quick stats - simplified */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { TaskManager, type Task } from "@/components/diary/TaskManager";
 import { DailySchedule } from "@/components/diary/DailySchedule";
+import { SmartAppointmentCard } from "@/components/diary/SmartAppointmentCard";
 import {
   Calendar,
   CheckSquare,
@@ -55,7 +56,7 @@ export default function DiaryPage() {
   
   // WebSocket for real-time updates
   useAppointmentWebSocket({
-    companyId: user?.companyId,
+    companyId: user?.companyId ?? undefined,
     enableToasts: true,
   });
 
@@ -87,7 +88,7 @@ export default function DiaryPage() {
     },
   ]);
 
-  // Transform appointments to schedule events
+  // Transform appointments to schedule events with isRunningLate
   const scheduleEvents = appointments.map((apt) => ({
     id: apt.id,
     title: apt.title,
@@ -98,7 +99,15 @@ export default function DiaryPage() {
       name: apt.patient.name,
     },
     status: apt.realtimeStatus.currentStage,
+    isRunningLate: apt.realtimeStatus.isRunningLate,
   }));
+  
+  // Sorted checked-in queue by wait time (longest first)
+  const sortedCheckedInQueue = [...checkedInQueue].sort((a, b) => {
+    const aTime = new Date(a.realtimeStatus.lastUpdate).getTime();
+    const bTime = new Date(b.realtimeStatus.lastUpdate).getTime();
+    return aTime - bTime; // Oldest first (waiting longest)
+  });
 
   // Calculate statistics
   const stats = {
@@ -245,7 +254,7 @@ export default function DiaryPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Schedule Tab */}
+        {/* Schedule Tab - Split View Layout */}
         <TabsContent value="schedule" className="space-y-4">
           {isLoading ? (
             <Card>
@@ -257,57 +266,87 @@ export default function DiaryPage() {
               </CardContent>
             </Card>
           ) : (
-            <>
-              <DailySchedule
-                date={selectedDate}
-                events={scheduleEvents}
-                onDateChange={setSelectedDate}
-                onEventClick={(event) => console.log("Event clicked:", event)}
-                onTimeSlotClick={(time) => console.log("Time slot clicked:", time)}
-              />
+            <div className="flex flex-col lg:flex-row gap-4">
+              {/* Left Side - Schedule (70%) */}
+              <div className="lg:w-[70%] space-y-4">
+                <DailySchedule
+                  date={selectedDate}
+                  events={scheduleEvents}
+                  onDateChange={setSelectedDate}
+                  onEventClick={(event) => console.log("Event clicked:", event)}
+                  onTimeSlotClick={(time) => console.log("Time slot clicked:", time)}
+                />
+              </div>
               
-              {/* Real-time appointment cards */}
-              <div className="grid gap-4 md:grid-cols-2">
-                {appointments.map((apt) => (
-                  <Card key={apt.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-base">{apt.patient.name}</CardTitle>
-                          <CardDescription className="mt-1">
-                            {format(new Date(apt.startTime), 'h:mm a')} - {apt.title}
-                          </CardDescription>
-                        </div>
-                        <AppointmentStatusBadge 
-                          stage={apt.realtimeStatus.currentStage}
-                          status={apt.status}
-                          isRunningLate={apt.realtimeStatus.isRunningLate}
-                        />
+              {/* Right Side - Active Queue (30%) */}
+              <div className="lg:w-[30%] space-y-4">
+                {/* Checked In Queue */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Users className="w-4 h-4 text-yellow-500" />
+                        Waiting Room
+                      </CardTitle>
+                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                        {checkedInQueue.length} waiting
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2 max-h-[400px] overflow-y-auto">
+                    {sortedCheckedInQueue.length === 0 ? (
+                      <div className="text-center py-6 text-muted-foreground">
+                        <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">No patients waiting</p>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm text-muted-foreground">
-                          {apt.practitioner?.name || 'No practitioner assigned'}
-                        </div>
-                        {apt.realtimeStatus.nextAction && (
-                          <NextActionBadge 
-                            nextAction={apt.realtimeStatus.nextAction}
-                            stage={apt.realtimeStatus.currentStage}
-                          />
-                        )}
-                      </div>
-                      <div className="mt-4">
-                        <AppointmentActions 
+                    ) : (
+                      sortedCheckedInQueue.map((apt) => (
+                        <SmartAppointmentCard
+                          key={apt.id}
                           appointment={apt}
                           userRole={user?.role || 'ecp'}
+                          compact
+                          showHoverDetails
                         />
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+                
+                {/* Ready for Dispense Queue */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Package className="w-4 h-4 text-purple-500" />
+                        Ready for Dispense
+                      </CardTitle>
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                        {readyForDispenseQueue.length} ready
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {readyForDispenseQueue.length === 0 ? (
+                      <div className="text-center py-6 text-muted-foreground">
+                        <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">No patients ready</p>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                    ) : (
+                      readyForDispenseQueue.map((apt) => (
+                        <SmartAppointmentCard
+                          key={apt.id}
+                          appointment={apt}
+                          userRole={user?.role || 'ecp'}
+                          compact
+                          showHoverDetails
+                        />
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
               </div>
-            </>
+            </div>
           )}
         </TabsContent>
 

@@ -6212,7 +6212,8 @@ export const communicationChannelEnum = pgEnum("communication_channel", [
   "email",
   "sms",
   "push",
-  "in_app"
+  "in_app",
+  "whatsapp"
 ]);
 
 export const messageStatusEnum = pgEnum("message_status", [
