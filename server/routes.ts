@@ -177,6 +177,8 @@ import laboratoryRoutes from "./routes/laboratory";
 import practiceManagementRoutes from "./routes/practice-management";
 import verificationRoutes from "./routes/verification";
 import backupRoutes from "./routes/backup";
+import returnsAndNonAdaptsRoutes from "./routes/returnsAndNonAdaptsRoutes";
+import clinicalProtocolsRoutes from "./routes/clinical-protocols";
 import {
   publicApiLimiter,
   authLimiter,
@@ -373,6 +375,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Companies routes for multi-tenant onboarding
   app.use('/api/companies', isAuthenticated, companiesRoutes);
+
+  // Register Returns and Non-Adapts routes (lab operations)
+  app.use('/api/returns', isAuthenticated, returnsAndNonAdaptsRoutes);
+  app.use('/api/non-adapts', isAuthenticated, returnsAndNonAdaptsRoutes);
+  
+  // Register Clinical Protocols routes (ECP clinical workflows)
+  app.use('/api/clinical-protocols', isAuthenticated, clinicalProtocolsRoutes);
 
   // Register User Management routes (RBAC-protected with company isolation)
   app.use('/api/users', isAuthenticated, userManagementRoutes);
