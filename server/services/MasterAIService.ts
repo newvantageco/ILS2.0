@@ -717,28 +717,39 @@ export class MasterAIService {
   }
 
   /**
-   * Search learned knowledge from database
+   * Search learned knowledge from database using vector similarity
+   *
+   * Now uses Python RAG service for semantic search instead of Jaccard similarity
    */
   private async searchLearnedKnowledge(
     question: string,
     companyId: string
   ): Promise<{ answer: string; confidence: number }> {
     try {
+      // Check if Python RAG service is available
+      if (!pythonRAGService.isEnabled()) {
+        this.logger.warn("Python RAG service not available, using fallback search");
+        return this.searchLearnedKnowledgeFallback(question, companyId);
+      }
+
+      // Generate embedding for the question
+      const questionEmbedding = await pythonRAGService.generateEmbedding(question);
+
       const learningData = await this.storage.getAiLearningDataByCompany(companyId);
-      
+
       if (learningData.length === 0) {
         return { answer: "", confidence: 0 };
       }
 
-      const lowerQuestion = question.toLowerCase();
       let bestMatch = { answer: "", confidence: 0 };
 
+      // Calculate semantic similarity using embeddings
       for (const learning of learningData) {
-        if (!learning.question) continue;
-        
-        const similarity = this.calculateSimilarity(
-          lowerQuestion,
-          learning.question.toLowerCase()
+        if (!learning.question || !learning.questionEmbedding) continue;
+
+        const similarity = this.calculateCosineSimilarity(
+          questionEmbedding,
+          learning.questionEmbedding as number[]
         );
 
         const confidence = similarity * parseFloat(learning.confidence || '0.5');
@@ -754,23 +765,106 @@ export class MasterAIService {
       return bestMatch;
 
     } catch (error) {
-      this.logger.error("Error searching learned knowledge", error as Error);
+      this.logger.error("Error searching learned knowledge with embeddings", error as Error);
+      return this.searchLearnedKnowledgeFallback(question, companyId);
+    }
+  }
+
+  /**
+   * Fallback: Search learned knowledge using text matching (legacy)
+   * Used when Python RAG service is unavailable
+   */
+  private async searchLearnedKnowledgeFallback(
+    question: string,
+    companyId: string
+  ): Promise<{ answer: string; confidence: number }> {
+    try {
+      const learningData = await this.storage.getAiLearningDataByCompany(companyId);
+
+      if (learningData.length === 0) {
+        return { answer: "", confidence: 0 };
+      }
+
+      const lowerQuestion = question.toLowerCase();
+      let bestMatch = { answer: "", confidence: 0 };
+
+      for (const learning of learningData) {
+        if (!learning.question) continue;
+
+        // Use legacy Jaccard similarity
+        const similarity = this.calculateJaccardSimilarity(
+          lowerQuestion,
+          learning.question.toLowerCase()
+        );
+
+        // Reduce confidence for fallback method
+        const confidence = similarity * parseFloat(learning.confidence || '0.5') * 0.7;
+
+        if (confidence > bestMatch.confidence) {
+          bestMatch = {
+            answer: learning.answer || "",
+            confidence
+          };
+        }
+      }
+
+      return bestMatch;
+
+    } catch (error) {
+      this.logger.error("Fallback search failed", error as Error);
       return { answer: "", confidence: 0 };
     }
   }
 
   /**
-   * Calculate text similarity (simple word overlap)
+   * Calculate cosine similarity between two embedding vectors
+   */
+  private calculateCosineSimilarity(vec1: number[], vec2: number[]): number {
+    if (vec1.length !== vec2.length) {
+      this.logger.warn(`Vector dimension mismatch: ${vec1.length} vs ${vec2.length}`);
+      return 0;
+    }
+
+    let dotProduct = 0;
+    let norm1 = 0;
+    let norm2 = 0;
+
+    for (let i = 0; i < vec1.length; i++) {
+      dotProduct += vec1[i] * vec2[i];
+      norm1 += vec1[i] * vec1[i];
+      norm2 += vec2[i] * vec2[i];
+    }
+
+    const magnitude = Math.sqrt(norm1) * Math.sqrt(norm2);
+    if (magnitude === 0) {
+      return 0;
+    }
+
+    return dotProduct / magnitude;
+  }
+
+  /**
+   * Calculate text similarity (simple word overlap) - LEGACY FALLBACK
+   * Only used when vector embeddings are unavailable
+   *
+   * @deprecated Use calculateCosineSimilarity with embeddings instead
    */
   private calculateSimilarity(text1: string, text2: string): number {
+    return this.calculateJaccardSimilarity(text1, text2);
+  }
+
+  /**
+   * Calculate Jaccard similarity (legacy fallback method)
+   */
+  private calculateJaccardSimilarity(text1: string, text2: string): number {
     const words1 = new Set(text1.split(/\s+/));
     const words2 = new Set(text2.split(/\s+/));
     const words1Array = Array.from(words1);
     const words2Array = Array.from(words2);
-    
+
     const intersection = words1Array.filter(x => words2.has(x));
     const union = Array.from(new Set([...words1Array, ...words2Array]));
-    
+
     return intersection.length / union.length;
   }
 
