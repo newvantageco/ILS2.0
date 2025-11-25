@@ -7,6 +7,7 @@ import session from "express-session";
 import passport from "passport";
 import compression from "compression";
 import morgan from "morgan";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupLocalAuth } from "./localAuth";
@@ -117,6 +118,7 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser()); // Required for CSRF token cookie reading
 
 // ============== COMPRESSION (Performance Optimization) ==============
 // Enable gzip/deflate compression for responses
