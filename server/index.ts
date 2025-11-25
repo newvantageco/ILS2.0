@@ -16,6 +16,7 @@ import {
   globalRateLimiter,
   authRateLimiter
 } from "./middleware/security";
+import { csrfProtection, csrfErrorHandler } from "./middleware/csrfProtection";
 import { auditMiddleware } from "./middleware/audit";
 import {
   errorHandler,
@@ -201,6 +202,18 @@ if (process.env.NODE_ENV === "development") {
   setupLocalAuth();
 }
 
+// ============== CSRF PROTECTION ==============
+// Protect against Cross-Site Request Forgery attacks
+// Applied to all routes (ignores GET, HEAD, OPTIONS by default)
+// Controlled by CSRF_ENABLED environment variable (default: true)
+const csrfEnabled = process.env.CSRF_ENABLED !== 'false';
+if (csrfEnabled) {
+  app.use(csrfProtection);
+  log("✅ CSRF protection enabled", "security");
+} else {
+  log("⚠️  CSRF protection disabled via CSRF_ENABLED=false", "security");
+}
+
 // ============== AUDIT LOGGING (HIPAA Compliance) ==============
 // Apply audit logging middleware to all /api/* routes
 // This must come AFTER authentication to capture user info
@@ -285,10 +298,15 @@ app.get('/api/health', healthCheck);
     // ============== ERROR HANDLING (Production-Grade) ==============
     // Setup global process error handlers
     setupGlobalErrorHandlers();
-    
+
+    // CSRF error handler - must come before global error handler
+    if (csrfEnabled) {
+      app.use(csrfErrorHandler);
+    }
+
     // 404 handler - must be after all routes and Vite setup
     app.use(notFoundHandler);
-    
+
     // Global error handler - must be last
     app.use(errorHandler);
 
