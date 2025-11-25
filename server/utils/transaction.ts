@@ -3,8 +3,7 @@
  * Provides safe transaction wrappers with automatic rollback on error
  */
 
-import { Pool } from '@neondatabase/serverless';
-import type { PoolClient } from '@neondatabase/serverless';
+import { Pool, PoolClient } from 'pg';
 import { pool } from '../db';
 import { createLogger } from './logger';
 import { DatabaseError } from './ApiError';
