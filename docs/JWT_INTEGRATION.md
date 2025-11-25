@@ -1,13 +1,41 @@
-# JWT Authentication Integration - Complete ✅
+# JWT Authentication Integration
 
 **Date**: November 25, 2025
-**Status**: ✅ **INTEGRATED - Ready for Testing**
+**Status**: 🟡 **IMPLEMENTED - NOT YET INTEGRATED**
+
+> **⚠️ CRITICAL:** This document was **aspirational** - the JWT code exists but is **NOT integrated into production routes**. All routes currently use session-based authentication.
 
 ---
 
-## Overview
+## Current Reality
 
-JWT (JSON Web Token) authentication has been successfully integrated into ILS 2.0 as a **parallel authentication system** alongside existing session-based authentication. This enables:
+**What This Document Said:** "JWT has been successfully integrated"
+**Actual Status:** JWT code exists (574 lines) but is **NOT used** by any production routes
+
+### Verification
+
+```bash
+# JWT middleware exists but is never called
+$ grep -n "authenticateHybrid" server/routes.ts
+110:import { authenticateHybrid } from "./middleware/auth-hybrid.js";
+# ^^ Imported but ZERO usages!
+
+# All routes use session auth instead
+$ grep -n "isAuthenticated" server/routes.ts | wc -l
+158  # 158 routes use session auth, NOT JWT
+```
+
+### What Actually Works
+
+- ✅ **Session Authentication** - All routes use `isAuthenticated` (session-based)
+- 🟡 **JWT Code Exists** - Files written but not integrated
+- ❌ **JWT Not Active** - Login doesn't return JWT, routes don't accept JWT
+
+---
+
+## What Was Implemented (But Not Integrated)
+
+JWT (JSON Web Token) authentication **code has been written** for ILS 2.0 as a **parallel authentication system** alongside existing session-based authentication. When integrated, this will enable:
 
 - Token-based stateless authentication
 - Automatic token refresh
@@ -321,13 +349,13 @@ localStorage.setItem('ils_token_expiry', '0');
 
 ## Security Considerations
 
-### ✅ Implemented
+### ✅ Implemented (Code Exists)
 - Tokens signed with HS256 (HMAC-SHA256)
 - Configurable token expiry
 - Refresh token rotation
 - Token type validation (access vs refresh)
 - Issuer/Audience claims verification
-- Secure token storage (localStorage)
+- Secure token storage (localStorage) - **NOT YET WIRED UP**
 
 ### ⚠️ Production Recommendations
 1. **JWT_SECRET**: Use strong 256-bit secret in production
@@ -375,12 +403,16 @@ localStorage.setItem('ils_token_expiry', '0');
 
 ## Next Steps
 
-### Immediate (Testing Phase)
-1. ✅ Deploy to staging environment
-2. ⏳ Test login flow end-to-end
-3. ⏳ Test token refresh mechanism
-4. ⏳ Test logout and token clearing
-5. ⏳ Monitor for errors
+### Immediate (Integration Required FIRST)
+1. ❌ Register JWT routes in server/routes.ts
+2. ❌ Replace `isAuthenticated` with `authenticateHybrid` across routes
+3. ❌ Update login endpoint to return JWT tokens
+4. ❌ Update frontend to store and use tokens
+5. ❌ Deploy to staging environment
+6. ⏳ Test login flow end-to-end
+7. ⏳ Test token refresh mechanism
+8. ⏳ Test logout and token clearing
+9. ⏳ Monitor for errors
 
 ### Short Term (1-2 weeks)
 - Add JWT usage metrics
@@ -398,13 +430,57 @@ localStorage.setItem('ils_token_expiry', '0');
 
 ## Success Metrics
 
-- ✅ JWT routes registered and accessible
-- ✅ Login returns JWT tokens
-- ✅ Frontend stores tokens correctly
-- ⏳ Tokens refresh automatically
-- ⏳ Both auth methods work in parallel
-- ⏳ Zero authentication-related errors
-- ⏳ JWT usage > 10% within 2 weeks
+- ❌ JWT routes registered and accessible - **NOT DONE**
+- ❌ Login returns JWT tokens - **NOT DONE**
+- ❌ Frontend stores tokens correctly - **NOT DONE**
+- ❌ Tokens refresh automatically - **NOT DONE**
+- ❌ Both auth methods work in parallel - **NOT DONE**
+- ❌ Zero authentication-related errors - **NOT TESTED**
+- ❌ JWT usage > 10% within 2 weeks - **NOT DEPLOYED**
+
+---
+
+## How to Actually Integrate
+
+See [MULTITENANT_AI_INTEGRATION_STATUS.md](./MULTITENANT_AI_INTEGRATION_STATUS.md) for detailed integration plan.
+
+**Estimated Effort:** 2-3 days
+**Complexity:** Medium
+**Risk:** Low (hybrid approach is backward compatible)
+
+### Integration Steps
+
+1. **Register JWT Routes** (30 mins)
+   ```typescript
+   // server/routes.ts
+   import authJWTRoutes from './routes/auth-jwt.js';
+   app.use('/api/auth', authJWTRoutes);
+   ```
+
+2. **Replace Authentication Middleware** (2-3 hours)
+   ```typescript
+   // Find and replace across server/routes.ts
+   // FROM: isAuthenticated
+   // TO:   authenticateHybrid
+   ```
+
+3. **Update Login Endpoint** (1 hour)
+   ```typescript
+   // server/routes.ts - /api/auth/login-email handler
+   // Add JWT token generation to response
+   ```
+
+4. **Update Frontend** (2-3 hours)
+   - client/src/lib/api.ts - Token storage and injection
+   - client/src/pages/EmailLoginPage.tsx - Store tokens on login
+   - client/src/hooks/useAuth.ts - Clear tokens on logout
+
+5. **Test End-to-End** (4-6 hours)
+   - Manual testing
+   - Integration tests
+   - Security testing
+
+**Total Time:** 2-3 days
 
 ---
 
@@ -412,5 +488,6 @@ localStorage.setItem('ils_token_expiry', '0');
 
 For questions or issues, contact the development team or create an issue in the repository.
 
-**Status**: ✅ **READY FOR TESTING**
+**Status**: 🟡 **IMPLEMENTED - NOT INTEGRATED**
+**Next Action**: Choose integration path (see MULTITENANT_AI_INTEGRATION_STATUS.md)
 **Last Updated**: November 25, 2025

@@ -1,8 +1,16 @@
 # Multi-Tenant AI System — Technical Documentation
 
 **Version:** 1.0
-**Last Updated:** November 2025
-**Status:** Production
+**Last Updated:** November 25, 2025
+**Status:** 🟡 **Partial Production** - See [Integration Status](./MULTITENANT_AI_INTEGRATION_STATUS.md)
+
+> **⚠️ IMPORTANT:** This document describes the **planned architecture**. Some features are implemented but not yet integrated into production. See [MULTITENANT_AI_INTEGRATION_STATUS.md](./MULTITENANT_AI_INTEGRATION_STATUS.md) for current status.
+
+### Feature Status Legend
+- ✅ **Active** - Feature is integrated and working in production
+- 🟡 **Implemented** - Code exists but not yet integrated
+- ⏳ **Planned** - Design complete, implementation pending
+- ❌ **Not Available** - Not yet implemented
 
 ---
 
@@ -41,12 +49,15 @@ A **multi-tenant AI system** is a cloud-based architecture where:
 
 ### Key Features
 
-- 🏢 **Multi-Tenancy** - Complete data isolation per company
-- 🤖 **Shared AI Models** - GPT-4, Claude, custom ML models
-- 🔐 **Secure by Design** - JWT-based authentication with tenant claims
-- 📊 **Tenant-Specific Context** - Custom embeddings, RAG, and prompts
-- ⚡ **Scalable Architecture** - Horizontal scaling for growth
-- 🎯 **Domain-Specific AI** - Ophthalmic/optical industry expertise
+- ✅ **Multi-Tenancy** - Complete data isolation per company (ACTIVE)
+- ✅ **Shared AI Models** - GPT-4, Claude integration (ACTIVE)
+- 🟡 **JWT Authentication** - Token-based auth (IMPLEMENTED - Not integrated, currently using sessions)
+- 🟡 **Semantic Search (RAG)** - Python RAG service (IMPLEMENTED - Not integrated)
+- ⚠️ **Vector Embeddings (pgvector)** - Vector storage (SCHEMA READY - Database status unknown)
+- ✅ **Session Authentication** - Secure session-based auth (ACTIVE)
+- ✅ **Basic AI Chat** - AI assistance with basic knowledge search (ACTIVE)
+- ⚡ **Scalable Architecture** - Horizontal scaling for growth (ACTIVE)
+- 🎯 **Domain-Specific AI** - Ophthalmic/optical industry expertise (ACTIVE)
 
 ---
 
@@ -99,10 +110,12 @@ Each tenant can customize AI behavior through:
 
 ### 2.4 Secure Communication
 
-All API requests include **JWT tokens with tenant claims**:
+> **🟡 Status:** JWT authentication is **implemented but not yet integrated**. Currently using session-based authentication.
+
+**Planned:** All API requests will include **JWT tokens with tenant claims**:
 
 ```typescript
-// JWT payload structure
+// JWT payload structure (planned)
 {
   "userId": "uuid",
   "companyId": "uuid",          // Tenant identifier
@@ -112,6 +125,8 @@ All API requests include **JWT tokens with tenant claims**:
   "exp": 1234571490
 }
 ```
+
+**Current:** Session-based authentication via express-session + Passport.js
 
 ### 2.5 Scalable Storage and Compute
 
@@ -175,15 +190,15 @@ All API requests include **JWT tokens with tenant claims**:
 
 #### Frontend (React/Vite)
 - **Technology:** React 18.3, TypeScript 5.6, Vite
-- **Authentication:** Session-based with JWT tokens
+- **Authentication:** ✅ Session-based (active) | 🟡 JWT tokens (implemented, not integrated)
 - **State Management:** TanStack Query for server state
 - **UI Components:** shadcn/ui + Tailwind CSS
 
 #### API Gateway (Express.js)
-- **Authentication Middleware:** Validates JWT, extracts `companyId`
-- **Authorization Middleware:** Role-based access control (RBAC)
-- **Rate Limiting:** Per-tenant rate limits
-- **Request Validation:** Zod schemas for type safety
+- **Authentication Middleware:** ✅ Session validation (active) | 🟡 JWT validation (implemented, not integrated)
+- **Authorization Middleware:** ✅ Role-based access control (RBAC) - active
+- **Rate Limiting:** ✅ Per-tenant rate limits - active
+- **Request Validation:** ✅ Zod schemas for type safety - active
 
 #### Backend Services (Node.js)
 - **Core Services:** Order management, patient records, inventory
@@ -196,10 +211,10 @@ All API requests include **JWT tokens with tenant claims**:
 - **Indexes:** Optimized queries with compound indexes on `(companyId, ...)`
 
 #### AI Layer
-- **LLM Providers:** OpenAI (GPT-4, GPT-4 Vision), Anthropic (Claude)
-- **RAG System:** Python FastAPI service with embeddings
-- **Vector Storage:** pgvector extension for PostgreSQL
-- **Knowledge Base:** Tenant-specific document embeddings
+- **LLM Providers:** ✅ OpenAI (GPT-4, GPT-4 Vision), Anthropic (Claude) - active
+- **RAG System:** 🟡 Python FastAPI service (implemented, not integrated) | ✅ Basic text search - active
+- **Vector Storage:** ⚠️ pgvector schema ready (database status unknown)
+- **Knowledge Base:** ✅ Tenant-specific documents with basic search - active
 
 ---
 
