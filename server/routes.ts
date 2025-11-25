@@ -873,12 +873,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user!.claims?.sub || req.user!.id;
       const { role } = req.body as { role: string };
 
-      if (!role || !['ecp', 'lab_tech', 'engineer', 'supplier', 'admin'].includes(role)) {
+      if (!role || !['ecp', 'lab_tech', 'engineer', 'supplier', 'admin', 'company_admin', 'dispenser'].includes(role)) {
         return res.status(400).json({ message: "Valid role is required" });
       }
 
       const updatedUser = await storage.switchUserRole(userId, role);
-      
+
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -889,7 +889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Log the role switch for audit
-      logger.info({ userId }, 'User ...  switched role to ${role}');
+      logger.info({ userId, newRole: role }, `User switched role to ${role}`);
 
       res.json(updatedUser);
     } catch (error) {
