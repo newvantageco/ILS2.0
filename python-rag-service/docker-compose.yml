@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  rag-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ils-rag-service
+    ports:
+      - "8001:8001"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_PORT=8001
+      - SERVICE_HOST=0.0.0.0
+      - BACKEND_URL=${BACKEND_URL:-http://localhost:5000}
+      - EMBEDDING_MODEL=all-MiniLM-L6-v2
+      - LOG_LEVEL=INFO
+    volumes:
+      # Mount code for development
+      - ./api:/app/api
+      - ./services:/app/services
+      - ./models:/app/models
+      - ./utils:/app/utils
+      # Cache models
+      - model-cache:/app/.cache
+    depends_on:
+      - db
+    networks:
+      - ils-network
+    restart: unless-stopped
+
+  db:
+    image: pgvector/pgvector:pg15
+    container_name: ils-postgres-vector
+    environment:
+      - POSTGRES_DB=ils
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - ils-network
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  model-cache:
+
+networks:
+  ils-network:
+    driver: bridge

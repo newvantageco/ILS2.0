@@ -23,6 +23,7 @@ import { ExternalAIService, type AIMessage } from "./ExternalAIService";
 import { AIService } from "./aiService";
 import type { TenantContext } from "../middleware/tenantContext";
 import { AIDataAccess, type QueryContext } from "./AIDataAccess";
+import { pythonRAGService } from "./PythonRAGService.js";
 
 export interface MasterAIQuery {
   message: string;
@@ -255,7 +256,66 @@ export class MasterAIService {
     learningProgress: number
   ): Promise<MasterAIResponse> {
     try {
-      // Initialize Python AI service if needed
+      this.logger.info("Using Python RAG service for knowledge query");
+
+      // Search knowledge base using Python RAG service
+      const ragResults = await pythonRAGService.searchKnowledge(
+        query.message,
+        query.companyId,
+        {
+          limit: 5,
+          threshold: 0.7
+        }
+      );
+
+      // If we found relevant documents, generate response with context
+      if (ragResults.total_found > 0) {
+        // Build context from retrieved documents
+        const context = ragResults.results
+          .map(doc => `[${doc.filename}] ${doc.content}`)
+          .join('\n\n');
+
+        // Generate response using External AI with RAG context
+        const systemPrompt = `You are an AI assistant for an optical practice. Use the following knowledge base documents to answer the user's question:\n\n${context}\n\nProvide accurate, helpful information based on these documents.`;
+
+        const messages: AIMessage[] = [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: query.message }
+        ];
+
+        const aiResponse = await this.externalAI.chat(messages, {
+          preferredProvider: 'openai',
+          model: company.aiModel || 'gpt-4-turbo-preview'
+        });
+
+        return {
+          answer: aiResponse.content,
+          conversationId: query.conversationId || this.generateConversationId(),
+          sources: [
+            {
+              type: 'python_rag',
+              reference: 'Vector similarity search',
+              confidence: 0.9
+            },
+            ...ragResults.results.map(doc => ({
+              type: 'company_document' as const,
+              reference: doc.filename,
+              confidence: doc.similarity
+            }))
+          ],
+          toolsUsed: ['python_rag_search'],
+          confidence: Math.min(0.95, ragResults.results[0]?.similarity || 0.8),
+          isRelevant: true,
+          metadata: {
+            responseTime: Date.now() - startTime,
+            queryType: 'knowledge',
+            learningProgress,
+            usedExternalAI: true
+          }
+        };
+      }
+
+      // No relevant documents found, use fallback Python AI service if available
       if (!this.pythonAI) {
         const tenantContext: TenantContext = {
           tenantId: query.companyId,
@@ -273,17 +333,17 @@ export class MasterAIService {
       );
 
       return {
-        answer: result.answer || "I couldn't generate a response. Please try rephrasing your question.",
+        answer: result.answer || "I couldn't find relevant information in the knowledge base. Please try rephrasing your question or adding more context.",
         conversationId: query.conversationId || this.generateConversationId(),
         sources: [
           {
             type: 'python_rag',
             reference: result.model || 'Fine-tuned ophthalmic model',
-            confidence: 0.9
+            confidence: 0.7
           }
         ],
         toolsUsed: [],
-        confidence: 0.9,
+        confidence: 0.7,
         isRelevant: true,
         metadata: {
           responseTime: Date.now() - startTime,
