@@ -865,5 +865,6 @@ export async function processAIImmediate(data: AIJobData): Promise<any> {
   }
 }
 
-// Start worker if Redis is available
-export const aiWorker = createAIWorker();
+// Export the factory function - worker is initialized after Redis connects
+// Do NOT auto-create at import time to avoid boot order issues
+export { createAIWorker };

@@ -34,11 +34,11 @@ import { startStorageCalculationCron } from "./jobs/storageCalculationCron";
 import { setupWebSocket } from "./websocket/index";
 import { initializeWebSocket } from "./services/WebSocketService";
 
-// Import workers to start background job processing
-import "./workers/emailWorker";
-import "./workers/pdfWorker";
-import "./workers/notificationWorker";
-import "./workers/aiWorker";
+// Import worker factory functions - workers are initialized AFTER Redis connects
+import { createEmailWorker } from "./workers/emailWorker";
+import { createPDFWorker } from "./workers/pdfWorker";
+import { createNotificationWorker } from "./workers/notificationWorker";
+import { createAIWorker } from "./workers/aiWorker";
 import { initializeRedis, getRedisConnection } from "./queue/config";
 import { storage } from "./storage";
 import logger from "./utils/logger";
@@ -319,7 +319,13 @@ app.get('/api/health', healthCheck);
     // Initialize Redis before starting server
     const redisConnected = await initializeRedis();
     if (redisConnected) {
-      log(`✅ Redis connected - Background job workers will start`);
+      log(`✅ Redis connected - Starting background job workers...`);
+      // Initialize workers NOW that Redis is connected
+      const emailWorker = createEmailWorker();
+      const pdfWorker = createPDFWorker();
+      const notificationWorker = createNotificationWorker();
+      const aiWorker = createAIWorker();
+      log(`✅ Background workers started: email=${!!emailWorker}, pdf=${!!pdfWorker}, notification=${!!notificationWorker}, ai=${!!aiWorker}`);
     } else {
       log(`⚠️  Redis not available - Will use immediate execution fallback`);
     }

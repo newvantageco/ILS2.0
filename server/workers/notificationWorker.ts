@@ -305,5 +305,6 @@ export async function sendNotificationImmediate(data: NotificationJobData): Prom
   }
 }
 
-// Start worker if Redis is available
-export const notificationWorker = createNotificationWorker();
+// Export the factory function - worker is initialized after Redis connects
+// Do NOT auto-create at import time to avoid boot order issues
+export { createNotificationWorker };

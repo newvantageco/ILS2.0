@@ -420,5 +420,6 @@ export async function generatePDFImmediate(data: PDFJobData): Promise<string> {
   }
 }
 
-// Start worker if Redis is available
-export const pdfWorker = createPDFWorker();
+// Export the factory function - worker is initialized after Redis connects
+// Do NOT auto-create at import time to avoid boot order issues
+export { createPDFWorker };
