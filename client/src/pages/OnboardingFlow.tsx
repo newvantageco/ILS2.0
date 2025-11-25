@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +37,7 @@ export default function OnboardingFlow() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [onboardingType, setOnboardingType] = useState<"join" | "create" | "">("");
@@ -64,6 +65,8 @@ export default function OnboardingFlow() {
       return await response.json();
     },
     onSuccess: (company) => {
+      // Invalidate user query to refresh with new companyId and role
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       toast({
         title: "Company created!",
         description: `${company.name} has been successfully created.`,
@@ -86,6 +89,8 @@ export default function OnboardingFlow() {
       return await response.json();
     },
     onSuccess: () => {
+      // Invalidate user query to refresh with new companyId and pending status
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       toast({
         title: "Request sent!",
         description: "Your request to join the company is pending approval.",
