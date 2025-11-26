@@ -1,6 +1,7 @@
 import { Header } from './Header';
 import { HeroSection } from './HeroSection';
 import { ProblemSolution } from './ProblemSolution';
+import { WhyDifferent } from './WhyDifferent';
 import { FeatureShowcase } from './FeatureShowcase';
 import { AISpotlight } from './AISpotlight';
 import { PricingSection } from './PricingSection';
@@ -25,6 +26,9 @@ export function LandingPage() {
       <div id="features" style={{ scrollMarginTop: '64px' }}>
         <ProblemSolution />
       </div>
+
+      {/* Why We're Different - Key Differentiators */}
+      <WhyDifferent />
 
       {/* Feature Showcase */}
       <FeatureShowcase />

@@ -1,6 +1,7 @@
 export { LandingPage } from './LandingPage';
 export { HeroSection } from './HeroSection';
 export { ProblemSolution } from './ProblemSolution';
+export { WhyDifferent } from './WhyDifferent';
 export { FeatureShowcase } from './FeatureShowcase';
 export { AISpotlight } from './AISpotlight';
 export { PricingSection } from './PricingSection';
