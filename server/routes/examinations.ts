@@ -91,8 +91,11 @@ const comprehensiveExaminationSchema = z.object({
     lifestyle: z.any().optional(),
     medicalHistory: z.any().optional(),
   }).optional(),
+  preScreening: z.any().optional(), // AVMS, Focimetry, Phorias
   currentRx: z.any().optional(),
+  supplementaryTests: z.any().optional(), // Pupils, Cover test, Stereopsis, Convergence
   newRx: z.any().optional(),
+  retinoscopy: z.any().optional(), // Retinoscopy findings
   ophthalmoscopy: z.any().optional(),
   slitLamp: z.any().optional(),
   additionalTests: z.any().optional(),
@@ -100,6 +103,8 @@ const comprehensiveExaminationSchema = z.object({
   eyeSketch: z.any().optional(),
   images: z.any().optional(),
   summary: z.any().optional(),
+  sectionNotes: z.any().optional(), // 500-char notes per section
+  gradingSystem: z.string().optional(), // EFRON, CLRU, Other
   notes: z.string().optional(),
 });
 
@@ -215,16 +220,22 @@ router.get('/:id', async (req, res) => {
       patientId: examination.patientId,
       examinationDate: examination.examinationDate,
       status: examination.status,
-      generalHistory: (examination.medicalHistory as any)?.generalHistory,
-      currentRx: (examination.refraction as any)?.currentRx,
-      newRx: (examination.refraction as any)?.newRx,
-      ophthalmoscopy: (examination.binocularVision as any)?.ophthalmoscopy || (examination.eyeHealth as any)?.ophthalmoscopy,
-      slitLamp: (examination.eyeHealth as any)?.slitLamp,
-      additionalTests: (examination.eyeHealth as any)?.additionalTests || (examination.equipmentReadings as any),
-      tonometry: (examination.equipmentReadings as any)?.tonometry,
-      eyeSketch: {},
-      images: {},
-      summary: {},
+      // Prefer comprehensive fields, fall back to legacy structure
+      generalHistory: examination.generalHistory || (examination.medicalHistory as any)?.generalHistory,
+      preScreening: examination.preScreening || {},
+      currentRx: examination.currentRx || (examination.refraction as any)?.currentRx,
+      supplementaryTests: examination.supplementaryTests || {},
+      newRx: examination.newRx || (examination.refraction as any)?.newRx,
+      retinoscopy: examination.retinoscopy || {},
+      ophthalmoscopy: examination.ophthalmoscopy || (examination.binocularVision as any)?.ophthalmoscopy || (examination.eyeHealth as any)?.ophthalmoscopy,
+      slitLamp: examination.slitLamp || (examination.eyeHealth as any)?.slitLamp,
+      additionalTests: examination.additionalTests || (examination.eyeHealth as any)?.additionalTests || (examination.equipmentReadings as any),
+      tonometry: examination.tonometry || (examination.equipmentReadings as any)?.tonometry,
+      eyeSketch: examination.eyeSketch || {},
+      images: examination.images || {},
+      summary: examination.summary || {},
+      sectionNotes: examination.sectionNotes || {},
+      gradingSystem: examination.gradingSystem || 'EFRON',
       notes: examination.notes,
     };
 
@@ -249,8 +260,11 @@ router.post('/', async (req, res) => {
       examinationDate,
       status = 'in_progress',
       generalHistory,
+      preScreening,
       currentRx,
+      supplementaryTests,
       newRx,
+      retinoscopy,
       ophthalmoscopy,
       slitLamp,
       additionalTests,
@@ -258,6 +272,8 @@ router.post('/', async (req, res) => {
       eyeSketch,
       images,
       summary,
+      sectionNotes,
+      gradingSystem,
       notes,
       // Legacy field support (fallback)
       reasonForVisit,
@@ -342,6 +358,22 @@ router.post('/', async (req, res) => {
           amsler: additionalTests?.amsler,
           colourVision: additionalTests?.colourVision,
         },
+        // Comprehensive examination fields (new structure)
+        generalHistory: generalHistory || null,
+        preScreening: preScreening || null,
+        currentRx: currentRx || null,
+        supplementaryTests: supplementaryTests || null,
+        newRx: newRx || null,
+        retinoscopy: retinoscopy || null,
+        ophthalmoscopy: ophthalmoscopy || null,
+        slitLamp: slitLamp || null,
+        additionalTests: additionalTests || null,
+        tonometry: tonometry || null,
+        eyeSketch: eyeSketch || null,
+        images: images || null,
+        summary: summary || null,
+        sectionNotes: sectionNotes || null,
+        gradingSystem: gradingSystem || null,
       } as any)
       .returning();
 
@@ -394,8 +426,11 @@ router.put('/:id', async (req, res) => {
       examinationDate,
       status,
       generalHistory,
+      preScreening,
       currentRx,
+      supplementaryTests,
       newRx,
+      retinoscopy,
       ophthalmoscopy,
       slitLamp,
       additionalTests,
@@ -403,6 +438,8 @@ router.put('/:id', async (req, res) => {
       eyeSketch,
       images,
       summary,
+      sectionNotes,
+      gradingSystem,
       notes,
       // Legacy field support
       reasonForVisit,
@@ -454,6 +491,22 @@ router.put('/:id', async (req, res) => {
           amsler: additionalTests?.amsler,
           colourVision: additionalTests?.colourVision,
         } : existing.equipmentReadings,
+        // Update comprehensive fields (preserve existing if not provided)
+        generalHistory: generalHistory !== undefined ? generalHistory : existing.generalHistory,
+        preScreening: preScreening !== undefined ? preScreening : existing.preScreening,
+        currentRx: currentRx !== undefined ? currentRx : existing.currentRx,
+        supplementaryTests: supplementaryTests !== undefined ? supplementaryTests : existing.supplementaryTests,
+        newRx: newRx !== undefined ? newRx : existing.newRx,
+        retinoscopy: retinoscopy !== undefined ? retinoscopy : existing.retinoscopy,
+        ophthalmoscopy: ophthalmoscopy !== undefined ? ophthalmoscopy : existing.ophthalmoscopy,
+        slitLamp: slitLamp !== undefined ? slitLamp : existing.slitLamp,
+        additionalTests: additionalTests !== undefined ? additionalTests : existing.additionalTests,
+        tonometry: tonometry !== undefined ? tonometry : existing.tonometry,
+        eyeSketch: eyeSketch !== undefined ? eyeSketch : existing.eyeSketch,
+        images: images !== undefined ? images : existing.images,
+        summary: summary !== undefined ? summary : existing.summary,
+        sectionNotes: sectionNotes !== undefined ? sectionNotes : existing.sectionNotes,
+        gradingSystem: gradingSystem !== undefined ? gradingSystem : existing.gradingSystem,
         updatedAt: new Date(),
       })
       .where(eq(eyeExaminations.id, id))
