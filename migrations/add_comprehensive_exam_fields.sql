@@ -11,6 +11,8 @@ ADD COLUMN IF NOT EXISTS ophthalmoscopy JSONB,
 ADD COLUMN IF NOT EXISTS slit_lamp JSONB,
 ADD COLUMN IF NOT EXISTS additional_tests JSONB,
 ADD COLUMN IF NOT EXISTS tonometry JSONB,
+ADD COLUMN IF NOT EXISTS eye_sketch JSONB,
+ADD COLUMN IF NOT EXISTS images JSONB,
 ADD COLUMN IF NOT EXISTS summary JSONB,
 ADD COLUMN IF NOT EXISTS finalized BOOLEAN DEFAULT FALSE;
 
@@ -33,6 +35,8 @@ COMMENT ON COLUMN eye_examinations.ophthalmoscopy IS 'Tab 4: Fundus examination 
 COMMENT ON COLUMN eye_examinations.slit_lamp IS 'Tab 5: Slit lamp examination including external examination and pupil reactions';
 COMMENT ON COLUMN eye_examinations.additional_tests IS 'Tab 6: Additional clinical tests including visual fields, color vision, binocular vision';
 COMMENT ON COLUMN eye_examinations.tonometry IS 'Tab 7: Intraocular pressure measurements and tonometry readings';
+COMMENT ON COLUMN eye_examinations.eye_sketch IS 'Tab 8: Eye sketch drawings for anterior segment and fundus';
+COMMENT ON COLUMN eye_examinations.images IS 'Tab 9: Image viewer for imported diagnostic images';
 COMMENT ON COLUMN eye_examinations.summary IS 'Tab 10: Examination summary including Rx status, referrals, dispensing, recall management';
 COMMENT ON COLUMN eye_examinations.finalized IS 'Indicates if the examination has been finalized and locked for editing';
 
@@ -44,5 +48,5 @@ SELECT
     column_default
 FROM information_schema.columns 
 WHERE table_name = 'eye_examinations' 
-AND column_name IN ('general_history', 'current_rx', 'new_rx', 'ophthalmoscopy', 'slit_lamp', 'additional_tests', 'tonometry', 'summary', 'finalized')
+AND column_name IN ('general_history', 'current_rx', 'new_rx', 'ophthalmoscopy', 'slit_lamp', 'additional_tests', 'tonometry', 'eye_sketch', 'images', 'summary', 'finalized')
 ORDER BY ordinal_position;

@@ -209,23 +209,25 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Examination not found' });
     }
 
-    // Transform database structure back to comprehensive format for frontend
+    // Return comprehensive format directly from database columns
     const transformedExamination = {
       id: examination.id,
       patientId: examination.patientId,
       examinationDate: examination.examinationDate,
       status: examination.status,
-      generalHistory: (examination.medicalHistory as any)?.generalHistory,
-      currentRx: (examination.refraction as any)?.currentRx,
-      newRx: (examination.refraction as any)?.newRx,
-      ophthalmoscopy: (examination.binocularVision as any)?.ophthalmoscopy || (examination.eyeHealth as any)?.ophthalmoscopy,
-      slitLamp: (examination.eyeHealth as any)?.slitLamp,
-      additionalTests: (examination.eyeHealth as any)?.additionalTests || (examination.equipmentReadings as any),
-      tonometry: (examination.equipmentReadings as any)?.tonometry,
-      eyeSketch: {},
-      images: {},
-      summary: {},
+      // Use new direct JSONB columns (with legacy fallback)
+      generalHistory: examination.generalHistory || (examination.medicalHistory as any)?.generalHistory,
+      currentRx: examination.currentRx || (examination.refraction as any)?.currentRx,
+      newRx: examination.newRx || (examination.refraction as any)?.newRx,
+      ophthalmoscopy: examination.ophthalmoscopy || (examination.binocularVision as any)?.ophthalmoscopy,
+      slitLamp: examination.slitLamp || (examination.eyeHealth as any)?.slitLamp,
+      additionalTests: examination.additionalTests || (examination.eyeHealth as any)?.additionalTests,
+      tonometry: examination.tonometry || (examination.equipmentReadings as any)?.tonometry,
+      eyeSketch: examination.eyeSketch || {},
+      images: examination.images || {},
+      summary: examination.summary || {},
       notes: examination.notes,
+      finalized: examination.finalized,
     };
 
     res.json(transformedExamination);
@@ -303,45 +305,18 @@ router.post('/', async (req, res) => {
         status: status || 'in_progress',
         reasonForVisit: generalHistory?.reasonForVisit || reasonForVisit || null,
         notes: notes || null,
-        // Map comprehensive structure to JSONB fields
-        medicalHistory: {
-          generalHistory,
-          lifestyle: generalHistory?.lifestyle,
-          symptoms: generalHistory?.symptoms,
-          medicalHistory: generalHistory?.medicalHistory,
-        },
-        visualAcuity: currentRx?.unaidedVision,
-        refraction: {
-          currentRx,
-          newRx,
-          objective: newRx?.objective,
-          subjective: newRx?.subjective,
-          finalRx: {
-            distance: newRx?.subjective?.primaryPair,
-            near: newRx?.subjective?.nearRx,
-            intermediate: newRx?.subjective?.intermediateRx,
-          },
-          notes: newRx?.notes,
-        },
-        binocularVision: {
-          ophthalmoscopy,
-          motility: ophthalmoscopy?.motility,
-          coverTest: ophthalmoscopy?.coverTest,
-          stereopsis: ophthalmoscopy?.stereopsis,
-        },
-        eyeHealth: {
-          ophthalmoscopy,
-          slitLamp,
-          additionalTests,
-        },
-        equipmentReadings: {
-          tonometry,
-          visualFields: additionalTests?.visualFields,
-          oct: additionalTests?.oct,
-          wideFieldImaging: additionalTests?.wideFieldImaging,
-          amsler: additionalTests?.amsler,
-          colourVision: additionalTests?.colourVision,
-        },
+        // Store comprehensive exam data directly in dedicated JSONB columns
+        generalHistory: generalHistory || null,
+        currentRx: currentRx || null,
+        newRx: newRx || null,
+        ophthalmoscopy: ophthalmoscopy || null,
+        slitLamp: slitLamp || null,
+        additionalTests: additionalTests || null,
+        tonometry: tonometry || null,
+        eyeSketch: eyeSketch || null,
+        images: images || null,
+        summary: summary || null,
+        finalized: status === 'finalized',
       } as any)
       .returning();
 
@@ -352,8 +327,11 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update examination
-router.put('/:id', async (req, res) => {
+// Update examination (PATCH and PUT both supported)
+router.patch('/:id', updateExamination);
+router.put('/:id', updateExamination);
+
+async function updateExamination(req: any, res: any) {
   try {
     const companyId = req.user!.companyId;
     const user = req.user;
@@ -415,45 +393,18 @@ router.put('/:id', async (req, res) => {
         status: status || existing.status,
         reasonForVisit: generalHistory?.reasonForVisit || reasonForVisit || existing.reasonForVisit,
         notes: notes !== undefined ? notes : existing.notes,
-        // Map comprehensive structure to JSONB fields
-        medicalHistory: generalHistory ? {
-          generalHistory,
-          lifestyle: generalHistory?.lifestyle,
-          symptoms: generalHistory?.symptoms,
-          medicalHistory: generalHistory?.medicalHistory,
-        } : existing.medicalHistory,
-        visualAcuity: currentRx?.unaidedVision || existing.visualAcuity,
-        refraction: newRx ? {
-          currentRx,
-          newRx,
-          objective: newRx?.objective,
-          subjective: newRx?.subjective,
-          finalRx: {
-            distance: newRx?.subjective?.primaryPair,
-            near: newRx?.subjective?.nearRx,
-            intermediate: newRx?.subjective?.intermediateRx,
-          },
-          notes: newRx?.notes,
-        } : existing.refraction,
-        binocularVision: ophthalmoscopy ? {
-          ophthalmoscopy,
-          motility: ophthalmoscopy?.motility,
-          coverTest: ophthalmoscopy?.coverTest,
-          stereopsis: ophthalmoscopy?.stereopsis,
-        } : existing.binocularVision,
-        eyeHealth: (ophthalmoscopy || slitLamp || additionalTests) ? {
-          ophthalmoscopy,
-          slitLamp,
-          additionalTests,
-        } : existing.eyeHealth,
-        equipmentReadings: tonometry ? {
-          tonometry,
-          visualFields: additionalTests?.visualFields,
-          oct: additionalTests?.oct,
-          wideFieldImaging: additionalTests?.wideFieldImaging,
-          amsler: additionalTests?.amsler,
-          colourVision: additionalTests?.colourVision,
-        } : existing.equipmentReadings,
+        // Store comprehensive exam data directly in dedicated JSONB columns
+        generalHistory: generalHistory || existing.generalHistory,
+        currentRx: currentRx || existing.currentRx,
+        newRx: newRx || existing.newRx,
+        ophthalmoscopy: ophthalmoscopy || existing.ophthalmoscopy,
+        slitLamp: slitLamp || existing.slitLamp,
+        additionalTests: additionalTests || existing.additionalTests,
+        tonometry: tonometry || existing.tonometry,
+        eyeSketch: eyeSketch || existing.eyeSketch,
+        images: images || existing.images,
+        summary: summary || existing.summary,
+        finalized: status === 'finalized' || existing.finalized,
         updatedAt: new Date(),
       })
       .where(eq(eyeExaminations.id, id))
@@ -464,7 +415,7 @@ router.put('/:id', async (req, res) => {
     logger.error({ error }, 'Error updating examination');
     res.status(500).json({ error: 'Failed to update examination' });
   }
-});
+}
 
 // Delete examination (soft delete - data is preserved for healthcare compliance)
 router.delete('/:id', async (req, res) => {
