@@ -17,10 +17,10 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { 
-  Save, 
-  Eye, 
-  User, 
+import {
+  Save,
+  Eye,
+  User,
   Calendar as CalendarIcon,
   FileText,
   Activity,
@@ -38,15 +38,21 @@ import {
   Scan,
   Printer,
   Phone,
-  Mail
+  Mail,
+  Ruler,
+  Focus,
+  Lightbulb
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 // Import Tab Components
 import GeneralHistoryTab from '@/components/eye-exam/GeneralHistoryTab';
+import PreScreeningTab from '@/components/eye-exam/PreScreeningTab';
 import CurrentRxTab from '@/components/eye-exam/CurrentRxTab';
+import SupplementaryTestsTab from '@/components/eye-exam/SupplementaryTestsTab';
 import NewRxTab from '@/components/eye-exam/NewRxTab';
+import RetinoscopyTab from '@/components/eye-exam/RetinoscopyTab';
 import OphthalmoscopyTab from '@/components/eye-exam/OphthalmoscopyTab';
 import SlitLampTab from '@/components/eye-exam/SlitLampTab';
 import AdditionalTestsTab from '@/components/eye-exam/AdditionalTestsTab';
@@ -102,8 +108,44 @@ interface EyeExaminationData {
       medication?: string;
     };
   };
-  
-  // Tab 2: Current Rx
+
+  // Tab 2: Pre-Screening (AVMS, Focimetry, Phorias)
+  preScreening?: {
+    avms: {
+      odSphere: string;
+      odCylinder: string;
+      odAxis: string;
+      osSphere: string;
+      osCylinder: string;
+      osAxis: string;
+      pupilDistanceOd: string;
+      pupilDistanceOs: string;
+      notes: string;
+    };
+    focimetry: {
+      odSphere: string;
+      odCylinder: string;
+      odAxis: string;
+      odAdd: string;
+      osSphere: string;
+      osCylinder: string;
+      osAxis: string;
+      osAdd: string;
+      lensType: string;
+      notes: string;
+    };
+    phorias: {
+      distancePhoria: string;
+      distancePhoriaValue: string;
+      nearPhoria: string;
+      nearPhoriaValue: string;
+      verticalPhoria: string;
+      notes: string;
+    };
+    sectionNotes: string;
+  };
+
+  // Tab 3: Current Rx
   currentRx: {
     unaidedVision: {
       r: { distance: string; binocular: string; near: string };
@@ -125,8 +167,48 @@ interface EyeExaminationData {
       l: { sph: string; cyl: string; axis: string; add: string; prism: string; binocularAcuity: string };
     };
   };
-  
-  // Tab 3: New Rx (Refraction)
+
+  // Tab 4: Supplementary Tests
+  supplementaryTests?: {
+    pupils: {
+      odSize: string;
+      odReaction: string;
+      odApd: boolean;
+      osSize: string;
+      osReaction: string;
+      osApd: boolean;
+      notes: string;
+    };
+    coverTest: {
+      distanceDeviation: string;
+      distanceType: string;
+      distanceAmount: string;
+      nearDeviation: string;
+      nearType: string;
+      nearAmount: string;
+      recovery: string;
+      notes: string;
+    };
+    stereopsis: {
+      test: string;
+      result: string;
+      seconds: string;
+      normal: boolean;
+      reduced: boolean;
+      absent: boolean;
+      notes: string;
+    };
+    convergence: {
+      npcBreak: string;
+      npcRecovery: string;
+      npaBreak: string;
+      npaRecovery: string;
+      notes: string;
+    };
+    sectionNotes: string;
+  };
+
+  // Tab 5: New Rx (Refraction)
   newRx: {
     objective: {
       r: { sph: string; cyl: string; axis: string; va: string };
@@ -165,8 +247,23 @@ interface EyeExaminationData {
       notPrinted: string;
     };
   };
-  
-  // Tab 4: Ophthalmoscopy
+
+  // Tab 6: Retinoscopy
+  retinoscopy?: {
+    workingDistance: string;
+    odSphere: string;
+    odCylinder: string;
+    odAxis: string;
+    odNotes: string;
+    osSphere: string;
+    osCylinder: string;
+    osAxis: string;
+    osNotes: string;
+    neutralizationNotes: string;
+    sectionNotes: string;
+  };
+
+  // Tab 7: Ophthalmoscopy
   ophthalmoscopy: {
     r: {
       media: string;
@@ -667,11 +764,14 @@ export default function EyeExaminationComprehensive() {
   ]);
 
   const tabs = [
-    { id: 'general-history', label: 'General History', icon: FileText, disabled: false },
-    { id: 'current-rx', label: 'Current Rx', icon: Glasses, disabled: false },
-    { id: 'new-rx', label: 'New Rx', icon: Eye, disabled: false },
-    { id: 'ophthalmoscopy', label: 'Ophthalmoscopy', icon: Eye, disabled: false },
+    { id: 'general-history', label: 'History & Symptoms', icon: FileText, disabled: false },
+    { id: 'pre-screening', label: 'Pre-Screening', icon: Scan, disabled: false },
+    { id: 'current-rx', label: 'Visual Acuity', icon: Glasses, disabled: false },
+    { id: 'supplementary-tests', label: 'Supplementary Tests', icon: Focus, disabled: false },
     { id: 'slit-lamp', label: 'Slit Lamp', icon: Microscope, disabled: false },
+    { id: 'ophthalmoscopy', label: 'Ophthalmoscopy', icon: Eye, disabled: false },
+    { id: 'retinoscopy', label: 'Retinoscopy', icon: Lightbulb, disabled: false },
+    { id: 'new-rx', label: 'Prescription', icon: Target, disabled: false },
     { id: 'additional-tests', label: 'Additional Tests', icon: Activity, disabled: false },
     { id: 'tonometry', label: 'Tonometry', icon: Droplets, disabled: false },
     { id: 'eye-sketch', label: 'Eye Sketch', icon: Palette, disabled: true },
@@ -834,7 +934,7 @@ export default function EyeExaminationComprehensive() {
           {/* Tab Content Container */}
           <div className="flex-1 p-6 bg-slate-50 overflow-auto">
               <div className="max-w-6xl mx-auto space-y-6">
-                {/* TAB 1: GENERAL HISTORY */}
+                {/* TAB 1: GENERAL HISTORY / HISTORY & SYMPTOMS */}
                 <TabsContent value="general-history" className="space-y-4 m-0">
                   <GeneralHistoryTab
                     data={formData.generalHistory!}
@@ -843,7 +943,21 @@ export default function EyeExaminationComprehensive() {
                   />
                 </TabsContent>
 
-                {/* TAB 2: CURRENT RX */}
+                {/* TAB 2: PRE-SCREENING */}
+                <TabsContent value="pre-screening" className="space-y-4 mt-4">
+                  <PreScreeningTab
+                    data={formData.preScreening || {
+                      avms: { odSphere: '', odCylinder: '', odAxis: '', osSphere: '', osCylinder: '', osAxis: '', pupilDistanceOd: '', pupilDistanceOs: '', notes: '' },
+                      focimetry: { odSphere: '', odCylinder: '', odAxis: '', odAdd: '', osSphere: '', osCylinder: '', osAxis: '', osAdd: '', lensType: '', notes: '' },
+                      phorias: { distancePhoria: '', distancePhoriaValue: '', nearPhoria: '', nearPhoriaValue: '', verticalPhoria: '', notes: '' },
+                      sectionNotes: ''
+                    }}
+                    onChange={(data) => setFormData({ ...formData, preScreening: data })}
+                    readonly={!canEdit}
+                  />
+                </TabsContent>
+
+                {/* TAB 3: CURRENT RX / VISUAL ACUITY */}
                 <TabsContent value="current-rx" className="space-y-4 mt-4">
                   <CurrentRxTab
                     data={formData.currentRx!}
@@ -852,20 +966,17 @@ export default function EyeExaminationComprehensive() {
                   />
                 </TabsContent>
 
-                {/* TAB 3: NEW RX */}
-                <TabsContent value="new-rx" className="space-y-4 mt-4">
-                  <NewRxTab
-                    data={formData.newRx!}
-                    onChange={(data) => setFormData({ ...formData, newRx: data })}
-                    readonly={!canEdit}
-                  />
-                </TabsContent>
-
-                {/* TAB 4: OPHTHALMOSCOPY */}
-                <TabsContent value="ophthalmoscopy" className="space-y-4 mt-4">
-                  <OphthalmoscopyTab
-                    data={formData.ophthalmoscopy!}
-                    onChange={(data) => setFormData({ ...formData, ophthalmoscopy: data })}
+                {/* TAB 4: SUPPLEMENTARY TESTS */}
+                <TabsContent value="supplementary-tests" className="space-y-4 mt-4">
+                  <SupplementaryTestsTab
+                    data={formData.supplementaryTests || {
+                      pupils: { odSize: '', odReaction: '', odApd: false, osSize: '', osReaction: '', osApd: false, notes: '' },
+                      coverTest: { distanceDeviation: '', distanceType: '', distanceAmount: '', nearDeviation: '', nearType: '', nearAmount: '', recovery: '', notes: '' },
+                      stereopsis: { test: '', result: '', seconds: '', normal: false, reduced: false, absent: false, notes: '' },
+                      convergence: { npcBreak: '', npcRecovery: '', npaBreak: '', npaRecovery: '', notes: '' },
+                      sectionNotes: ''
+                    }}
+                    onChange={(data) => setFormData({ ...formData, supplementaryTests: data })}
                     readonly={!canEdit}
                   />
                 </TabsContent>
@@ -879,7 +990,46 @@ export default function EyeExaminationComprehensive() {
                   />
                 </TabsContent>
 
-                {/* TAB 6: ADDITIONAL TESTS */}
+                {/* TAB 6: OPHTHALMOSCOPY */}
+                <TabsContent value="ophthalmoscopy" className="space-y-4 mt-4">
+                  <OphthalmoscopyTab
+                    data={formData.ophthalmoscopy!}
+                    onChange={(data) => setFormData({ ...formData, ophthalmoscopy: data })}
+                    readonly={!canEdit}
+                  />
+                </TabsContent>
+
+                {/* TAB 7: RETINOSCOPY */}
+                <TabsContent value="retinoscopy" className="space-y-4 mt-4">
+                  <RetinoscopyTab
+                    data={formData.retinoscopy || {
+                      workingDistance: '',
+                      odSphere: '',
+                      odCylinder: '',
+                      odAxis: '',
+                      odNotes: '',
+                      osSphere: '',
+                      osCylinder: '',
+                      osAxis: '',
+                      osNotes: '',
+                      neutralizationNotes: '',
+                      sectionNotes: ''
+                    }}
+                    onChange={(data) => setFormData({ ...formData, retinoscopy: data })}
+                    readonly={!canEdit}
+                  />
+                </TabsContent>
+
+                {/* TAB 8: NEW RX / PRESCRIPTION */}
+                <TabsContent value="new-rx" className="space-y-4 mt-4">
+                  <NewRxTab
+                    data={formData.newRx!}
+                    onChange={(data) => setFormData({ ...formData, newRx: data })}
+                    readonly={!canEdit}
+                  />
+                </TabsContent>
+
+                {/* TAB 9: ADDITIONAL TESTS */}
                 <TabsContent value="additional-tests" className="space-y-4 mt-4">
                   <AdditionalTestsTab
                     data={formData.additionalTests!}

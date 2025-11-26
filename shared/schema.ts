@@ -685,6 +685,12 @@ export const dispenseRecords = pgTable("dispense_records", {
   aftercareProvided: boolean("aftercare_provided").default(true),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+
+  // Import Tracking (for migrated records)
+  externalId: varchar("external_id", { length: 255 }),
+  importSource: varchar("import_source", { length: 100 }),
+  importJobId: varchar("import_job_id", { length: 255 }),
+  importedAt: timestamp("imported_at"),
 }, (table) => [
   index("idx_dispense_records_order").on(table.orderId),
   index("idx_dispense_records_company").on(table.companyId),
@@ -1313,6 +1319,12 @@ export const patients = pgTable("patients", {
   updatedBy: varchar("updated_by", { length: 255 }),
   changeHistory: jsonb("change_history").default(sql`'[]'::jsonb`),
 
+  // Import Tracking (for migrated records from Optix, Occuco, Acuity, etc.)
+  externalId: varchar("external_id", { length: 255 }), // Original ID from legacy system
+  importSource: varchar("import_source", { length: 100 }), // optix, occuco, acuity, manual_csv, etc.
+  importJobId: varchar("import_job_id", { length: 255 }), // Reference to migration_jobs.id
+  importedAt: timestamp("imported_at"), // When this record was imported
+
   // Soft Delete
   deletedAt: timestamp("deleted_at"),
   deletedBy: varchar("deleted_by", { length: 255 }),
@@ -1372,6 +1384,12 @@ export const orders = pgTable("orders", {
   createdBy: varchar("created_by", { length: 255 }),
   updatedBy: varchar("updated_by", { length: 255 }),
   changeHistory: jsonb("change_history").default(sql`'[]'::jsonb`),
+
+  // Import Tracking (for migrated records)
+  externalId: varchar("external_id", { length: 255 }), // Original order ID from legacy system
+  importSource: varchar("import_source", { length: 100 }),
+  importJobId: varchar("import_job_id", { length: 255 }),
+  importedAt: timestamp("imported_at"),
 
   // Soft Delete
   deletedAt: timestamp("deleted_at"),
@@ -1549,6 +1567,13 @@ export const eyeExaminations = pgTable("eye_examinations", {
   eyeSketch: jsonb("eye_sketch"),
   images: jsonb("images"),
   summary: jsonb("summary"),
+
+  // Enhanced examination workflow fields
+  preScreening: jsonb("pre_screening"), // AVMS, Focimetry, Phorias
+  retinoscopy: jsonb("retinoscopy"), // Retinoscopy findings
+  sectionNotes: jsonb("section_notes"), // 500-char notes per section
+  gradingSystem: varchar("grading_system", { length: 20 }), // EFRON, CLRU, or other
+
   finalized: boolean("finalized").default(false),
   
   gosFormType: text("gos_form_type"),
@@ -1556,6 +1581,12 @@ export const eyeExaminations = pgTable("eye_examinations", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+
+  // Import Tracking (for migrated records)
+  externalId: varchar("external_id", { length: 255 }), // Original exam ID from legacy system
+  importSource: varchar("import_source", { length: 100 }),
+  importJobId: varchar("import_job_id", { length: 255 }),
+  importedAt: timestamp("imported_at"),
 
   // Soft Delete
   deletedAt: timestamp("deleted_at"),
@@ -1680,6 +1711,12 @@ export const prescriptions = pgTable("prescriptions", {
   createdBy: varchar("created_by", { length: 255 }),
   updatedBy: varchar("updated_by", { length: 255 }),
   changeHistory: jsonb("change_history").default(sql`'[]'::jsonb`),
+
+  // Import Tracking (for migrated records)
+  externalId: varchar("external_id", { length: 255 }), // Original Rx ID from legacy system
+  importSource: varchar("import_source", { length: 100 }),
+  importJobId: varchar("import_job_id", { length: 255 }),
+  importedAt: timestamp("imported_at"),
 
   // Soft Delete
   deletedAt: timestamp("deleted_at"),
@@ -8873,6 +8910,12 @@ export const appointments = pgTable(
     // Rescheduling details
     rescheduledFrom: varchar("rescheduled_from").references(() => appointments.id),
     rescheduledTo: varchar("rescheduled_to").references(() => appointments.id),
+
+    // Import Tracking (for migrated records)
+    externalId: varchar("external_id", { length: 255 }), // Original appointment ID from legacy system
+    importSource: varchar("import_source", { length: 100 }),
+    importJobId: varchar("import_job_id", { length: 255 }),
+    importedAt: timestamp("imported_at", { withTimezone: true }),
 
     // Soft Delete
     deletedAt: timestamp("deleted_at", { withTimezone: true }),

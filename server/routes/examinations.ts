@@ -91,8 +91,11 @@ const comprehensiveExaminationSchema = z.object({
     lifestyle: z.any().optional(),
     medicalHistory: z.any().optional(),
   }).optional(),
+  preScreening: z.any().optional(), // AVMS, Focimetry, Phorias
   currentRx: z.any().optional(),
+  supplementaryTests: z.any().optional(), // Pupils, Cover test, Stereopsis, Convergence
   newRx: z.any().optional(),
+  retinoscopy: z.any().optional(), // Retinoscopy findings
   ophthalmoscopy: z.any().optional(),
   slitLamp: z.any().optional(),
   additionalTests: z.any().optional(),
@@ -100,6 +103,8 @@ const comprehensiveExaminationSchema = z.object({
   eyeSketch: z.any().optional(),
   images: z.any().optional(),
   summary: z.any().optional(),
+  sectionNotes: z.any().optional(), // 500-char notes per section
+  gradingSystem: z.string().optional(), // EFRON, CLRU, Other
   notes: z.string().optional(),
 });
 
@@ -215,17 +220,22 @@ router.get('/:id', async (req, res) => {
       patientId: examination.patientId,
       examinationDate: examination.examinationDate,
       status: examination.status,
-      // Use new direct JSONB columns (with legacy fallback)
+      // Prefer comprehensive fields, fall back to legacy structure
       generalHistory: examination.generalHistory || (examination.medicalHistory as any)?.generalHistory,
+      preScreening: examination.preScreening || {},
       currentRx: examination.currentRx || (examination.refraction as any)?.currentRx,
+      supplementaryTests: examination.supplementaryTests || {},
       newRx: examination.newRx || (examination.refraction as any)?.newRx,
-      ophthalmoscopy: examination.ophthalmoscopy || (examination.binocularVision as any)?.ophthalmoscopy,
+      retinoscopy: examination.retinoscopy || {},
+      ophthalmoscopy: examination.ophthalmoscopy || (examination.binocularVision as any)?.ophthalmoscopy || (examination.eyeHealth as any)?.ophthalmoscopy,
       slitLamp: examination.slitLamp || (examination.eyeHealth as any)?.slitLamp,
-      additionalTests: examination.additionalTests || (examination.eyeHealth as any)?.additionalTests,
+      additionalTests: examination.additionalTests || (examination.eyeHealth as any)?.additionalTests || (examination.equipmentReadings as any),
       tonometry: examination.tonometry || (examination.equipmentReadings as any)?.tonometry,
       eyeSketch: examination.eyeSketch || {},
       images: examination.images || {},
       summary: examination.summary || {},
+      sectionNotes: examination.sectionNotes || {},
+      gradingSystem: examination.gradingSystem || 'EFRON',
       notes: examination.notes,
       finalized: examination.finalized,
     };
@@ -251,8 +261,11 @@ router.post('/', async (req, res) => {
       examinationDate,
       status = 'in_progress',
       generalHistory,
+      preScreening,
       currentRx,
+      supplementaryTests,
       newRx,
+      retinoscopy,
       ophthalmoscopy,
       slitLamp,
       additionalTests,
@@ -260,6 +273,8 @@ router.post('/', async (req, res) => {
       eyeSketch,
       images,
       summary,
+      sectionNotes,
+      gradingSystem,
       notes,
       // Legacy field support (fallback)
       reasonForVisit,
@@ -305,10 +320,52 @@ router.post('/', async (req, res) => {
         status: status || 'in_progress',
         reasonForVisit: generalHistory?.reasonForVisit || reasonForVisit || null,
         notes: notes || null,
-        // Store comprehensive exam data directly in dedicated JSONB columns
+        // Map comprehensive structure to JSONB fields
+        medicalHistory: {
+          generalHistory,
+          lifestyle: generalHistory?.lifestyle,
+          symptoms: generalHistory?.symptoms,
+          medicalHistory: generalHistory?.medicalHistory,
+        },
+        visualAcuity: currentRx?.unaidedVision,
+        refraction: {
+          currentRx,
+          newRx,
+          objective: newRx?.objective,
+          subjective: newRx?.subjective,
+          finalRx: {
+            distance: newRx?.subjective?.primaryPair,
+            near: newRx?.subjective?.nearRx,
+            intermediate: newRx?.subjective?.intermediateRx,
+          },
+          notes: newRx?.notes,
+        },
+        binocularVision: {
+          ophthalmoscopy,
+          motility: ophthalmoscopy?.motility,
+          coverTest: ophthalmoscopy?.coverTest,
+          stereopsis: ophthalmoscopy?.stereopsis,
+        },
+        eyeHealth: {
+          ophthalmoscopy,
+          slitLamp,
+          additionalTests,
+        },
+        equipmentReadings: {
+          tonometry,
+          visualFields: additionalTests?.visualFields,
+          oct: additionalTests?.oct,
+          wideFieldImaging: additionalTests?.wideFieldImaging,
+          amsler: additionalTests?.amsler,
+          colourVision: additionalTests?.colourVision,
+        },
+        // Comprehensive examination fields (new structure)
         generalHistory: generalHistory || null,
+        preScreening: preScreening || null,
         currentRx: currentRx || null,
+        supplementaryTests: supplementaryTests || null,
         newRx: newRx || null,
+        retinoscopy: retinoscopy || null,
         ophthalmoscopy: ophthalmoscopy || null,
         slitLamp: slitLamp || null,
         additionalTests: additionalTests || null,
@@ -316,7 +373,8 @@ router.post('/', async (req, res) => {
         eyeSketch: eyeSketch || null,
         images: images || null,
         summary: summary || null,
-        finalized: status === 'finalized',
+        sectionNotes: sectionNotes || null,
+        gradingSystem: gradingSystem || null,
       } as any)
       .returning();
 
@@ -372,8 +430,11 @@ async function updateExamination(req: any, res: any) {
       examinationDate,
       status,
       generalHistory,
+      preScreening,
       currentRx,
+      supplementaryTests,
       newRx,
+      retinoscopy,
       ophthalmoscopy,
       slitLamp,
       additionalTests,
@@ -381,6 +442,8 @@ async function updateExamination(req: any, res: any) {
       eyeSketch,
       images,
       summary,
+      sectionNotes,
+      gradingSystem,
       notes,
       // Legacy field support
       reasonForVisit,
@@ -393,18 +456,61 @@ async function updateExamination(req: any, res: any) {
         status: status || existing.status,
         reasonForVisit: generalHistory?.reasonForVisit || reasonForVisit || existing.reasonForVisit,
         notes: notes !== undefined ? notes : existing.notes,
-        // Store comprehensive exam data directly in dedicated JSONB columns
-        generalHistory: generalHistory || existing.generalHistory,
-        currentRx: currentRx || existing.currentRx,
-        newRx: newRx || existing.newRx,
-        ophthalmoscopy: ophthalmoscopy || existing.ophthalmoscopy,
-        slitLamp: slitLamp || existing.slitLamp,
-        additionalTests: additionalTests || existing.additionalTests,
-        tonometry: tonometry || existing.tonometry,
-        eyeSketch: eyeSketch || existing.eyeSketch,
-        images: images || existing.images,
-        summary: summary || existing.summary,
-        finalized: status === 'finalized' || existing.finalized,
+        // Map comprehensive structure to JSONB fields
+        medicalHistory: generalHistory ? {
+          generalHistory,
+          lifestyle: generalHistory?.lifestyle,
+          symptoms: generalHistory?.symptoms,
+          medicalHistory: generalHistory?.medicalHistory,
+        } : existing.medicalHistory,
+        visualAcuity: currentRx?.unaidedVision || existing.visualAcuity,
+        refraction: newRx ? {
+          currentRx,
+          newRx,
+          objective: newRx?.objective,
+          subjective: newRx?.subjective,
+          finalRx: {
+            distance: newRx?.subjective?.primaryPair,
+            near: newRx?.subjective?.nearRx,
+            intermediate: newRx?.subjective?.intermediateRx,
+          },
+          notes: newRx?.notes,
+        } : existing.refraction,
+        binocularVision: ophthalmoscopy ? {
+          ophthalmoscopy,
+          motility: ophthalmoscopy?.motility,
+          coverTest: ophthalmoscopy?.coverTest,
+          stereopsis: ophthalmoscopy?.stereopsis,
+        } : existing.binocularVision,
+        eyeHealth: (ophthalmoscopy || slitLamp || additionalTests) ? {
+          ophthalmoscopy,
+          slitLamp,
+          additionalTests,
+        } : existing.eyeHealth,
+        equipmentReadings: tonometry ? {
+          tonometry,
+          visualFields: additionalTests?.visualFields,
+          oct: additionalTests?.oct,
+          wideFieldImaging: additionalTests?.wideFieldImaging,
+          amsler: additionalTests?.amsler,
+          colourVision: additionalTests?.colourVision,
+        } : existing.equipmentReadings,
+        // Update comprehensive fields (preserve existing if not provided)
+        generalHistory: generalHistory !== undefined ? generalHistory : existing.generalHistory,
+        preScreening: preScreening !== undefined ? preScreening : existing.preScreening,
+        currentRx: currentRx !== undefined ? currentRx : existing.currentRx,
+        supplementaryTests: supplementaryTests !== undefined ? supplementaryTests : existing.supplementaryTests,
+        newRx: newRx !== undefined ? newRx : existing.newRx,
+        retinoscopy: retinoscopy !== undefined ? retinoscopy : existing.retinoscopy,
+        ophthalmoscopy: ophthalmoscopy !== undefined ? ophthalmoscopy : existing.ophthalmoscopy,
+        slitLamp: slitLamp !== undefined ? slitLamp : existing.slitLamp,
+        additionalTests: additionalTests !== undefined ? additionalTests : existing.additionalTests,
+        tonometry: tonometry !== undefined ? tonometry : existing.tonometry,
+        eyeSketch: eyeSketch !== undefined ? eyeSketch : existing.eyeSketch,
+        images: images !== undefined ? images : existing.images,
+        summary: summary !== undefined ? summary : existing.summary,
+        sectionNotes: sectionNotes !== undefined ? sectionNotes : existing.sectionNotes,
+        gradingSystem: gradingSystem !== undefined ? gradingSystem : existing.gradingSystem,
         updatedAt: new Date(),
       })
       .where(eq(eyeExaminations.id, id))
