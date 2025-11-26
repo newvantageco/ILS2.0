@@ -391,7 +391,7 @@ const SupplementaryTestsTab = memo(function SupplementaryTestsTab({ data, onChan
                   disabled={readonly}
                 />
                 <Label htmlFor="stereo-normal" className="font-normal text-sm cursor-pointer">
-                  Normal (≤60")
+                  Normal (≤60&quot;)
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
@@ -402,7 +402,7 @@ const SupplementaryTestsTab = memo(function SupplementaryTestsTab({ data, onChan
                   disabled={readonly}
                 />
                 <Label htmlFor="stereo-reduced" className="font-normal text-sm cursor-pointer">
-                  Reduced (>60")
+                  Reduced (&gt;60&quot;)
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
