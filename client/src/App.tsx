@@ -59,6 +59,7 @@ const InvoicesPage = lazy(() => import("@/pages/InvoicesPage"));
 const EyeTestPage = lazy(() => import("@/pages/EyeTestPage"));
 const EyeTestWizard = lazy(() => import("@/components/eye-test/EyeTestWizard").then(m => ({ default: m.EyeTestWizard })));
 const DiaryPage = lazy(() => import("@/pages/DiaryPage"));
+const CommunicationsHubPage = lazy(() => import("@/pages/CommunicationsHubPage"));
 const TestRoomsPage = lazy(() => import("@/pages/TestRoomsPage"));
 const TestRoomBookingsPage = lazy(() => import("@/pages/TestRoomBookingsPage"));
 const OpticalPOSPage = lazy(() => import("@/pages/OpticalPOSPage"));
@@ -444,6 +445,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/ecp/test-rooms" component={TestRoomsPage} />
             <Route path="/ecp/diary" component={DiaryPage} />
+            <Route path="/ecp/communications" component={CommunicationsHubPage} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />

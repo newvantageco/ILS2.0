@@ -71,25 +71,25 @@ export default function PythonMLDashboardPage() {
 
   // Fetch Python service status
   const { data: serviceStatus, isLoading: statusLoading } = useQuery<PythonServiceStatus>({
-    queryKey: ['/api/python/health'],
+    queryKey: ['/api/python-ml/health'],
     refetchInterval: 10000, // Refresh every 10 seconds
   });
 
   // Fetch recent predictions
   const { data: predictions } = useQuery<MLPrediction[]>({
-    queryKey: ['/api/python/predictions', selectedTimeRange],
+    queryKey: ['/api/python-ml/predictions', selectedTimeRange],
   });
 
   // Fetch analytics jobs
   const { data: jobs } = useQuery<AnalyticsJob[]>({
-    queryKey: ['/api/python/jobs'],
+    queryKey: ['/api/python-ml/jobs'],
     refetchInterval: 5000,
   });
 
   // Run analytics job mutation
   const runAnalytics = useMutation({
     mutationFn: async (jobType: string) => {
-      const response = await fetch('/api/python/analytics/run', {
+      const response = await fetch('/api/python-ml/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -99,7 +99,7 @@ export default function PythonMLDashboardPage() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/python/jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/python-ml/jobs'] });
       toast({
         title: "Analytics Started",
         description: "Python analytics job has been queued",
@@ -155,7 +155,7 @@ export default function PythonMLDashboardPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/python/health'] })}
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/python-ml/health'] })}
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
