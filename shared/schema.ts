@@ -1567,6 +1567,13 @@ export const eyeExaminations = pgTable("eye_examinations", {
   eyeSketch: jsonb("eye_sketch"),
   images: jsonb("images"),
   summary: jsonb("summary"),
+
+  // Enhanced examination workflow fields
+  preScreening: jsonb("pre_screening"), // AVMS, Focimetry, Phorias
+  retinoscopy: jsonb("retinoscopy"), // Retinoscopy findings
+  sectionNotes: jsonb("section_notes"), // 500-char notes per section
+  gradingSystem: varchar("grading_system", { length: 20 }), // EFRON, CLRU, or other
+
   finalized: boolean("finalized").default(false),
   
   gosFormType: text("gos_form_type"),

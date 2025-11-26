@@ -2,25 +2,29 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Microscope } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
 interface SlitLampData {
+  gradingSystem?: 'EFRON' | 'CLRU' | 'Other';
   method: 'direct' | 'indirect' | 'both';
   volk?: boolean;
   conjunctiva: {
-    r: { conjunctivalRedness: number; limbalRedness: number; papillaryConjunctivitis: number; cornea: number };
-    l: { conjunctivalRedness: number; limbalRedness: number; papillaryConjunctivitis: number; cornea: number };
+    r: { conjunctivalRedness: number; limbalRedness: number; papillaryConjunctivitis: number; cornea: number; cornerNotes?: string };
+    l: { conjunctivalRedness: number; limbalRedness: number; papillaryConjunctivitis: number; cornea: number; cornerNotes?: string };
   };
   cornea: {
-    r: { cornealNeovascularisation: number; cornealOedema: number; cornealInfiltrate: number; cornealStain: number };
-    l: { cornealNeovascularisation: number; cornealOedema: number; cornealInfiltrate: number; cornealStain: number };
+    r: { cornealNeovascularisation: number; cornealOedema: number; cornealInfiltrate: number; cornealStain: number; spk?: number; spkPattern?: string };
+    l: { cornealNeovascularisation: number; cornealOedema: number; cornealInfiltrate: number; cornealStain: number; spk?: number; spkPattern?: string };
   };
   lidsLashes: {
     r: { epithelialMicrocysts: number; blepharitis: number; meibomianGlandDysfunction: number; otherFindings: string };
     l: { epithelialMicrocysts: number; blepharitis: number; meibomianGlandDysfunction: number; otherFindings: string };
   };
+  sectionNotes?: string;
 }
 
 interface SlitLampTabProps {
@@ -71,58 +75,87 @@ export default function SlitLampTab({ data, onChange, readonly = false }: SlitLa
   const updateField = (path: string[], value: any) => {
     const newData = JSON.parse(JSON.stringify(data)); // Deep clone to avoid mutation
     let current: any = newData;
-    
+
     for (let i = 0; i < path.length - 1; i++) {
       if (!current[path[i]]) current[path[i]] = {};
       current = current[path[i]];
     }
-    
+
     current[path[path.length - 1]] = value;
     onChange(newData);
   };
 
+  const remainingChars = 500 - (data.sectionNotes?.length || 0);
+
   return (
     <div className="space-y-6">
-      {/* Method Selection */}
+      {/* Grading System & Method Selection */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Microscope className="h-5 w-5 text-blue-600" />
-            Slit Lamp Examination Method
+            Slit Lamp Examination Setup
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Label className="text-sm font-medium mb-3 block">Method</Label>
-              <RadioGroup
-                value={data.method}
-                onValueChange={(value) => updateField(['method'], value)}
+              <Label className="text-sm font-medium mb-2 block">Grading System</Label>
+              <Select
+                value={data.gradingSystem || 'EFRON'}
+                onValueChange={(value) => updateField(['gradingSystem'], value)}
                 disabled={readonly}
               >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="direct" id="method-direct" />
-                  <Label htmlFor="method-direct" className="font-normal cursor-pointer">Direct</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="indirect" id="method-indirect" />
-                  <Label htmlFor="method-indirect" className="font-normal cursor-pointer">Indirect</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="both" id="method-both" />
-                  <Label htmlFor="method-both" className="font-normal cursor-pointer">Both</Label>
-                </div>
-              </RadioGroup>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Select grading system..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="EFRON">EFRON Grading Scale</SelectItem>
+                  <SelectItem value="CLRU">CLRU Grading Scale</SelectItem>
+                  <SelectItem value="Other">Other/Custom</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-500 mt-1">
+                {data.gradingSystem === 'EFRON' && 'EFRON: 0-4 photographic grading scale'}
+                {data.gradingSystem === 'CLRU' && 'CLRU (Cornea & Contact Lens Research Unit)'}
+                {data.gradingSystem === 'Other' && 'Custom grading system'}
+                {!data.gradingSystem && 'EFRON: 0-4 photographic grading scale'}
+              </p>
             </div>
 
-            <div className="flex items-center space-x-2 pt-6">
-              <Checkbox
-                id="volk"
-                checked={data.volk || false}
-                onCheckedChange={(checked) => updateField(['volk'], checked)}
-                disabled={readonly}
-              />
-              <Label htmlFor="volk" className="font-normal cursor-pointer">Volk</Label>
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Examination Method</Label>
+              <div className="flex items-center gap-6">
+                <RadioGroup
+                  value={data.method}
+                  onValueChange={(value) => updateField(['method'], value)}
+                  disabled={readonly}
+                  className="flex flex-col space-y-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="direct" id="method-direct" />
+                    <Label htmlFor="method-direct" className="font-normal cursor-pointer">Direct</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="indirect" id="method-indirect" />
+                    <Label htmlFor="method-indirect" className="font-normal cursor-pointer">Indirect</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="both" id="method-both" />
+                    <Label htmlFor="method-both" className="font-normal cursor-pointer">Both</Label>
+                  </div>
+                </RadioGroup>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="volk"
+                    checked={data.volk || false}
+                    onCheckedChange={(checked) => updateField(['volk'], checked)}
+                    disabled={readonly}
+                  />
+                  <Label htmlFor="volk" className="font-normal cursor-pointer">Volk Lens</Label>
+                </div>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -167,6 +200,17 @@ export default function SlitLampTab({ data, onChange, readonly = false }: SlitLa
                 label="Cornea"
                 readonly={readonly}
               />
+
+              <div className="mt-4">
+                <Label className="text-xs font-medium">Corner/Limbus Notes</Label>
+                <Input
+                  value={data.conjunctiva.r.cornerNotes || ''}
+                  onChange={(e) => updateField(['conjunctiva', 'r', 'cornerNotes'], e.target.value)}
+                  placeholder="Nasal/temporal corner findings..."
+                  className="h-9 mt-2"
+                  disabled={readonly}
+                />
+              </div>
             </div>
 
             {/* Left Eye */}
@@ -200,6 +244,17 @@ export default function SlitLampTab({ data, onChange, readonly = false }: SlitLa
                 label="Cornea"
                 readonly={readonly}
               />
+
+              <div className="mt-4">
+                <Label className="text-xs font-medium">Corner/Limbus Notes</Label>
+                <Input
+                  value={data.conjunctiva.l.cornerNotes || ''}
+                  onChange={(e) => updateField(['conjunctiva', 'l', 'cornerNotes'], e.target.value)}
+                  placeholder="Nasal/temporal corner findings..."
+                  className="h-9 mt-2"
+                  disabled={readonly}
+                />
+              </div>
             </div>
           </div>
         </CardContent>
@@ -243,6 +298,24 @@ export default function SlitLampTab({ data, onChange, readonly = false }: SlitLa
                 label="Corneal Stain"
                 readonly={readonly}
               />
+
+              <GradingControl
+                value={data.cornea.r.spk || 0}
+                onChange={(val) => updateField(['cornea', 'r', 'spk'], val)}
+                label="SPK (Superficial Punctate Keratitis)"
+                readonly={readonly}
+              />
+
+              <div className="mt-4">
+                <Label className="text-xs font-medium">SPK Pattern/Location</Label>
+                <Input
+                  value={data.cornea.r.spkPattern || ''}
+                  onChange={(e) => updateField(['cornea', 'r', 'spkPattern'], e.target.value)}
+                  placeholder="Central, inferior, 3-9 o'clock, etc."
+                  className="h-9 mt-2"
+                  disabled={readonly}
+                />
+              </div>
             </div>
 
             {/* Left Eye */}
@@ -276,6 +349,24 @@ export default function SlitLampTab({ data, onChange, readonly = false }: SlitLa
                 label="Corneal Stain"
                 readonly={readonly}
               />
+
+              <GradingControl
+                value={data.cornea.l.spk || 0}
+                onChange={(val) => updateField(['cornea', 'l', 'spk'], val)}
+                label="SPK (Superficial Punctate Keratitis)"
+                readonly={readonly}
+              />
+
+              <div className="mt-4">
+                <Label className="text-xs font-medium">SPK Pattern/Location</Label>
+                <Input
+                  value={data.cornea.l.spkPattern || ''}
+                  onChange={(e) => updateField(['cornea', 'l', 'spkPattern'], e.target.value)}
+                  placeholder="Central, inferior, 3-9 o'clock, etc."
+                  className="h-9 mt-2"
+                  disabled={readonly}
+                />
+              </div>
             </div>
           </div>
         </CardContent>
@@ -361,6 +452,46 @@ export default function SlitLampTab({ data, onChange, readonly = false }: SlitLa
                 />
               </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Section Notes - 500 character limit */}
+      <Card className="border-2 border-amber-200 bg-amber-50/30">
+        <CardHeader>
+          <CardTitle className="text-lg">Slit Lamp Examination Notes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center mb-1">
+              <Label className="text-sm font-medium">Additional Issues or Observations</Label>
+              <span className={`text-xs ${remainingChars < 0 ? 'text-red-600 font-semibold' : 'text-slate-500'}`}>
+                {data.sectionNotes?.length || 0}/500 characters
+              </span>
+            </div>
+            <Textarea
+              value={data.sectionNotes || ''}
+              onChange={(e) => {
+                if (e.target.value.length <= 500) {
+                  updateField(['sectionNotes'], e.target.value);
+                }
+              }}
+              placeholder="Enter any issues, concerns, or observations from slit lamp examination (max 500 characters)..."
+              rows={4}
+              disabled={readonly}
+              maxLength={500}
+              className={`${readonly ? 'bg-slate-50' : ''} ${remainingChars < 50 && remainingChars >= 0 ? 'border-amber-400' : ''} ${remainingChars < 0 ? 'border-red-500' : ''}`}
+            />
+            {remainingChars < 50 && remainingChars >= 0 && (
+              <p className="text-xs text-amber-600">
+                {remainingChars} characters remaining
+              </p>
+            )}
+            {remainingChars < 0 && (
+              <p className="text-xs text-red-600 font-medium">
+                Character limit exceeded by {Math.abs(remainingChars)} characters
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
