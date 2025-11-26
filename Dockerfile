@@ -7,7 +7,7 @@
 # ----------------
 FROM node:22-slim AS builder
 
-# Install build dependencies
+# Install build dependencies including Rust
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
@@ -16,7 +16,12 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libpango1.0-dev \
     libgif-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Rust via rustup
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /app
 
@@ -29,7 +34,8 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Build the application
+# Build the application with increased memory for large TypeScript project
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
 # ----------------
@@ -69,6 +75,9 @@ COPY --from=builder --chown=nodejs:nodejs /app/migrations ./migrations
 
 # Copy public assets
 COPY --from=builder --chown=nodejs:nodejs /app/public ./public
+
+# Copy native Rust module (if built successfully)
+COPY --from=builder --chown=nodejs:nodejs /app/native/ils-core ./native/ils-core
 
 # Copy startup script
 COPY --chown=nodejs:nodejs docker-start.sh ./docker-start.sh
