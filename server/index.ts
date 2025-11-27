@@ -76,11 +76,17 @@ app.use(securityHeaders);
 
 // Configure CORS
 // SECURITY: Validate CORS_ORIGIN is set in production
-const corsOrigin = process.env.CORS_ORIGIN;
+// Railway provides RAILWAY_PUBLIC_DOMAIN automatically
+const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN 
+  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+  : null;
+const corsOrigin = process.env.CORS_ORIGIN || railwayDomain;
+
 if (!corsOrigin && process.env.NODE_ENV === 'production') {
   throw new Error(
     '❌ CORS_ORIGIN must be set in production for security.\n' +
-    'Add to .env file: CORS_ORIGIN=https://your-frontend-domain.com'
+    'Add to .env file: CORS_ORIGIN=https://your-frontend-domain.com\n' +
+    '(Railway deployments can use RAILWAY_PUBLIC_DOMAIN automatically)'
   );
 }
 
