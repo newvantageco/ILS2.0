@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { LogOut } from "lucide-react";
 import { useLocation } from "wouter";
+import { fetchCsrfToken } from "@/lib/api";
 
 // Code-split route components for optimal performance
 // Only load the code for pages users actually visit
@@ -282,6 +283,13 @@ function AppLayout({ children, userRole }: { children: React.ReactNode; userRole
 function AuthenticatedApp() {
   const { user, isLoading } = useAuth();
   const [location] = useLocation();
+
+  // Fetch CSRF token on app initialization
+  useEffect(() => {
+    fetchCsrfToken().catch((error) => {
+      console.error('Failed to initialize CSRF token:', error);
+    });
+  }, []);
 
   // Public routes (accessible without auth) - wrapped in Suspense
   if (location === '/landing-new') {

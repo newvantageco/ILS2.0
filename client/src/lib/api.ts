@@ -11,6 +11,9 @@ const ACCESS_TOKEN_KEY = 'ils_access_token';
 const REFRESH_TOKEN_KEY = 'ils_refresh_token';
 const TOKEN_EXPIRY_KEY = 'ils_token_expiry';
 
+// CSRF Token storage (in-memory for security)
+let csrfToken: string | null = null;
+
 // Create an axios instance with default config
 export const api: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
@@ -75,6 +78,8 @@ export function clearAuthTokens(): void {
   localStorage.removeItem(TOKEN_EXPIRY_KEY);
   // Also clear legacy token
   localStorage.removeItem('token');
+  // Clear CSRF token
+  clearCsrfToken();
 }
 
 /**
@@ -113,6 +118,39 @@ async function refreshAccessToken(): Promise<boolean> {
   }
 }
 
+/**
+ * Fetch CSRF token from the server
+ */
+export async function fetchCsrfToken(): Promise<void> {
+  try {
+    const response = await axios.get('/api/csrf-token', {
+      baseURL: api.defaults.baseURL,
+      withCredentials: true,
+    });
+
+    if (response.data?.csrfToken) {
+      csrfToken = response.data.csrfToken;
+    }
+  } catch (error) {
+    console.error('Failed to fetch CSRF token:', error);
+    // Don't throw - CSRF might be disabled in development
+  }
+}
+
+/**
+ * Get current CSRF token
+ */
+export function getCsrfToken(): string | null {
+  return csrfToken;
+}
+
+/**
+ * Clear CSRF token (call on logout)
+ */
+export function clearCsrfToken(): void {
+  csrfToken = null;
+}
+
 // Track if we're currently refreshing to avoid multiple refresh attempts
 let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
@@ -147,6 +185,15 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    // Add CSRF token to non-GET requests (except CSRF token fetch itself)
+    const method = config.method?.toLowerCase();
+    if (method && method !== 'get' && !config.url?.includes('/csrf-token')) {
+      const csrf = getCsrfToken();
+      if (csrf && config.headers) {
+        config.headers['X-CSRF-Token'] = csrf;
+      }
+    }
+
     return config;
   },
   (error: AxiosError) => {
@@ -159,6 +206,25 @@ api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    // Handle CSRF token validation errors
+    if (error.response?.status === 403) {
+      const data = error.response.data as any;
+
+      // If CSRF token is invalid, fetch a new one and retry
+      if (data?.error?.includes('CSRF') && !originalRequest._retry) {
+        originalRequest._retry = true;
+
+        await fetchCsrfToken();
+
+        // Retry the original request with the new CSRF token
+        const newCsrf = getCsrfToken();
+        if (newCsrf && originalRequest.headers) {
+          originalRequest.headers['X-CSRF-Token'] = newCsrf;
+        }
+        return api(originalRequest);
+      }
+    }
 
     if (error.response?.status === 401) {
       const data = error.response.data as any;
