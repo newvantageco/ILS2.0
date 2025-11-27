@@ -72,13 +72,14 @@ import {
   updateSubscriptionSchema,
   aiQuerySchema
 } from "./middleware/validation";
-import { 
-  securityHeaders, 
-  enforceTLS, 
-  corsConfig, 
+import {
+  securityHeaders,
+  enforceTLS,
+  corsConfig,
   validateSSLCertificate,
-  auditLog 
+  auditLog
 } from "./middleware/security";
+import { getCsrfToken, csrfProtection } from "./middleware/csrfProtection";
 import { 
   BadRequestError,
   UnauthorizedError,
@@ -293,7 +294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // API info endpoint
   app.get('/api', (_req, res) => {
-    res.status(200).json({ 
+    res.status(200).json({
       success: true,
       message: 'Integrated Lens System API',
       version: '2.0.0',
@@ -306,6 +307,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
   });
+
+  // CSRF Token endpoint - must be called before making state-changing requests
+  // This endpoint generates and returns a CSRF token for the client
+  app.get('/api/csrf-token', csrfProtection, getCsrfToken);
 
   // Service verification endpoints
   app.use('/api/verification', verificationRoutes);

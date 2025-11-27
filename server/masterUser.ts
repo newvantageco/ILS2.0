@@ -28,6 +28,31 @@ export async function ensureMasterUser(): Promise<void> {
   }
 
   try {
+    // SECURITY: Check if master user already exists to prevent re-creation
+    const existingUser = await storage.getUserByEmail(email);
+    if (existingUser) {
+      logger.warn(
+        "[master-user] ⚠️  SECURITY WARNING: Master user already exists. " +
+        "Remove MASTER_USER_* environment variables immediately to prevent security risk!"
+      );
+      return;
+    }
+
+    // Check if ANY admin users exist (system already bootstrapped)
+    const allUsers = await storage.getAllUsers();
+    const hasAdminUser = allUsers.some(
+      (u) => u.role === "admin" || u.role === "company-admin" || u.role === "platform-admin"
+    );
+
+    if (hasAdminUser) {
+      logger.warn(
+        "[master-user] ⚠️  Admin users already exist. Skipping master user creation. " +
+        "Remove MASTER_USER_* environment variables for security."
+      );
+      return;
+    }
+
+    // First-time setup: Create master user
     const firstName = readEnv("MASTER_USER_FIRST_NAME") ?? "Master";
     const lastName = readEnv("MASTER_USER_LAST_NAME") ?? "Admin";
     const organizationName = readEnv("MASTER_USER_ORGANIZATION") ?? "Platform Control";
@@ -55,7 +80,10 @@ export async function ensureMasterUser(): Promise<void> {
       }),
     );
 
-    logger.info(`[master-user] Bootstrap user ensured for ${email}`);
+    logger.info(`[master-user] ✅ Bootstrap user created for ${email}`);
+    logger.warn(
+      "[master-user] 🔒 SECURITY: Remove MASTER_USER_* environment variables NOW to prevent unauthorized access!"
+    );
   } catch (error) {
     logger.error("[master-user] Failed to bootstrap master user", error);
   }
