@@ -409,8 +409,9 @@ app.get('/api/health', healthCheck);
         }
 
         // Register order-created workers. Pass storage + limsClient where required.
+        // Note: Type assertion needed because LimsClient has diverged from legacy LimsClientInterface
         if (limsClient) {
-          registerOrderCreatedLimsWorker(limsClient, storage);
+          registerOrderCreatedLimsWorker(limsClient as any, storage);
         }
 
   registerOrderCreatedPdfWorker(storage);
@@ -421,7 +422,7 @@ app.get('/api/health', healthCheck);
         interface AnalyticsClient {
           sendEvent: (payload: Record<string, unknown>) => Promise<void>;
         }
-        let analyticsClient: AnalyticsClient | null = null;
+        let analyticsClient: AnalyticsClient | undefined = undefined;
         const analyticsWebhook = process.env.ANALYTICS_WEBHOOK_URL;
         if (analyticsWebhook) {
           analyticsClient = {
@@ -444,7 +445,7 @@ app.get('/api/health', healthCheck);
           logger.info({}, 'ℹ️  No analytics webhook configured; analytics will be logged locally');
         }
 
-        registerOrderCreatedAnalyticsWorker(storage, { analyticsClient });
+        registerOrderCreatedAnalyticsWorker(storage, { analyticsClient: analyticsClient || undefined });
 
         // If we're using Redis Streams, schedule a periodic reclaimer to recover
         // stuck entries left in the Pending Entries List (PEL). The list of streams
