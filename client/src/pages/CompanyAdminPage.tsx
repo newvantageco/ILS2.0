@@ -157,11 +157,17 @@ export default function CompanyAdminPage() {
   // Add user mutation
   const addUserMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch("/api/company-admin/users", {
+      // Generate a temporary password
+      const tempPassword = `Temp${Math.random().toString(36).slice(-8)}!${Date.now().toString(36).slice(-4)}`;
+
+      const response = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          password: tempPassword,
+        }),
       });
 
       if (!response.ok) {
@@ -169,7 +175,8 @@ export default function CompanyAdminPage() {
         throw new Error(error.message || "Failed to add user");
       }
 
-      return response.json();
+      const result = await response.json();
+      return { ...result, temporaryPassword: tempPassword };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/company-admin/users"] });
@@ -188,6 +195,7 @@ export default function CompanyAdminPage() {
       toast({
         title: "User Added Successfully",
         description: `Temporary password: ${data.temporaryPassword}. Please share this securely with the user.`,
+        duration: 10000,
       });
     },
     onError: (error: Error) => {
@@ -227,7 +235,25 @@ export default function CompanyAdminPage() {
       return;
     }
 
-    addUserMutation.mutate(newUserForm);
+    // Map enhanced role to backend role
+    const roleMapping: Record<string, string> = {
+      optometrist: "ecp",
+      dispenser: "ecp",
+      retail_assistant: "ecp",
+      lab_tech: "lab_tech",
+      engineer: "engineer",
+    };
+
+    const backendRole = newUserForm.enhancedRole
+      ? roleMapping[newUserForm.enhancedRole] || newUserForm.enhancedRole
+      : newUserForm.role;
+
+    addUserMutation.mutate({
+      firstName: newUserForm.firstName,
+      lastName: newUserForm.lastName,
+      email: newUserForm.email,
+      role: backendRole,
+    });
   };
 
   return (

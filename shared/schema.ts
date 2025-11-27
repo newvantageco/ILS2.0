@@ -9077,6 +9077,72 @@ export const appointmentWaitlist = pgTable(
   ],
 );
 
+// Calendar Settings - company-specific calendar and diary customization
+export const calendarSettings = pgTable(
+  "calendar_settings",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }).notNull(),
+    practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'cascade' }), // null for company-wide settings
+
+    // Time slot configuration
+    defaultSlotDuration: integer("default_slot_duration").default(25), // in minutes
+    customSlotDurations: jsonb("custom_slot_durations"), // [15, 20, 25, 30, 45, 60] etc.
+
+    // Working hours per day (stored as JSON for flexibility)
+    // Format: { monday: { start: "09:00", end: "17:00", breaks: [{start: "12:00", end: "13:00"}] }, ... }
+    workingHours: jsonb("working_hours").default(sql`'{
+      "monday": {"start": "09:00", "end": "17:00", "breaks": [{"start": "12:00", "end": "13:00"}]},
+      "tuesday": {"start": "09:00", "end": "17:00", "breaks": [{"start": "12:00", "end": "13:00"}]},
+      "wednesday": {"start": "09:00", "end": "17:00", "breaks": [{"start": "12:00", "end": "13:00"}]},
+      "thursday": {"start": "09:00", "end": "17:00", "breaks": [{"start": "12:00", "end": "13:00"}]},
+      "friday": {"start": "09:00", "end": "17:00", "breaks": [{"start": "12:00", "end": "13:00"}]},
+      "saturday": {"start": "09:00", "end": "13:00", "breaks": []},
+      "sunday": {"start": null, "end": null, "breaks": []}
+    }'::jsonb`),
+
+    // Display preferences
+    diaryViewMode: varchar("diary_view_mode", { length: 50 }).default("day"), // day, week, month
+    showWeekends: boolean("show_weekends").default(false),
+    timeFormat: varchar("time_format", { length: 10 }).default("24h"), // 12h or 24h
+    firstDayOfWeek: integer("first_day_of_week").default(1), // 0 = Sunday, 1 = Monday
+
+    // Booking rules
+    minAdvanceBooking: integer("min_advance_booking").default(60), // in minutes
+    maxAdvanceBooking: integer("max_advance_booking").default(90), // in days
+    allowDoubleBooking: boolean("allow_double_booking").default(false),
+    requireDeposit: boolean("require_deposit").default(false),
+    depositAmount: numeric("deposit_amount", { precision: 10, scale: 2 }),
+
+    // Buffer times
+    bufferBefore: integer("buffer_before").default(0), // minutes before appointment
+    bufferAfter: integer("buffer_after").default(5), // minutes after appointment
+
+    // Cancellation policy
+    cancellationWindow: integer("cancellation_window").default(24), // hours before appointment
+    allowPatientCancellation: boolean("allow_patient_cancellation").default(true),
+    allowPatientReschedule: boolean("allow_patient_reschedule").default(true),
+
+    // Color coding for appointment types (JSON)
+    colorScheme: jsonb("color_scheme").default(sql`'{
+      "eye_examination": "#3b82f6",
+      "contact_lens_fitting": "#10b981",
+      "frame_selection": "#f59e0b",
+      "follow_up": "#8b5cf6",
+      "emergency": "#ef4444",
+      "consultation": "#06b6d4"
+    }'::jsonb`),
+
+    // Metadata
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("idx_calendar_settings_company").on(table.companyId),
+    index("idx_calendar_settings_practitioner").on(table.practitionerId),
+  ],
+);
+
 // Zod schemas for validation
 export const insertAppointmentSchema = createInsertSchema(appointments).omit({
   id: true,
@@ -9116,6 +9182,14 @@ export const insertAppointmentWaitlistSchema = createInsertSchema(appointmentWai
   fulfilledAt: true,
 });
 
+export const insertCalendarSettingsSchema = createInsertSchema(calendarSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateCalendarSettingsSchema = insertCalendarSettingsSchema.partial();
+
 // TypeScript types
 export type Appointment = typeof appointments.$inferSelect;
 export type InsertAppointment = typeof appointments.$inferInsert;
@@ -9127,6 +9201,8 @@ export type AppointmentReminder = typeof appointmentReminders.$inferSelect;
 export type InsertAppointmentReminder = typeof appointmentReminders.$inferInsert;
 export type AppointmentWaitlist = typeof appointmentWaitlist.$inferSelect;
 export type InsertAppointmentWaitlist = typeof appointmentWaitlist.$inferInsert;
+export type CalendarSettings = typeof calendarSettings.$inferSelect;
+export type InsertCalendarSettings = typeof calendarSettings.$inferInsert;
 
 // ========== End Appointment Scheduling Tables ==========
 
@@ -9509,8 +9585,115 @@ export const labOrders = pgTable(
   ],
 );
 
+// Lab Test Catalog - master list of available laboratory tests
+export const labTestCatalog = pgTable(
+  "lab_test_catalog",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }), // null for system-wide tests
+
+    // Test identification
+    testCode: varchar("test_code", { length: 50 }).notNull(),
+    testName: varchar("test_name", { length: 255 }).notNull(),
+    category: varchar("category", { length: 100 }),
+    description: text("description"),
+
+    // Specimen and logistics
+    specimenType: varchar("specimen_type", { length: 100 }),
+    specimenVolume: varchar("specimen_volume", { length: 50 }),
+    containerType: varchar("container_type", { length: 100 }),
+    turnaroundTime: varchar("turnaround_time", { length: 100 }),
+
+    // Standardization
+    loincCode: varchar("loinc_code", { length: 20 }),
+    cptCode: varchar("cpt_code", { length: 20 }),
+
+    // Pricing and availability
+    cost: numeric("cost", { precision: 10, scale: 2 }),
+    isActive: boolean("is_active").default(true),
+    requiresApproval: boolean("requires_approval").default(false),
+
+    // Metadata
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("idx_lab_test_catalog_company").on(table.companyId),
+    index("idx_lab_test_catalog_code").on(table.testCode),
+    index("idx_lab_test_catalog_category").on(table.category),
+    index("idx_lab_test_catalog_active").on(table.isActive),
+  ],
+);
+
+// Lab Quality Control Tests - for tracking lab QC results
+export const labQualityControl = pgTable(
+  "lab_quality_control",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+    technicianId: varchar("technician_id").references(() => users.id, { onDelete: 'set null' }),
+
+    // Test identification
+    testCode: varchar("test_code", { length: 50 }).notNull(),
+    testName: varchar("test_name", { length: 255 }),
+
+    // Control information
+    controlLot: varchar("control_lot", { length: 100 }).notNull(),
+    controlLevel: varchar("control_level", { length: 50 }),
+    expirationDate: timestamp("expiration_date", { withTimezone: true }),
+
+    // Results
+    expectedValue: numeric("expected_value", { precision: 10, scale: 2 }).notNull(),
+    actualValue: numeric("actual_value", { precision: 10, scale: 2 }).notNull(),
+    unit: varchar("unit", { length: 50 }),
+    acceptableRangeMin: numeric("acceptable_range_min", { precision: 10, scale: 2 }),
+    acceptableRangeMax: numeric("acceptable_range_max", { precision: 10, scale: 2 }),
+    isWithinRange: boolean("is_within_range").notNull(),
+    deviation: numeric("deviation", { precision: 10, scale: 2 }),
+    percentDeviation: numeric("percent_deviation", { precision: 10, scale: 2 }),
+
+    // Equipment and reagents
+    instrumentId: varchar("instrument_id", { length: 100 }),
+    instrumentName: varchar("instrument_name", { length: 255 }),
+    reagentLot: varchar("reagent_lot", { length: 100 }),
+
+    // Test metadata
+    testDate: timestamp("test_date", { withTimezone: true }).notNull(),
+    performedBy: varchar("performed_by", { length: 255 }),
+    reviewedBy: varchar("reviewed_by", { length: 255 }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+
+    // Actions and notes
+    actionTaken: text("action_taken"),
+    notes: text("notes"),
+
+    // Metadata
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("idx_lab_qc_company").on(table.companyId),
+    index("idx_lab_qc_test_code").on(table.testCode),
+    index("idx_lab_qc_test_date").on(table.testDate),
+    index("idx_lab_qc_instrument").on(table.instrumentId),
+    index("idx_lab_qc_within_range").on(table.isWithinRange),
+  ],
+);
+
 // Zod schemas for validation
 export const insertLabOrderSchema = createInsertSchema(labOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertLabTestCatalogSchema = createInsertSchema(labTestCatalog).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertLabQualityControlSchema = createInsertSchema(labQualityControl).omit({
   id: true,
   createdAt: true,
   updatedAt: true
@@ -9567,6 +9750,10 @@ export type LabResult = typeof labResults.$inferSelect;
 export type InsertLabResult = typeof labResults.$inferInsert;
 export type LabOrder = typeof labOrders.$inferSelect;
 export type InsertLabOrder = typeof labOrders.$inferInsert;
+export type LabTestCatalog = typeof labTestCatalog.$inferSelect;
+export type InsertLabTestCatalog = typeof labTestCatalog.$inferInsert;
+export type LabQualityControl = typeof labQualityControl.$inferSelect;
+export type InsertLabQualityControl = typeof labQualityControl.$inferInsert;
 
 // ========== End EHR System Tables ==========
 

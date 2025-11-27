@@ -440,91 +440,45 @@ export class LaboratoryService {
     try {
       logger.info({ companyId, options }, 'Getting lab test catalog');
 
-      // Return a mock catalog since labTestCatalog table doesn't exist in schema
-      // In a real implementation, this would be fetched from a database table or external lab system
-      const mockCatalog = [
-        {
-          id: 'cbc',
-          testCode: 'CBC',
-          testName: 'Complete Blood Count',
-          category: 'Hematology',
-          description: 'Comprehensive blood cell analysis',
-          specimenType: 'Blood',
-          turnaroundTime: '24 hours',
-          cost: 25.00,
-          isActive: true
-        },
-        {
-          id: 'cmp',
-          testCode: 'CMP',
-          testName: 'Comprehensive Metabolic Panel',
-          category: 'Chemistry',
-          description: 'Metabolic function and electrolyte analysis',
-          specimenType: 'Blood',
-          turnaroundTime: '24 hours',
-          cost: 35.00,
-          isActive: true
-        },
-        {
-          id: 'lipid',
-          testCode: 'LIPID',
-          testName: 'Lipid Panel',
-          category: 'Chemistry',
-          description: 'Cholesterol and triglyceride analysis',
-          specimenType: 'Blood',
-          turnaroundTime: '24 hours',
-          cost: 30.00,
-          isActive: true
-        },
-        {
-          id: 'hba1c',
-          testCode: 'HBA1C',
-          testName: 'Hemoglobin A1c',
-          category: 'Chemistry',
-          description: 'Diabetes monitoring test',
-          specimenType: 'Blood',
-          turnaroundTime: '48 hours',
-          cost: 20.00,
-          isActive: true
-        },
-        {
-          id: 'urine',
-          testCode: 'URINE',
-          testName: 'Urinalysis',
-          category: 'Microscopy',
-          description: 'Comprehensive urine analysis',
-          specimenType: 'Urine',
-          turnaroundTime: '24 hours',
-          cost: 15.00,
-          isActive: true
-        }
-      ];
+      // Build query conditions
+      const conditions = [];
 
-      let filteredCatalog = mockCatalog;
+      // Include both company-specific and system-wide tests
+      conditions.push(
+        or(
+          eq(schema.labTestCatalog.companyId, companyId),
+          sql`${schema.labTestCatalog.companyId} IS NULL`
+        )
+      );
+
+      if (options.activeOnly !== false) {
+        conditions.push(eq(schema.labTestCatalog.isActive, true));
+      }
 
       if (options.category) {
-        filteredCatalog = filteredCatalog.filter(test => 
-          test.category.toLowerCase().includes(options.category!.toLowerCase())
-        );
+        conditions.push(ilike(schema.labTestCatalog.category, `%${options.category}%`));
       }
 
       if (options.search) {
-        const searchLower = options.search.toLowerCase();
-        filteredCatalog = filteredCatalog.filter(test => 
-          test.testName.toLowerCase().includes(searchLower) ||
-          test.testCode.toLowerCase().includes(searchLower) ||
-          test.description.toLowerCase().includes(searchLower)
+        conditions.push(
+          or(
+            ilike(schema.labTestCatalog.testName, `%${options.search}%`),
+            ilike(schema.labTestCatalog.testCode, `%${options.search}%`),
+            ilike(schema.labTestCatalog.description, `%${options.search}%`)
+          )
         );
       }
 
-      if (options.activeOnly) {
-        filteredCatalog = filteredCatalog.filter(test => test.isActive);
-      }
+      const catalog = await db
+        .select()
+        .from(schema.labTestCatalog)
+        .where(and(...conditions))
+        .orderBy(asc(schema.labTestCatalog.category), asc(schema.labTestCatalog.testName));
 
       return {
         success: true,
-        catalog: filteredCatalog,
-        total: filteredCatalog.length
+        catalog,
+        total: catalog.length
       };
     } catch (error) {
       logger.error({ error, companyId, options }, 'Failed to get lab test catalog');
@@ -597,79 +551,39 @@ export class LaboratoryService {
     try {
       logger.info({ companyId, options }, 'Getting quality control data');
 
-      // Return mock QC data since qualityControlTests table doesn't exist in schema
-      // In a real implementation, this would be fetched from a database table
-      const mockQCData = [
-        {
-          id: 'qc_001',
-          testCode: options.testCode || 'CBC',
-          controlLot: 'LOT001',
-          controlLevel: 'level1',
-          expectedValue: 100,
-          actualValue: 98.5,
-          acceptableRange: { min: 95, max: 105 },
-          testDate: new Date(),
-          technicianId: 'tech_001',
-          instrumentId: options.instrumentId || 'INST001',
-          reagentLot: 'REG001',
-          isWithinRange: true,
-          deviation: 1.5,
-          percentDeviation: 1.5,
-          technician: {
-            id: 'tech_001',
-            firstName: 'John',
-            lastName: 'Smith'
-          },
-          instrument: {
-            id: 'INST001',
-            name: 'Hematology Analyzer 1',
-            model: 'Model X'
-          }
-        },
-        {
-          id: 'qc_002',
-          testCode: options.testCode || 'CBC',
-          controlLot: 'LOT002',
-          controlLevel: 'level2',
-          expectedValue: 200,
-          actualValue: 203.2,
-          acceptableRange: { min: 190, max: 210 },
-          testDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
-          technicianId: 'tech_002',
-          instrumentId: options.instrumentId || 'INST001',
-          reagentLot: 'REG002',
-          isWithinRange: true,
-          deviation: 3.2,
-          percentDeviation: 1.6,
-          technician: {
-            id: 'tech_002',
-            firstName: 'Jane',
-            lastName: 'Doe'
-          },
-          instrument: {
-            id: 'INST001',
-            name: 'Hematology Analyzer 1',
-            model: 'Model X'
-          }
-        }
-      ];
+      // Build query conditions
+      const conditions = [eq(schema.labQualityControl.companyId, companyId)];
 
-      let filteredQCData = mockQCData;
-
-      if (options.dateFrom && options.dateTo) {
-        filteredQCData = filteredQCData.filter(qc => 
-          qc.testDate >= options.dateFrom! && qc.testDate <= options.dateTo!
-        );
+      if (options.testCode) {
+        conditions.push(eq(schema.labQualityControl.testCode, options.testCode));
       }
 
+      if (options.instrumentId) {
+        conditions.push(eq(schema.labQualityControl.instrumentId, options.instrumentId));
+      }
+
+      if (options.dateFrom && options.dateTo) {
+        conditions.push(between(schema.labQualityControl.testDate, options.dateFrom, options.dateTo));
+      } else if (options.dateFrom) {
+        conditions.push(gte(schema.labQualityControl.testDate, options.dateFrom));
+      } else if (options.dateTo) {
+        conditions.push(lte(schema.labQualityControl.testDate, options.dateTo));
+      }
+
+      const qcData = await db
+        .select()
+        .from(schema.labQualityControl)
+        .where(and(...conditions))
+        .orderBy(desc(schema.labQualityControl.testDate));
+
       // Calculate QC statistics
-      const qcStats = await this.calculateQCStatistics(filteredQCData);
+      const qcStats = await this.calculateQCStatistics(qcData);
 
       return {
         success: true,
-        qcData: filteredQCData,
+        qcData,
         statistics: qcStats,
-        total: filteredQCData.length
+        total: qcData.length
       };
     } catch (error) {
       logger.error({ error, companyId, options }, 'Failed to get quality control data');
@@ -691,25 +605,26 @@ export class LaboratoryService {
       const deviation = Math.abs(actualValue - expectedValue);
       const percentDeviation = (deviation / expectedValue) * 100;
 
-      // Create audit entry for QC test (since qualityControlTests table doesn't exist)
-      const qcTestRecord = {
-        id: `qc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      // Insert into lab quality control table
+      const [qcTestRecord] = await db.insert(schema.labQualityControl).values({
         companyId,
         testCode,
         controlLot,
         controlLevel,
-        expectedValue,
-        actualValue,
-        acceptableRange,
+        expectedValue: expectedValue.toString(),
+        actualValue: actualValue.toString(),
+        acceptableRangeMin: acceptableRange.min.toString(),
+        acceptableRangeMax: acceptableRange.max.toString(),
+        isWithinRange,
+        deviation: deviation.toString(),
+        percentDeviation: percentDeviation.toString(),
         testDate,
         technicianId,
         instrumentId,
         reagentLot: reagentLot || '',
-        isWithinRange,
-        deviation,
-        percentDeviation
-      };
+      }).returning();
 
+      // Create audit log entry
       await db.insert(schema.auditLogs).values({
         id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         companyId,
@@ -717,7 +632,7 @@ export class LaboratoryService {
         action: 'QC_TEST_RECORDED',
         resourceType: 'quality_control',
         resourceId: qcTestRecord.id,
-        details: JSON.stringify(qcTestRecord),
+        details: JSON.stringify({ testCode, isWithinRange, deviation, percentDeviation }),
         ipAddress: 'system',
         userAgent: 'lab-service',
         timestamp: new Date()
