@@ -39,17 +39,17 @@ const OnboardingFlow = lazy(() => import("@/pages/OnboardingFlow"));
 const EmailLoginPage = lazy(() => import("@/pages/EmailLoginPage"));
 const EmailSignupPage = lazy(() => import("@/pages/EmailSignupPage"));
 
-// Dashboards
+// Dashboards - Using Modern versions for enhanced UX
 const ECPDashboard = lazy(() => import("@/pages/ECPDashboard"));
-const LabDashboard = lazy(() => import("@/pages/LabDashboard"));
-const SupplierDashboard = lazy(() => import("@/pages/SupplierDashboard"));
+const LabDashboard = lazy(() => import("@/pages/LabDashboardModern"));
+const SupplierDashboard = lazy(() => import("@/pages/SupplierDashboardModern"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
 const PlatformAdminPage = lazy(() => import("@/pages/PlatformAdminPage"));
 const SystemHealthDashboard = lazy(() => import("@/pages/admin/SystemHealthDashboard"));
 const SystemConfigPage = lazy(() => import("@/pages/admin/SystemConfigPage"));
 const APIKeysManagementPage = lazy(() => import("@/pages/admin/APIKeysManagementPage"));
 const CompanyAdminPage = lazy(() => import("@/pages/CompanyAdminPage"));
-const DispenserDashboard = lazy(() => import("@/pages/DispenserDashboard"));
+const DispenserDashboard = lazy(() => import("@/pages/DispenserDashboardModern"));
 
 // ECP Pages
 const PatientsPage = lazy(() => import("@/pages/PatientsPage"));
