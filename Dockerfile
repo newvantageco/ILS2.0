@@ -1,5 +1,5 @@
 # ================================
-# Multi-Stage Production Dockerfile
+# Multi-Stage Production image - cache bust: 2025-11-27-v2
 # ================================
 
 # ----------------
@@ -62,6 +62,9 @@ WORKDIR /app
 # Copy package files and node_modules from builder
 COPY --chown=nodejs:nodejs package*.json ./
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+
+# Install tsx globally for drizzle-kit TypeScript config support
+RUN npm install -g tsx
 
 # Copy built application from builder (contains bundled index.js and public/)
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist

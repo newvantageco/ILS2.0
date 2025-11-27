@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["python311", "gcc", "zlib", "glib", "libcairo", "pango"]
+
+[phases.install]
+cmds = ["pip install -r requirements-lite.txt"]
+
+[start]
+cmd = "uvicorn api.main:app --host 0.0.0.0 --port $PORT"
+
+[variables]
+PYTHON_ENV = "production"

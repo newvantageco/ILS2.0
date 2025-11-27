@@ -57,7 +57,7 @@
     "railway:shell": "railway shell",
     "railway:whoami": "railway whoami",
     "predeploy": "npm run validate:env",
-    "postdeploy": "npm run db:push",
+    "postdeploy": "npm run db:migrate",
     "create-master-user": "tsx server/scripts/createMasterTestUser.ts"
   },
   "dependencies": {

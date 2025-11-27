@@ -9,33 +9,25 @@ echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 # Function to run migrations with timeout
 run_migrations() {
-  echo "Running database migrations..."
+  echo "Running database schema sync..."
 
   # Check if DATABASE_URL is set
   if [ -z "$DATABASE_URL" ]; then
-    echo "WARNING: DATABASE_URL is not set. Skipping migrations."
+    echo "WARNING: DATABASE_URL is not set. Skipping schema sync."
     return 1
   fi
 
-  # Step 1: Run SQL migrations (custom migrations for Stripe, Google Auth, etc.)
-  echo "Step 1: Running SQL migrations..."
-  if timeout 60 npm run db:migrate 2>&1; then
-    echo "✓ SQL migrations completed successfully"
-  else
-    EXIT_CODE=$?
-    echo "WARNING: SQL migrations failed or timed out (exit code: $EXIT_CODE)"
-    echo "Continuing with schema sync..."
-  fi
-
-  # Step 2: Run drizzle-kit push to sync TypeScript schema
-  echo "Step 2: Syncing TypeScript schema with database..."
-  if timeout 60 npm run db:push 2>&1; then
-    echo "✓ Schema sync completed successfully"
+  # Use db:push to sync TypeScript schema to database
+  # This creates all tables defined in shared/schema.ts
+  # --force flag prevents interactive prompts in non-TTY environment
+  echo "Syncing schema with db:push --force..."
+  if npx drizzle-kit push --force 2>&1; then
+    echo "✓ Database schema sync completed successfully"
     return 0
   else
     EXIT_CODE=$?
-    echo "WARNING: Schema sync failed or timed out (exit code: $EXIT_CODE)"
-    echo "Attempting to start application anyway (schema may already be synced)"
+    echo "WARNING: Schema sync failed (exit code: $EXIT_CODE)"
+    echo "Attempting to start application anyway (schema may already exist)"
     return 1
   fi
 }
