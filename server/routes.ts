@@ -3188,7 +3188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const user = await storage.getUserById_Internal(userId);
-      
+
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can add patients" });
       }
@@ -3208,17 +3208,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const bodyData = req.body as Record<string, unknown>;
       const timezoneInfo = await autoDetectTimezone(bodyData.postcode as string | undefined, ipAddress);
 
-      const patientData = addCreationTimestamp({
+      // Prepare patient data with auto-generated fields
+      const patientDataToValidate = {
         ...bodyData,
         companyId: user.companyId,
         ecpId: userId,
         timezone: timezoneInfo.timezone,
         timezoneOffset: timezoneInfo.offset,
         updatedAt: new Date(),
-      }, req);
+      };
+
+      // Validate patient data against schema
+      const validation = insertPatientSchema.safeParse(patientDataToValidate);
+      if (!validation.success) {
+        const validationError = fromZodError(validation.error);
+        logger.error({
+          error: validationError.message,
+          issues: validation.error.issues,
+          userId,
+          companyId: user.companyId
+        }, 'Patient validation failed');
+        return res.status(400).json({
+          message: validationError.message,
+          errors: validation.error.issues
+        });
+      }
+
+      const patientData = addCreationTimestamp(validation.data, req);
 
       const patient = await storage.createPatient(patientData);
-      
+
       // Log patient creation activity
       const { PatientActivityLogger } = await import("./lib/patientActivityLogger.js");
       await PatientActivityLogger.logProfileCreated(
@@ -3229,11 +3248,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `${user.firstName} ${user.lastName}`,
         { ipAddress, userAgent: req.headers['user-agent'] }
       );
-      
+
       res.status(201).json(patient);
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error creating patient');
-      res.status(500).json({ message: "Failed to create patient" });
+      // Log detailed error information
+      const errorDetails = error instanceof Error ? {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      } : { error: String(error) };
+
+      logger.error({
+        ...errorDetails,
+        userId: req.user?.claims?.sub || req.user?.id,
+        endpoint: '/api/patients',
+        method: 'POST'
+      }, 'Error creating patient');
+
+      // Return more specific error message if available
+      const errorMessage = error instanceof Error && error.message.includes('generate_customer_number')
+        ? "Database configuration error. Please contact support."
+        : error instanceof Error
+        ? `Failed to create patient: ${error.message}`
+        : "Failed to create patient";
+
+      res.status(500).json({ message: errorMessage });
     }
   });
 

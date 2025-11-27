@@ -943,15 +943,47 @@ export class DbStorage implements IStorage {
   }
 
   async createPatient(insertPatient: InsertPatient): Promise<Patient> {
-    // Generate customer number using database function
-    const result = await db.execute(sql`SELECT generate_customer_number() as customer_number`);
-    const customerNumber = (result.rows[0] as any).customer_number;
+    try {
+      // Generate customer number using database function
+      const result = await db.execute(sql`SELECT generate_customer_number() as customer_number`);
 
-    const [patient] = await db.insert(patients).values({
-      ...insertPatient,
-      customerNumber,
-    }).returning();
-    return patient;
+      if (!result.rows || result.rows.length === 0) {
+        throw new Error('Failed to generate customer number - database function returned no results');
+      }
+
+      const customerNumber = (result.rows[0] as any).customer_number;
+
+      if (!customerNumber) {
+        throw new Error('Failed to generate customer number - function returned null or undefined');
+      }
+
+      const [patient] = await db.insert(patients).values({
+        ...insertPatient,
+        customerNumber,
+      }).returning();
+
+      if (!patient) {
+        throw new Error('Failed to insert patient - database returned no data');
+      }
+
+      return patient;
+    } catch (error) {
+      // Check if it's a database function error
+      if (error instanceof Error && (
+        error.message.includes('function') ||
+        error.message.includes('does not exist') ||
+        error.message.includes('generate_customer_number')
+      )) {
+        throw new Error('Database function generate_customer_number() is not available. Please run migrations.');
+      }
+
+      // Re-throw the original error with more context
+      if (error instanceof Error) {
+        throw new Error(`Failed to create patient: ${error.message}`);
+      }
+
+      throw error;
+    }
   }
 
   async getPatient(id: string, companyId: string): Promise<Patient | undefined> {
