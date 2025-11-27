@@ -34,8 +34,11 @@ wheels/
 *.swo
 *~
 
-# Models cache
-models/
+# Models cache (ML weights, not Pydantic models)
+models/*.bin
+models/*.pt
+models/*.onnx
+models/*.safetensors
 .cache/
 
 # Testing
