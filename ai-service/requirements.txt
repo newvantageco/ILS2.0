@@ -51,6 +51,7 @@ loguru>=0.7.2
 
 # Security
 cryptography>=43.0.0
+PyJWT>=2.8.0
 
 # Development
 pytest>=8.3.0
