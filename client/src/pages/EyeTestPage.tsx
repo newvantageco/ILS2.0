@@ -1,18 +1,15 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  Eye, 
+import { WizardStepper, type WizardStep } from "@/components/ui/WizardStepper";
+import {
+  Eye,
   FileText,
-  Save,
-  CheckCircle2,
   ArrowLeft,
   TestTube,
   Palette,
@@ -30,6 +27,7 @@ import { ColorBlindnessTest, type ColorBlindnessResult } from "@/components/eye-
 import { VisualFieldTest } from "@/components/eye-test/VisualFieldTest";
 import { EXAM_TEMPLATES, type ExamTemplate } from "@/data/examTemplates";
 import { EYE_TERMINOLOGY } from "../../../shared/terminology";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Patient {
   id: string;
@@ -48,16 +46,19 @@ interface TestRoom {
   isActive: boolean;
 }
 
-export default function EyeTestPage() {
+export default function EyeTestPageModern() {
   const [, params] = useRoute("/ecp/patient/:id/test");
   const patientId = params?.id;
-  const [activeTab, setActiveTab] = useState("template");
+
+  // Form state
   const [selectedTemplate, setSelectedTemplate] = useState<ExamTemplate | null>(null);
-  const [templateData, setTemplateData] = useState<Record<string, any>>({});
   const [vaResults, setVaResults] = useState({ R: "", L: "" });
   const [colorBlindnessResult, setColorBlindnessResult] = useState<ColorBlindnessResult | null>(null);
   const [visualFieldResults, setVisualFieldResults] = useState<any>({ R: null, L: null });
   const [selectedTestRoom, setSelectedTestRoom] = useState<string>("");
+  const [examinationData, setExaminationData] = useState<Record<string, any>>({});
+  const [prescriptionData, setPrescriptionData] = useState<Record<string, any>>({});
+
   const { toast } = useToast();
 
   const { data: patient, isLoading } = useQuery<Patient>({
@@ -65,12 +66,10 @@ export default function EyeTestPage() {
     enabled: !!patientId,
   });
 
-  // Fetch available test rooms
   const { data: testRooms } = useQuery<TestRoom[]>({
     queryKey: ["/api/ecp/test-rooms"],
   });
 
-  // Filter only available test rooms
   const availableTestRooms = testRooms?.filter(
     room => room.isActive && room.currentStatus === "available"
   );
@@ -86,7 +85,6 @@ export default function EyeTestPage() {
         title: "Examination Saved",
         description: "Eye examination has been saved successfully.",
       });
-      setActiveTab("prescription");
     },
     onError: () => {
       toast({
@@ -118,60 +116,6 @@ export default function EyeTestPage() {
     },
   });
 
-  const handleExaminationSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    
-    if (!selectedTestRoom) {
-      toast({
-        title: "Test Room Required",
-        description: "Please select a test room before saving the examination.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const data = {
-      patientId,
-      testRoomId: selectedTestRoom,
-      visualAcuityOD: formData.get("visualAcuityOD") as string || null,
-      visualAcuityOS: formData.get("visualAcuityOS") as string || null,
-      autoRefractionODSphere: formData.get("autoRefractionODSphere") as string || null,
-      autoRefractionODCylinder: formData.get("autoRefractionODCylinder") as string || null,
-      autoRefractionODAxis: formData.get("autoRefractionODAxis") as string || null,
-      autoRefractionOSSphere: formData.get("autoRefractionOSSphere") as string || null,
-      autoRefractionOSCylinder: formData.get("autoRefractionOSCylinder") as string || null,
-      autoRefractionOSAxis: formData.get("autoRefractionOSAxis") as string || null,
-      notes: formData.get("notes") as string || null,
-    };
-
-    createExaminationMutation.mutate(data);
-  };
-
-  const handlePrescriptionSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    
-    const expiryDate = formData.get("expiryDate") as string;
-    
-    const data = {
-      patientId,
-      issueDate: new Date().toISOString(),
-      expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null,
-      odSphere: formData.get("odSphere") as string || null,
-      odCylinder: formData.get("odCylinder") as string || null,
-      odAxis: formData.get("odAxis") as string || null,
-      odAdd: formData.get("odAdd") as string || null,
-      osSphere: formData.get("osSphere") as string || null,
-      osCylinder: formData.get("osCylinder") as string || null,
-      osAxis: formData.get("osAxis") as string || null,
-      osAdd: formData.get("osAdd") as string || null,
-      pd: formData.get("pd") as string || null,
-    };
-
-    createPrescriptionMutation.mutate(data);
-  };
-
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -190,95 +134,56 @@ export default function EyeTestPage() {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4 flex-wrap">
-        <Link href="/ecp/patients">
-          <Button variant="outline" size="sm" data-testid="button-back">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Patients
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">Eye Examination</h1>
-          <p className="text-muted-foreground mt-1">
-            Patient: {patient.name}
-            {patient.dateOfBirth && ` • DOB: ${patient.dateOfBirth}`}
-            {patient.nhsNumber && (
-              <Badge variant="outline" className="ml-2 font-mono">
-                NHS: {patient.nhsNumber}
-              </Badge>
-            )}
+  // Define wizard steps
+  const steps: WizardStep[] = [
+    {
+      id: "template",
+      title: "Template",
+      description: "Select an examination template to guide your workflow",
+      icon: <FileCheck className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Choose a template to guide your examination workflow. You can skip this step if you prefer a custom examination.
           </p>
+          <div className="grid gap-4">
+            {EXAM_TEMPLATES.map((template) => (
+              <button
+                key={template.id}
+                onClick={() => setSelectedTemplate(template)}
+                className={`text-left p-4 border-2 rounded-lg hover:bg-accent transition-all ${
+                  selectedTemplate?.id === template.id ? 'border-primary bg-primary/5' : 'border-border'
+                }`}
+              >
+                <h3 className="font-semibold">{template.name}</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {template.description}
+                </p>
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  {template.sections.map((section) => (
+                    <Badge key={section.id} variant="outline" className="text-xs">
+                      {section.title}
+                    </Badge>
+                  ))}
+                </div>
+              </button>
+            ))}
+          </div>
+          {selectedTemplate && (
+            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+              <p className="text-sm font-medium">Selected: {selectedTemplate.name}</p>
+            </div>
+          )}
         </div>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="template" data-testid="tab-template">
-            <FileCheck className="h-4 w-4 mr-2" />
-            Template
-          </TabsTrigger>
-          <TabsTrigger value="visual-acuity" data-testid="tab-visual-acuity">
-            <TestTube className="h-4 w-4 mr-2" />
-            Visual Acuity
-          </TabsTrigger>
-          <TabsTrigger value="color-vision" data-testid="tab-color-vision">
-            <Palette className="h-4 w-4 mr-2" />
-            Color Vision
-          </TabsTrigger>
-          <TabsTrigger value="visual-field" data-testid="tab-visual-field">
-            <Crosshair className="h-4 w-4 mr-2" />
-            Visual Field
-          </TabsTrigger>
-          <TabsTrigger value="examination" data-testid="tab-examination">
-            <Eye className="h-4 w-4 mr-2" />
-            Examination
-          </TabsTrigger>
-          <TabsTrigger value="prescription" data-testid="tab-prescription">
-            <FileText className="h-4 w-4 mr-2" />
-            Prescription
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="template">
-          <Card>
-            <CardHeader>
-              <CardTitle>Select Examination Template</CardTitle>
-              <CardDescription>
-                Choose a template to guide your examination workflow
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4">
-                {EXAM_TEMPLATES.map((template) => (
-                  <button
-                    key={template.id}
-                    onClick={() => {
-                      setSelectedTemplate(template);
-                      setActiveTab("examination");
-                    }}
-                    className="text-left p-4 border rounded-lg hover:bg-accent transition-colors"
-                  >
-                    <h3 className="font-semibold">{template.name}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {template.description}
-                    </p>
-                    <div className="flex gap-2 mt-2">
-                      {template.sections.map((section) => (
-                        <Badge key={section.id} variant="outline" className="text-xs">
-                          {section.title}
-                        </Badge>
-                      ))}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="visual-acuity">
+      ),
+    },
+    {
+      id: "visual-acuity",
+      title: "Visual Acuity",
+      description: "Test visual acuity for both eyes",
+      icon: <TestTube className="w-5 h-5" />,
+      content: (
+        <div className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
             <VisualAcuityChart
               eye="R"
@@ -291,14 +196,34 @@ export default function EyeTestPage() {
               onResult={(result) => setVaResults({ ...vaResults, L: result })}
             />
           </div>
-          <div className="mt-4 flex justify-end">
-            <Button onClick={() => setActiveTab("color-vision")}>
-              Next: Color Vision Test
-            </Button>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="color-vision">
+          {(vaResults.R || vaResults.L) && (
+            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+              <p className="text-sm font-medium">Results:</p>
+              {vaResults.R && <p className="text-sm">Right Eye: {vaResults.R}</p>}
+              {vaResults.L && <p className="text-sm">Left Eye: {vaResults.L}</p>}
+            </div>
+          )}
+        </div>
+      ),
+      validate: async () => {
+        if (!vaResults.R && !vaResults.L) {
+          toast({
+            title: "Visual Acuity Required",
+            description: "Please test at least one eye before continuing.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        return true;
+      },
+    },
+    {
+      id: "color-vision",
+      title: "Color Vision",
+      description: "Assess color vision using Ishihara plates",
+      icon: <Palette className="w-5 h-5" />,
+      content: (
+        <div className="space-y-6">
           <ColorBlindnessTest
             onComplete={(result) => {
               setColorBlindnessResult(result);
@@ -308,14 +233,23 @@ export default function EyeTestPage() {
               });
             }}
           />
-          <div className="mt-4 flex justify-end">
-            <Button onClick={() => setActiveTab("visual-field")}>
-              Next: Visual Field Test
-            </Button>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="visual-field">
+          {colorBlindnessResult && (
+            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+              <p className="text-sm font-medium">Results:</p>
+              <p className="text-sm">Score: {colorBlindnessResult.correctAnswers}/{colorBlindnessResult.totalPlates}</p>
+              <p className="text-sm">Interpretation: {colorBlindnessResult.interpretation}</p>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "visual-field",
+      title: "Visual Field",
+      description: "Test peripheral vision for both eyes",
+      icon: <Crosshair className="w-5 h-5" />,
+      content: (
+        <div className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
             <VisualFieldTest
               eye="R"
@@ -338,376 +272,354 @@ export default function EyeTestPage() {
               }}
             />
           </div>
-          <div className="mt-4 flex justify-end">
-            <Button onClick={() => setActiveTab("examination")}>
-              Continue to Full Examination
-            </Button>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="examination">
-          <form onSubmit={handleExaminationSubmit}>
-            <Card>
-              <CardHeader>
-                <CardTitle>Clinical Eye Examination</CardTitle>
-                <CardDescription>
-                  {selectedTemplate ? `${selectedTemplate.name} - ` : ""}Record visual acuity and refraction measurements
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Test Room Selection */}
-                <div className="p-4 border-2 border-primary/20 rounded-lg bg-primary/5 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <DoorOpen className="h-5 w-5 text-primary" />
-                    <h3 className="font-semibold">Test Room Selection</h3>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="testRoom">Select Test Room *</Label>
-                      <Select
-                        value={selectedTestRoom}
-                        onValueChange={setSelectedTestRoom}
-                        required
-                      >
-                        <SelectTrigger id="testRoom" className="bg-background">
-                          <SelectValue placeholder="Choose test room..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableTestRooms?.map((room) => (
-                            <SelectItem key={room.id} value={room.id}>
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">{room.roomName}</span>
-                                {room.roomCode && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {room.roomCode}
-                                  </Badge>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {selectedTestRoom && availableTestRooms?.find(r => r.id === selectedTestRoom) && (
-                      <div className="space-y-2">
-                        <Label>Room Details</Label>
-                        <div className="p-3 bg-background rounded-md border text-sm space-y-1">
-                          {availableTestRooms.find(r => r.id === selectedTestRoom)?.equipmentList && (
-                            <p className="text-muted-foreground">
-                              Equipment: {availableTestRooms.find(r => r.id === selectedTestRoom)?.equipmentList}
-                            </p>
-                          )}
-                          {availableTestRooms.find(r => r.id === selectedTestRoom)?.allowRemoteAccess && (
-                            <Badge variant="outline" className="gap-1">
-                              <Wifi className="h-3 w-3" />
-                              Remote Access
+          {(visualFieldResults.R || visualFieldResults.L) && (
+            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+              <p className="text-sm font-medium">Results:</p>
+              {visualFieldResults.R && <p className="text-sm">Right Eye: Complete</p>}
+              {visualFieldResults.L && <p className="text-sm">Left Eye: Complete</p>}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "examination",
+      title: "Examination",
+      description: "Clinical examination and refraction",
+      icon: <Eye className="w-5 h-5" />,
+      content: (
+        <div className="space-y-6">
+          {/* Test Room Selection */}
+          <div className="p-4 border-2 border-primary/20 rounded-lg bg-primary/5 space-y-3">
+            <div className="flex items-center gap-2">
+              <DoorOpen className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">Test Room Selection</h3>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="testRoom">Select Test Room *</Label>
+                <Select
+                  value={selectedTestRoom}
+                  onValueChange={setSelectedTestRoom}
+                  required
+                >
+                  <SelectTrigger id="testRoom" className="bg-background">
+                    <SelectValue placeholder="Choose test room..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTestRooms?.map((room) => (
+                      <SelectItem key={room.id} value={room.id}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{room.roomName}</span>
+                          {room.roomCode && (
+                            <Badge variant="outline" className="text-xs">
+                              {room.roomCode}
                             </Badge>
                           )}
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Show test results summary if available */}
-                {(vaResults.R || vaResults.L || colorBlindnessResult || visualFieldResults.R || visualFieldResults.L) && (
-                  <div className="p-4 bg-muted rounded-lg space-y-2">
-                    <h3 className="font-semibold text-sm">Test Results Summary</h3>
-                    {vaResults.R && (
-                      <p className="text-sm">Visual Acuity R: {vaResults.R}</p>
-                    )}
-                    {vaResults.L && (
-                      <p className="text-sm">Visual Acuity L: {vaResults.L}</p>
-                    )}
-                    {colorBlindnessResult && (
-                      <p className="text-sm">
-                        Color Vision: {colorBlindnessResult.correctAnswers}/{colorBlindnessResult.totalPlates} - {colorBlindnessResult.interpretation}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedTestRoom && availableTestRooms?.find(r => r.id === selectedTestRoom) && (
+                <div className="space-y-2">
+                  <Label>Room Details</Label>
+                  <div className="p-3 bg-background rounded-md border text-sm space-y-1">
+                    {availableTestRooms.find(r => r.id === selectedTestRoom)?.equipmentList && (
+                      <p className="text-muted-foreground">
+                        Equipment: {availableTestRooms.find(r => r.id === selectedTestRoom)?.equipmentList}
                       </p>
                     )}
-                    {visualFieldResults.R && (
-                      <p className="text-sm">Visual Field R: Complete</p>
+                    {availableTestRooms.find(r => r.id === selectedTestRoom)?.allowRemoteAccess && (
+                      <Badge variant="outline" className="gap-1">
+                        <Wifi className="h-3 w-3" />
+                        Remote Access
+                      </Badge>
                     )}
-                    {visualFieldResults.L && (
-                      <p className="text-sm">Visual Field L: Complete</p>
-                    )}
-                  </div>
-                )}
-                
-                <div className="grid gap-6">
-                  <div className="space-y-4">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      Visual Acuity
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="visualAcuityOD">{EYE_TERMINOLOGY.RIGHT_EYE}</Label>
-                        <Input
-                          id="visualAcuityOD"
-                          name="visualAcuityOD"
-                          placeholder="e.g., 6/6"
-                          defaultValue={vaResults.R}
-                          data-testid="input-va-od"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="visualAcuityOS">{EYE_TERMINOLOGY.LEFT_EYE}</Label>
-                        <Input
-                          id="visualAcuityOS"
-                          name="visualAcuityOS"
-                          placeholder="e.g., 6/6"
-                          data-testid="input-va-os"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      Auto-Refraction - {EYE_TERMINOLOGY.RIGHT_EYE}
-                    </h3>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="autoRefractionODSphere">Sphere</Label>
-                        <Input
-                          id="autoRefractionODSphere"
-                          name="autoRefractionODSphere"
-                          placeholder="e.g., -1.25"
-                          data-testid="input-ar-od-sphere"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="autoRefractionODCylinder">Cylinder</Label>
-                        <Input
-                          id="autoRefractionODCylinder"
-                          name="autoRefractionODCylinder"
-                          placeholder="e.g., -0.50"
-                          data-testid="input-ar-od-cylinder"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="autoRefractionODAxis">Axis</Label>
-                        <Input
-                          id="autoRefractionODAxis"
-                          name="autoRefractionODAxis"
-                          placeholder="e.g., 90"
-                          data-testid="input-ar-od-axis"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      Auto-Refraction - {EYE_TERMINOLOGY.LEFT_EYE}
-                    </h3>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="autoRefractionOSSphere">Sphere</Label>
-                        <Input
-                          id="autoRefractionOSSphere"
-                          name="autoRefractionOSSphere"
-                          placeholder="e.g., -1.25"
-                          data-testid="input-ar-os-sphere"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="autoRefractionOSCylinder">Cylinder</Label>
-                        <Input
-                          id="autoRefractionOSCylinder"
-                          name="autoRefractionOSCylinder"
-                          placeholder="e.g., -0.50"
-                          data-testid="input-ar-os-cylinder"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="autoRefractionOSAxis">Axis</Label>
-                        <Input
-                          id="autoRefractionOSAxis"
-                          name="autoRefractionOSAxis"
-                          placeholder="e.g., 90"
-                          data-testid="input-ar-os-axis"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Clinical Notes</Label>
-                    <Textarea
-                      id="notes"
-                      name="notes"
-                      placeholder="Enter any additional observations or notes..."
-                      rows={4}
-                      data-testid="textarea-notes"
-                    />
                   </div>
                 </div>
+              )}
+            </div>
+          </div>
 
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="submit"
-                    disabled={createExaminationMutation.isPending}
-                    data-testid="button-save-examination"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    {createExaminationMutation.isPending ? "Saving..." : "Save Examination"}
-                  </Button>
+          {/* Test Results Summary */}
+          <div className="p-4 bg-muted rounded-lg space-y-2">
+            <h3 className="font-semibold text-sm">Test Results Summary</h3>
+            {vaResults.R && <p className="text-sm">Visual Acuity R: {vaResults.R}</p>}
+            {vaResults.L && <p className="text-sm">Visual Acuity L: {vaResults.L}</p>}
+            {colorBlindnessResult && (
+              <p className="text-sm">
+                Color Vision: {colorBlindnessResult.correctAnswers}/{colorBlindnessResult.totalPlates} - {colorBlindnessResult.interpretation}
+              </p>
+            )}
+            {visualFieldResults.R && <p className="text-sm">Visual Field R: Complete</p>}
+            {visualFieldResults.L && <p className="text-sm">Visual Field L: Complete</p>}
+          </div>
+
+          {/* Examination Form */}
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="font-semibold">Visual Acuity</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="visualAcuityOD">{EYE_TERMINOLOGY.RIGHT_EYE}</Label>
+                  <Input
+                    id="visualAcuityOD"
+                    placeholder="e.g., 6/6"
+                    defaultValue={vaResults.R}
+                    onChange={(e) => setExaminationData({ ...examinationData, visualAcuityOD: e.target.value })}
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          </form>
-        </TabsContent>
-
-        <TabsContent value="prescription">
-          <form onSubmit={handlePrescriptionSubmit}>
-            <Card>
-              <CardHeader>
-                <CardTitle>Optical Prescription</CardTitle>
-                <CardDescription>
-                  Create prescription based on examination results
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="issueDate">Issue Date</Label>
-                      <Input
-                        id="issueDate"
-                        name="issueDate"
-                        type="date"
-                        defaultValue={new Date().toISOString().split('T')[0]}
-                        disabled
-                        data-testid="input-issue-date"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="expiryDate">Expiry Date</Label>
-                      <Input
-                        id="expiryDate"
-                        name="expiryDate"
-                        type="date"
-                        data-testid="input-expiry-date"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      {EYE_TERMINOLOGY.RIGHT_EYE}
-                    </h3>
-                    <div className="grid grid-cols-4 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="odSphere">Sphere</Label>
-                        <Input
-                          id="odSphere"
-                          name="odSphere"
-                          placeholder="-1.25"
-                          data-testid="input-rx-od-sphere"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="odCylinder">Cylinder</Label>
-                        <Input
-                          id="odCylinder"
-                          name="odCylinder"
-                          placeholder="-0.50"
-                          data-testid="input-rx-od-cylinder"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="odAxis">Axis</Label>
-                        <Input
-                          id="odAxis"
-                          name="odAxis"
-                          placeholder="90"
-                          data-testid="input-rx-od-axis"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="odAdd">Add</Label>
-                        <Input
-                          id="odAdd"
-                          name="odAdd"
-                          placeholder="+1.50"
-                          data-testid="input-rx-od-add"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      {EYE_TERMINOLOGY.LEFT_EYE}
-                    </h3>
-                    <div className="grid grid-cols-4 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="osSphere">Sphere</Label>
-                        <Input
-                          id="osSphere"
-                          name="osSphere"
-                          placeholder="-1.25"
-                          data-testid="input-rx-os-sphere"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="osCylinder">Cylinder</Label>
-                        <Input
-                          id="osCylinder"
-                          name="osCylinder"
-                          placeholder="-0.50"
-                          data-testid="input-rx-os-cylinder"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="osAxis">Axis</Label>
-                        <Input
-                          id="osAxis"
-                          name="osAxis"
-                          placeholder="90"
-                          data-testid="input-rx-os-axis"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="osAdd">Add</Label>
-                        <Input
-                          id="osAdd"
-                          name="osAdd"
-                          placeholder="+1.50"
-                          data-testid="input-rx-os-add"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="pd">Pupillary Distance (PD)</Label>
-                      <Input
-                        id="pd"
-                        name="pd"
-                        placeholder="63"
-                        data-testid="input-rx-pd"
-                      />
-                    </div>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="visualAcuityOS">{EYE_TERMINOLOGY.LEFT_EYE}</Label>
+                  <Input
+                    id="visualAcuityOS"
+                    placeholder="e.g., 6/6"
+                    defaultValue={vaResults.L}
+                    onChange={(e) => setExaminationData({ ...examinationData, visualAcuityOS: e.target.value })}
+                  />
                 </div>
+              </div>
+            </div>
 
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="submit"
-                    disabled={createPrescriptionMutation.isPending}
-                    data-testid="button-create-prescription"
-                  >
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    {createPrescriptionMutation.isPending ? "Creating..." : "Create Prescription"}
-                  </Button>
+            <div className="space-y-4">
+              <h3 className="font-semibold">Auto-Refraction - {EYE_TERMINOLOGY.RIGHT_EYE}</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Sphere</Label>
+                  <Input
+                    placeholder="e.g., -1.25"
+                    onChange={(e) => setExaminationData({ ...examinationData, autoRefractionODSphere: e.target.value })}
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          </form>
-        </TabsContent>
-      </Tabs>
+                <div className="space-y-2">
+                  <Label>Cylinder</Label>
+                  <Input
+                    placeholder="e.g., -0.50"
+                    onChange={(e) => setExaminationData({ ...examinationData, autoRefractionODCylinder: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Axis</Label>
+                  <Input
+                    placeholder="e.g., 90"
+                    onChange={(e) => setExaminationData({ ...examinationData, autoRefractionODAxis: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="font-semibold">Auto-Refraction - {EYE_TERMINOLOGY.LEFT_EYE}</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Sphere</Label>
+                  <Input
+                    placeholder="e.g., -1.25"
+                    onChange={(e) => setExaminationData({ ...examinationData, autoRefractionOSSphere: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cylinder</Label>
+                  <Input
+                    placeholder="e.g., -0.50"
+                    onChange={(e) => setExaminationData({ ...examinationData, autoRefractionOSCylinder: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Axis</Label>
+                  <Input
+                    placeholder="e.g., 90"
+                    onChange={(e) => setExaminationData({ ...examinationData, autoRefractionOSAxis: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Clinical Notes</Label>
+              <Textarea
+                id="notes"
+                placeholder="Enter any additional observations or notes..."
+                rows={4}
+                onChange={(e) => setExaminationData({ ...examinationData, notes: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+      ),
+      validate: async () => {
+        if (!selectedTestRoom) {
+          toast({
+            title: "Test Room Required",
+            description: "Please select a test room before continuing.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        return true;
+      },
+      onNext: async () => {
+        // Save examination
+        await createExaminationMutation.mutateAsync({
+          patientId,
+          testRoomId: selectedTestRoom,
+          ...examinationData,
+        });
+      },
+    },
+    {
+      id: "prescription",
+      title: "Prescription",
+      description: "Create optical prescription",
+      icon: <FileText className="w-5 h-5" />,
+      content: (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Issue Date</Label>
+              <Input
+                type="date"
+                defaultValue={new Date().toISOString().split('T')[0]}
+                disabled
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="expiryDate">Expiry Date</Label>
+              <Input
+                id="expiryDate"
+                type="date"
+                onChange={(e) => setPrescriptionData({ ...prescriptionData, expiryDate: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="font-semibold">{EYE_TERMINOLOGY.RIGHT_EYE}</h3>
+            <div className="grid grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label>Sphere</Label>
+                <Input
+                  placeholder="-1.25"
+                  onChange={(e) => setPrescriptionData({ ...prescriptionData, odSphere: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Cylinder</Label>
+                <Input
+                  placeholder="-0.50"
+                  onChange={(e) => setPrescriptionData({ ...prescriptionData, odCylinder: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Axis</Label>
+                <Input
+                  placeholder="90"
+                  onChange={(e) => setPrescriptionData({ ...prescriptionData, odAxis: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Add</Label>
+                <Input
+                  placeholder="+1.50"
+                  onChange={(e) => setPrescriptionData({ ...prescriptionData, odAdd: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="font-semibold">{EYE_TERMINOLOGY.LEFT_EYE}</h3>
+            <div className="grid grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label>Sphere</Label>
+                <Input
+                  placeholder="-1.25"
+                  onChange={(e) => setPrescriptionData({ ...prescriptionData, osSphere: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Cylinder</Label>
+                <Input
+                  placeholder="-0.50"
+                  onChange={(e) => setPrescriptionData({ ...prescriptionData, osCylinder: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Axis</Label>
+                <Input
+                  placeholder="90"
+                  onChange={(e) => setPrescriptionData({ ...prescriptionData, osAxis: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Add</Label>
+                <Input
+                  placeholder="+1.50"
+                  onChange={(e) => setPrescriptionData({ ...prescriptionData, osAdd: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="pd">Pupillary Distance (PD)</Label>
+              <Input
+                id="pd"
+                placeholder="63"
+                onChange={(e) => setPrescriptionData({ ...prescriptionData, pd: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4 flex-wrap">
+        <Link href="/ecp/patients">
+          <Button variant="outline" size="sm">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Patients
+          </Button>
+        </Link>
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold tracking-tight">Eye Examination</h1>
+          <p className="text-muted-foreground mt-1">
+            Patient: {patient.name}
+            {patient.dateOfBirth && ` • DOB: ${patient.dateOfBirth}`}
+            {patient.nhsNumber && (
+              <Badge variant="outline" className="ml-2 font-mono">
+                NHS: {patient.nhsNumber}
+              </Badge>
+            )}
+          </p>
+        </div>
+      </div>
+
+      <WizardStepper
+        steps={steps}
+        onComplete={async () => {
+          // Create prescription
+          await createPrescriptionMutation.mutateAsync({
+            patientId,
+            issueDate: new Date().toISOString(),
+            ...prescriptionData,
+          });
+
+          toast({
+            title: "Examination Complete!",
+            description: "All examination data and prescription have been saved.",
+          });
+        }}
+        persistProgress
+        storageKey={`eye-exam-${patientId}`}
+        showStepNumbers
+      />
     </div>
   );
 }
