@@ -1,0 +1,205 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "name": "ILS 2.0 Healthcare Operating System",
+  "description": "Complete Healthcare Operating System for the optical industry with AI, analytics, and laboratory management",
+  "services": [
+    {
+      "name": "ils-main-app",
+      "description": "Main Node.js application (Express backend + React frontend)",
+      "source": {
+        "type": "git",
+        "repo": "newvantageco/ILS2.0",
+        "branch": "main"
+      },
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "Dockerfile",
+        "watchPaths": [
+          "server/**",
+          "client/**",
+          "shared/**",
+          "package.json",
+          "Dockerfile"
+        ]
+      },
+      "deploy": {
+        "numReplicas": 1,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 10,
+        "healthcheckPath": "/api/health",
+        "healthcheckTimeout": 300,
+        "startCommand": "node dist/index.js"
+      },
+      "resources": {
+        "memory": "2GB",
+        "cpu": "2"
+      },
+      "networking": {
+        "serviceDomain": true,
+        "publicDomain": true
+      },
+      "environmentVariables": {
+        "NODE_ENV": "production",
+        "PORT": "5000",
+        "HOST": "0.0.0.0",
+        "DATABASE_URL": "${{Postgres.DATABASE_URL}}",
+        "REDIS_URL": "${{Redis.REDIS_URL}}"
+      }
+    },
+    {
+      "name": "ils-ai-service",
+      "description": "Python AI/ML service with FastAPI (OpenAI, Anthropic, RAG)",
+      "source": {
+        "type": "git",
+        "repo": "newvantageco/ILS2.0",
+        "branch": "main",
+        "rootDirectory": "ai-service"
+      },
+      "build": {
+        "builder": "NIXPACKS",
+        "nixpacksConfigPath": "ai-service/nixpacks.toml",
+        "watchPaths": [
+          "ai-service/**"
+        ]
+      },
+      "deploy": {
+        "numReplicas": 1,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 10,
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 300,
+        "startCommand": "uvicorn api.main:app --host 0.0.0.0 --port $PORT"
+      },
+      "resources": {
+        "memory": "4GB",
+        "cpu": "2"
+      },
+      "networking": {
+        "serviceDomain": true,
+        "publicDomain": false
+      },
+      "environmentVariables": {
+        "PYTHON_ENV": "production",
+        "PORT": "8080",
+        "DATABASE_URL": "${{Postgres.DATABASE_URL}}"
+      }
+    },
+    {
+      "name": "ils-analytics-service",
+      "description": "Python analytics service with FastAPI (Pandas, NumPy, Scikit-learn)",
+      "source": {
+        "type": "git",
+        "repo": "newvantageco/ILS2.0",
+        "branch": "main",
+        "rootDirectory": "python-service"
+      },
+      "build": {
+        "builder": "NIXPACKS",
+        "nixpacksConfigPath": "python-service/nixpacks.toml",
+        "watchPaths": [
+          "python-service/**"
+        ]
+      },
+      "deploy": {
+        "numReplicas": 1,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 10,
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 300,
+        "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT"
+      },
+      "resources": {
+        "memory": "2GB",
+        "cpu": "2"
+      },
+      "networking": {
+        "serviceDomain": true,
+        "publicDomain": false
+      },
+      "environmentVariables": {
+        "PYTHON_ENV": "production",
+        "PORT": "8000",
+        "DATABASE_URL": "${{Postgres.DATABASE_URL}}"
+      }
+    },
+    {
+      "name": "ils-rag-service",
+      "description": "Python RAG service for vector similarity search and embeddings",
+      "source": {
+        "type": "git",
+        "repo": "newvantageco/ILS2.0",
+        "branch": "main",
+        "rootDirectory": "python-rag-service"
+      },
+      "build": {
+        "builder": "NIXPACKS",
+        "nixpacksConfigPath": "python-rag-service/nixpacks.toml",
+        "watchPaths": [
+          "python-rag-service/**"
+        ]
+      },
+      "deploy": {
+        "numReplicas": 1,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 10,
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 300,
+        "startCommand": "uvicorn api.main:app --host 0.0.0.0 --port $PORT"
+      },
+      "resources": {
+        "memory": "4GB",
+        "cpu": "2"
+      },
+      "networking": {
+        "serviceDomain": true,
+        "publicDomain": false
+      },
+      "environmentVariables": {
+        "PYTHON_ENV": "production",
+        "PORT": "8001",
+        "DATABASE_URL": "${{Postgres.DATABASE_URL}}"
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "Postgres",
+      "type": "postgresql",
+      "version": "15",
+      "config": {
+        "extensions": [
+          "vector"
+        ]
+      }
+    },
+    {
+      "name": "Redis",
+      "type": "redis",
+      "version": "7"
+    }
+  ],
+  "networking": {
+    "internalNetworking": true,
+    "privateNetworking": true
+  },
+  "monitoring": {
+    "enabled": true,
+    "metrics": [
+      "cpu",
+      "memory",
+      "network",
+      "disk"
+    ]
+  },
+  "notes": [
+    "This template creates all services needed for ILS 2.0",
+    "After deployment:",
+    "1. Enable pgvector extension: CREATE EXTENSION IF NOT EXISTS vector;",
+    "2. Set required environment variables (see railway.env.template)",
+    "3. Configure Stripe webhooks with your Railway domain",
+    "4. Set up email service (Resend or SMTP)",
+    "5. Configure storage provider (S3, R2, Azure, or local)",
+    "6. Optional: Add AI API keys (OpenAI, Anthropic)",
+    "For detailed instructions, see RAILWAY_DEPLOYMENT.md"
+  ]
+}

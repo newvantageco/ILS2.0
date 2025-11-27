@@ -2,7 +2,8 @@
 # This optimizes the build process for ILS 2.0 on Railway
 
 [phases.setup]
-nixPkgs = ["nodejs-20_x", "python311", "cairo", "pango", "libjpeg", "giflib"]
+# Updated to Node.js 22 as per project requirements
+nixPkgs = ["nodejs-22_x", "python311", "cairo", "pango", "libjpeg", "giflib", "gcc", "pkg-config"]
 
 [phases.install]
 cmds = [
@@ -15,6 +16,7 @@ cmds = [
 ]
 
 [start]
+# Run migrations before starting the application
 cmd = "npm run db:migrate && node dist/index.js"
 
 [variables]
