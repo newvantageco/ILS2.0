@@ -1,16 +1,18 @@
 /**
  * Modern Lab Dashboard
- * 
+ *
  * Complete redesign with:
  * - Production Kanban board
  * - Real-time order tracking
  * - Quality metrics
  * - Equipment status
  * - Performance analytics
+ * - Smooth animations with Framer Motion
  */
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

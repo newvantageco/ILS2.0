@@ -1,16 +1,18 @@
 /**
  * Modern Supplier Dashboard
- * 
+ *
  * Complete redesign with:
  * - Inventory alerts and tracking
  * - Order fulfillment pipeline
  * - Performance metrics
  * - Catalog management
  * - Revenue analytics
+ * - Smooth animations with Framer Motion
  */
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

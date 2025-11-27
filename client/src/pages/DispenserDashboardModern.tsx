@@ -1,10 +1,16 @@
 /**
  * Modern Dispenser Dashboard
- * Complete redesign with POS metrics and sales tracking
+ *
+ * Complete redesign with:
+ * - POS metrics and sales tracking
+ * - Ready-for-dispense queue integration
+ * - Sales analytics and trends
+ * - Smooth animations with Framer Motion
  */
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
