@@ -53,6 +53,7 @@ import {
   Bell,
   Clock,
   UserCheck,
+  Send,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -79,6 +80,7 @@ const menuItems = {
       { title: "Waitlist Queue", url: "/ecp/waitlist", icon: Clock },
       { title: "Dispenser Handoff", url: "/ecp/handoff", icon: UserCheck },
       { title: "Message Templates", url: "/ecp/templates", icon: Mail },
+      { title: "Campaign Manager", url: "/ecp/campaigns", icon: Send },
     ],
     retail: [
       { title: "Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
@@ -154,6 +156,7 @@ const menuItems = {
     { title: "Waitlist Queue", url: "/admin/waitlist", icon: Clock },
     { title: "Dispenser Handoff", url: "/admin/handoff", icon: UserCheck },
     { title: "Message Templates", url: "/admin/templates", icon: Mail },
+    { title: "Campaign Manager", url: "/admin/campaigns", icon: Send },
     { title: "Email Templates", url: "/admin/email-templates", icon: Mail },
     { title: "Healthcare Analytics", url: "/admin/healthcare-analytics", icon: Heart },
     { title: "Laboratory Integration", url: "/admin/laboratory", icon: Beaker },
@@ -206,6 +209,7 @@ const menuItems = {
       { title: "Waitlist Queue", url: "/admin/waitlist", icon: Clock },
       { title: "Dispenser Handoff", url: "/admin/handoff", icon: UserCheck },
       { title: "Message Templates", url: "/admin/templates", icon: Mail },
+      { title: "Campaign Manager", url: "/admin/campaigns", icon: Send },
       { title: "Company Settings", url: "/ecp/company", icon: Building2 },
     ],
     clinical: [
