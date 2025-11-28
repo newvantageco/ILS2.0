@@ -61,6 +61,7 @@ import {
   Inbox,
   Zap,
   Target,
+  Rocket,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -536,6 +537,14 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
           <SidebarGroupLabel>Support</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild data-testid="nav-platform-showcase">
+                  <Link href="/platform-showcase">
+                    <Rocket className="h-4 w-4" />
+                    <span>Platform Showcase</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild data-testid="nav-settings">
                   <Link href="/settings">

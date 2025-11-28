@@ -32,6 +32,7 @@ const LandingNew = lazy(() => import("@/pages/LandingNew"));
 const Login = lazy(() => import("@/pages/Login"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const WelcomePage = lazy(() => import("@/pages/WelcomePage"));
+const PlatformShowcasePage = lazy(() => import("@/pages/PlatformShowcasePage"));
 const SignupPage = lazy(() => import("@/pages/SignupPage"));
 const PendingApprovalPage = lazy(() => import("@/pages/PendingApprovalPage"));
 const AccountSuspendedPage = lazy(() => import("@/pages/AccountSuspendedPage"));
@@ -485,6 +486,7 @@ function AuthenticatedApp() {
         <Switch>
           {/* Welcome/Home Page - Shows platform capabilities */}
           <Route path="/welcome" component={WelcomePage} />
+          <Route path="/platform-showcase" component={PlatformShowcasePage} />
           <Route path="/healthcare-systems-demo" component={HealthcareSystemsDemoPage} />
 
         {userRole === "ecp" && (
