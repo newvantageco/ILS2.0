@@ -1,12 +1,16 @@
 /**
  * Communications Hub Page
- * 
+ *
  * Multi-channel messaging: Email, SMS, WhatsApp, Push Notifications
  * Template management, campaigns, and message history
+ *
+ * SECURITY: Restricted to admin, company_admin, manager, receptionist roles
  */
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Navigate } from "react-router-dom";
+import { useUser } from "@/hooks/use-user";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,11 +22,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { 
-  MessageCircle, 
-  Mail, 
-  Smartphone, 
-  Bell, 
+import {
+  MessageCircle,
+  Mail,
+  Smartphone,
+  Bell,
   Send,
   Plus,
   Search,
@@ -39,7 +43,8 @@ import {
   RefreshCw,
   Eye,
   Copy,
-  Trash2
+  Trash2,
+  Shield
 } from "lucide-react";
 
 // WhatsApp icon component
@@ -101,11 +106,62 @@ interface MessageStats {
 }
 
 export default function CommunicationsHubPage() {
+  const { user } = useUser();
   const queryClient = useQueryClient();
   const [selectedChannel, setSelectedChannel] = useState<string>('all');
   const [composeOpen, setComposeOpen] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
+
+  // SECURITY: Only allow authorized roles to access communications
+  const ALLOWED_ROLES = ['admin', 'platform_admin', 'company_admin', 'manager', 'receptionist'];
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!ALLOWED_ROLES.includes(user.role)) {
+    return (
+      <div className="container mx-auto py-12">
+        <Card className="max-w-2xl mx-auto border-red-200 bg-red-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-900">
+              <Shield className="h-6 w-6" />
+              Access Restricted
+            </CardTitle>
+            <CardDescription className="text-red-700">
+              You don't have permission to access the Communications Hub
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-red-800">
+                The Communications Hub is restricted to administrative and messaging roles only.
+              </p>
+              <div className="bg-white p-4 rounded border border-red-200">
+                <p className="text-sm font-medium text-gray-900 mb-2">Allowed Roles:</p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+                  <li>Administrator</li>
+                  <li>Company Administrator</li>
+                  <li>Manager</li>
+                  <li>Receptionist</li>
+                </ul>
+              </div>
+              <p className="text-sm text-red-800">
+                Your role: <Badge variant="outline">{user.role}</Badge>
+              </p>
+              <p className="text-sm text-red-800">
+                If you believe you should have access, please contact your company administrator.
+              </p>
+              <Button onClick={() => window.history.back()} variant="outline">
+                Go Back
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Fetch templates
   const { data: templatesData, isLoading: templatesLoading } = useQuery({

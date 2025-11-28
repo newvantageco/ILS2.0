@@ -29,9 +29,11 @@ import { fetchCsrfToken } from "@/lib/api";
 // Only load the code for pages users actually visit
 const Landing = lazy(() => import("@/pages/Landing"));
 const LandingNew = lazy(() => import("@/pages/LandingNew"));
+const MarketingLandingPage = lazy(() => import("@/pages/MarketingLandingPage"));
 const Login = lazy(() => import("@/pages/Login"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const WelcomePage = lazy(() => import("@/pages/WelcomePage"));
+const PlatformShowcasePage = lazy(() => import("@/pages/PlatformShowcasePage"));
 const SignupPage = lazy(() => import("@/pages/SignupPage"));
 const PendingApprovalPage = lazy(() => import("@/pages/PendingApprovalPage"));
 const AccountSuspendedPage = lazy(() => import("@/pages/AccountSuspendedPage"));
@@ -67,6 +69,20 @@ const EyeTestPage = lazy(() => import("@/pages/EyeTestPage"));
 const EyeTestWizard = lazy(() => import("@/components/eye-test/EyeTestWizard").then(m => ({ default: m.EyeTestWizard })));
 const DiaryPage = lazy(() => import("@/pages/DiaryPage"));
 const CommunicationsHubPage = lazy(() => import("@/pages/CommunicationsHubPage"));
+const RecallManagementPage = lazy(() => import("@/pages/RecallManagementPage"));
+const WaitlistManagementPage = lazy(() => import("@/pages/WaitlistManagementPage"));
+const DispenserHandoffPage = lazy(() => import("@/pages/DispenserHandoffPage"));
+const CommunicationTemplatesPage = lazy(() => import("@/pages/CommunicationTemplatesPage"));
+const CampaignManagerPage = lazy(() => import("@/pages/CampaignManagerPage"));
+const PatientEngagementDashboard = lazy(() => import("@/pages/PatientEngagementDashboard"));
+const WorkflowBuilderPage = lazy(() => import("@/pages/WorkflowBuilderPage"));
+const MessageHistoryPage = lazy(() => import("@/pages/MessageHistoryPage"));
+const CommunicationPreferencesPage = lazy(() => import("@/pages/CommunicationPreferencesPage"));
+const ScheduledMessagesPage = lazy(() => import("@/pages/ScheduledMessagesPage"));
+const CommunicationsInboxPage = lazy(() => import("@/pages/CommunicationsInboxPage"));
+const QuickSendPage = lazy(() => import("@/pages/QuickSendPage"));
+const CommunicationAnalyticsPage = lazy(() => import("@/pages/CommunicationAnalyticsPage"));
+const SegmentBuilderPage = lazy(() => import("@/pages/SegmentBuilderPage"));
 const TestRoomsPage = lazy(() => import("@/pages/TestRoomsPage"));
 const TestRoomBookingsPage = lazy(() => import("@/pages/TestRoomBookingsPage"));
 const OpticalPOSPage = lazy(() => import("@/pages/OpticalPOSPage"));
@@ -298,6 +314,14 @@ function AuthenticatedApp() {
   }, []);
 
   // Public routes (accessible without auth) - wrapped in Suspense
+  if (location === '/landing' || location === '/marketing') {
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <MarketingLandingPage />
+      </Suspense>
+    );
+  }
+
   if (location === '/landing-new') {
     return (
       <Suspense fallback={<RouteLoadingFallback />}>
@@ -385,7 +409,7 @@ function AuthenticatedApp() {
   if (!user) {
     return (
       <Suspense fallback={<RouteLoadingFallback />}>
-        <LandingNew />
+        <MarketingLandingPage />
       </Suspense>
     );
   }
@@ -471,6 +495,7 @@ function AuthenticatedApp() {
         <Switch>
           {/* Welcome/Home Page - Shows platform capabilities */}
           <Route path="/welcome" component={WelcomePage} />
+          <Route path="/platform-showcase" component={PlatformShowcasePage} />
           <Route path="/healthcare-systems-demo" component={HealthcareSystemsDemoPage} />
 
         {userRole === "ecp" && (
@@ -493,6 +518,20 @@ function AuthenticatedApp() {
             <Route path="/ecp/test-rooms" component={TestRoomsPage} />
             <Route path="/ecp/diary" component={DiaryPage} />
             <Route path="/ecp/communications" component={CommunicationsHubPage} />
+            <Route path="/ecp/recalls" component={RecallManagementPage} />
+            <Route path="/ecp/waitlist" component={WaitlistManagementPage} />
+            <Route path="/ecp/handoff" component={DispenserHandoffPage} />
+            <Route path="/ecp/templates" component={CommunicationTemplatesPage} />
+            <Route path="/ecp/campaigns" component={CampaignManagerPage} />
+            <Route path="/ecp/engagement" component={PatientEngagementDashboard} />
+            <Route path="/ecp/workflows" component={WorkflowBuilderPage} />
+            <Route path="/ecp/messages" component={MessageHistoryPage} />
+            <Route path="/ecp/preferences" component={CommunicationPreferencesPage} />
+            <Route path="/ecp/scheduled" component={ScheduledMessagesPage} />
+            <Route path="/ecp/inbox" component={CommunicationsInboxPage} />
+            <Route path="/ecp/quick-send" component={QuickSendPage} />
+            <Route path="/ecp/communication-analytics" component={CommunicationAnalyticsPage} />
+            <Route path="/ecp/segments" component={SegmentBuilderPage} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />
@@ -591,6 +630,20 @@ function AuthenticatedApp() {
             <Route path="/admin/companies" component={CompanyManagementPage} />
             <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/admin/audit-logs" component={AuditLogsPage} />
+            <Route path="/admin/recalls" component={RecallManagementPage} />
+            <Route path="/admin/waitlist" component={WaitlistManagementPage} />
+            <Route path="/admin/handoff" component={DispenserHandoffPage} />
+            <Route path="/admin/templates" component={CommunicationTemplatesPage} />
+            <Route path="/admin/campaigns" component={CampaignManagerPage} />
+            <Route path="/admin/engagement" component={PatientEngagementDashboard} />
+            <Route path="/admin/workflows" component={WorkflowBuilderPage} />
+            <Route path="/admin/messages" component={MessageHistoryPage} />
+            <Route path="/admin/preferences" component={CommunicationPreferencesPage} />
+            <Route path="/admin/scheduled" component={ScheduledMessagesPage} />
+            <Route path="/admin/inbox" component={CommunicationsInboxPage} />
+            <Route path="/admin/quick-send" component={QuickSendPage} />
+            <Route path="/admin/communication-analytics" component={CommunicationAnalyticsPage} />
+            <Route path="/admin/segments" component={SegmentBuilderPage} />
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
             <Route path="/admin/roles" component={RoleManagementPage} />
             <Route path="/admin/returns" component={ReturnsManagementPage} />
@@ -695,6 +748,20 @@ function AuthenticatedApp() {
             {/* Admin Routes */}
             <Route path="/admin/dashboard" component={AdminDashboard} />
             <Route path="/admin/audit-logs" component={AuditLogsPage} />
+            <Route path="/admin/recalls" component={RecallManagementPage} />
+            <Route path="/admin/waitlist" component={WaitlistManagementPage} />
+            <Route path="/admin/handoff" component={DispenserHandoffPage} />
+            <Route path="/admin/templates" component={CommunicationTemplatesPage} />
+            <Route path="/admin/campaigns" component={CampaignManagerPage} />
+            <Route path="/admin/engagement" component={PatientEngagementDashboard} />
+            <Route path="/admin/workflows" component={WorkflowBuilderPage} />
+            <Route path="/admin/messages" component={MessageHistoryPage} />
+            <Route path="/admin/preferences" component={CommunicationPreferencesPage} />
+            <Route path="/admin/scheduled" component={ScheduledMessagesPage} />
+            <Route path="/admin/inbox" component={CommunicationsInboxPage} />
+            <Route path="/admin/quick-send" component={QuickSendPage} />
+            <Route path="/admin/communication-analytics" component={CommunicationAnalyticsPage} />
+            <Route path="/admin/segments" component={SegmentBuilderPage} />
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
             <Route path="/admin/ai-assistant" component={AIAssistantPage} />
             <Route path="/admin/bi-dashboard" component={BIDashboardPage} />
@@ -717,7 +784,9 @@ function AuthenticatedApp() {
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
             <Route path="/admin/roles" component={RoleManagementPage} />
             <Route path="/admin/audit-logs" component={AuditLogsPage} />
-            
+            <Route path="/admin/recalls" component={RecallManagementPage} />
+            <Route path="/admin/waitlist" component={WaitlistManagementPage} />
+
             {/* ECP Routes - Company Admin has full visibility into clinical operations */}
             <Route path="/ecp/dashboard" component={ECPDashboard} />
             <Route path="/ecp/patients" component={PatientsPage} />
@@ -736,6 +805,20 @@ function AuthenticatedApp() {
             <Route path="/ecp/test-rooms" component={TestRoomsPage} />
             <Route path="/ecp/diary" component={DiaryPage} />
             <Route path="/ecp/communications" component={CommunicationsHubPage} />
+            <Route path="/ecp/recalls" component={RecallManagementPage} />
+            <Route path="/ecp/waitlist" component={WaitlistManagementPage} />
+            <Route path="/ecp/handoff" component={DispenserHandoffPage} />
+            <Route path="/ecp/templates" component={CommunicationTemplatesPage} />
+            <Route path="/ecp/campaigns" component={CampaignManagerPage} />
+            <Route path="/ecp/engagement" component={PatientEngagementDashboard} />
+            <Route path="/ecp/workflows" component={WorkflowBuilderPage} />
+            <Route path="/ecp/messages" component={MessageHistoryPage} />
+            <Route path="/ecp/preferences" component={CommunicationPreferencesPage} />
+            <Route path="/ecp/scheduled" component={ScheduledMessagesPage} />
+            <Route path="/ecp/inbox" component={CommunicationsInboxPage} />
+            <Route path="/ecp/quick-send" component={QuickSendPage} />
+            <Route path="/ecp/communication-analytics" component={CommunicationAnalyticsPage} />
+            <Route path="/ecp/segments" component={SegmentBuilderPage} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />
@@ -757,6 +840,7 @@ function AuthenticatedApp() {
         {userRole === "dispenser" && (
           <>
             <Route path="/dispenser/dashboard" component={DispenserDashboard} />
+            <Route path="/dispenser/handoff" component={DispenserHandoffPage} />
             <Route path="/ecp/pos" component={OpticalPOSPage} />
             <Route path="/ecp/patients" component={PatientsPage} />
             <Route path="/ecp/inventory" component={InventoryManagement} />

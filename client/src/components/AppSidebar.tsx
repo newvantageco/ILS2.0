@@ -11,10 +11,10 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { CollapsibleSidebarGroup } from "@/components/CollapsibleSidebarGroup";
-import { 
-  Home, 
-  Package, 
-  ClipboardList, 
+import {
+  Home,
+  Package,
+  ClipboardList,
   TrendingUp,
   Settings,
   HelpCircle,
@@ -50,6 +50,18 @@ import {
   Heart,
   Flag,
   Keyboard,
+  Bell,
+  Clock,
+  UserCheck,
+  Send,
+  GitBranch,
+  History,
+  UserCog,
+  CalendarClock,
+  Inbox,
+  Zap,
+  Target,
+  Rocket,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -72,6 +84,19 @@ const menuItems = {
       { title: "Examinations", url: "/ecp/examinations", icon: Eye },
       { title: "Prescriptions", url: "/ecp/prescriptions", icon: FileText },
       { title: "Diary", url: "/ecp/test-rooms/bookings", icon: CalendarDays },
+      { title: "Patient Recalls", url: "/ecp/recalls", icon: Bell },
+      { title: "Waitlist Queue", url: "/ecp/waitlist", icon: Clock },
+      { title: "Dispenser Handoff", url: "/ecp/handoff", icon: UserCheck },
+      { title: "Message Templates", url: "/ecp/templates", icon: Mail },
+      { title: "Campaign Manager", url: "/ecp/campaigns", icon: Send },
+      { title: "Workflow Automation", url: "/ecp/workflows", icon: GitBranch },
+      { title: "Message History", url: "/ecp/messages", icon: History },
+      { title: "Scheduled Queue", url: "/ecp/scheduled", icon: CalendarClock },
+      { title: "Communications Inbox", url: "/ecp/inbox", icon: Inbox },
+      { title: "Quick Send / Broadcast", url: "/ecp/quick-send", icon: Zap },
+      { title: "Communication Analytics", url: "/ecp/communication-analytics", icon: BarChart3 },
+      { title: "Patient Segments", url: "/ecp/segments", icon: Target },
+      { title: "Patient Preferences", url: "/ecp/preferences", icon: UserCog },
     ],
     retail: [
       { title: "Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
@@ -82,6 +107,7 @@ const menuItems = {
       { title: "My Orders", url: "/ecp/orders", icon: ClipboardList },
     ],
     insights: [
+      { title: "Patient Engagement", url: "/ecp/engagement", icon: Activity },
       { title: "AI Assistant", url: "/ecp/ai-assistant", icon: Brain },
       { title: "BI Dashboard", url: "/ecp/bi-dashboard", icon: BarChart3 },
       { title: "Analytics", url: "/ecp/analytics", icon: LineChart },
@@ -143,6 +169,16 @@ const menuItems = {
     { title: "Companies", url: "/admin/companies", icon: Building2 },
     { title: "Orders", url: "/admin/orders", icon: ClipboardList },
     { title: "Prescriptions", url: "/admin/prescriptions", icon: FileText },
+    { title: "Patient Recalls", url: "/admin/recalls", icon: Bell },
+    { title: "Waitlist Queue", url: "/admin/waitlist", icon: Clock },
+    { title: "Dispenser Handoff", url: "/admin/handoff", icon: UserCheck },
+    { title: "Message Templates", url: "/admin/templates", icon: Mail },
+    { title: "Campaign Manager", url: "/admin/campaigns", icon: Send },
+    { title: "Workflow Automation", url: "/admin/workflows", icon: GitBranch },
+    { title: "Message History", url: "/admin/messages", icon: History },
+    { title: "Scheduled Queue", url: "/admin/scheduled", icon: CalendarClock },
+    { title: "Patient Preferences", url: "/admin/preferences", icon: UserCog },
+    { title: "Patient Engagement", url: "/admin/engagement", icon: Activity },
     { title: "Email Templates", url: "/admin/email-templates", icon: Mail },
     { title: "Healthcare Analytics", url: "/admin/healthcare-analytics", icon: Heart },
     { title: "Laboratory Integration", url: "/admin/laboratory", icon: Beaker },
@@ -191,6 +227,20 @@ const menuItems = {
       { title: "Permissions", url: "/admin/permissions", icon: KeyRound },
       { title: "Role Management", url: "/admin/roles", icon: Shield },
       { title: "Audit Logs", url: "/admin/audit-logs", icon: FileText },
+      { title: "Patient Recalls", url: "/admin/recalls", icon: Bell },
+      { title: "Waitlist Queue", url: "/admin/waitlist", icon: Clock },
+      { title: "Dispenser Handoff", url: "/admin/handoff", icon: UserCheck },
+      { title: "Message Templates", url: "/admin/templates", icon: Mail },
+      { title: "Campaign Manager", url: "/admin/campaigns", icon: Send },
+      { title: "Workflow Automation", url: "/admin/workflows", icon: GitBranch },
+      { title: "Message History", url: "/admin/messages", icon: History },
+      { title: "Scheduled Queue", url: "/admin/scheduled", icon: CalendarClock },
+      { title: "Communications Inbox", url: "/admin/inbox", icon: Inbox },
+      { title: "Quick Send / Broadcast", url: "/admin/quick-send", icon: Zap },
+      { title: "Communication Analytics", url: "/admin/communication-analytics", icon: BarChart3 },
+      { title: "Patient Segments", url: "/admin/segments", icon: Target },
+      { title: "Patient Preferences", url: "/admin/preferences", icon: UserCog },
+      { title: "Patient Engagement", url: "/admin/engagement", icon: Activity },
       { title: "Company Settings", url: "/ecp/company", icon: Building2 },
     ],
     clinical: [
@@ -214,9 +264,10 @@ const menuItems = {
   },
   dispenser: [
     { title: "Dashboard", url: "/dispenser/dashboard", icon: Home },
+    { title: "Handoff Queue", url: "/dispenser/handoff", icon: UserCheck },
+    { title: "Point of Sale", url: "/dispenser/pos", icon: ShoppingCart },
     { title: "Inventory", url: "/dispenser/inventory", icon: Archive },
     { title: "Orders", url: "/dispenser/orders", icon: ClipboardList },
-    { title: "Point of Sale", url: "/dispenser/pos", icon: ShoppingCart },
     { title: "Patients", url: "/dispenser/patients", icon: UserCircle },
     { title: "Analytics", url: "/dispenser/analytics", icon: LineChart },
   ],
@@ -486,6 +537,14 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
           <SidebarGroupLabel>Support</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild data-testid="nav-platform-showcase">
+                  <Link href="/platform-showcase">
+                    <Rocket className="h-4 w-4" />
+                    <span>Platform Showcase</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild data-testid="nav-settings">
                   <Link href="/settings">

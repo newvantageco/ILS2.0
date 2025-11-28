@@ -158,6 +158,7 @@ import gdprRoutes from "./routes/gdpr";
 import twoFactorRoutes from "./routes/twoFactor";
 import integrationsRoutes from "./routes/integrations";
 import communicationsRoutes from "./routes/communications";
+import recallsRoutes from "./routes/recalls";
 import monitoringRoutes from "./routes/monitoring";
 import observabilityRoutes from "./routes/observability";
 import contactLensRoutes from "./routes/contactLens";
@@ -599,6 +600,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Communications (email, SMS, campaigns) routes
   app.use('/api/communications', ...secureRoute(), communicationsRoutes);
+
+  // Patient Recalls routes
+  app.use('/api/recalls', ...secureRoute(), recallsRoutes);
 
   // ============================================================================
   // MONITORING & OBSERVABILITY ROUTES - NOW CONNECTED!

@@ -2,6 +2,11 @@
  * Communications API Routes
  *
  * Routes for messaging, campaigns, and engagement workflows
+ *
+ * SECURITY: All routes require authentication and appropriate role-based access
+ * - Template management: admin, company_admin, manager
+ * - Sending messages: admin, company_admin, receptionist, manager
+ * - Campaign management: admin, company_admin, manager
  */
 
 import express from 'express';
@@ -9,13 +14,23 @@ import { loggers } from '../utils/logger';
 import { CommunicationsService } from '../services/communications/CommunicationsService';
 import { CampaignService } from '../services/communications/CampaignService';
 import { EngagementWorkflowService } from '../services/communications/EngagementWorkflowService';
+import { requireRole } from '../middleware/auth';
 
 const router = express.Router();
 const logger = loggers.api;
 
+// Roles allowed to manage communication templates and campaigns
+const ADMIN_ROLES = ['admin', 'platform_admin', 'company_admin', 'manager'];
+
+// Roles allowed to send individual messages
+const MESSAGING_ROLES = ['admin', 'platform_admin', 'company_admin', 'manager', 'receptionist'];
+
+// Roles allowed to view message history
+const VIEW_ROLES = ['admin', 'platform_admin', 'company_admin', 'manager', 'receptionist', 'dispenser', 'ecp'];
+
 // ========== Templates ==========
 
-router.post('/templates', async (req, res) => {
+router.post('/templates', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -30,7 +45,7 @@ router.post('/templates', async (req, res) => {
   }
 });
 
-router.get('/templates', async (req, res) => {
+router.get('/templates', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -46,7 +61,7 @@ router.get('/templates', async (req, res) => {
   }
 });
 
-router.get('/templates/:templateId', async (req, res) => {
+router.get('/templates/:templateId', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -66,7 +81,7 @@ router.get('/templates/:templateId', async (req, res) => {
 
 // ========== Messages ==========
 
-router.post('/messages/send', async (req, res) => {
+router.post('/messages/send', requireRole(MESSAGING_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -95,7 +110,7 @@ router.post('/messages/send', async (req, res) => {
   }
 });
 
-router.post('/messages/send-template', async (req, res) => {
+router.post('/messages/send-template', requireRole(MESSAGING_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -124,7 +139,7 @@ router.post('/messages/send-template', async (req, res) => {
   }
 });
 
-router.get('/messages/:messageId', async (req, res) => {
+router.get('/messages/:messageId', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -142,7 +157,7 @@ router.get('/messages/:messageId', async (req, res) => {
   }
 });
 
-router.get('/messages/recipient/:recipientId', async (req, res) => {
+router.get('/messages/recipient/:recipientId', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -158,7 +173,7 @@ router.get('/messages/recipient/:recipientId', async (req, res) => {
   }
 });
 
-router.get('/messages/stats', async (req, res) => {
+router.get('/messages/stats', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -179,9 +194,75 @@ router.get('/messages/stats', async (req, res) => {
   }
 });
 
+router.get('/messages', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { channel, status, campaignId, search, limit = '100', offset = '0', startDate, endDate } = req.query;
+    const messages = await CommunicationsService.listMessages(companyId, {
+      channel: channel as any,
+      status: status as any,
+      campaignId: campaignId as string,
+      search: search as string,
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+    });
+    res.json({ success: true, messages: messages.messages, total: messages.total });
+  } catch (error) {
+    logger.error({ error }, 'List messages error');
+    res.status(500).json({ success: false, error: 'Failed to list messages' });
+  }
+});
+
+router.get('/messages/scheduled', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { channel, campaignId, limit = '100', offset = '0', startDate, endDate } = req.query;
+    const scheduledMessages = await CommunicationsService.getScheduledMessages(companyId, {
+      channel: channel as any,
+      campaignId: campaignId as string,
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+    });
+    res.json({ success: true, messages: scheduledMessages.messages, total: scheduledMessages.total });
+  } catch (error) {
+    logger.error({ error }, 'Get scheduled messages error');
+    res.status(500).json({ success: false, error: 'Failed to get scheduled messages' });
+  }
+});
+
+router.post('/messages/:messageId/cancel', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const result = await CommunicationsService.cancelScheduledMessage(req.params.messageId, companyId);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    res.json(result);
+  } catch (error) {
+    logger.error({ error }, 'Cancel scheduled message error');
+    res.status(500).json({ success: false, error: 'Failed to cancel message' });
+  }
+});
+
 // ========== Campaigns ==========
 
-router.post('/campaigns', async (req, res) => {
+router.post('/campaigns', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -196,7 +277,7 @@ router.post('/campaigns', async (req, res) => {
   }
 });
 
-router.get('/campaigns', async (req, res) => {
+router.get('/campaigns', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -212,7 +293,7 @@ router.get('/campaigns', async (req, res) => {
   }
 });
 
-router.get('/campaigns/:campaignId', async (req, res) => {
+router.get('/campaigns/:campaignId', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -230,7 +311,7 @@ router.get('/campaigns/:campaignId', async (req, res) => {
   }
 });
 
-router.post('/campaigns/:campaignId/launch', async (req, res) => {
+router.post('/campaigns/:campaignId/launch', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -248,7 +329,7 @@ router.post('/campaigns/:campaignId/launch', async (req, res) => {
   }
 });
 
-router.post('/campaigns/:campaignId/pause', async (req, res) => {
+router.post('/campaigns/:campaignId/pause', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -266,7 +347,7 @@ router.post('/campaigns/:campaignId/pause', async (req, res) => {
   }
 });
 
-router.get('/campaigns/:campaignId/analytics', async (req, res) => {
+router.get('/campaigns/:campaignId/analytics', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -286,7 +367,7 @@ router.get('/campaigns/:campaignId/analytics', async (req, res) => {
 
 // ========== Segments ==========
 
-router.post('/segments', async (req, res) => {
+router.post('/segments', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -302,7 +383,7 @@ router.post('/segments', async (req, res) => {
   }
 });
 
-router.get('/segments', async (req, res) => {
+router.get('/segments', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -317,9 +398,84 @@ router.get('/segments', async (req, res) => {
   }
 });
 
+router.get('/segments/:segmentId', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const segment = await CampaignService.getSegment(req.params.segmentId, companyId);
+    if (!segment) {
+      return res.status(404).json({ success: false, error: 'Segment not found' });
+    }
+    res.json({ success: true, segment });
+  } catch (error) {
+    logger.error({ error }, 'Get segment error');
+    res.status(500).json({ success: false, error: 'Failed to get segment' });
+  }
+});
+
+router.put('/segments/:segmentId', requireRole(ADMIN_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { name, description, criteria } = req.body;
+    const segment = await CampaignService.updateSegment(req.params.segmentId, companyId, {
+      name,
+      description,
+      criteria,
+    });
+    if (!segment) {
+      return res.status(404).json({ success: false, error: 'Segment not found' });
+    }
+    res.json({ success: true, segment });
+  } catch (error) {
+    logger.error({ error }, 'Update segment error');
+    res.status(500).json({ success: false, error: 'Failed to update segment' });
+  }
+});
+
+router.delete('/segments/:segmentId', requireRole(ADMIN_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const success = await CampaignService.deleteSegment(req.params.segmentId, companyId);
+    if (!success) {
+      return res.status(404).json({ success: false, error: 'Segment not found' });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    logger.error({ error }, 'Delete segment error');
+    res.status(500).json({ success: false, error: 'Failed to delete segment' });
+  }
+});
+
+router.post('/segments/preview', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { criteria } = req.body;
+    const preview = await CampaignService.previewSegment(companyId, criteria);
+    res.json({ success: true, count: preview.count, patients: preview.patients });
+  } catch (error) {
+    logger.error({ error }, 'Preview segment error');
+    res.status(500).json({ success: false, error: 'Failed to preview segment' });
+  }
+});
+
 // ========== Workflows ==========
 
-router.post('/workflows', async (req, res) => {
+router.post('/workflows', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -334,7 +490,7 @@ router.post('/workflows', async (req, res) => {
   }
 });
 
-router.get('/workflows', async (req, res) => {
+router.get('/workflows', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -350,7 +506,7 @@ router.get('/workflows', async (req, res) => {
   }
 });
 
-router.get('/workflows/:workflowId', async (req, res) => {
+router.get('/workflows/:workflowId', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -368,7 +524,7 @@ router.get('/workflows/:workflowId', async (req, res) => {
   }
 });
 
-router.post('/workflows/trigger', async (req, res) => {
+router.post('/workflows/trigger', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -384,7 +540,7 @@ router.post('/workflows/trigger', async (req, res) => {
   }
 });
 
-router.get('/workflows/instances/:instanceId', async (req, res) => {
+router.get('/workflows/instances/:instanceId', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -399,6 +555,403 @@ router.get('/workflows/instances/:instanceId', async (req, res) => {
   } catch (error) {
     logger.error({ error }, 'Get workflow instance error');
     res.status(500).json({ success: false, error: 'Failed to get instance' });
+  }
+});
+
+// ========== Communication Preferences ==========
+
+router.get('/preferences/:patientId', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const preferences = await CommunicationsService.getPreferences(req.params.patientId, companyId);
+    res.json({ success: true, preferences });
+  } catch (error) {
+    logger.error({ error }, 'Get preferences error');
+    res.status(500).json({ success: false, error: 'Failed to get preferences' });
+  }
+});
+
+router.put('/preferences/:patientId', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const preferences = await CommunicationsService.updatePreferences(req.params.patientId, companyId, req.body);
+    res.json({ success: true, preferences });
+  } catch (error) {
+    logger.error({ error }, 'Update preferences error');
+    res.status(500).json({ success: false, error: 'Failed to update preferences' });
+  }
+});
+
+router.post('/preferences/:patientId/opt-out', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { channel, category } = req.body;
+    const preferences = await CommunicationsService.optOut(req.params.patientId, companyId, channel, category);
+    res.json({ success: true, preferences });
+  } catch (error) {
+    logger.error({ error }, 'Opt-out error');
+    res.status(500).json({ success: false, error: 'Failed to opt out' });
+  }
+});
+
+router.post('/preferences/:patientId/opt-in', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { channel, category } = req.body;
+    const preferences = await CommunicationsService.optIn(req.params.patientId, companyId, channel, category);
+    res.json({ success: true, preferences });
+  } catch (error) {
+    logger.error({ error }, 'Opt-in error');
+    res.status(500).json({ success: false, error: 'Failed to opt in' });
+  }
+});
+
+// ========== Inbox / Two-Way Communications ==========
+
+router.get('/inbox/conversations', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { status, channel, assignedTo, limit = '50', offset = '0' } = req.query;
+    const conversations = await CommunicationsService.listConversations(companyId, {
+      status: status as any,
+      channel: channel as any,
+      assignedTo: assignedTo as string,
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+    });
+    res.json({ success: true, conversations: conversations.conversations, total: conversations.total });
+  } catch (error) {
+    logger.error({ error }, 'List conversations error');
+    res.status(500).json({ success: false, error: 'Failed to list conversations' });
+  }
+});
+
+router.get('/inbox/conversations/:conversationId', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const conversation = await CommunicationsService.getConversation(req.params.conversationId, companyId);
+    if (!conversation) {
+      return res.status(404).json({ success: false, error: 'Conversation not found' });
+    }
+    res.json({ success: true, conversation });
+  } catch (error) {
+    logger.error({ error }, 'Get conversation error');
+    res.status(500).json({ success: false, error: 'Failed to get conversation' });
+  }
+});
+
+router.get('/inbox/conversations/:conversationId/messages', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const messages = await CommunicationsService.getConversationMessages(req.params.conversationId, companyId);
+    res.json({ success: true, messages });
+  } catch (error) {
+    logger.error({ error }, 'Get conversation messages error');
+    res.status(500).json({ success: false, error: 'Failed to get messages' });
+  }
+});
+
+router.post('/inbox/conversations/:conversationId/reply', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    const userId = (req as any).user?.id;
+    if (!companyId || !userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { content } = req.body;
+    const result = await CommunicationsService.replyToConversation(
+      req.params.conversationId,
+      companyId,
+      userId,
+      content
+    );
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    res.status(201).json(result);
+  } catch (error) {
+    logger.error({ error }, 'Reply to conversation error');
+    res.status(500).json({ success: false, error: 'Failed to send reply' });
+  }
+});
+
+router.put('/inbox/conversations/:conversationId/status', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { status } = req.body;
+    const conversation = await CommunicationsService.updateConversationStatus(
+      req.params.conversationId,
+      companyId,
+      status
+    );
+    if (!conversation) {
+      return res.status(404).json({ success: false, error: 'Conversation not found' });
+    }
+    res.json({ success: true, conversation });
+  } catch (error) {
+    logger.error({ error }, 'Update conversation status error');
+    res.status(500).json({ success: false, error: 'Failed to update status' });
+  }
+});
+
+router.put('/inbox/conversations/:conversationId/assign', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { assignedTo } = req.body;
+    const conversation = await CommunicationsService.assignConversation(
+      req.params.conversationId,
+      companyId,
+      assignedTo
+    );
+    if (!conversation) {
+      return res.status(404).json({ success: false, error: 'Conversation not found' });
+    }
+    res.json({ success: true, conversation });
+  } catch (error) {
+    logger.error({ error }, 'Assign conversation error');
+    res.status(500).json({ success: false, error: 'Failed to assign conversation' });
+  }
+});
+
+router.get('/inbox/stats', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const stats = await CommunicationsService.getInboxStats(companyId);
+    res.json({ success: true, stats });
+  } catch (error) {
+    logger.error({ error }, 'Get inbox stats error');
+    res.status(500).json({ success: false, error: 'Failed to get stats' });
+  }
+});
+
+// ========== Quick Send / Broadcast Messaging ==========
+
+router.post('/broadcast/preview', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { filters } = req.body;
+    const recipients = await CommunicationsService.getRecipientsByFilters(companyId, filters);
+    res.json({ success: true, recipients, count: recipients.length });
+  } catch (error) {
+    logger.error({ error }, 'Preview broadcast error');
+    res.status(500).json({ success: false, error: 'Failed to preview recipients' });
+  }
+});
+
+router.post('/broadcast/send', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    const userId = (req as any).user?.id;
+    if (!companyId || !userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { channel, filters, content, scheduledFor } = req.body;
+    const result = await CommunicationsService.sendBroadcast(
+      companyId,
+      userId,
+      channel,
+      filters,
+      content,
+      scheduledFor
+    );
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    res.status(201).json(result);
+  } catch (error) {
+    logger.error({ error }, 'Send broadcast error');
+    res.status(500).json({ success: false, error: 'Failed to send broadcast' });
+  }
+});
+
+router.get('/broadcast/history', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { limit = '50', offset = '0' } = req.query;
+    const broadcasts = await CommunicationsService.listBroadcasts(companyId, {
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+    });
+    res.json({ success: true, broadcasts: broadcasts.broadcasts, total: broadcasts.total });
+  } catch (error) {
+    logger.error({ error }, 'List broadcasts error');
+    res.status(500).json({ success: false, error: 'Failed to list broadcasts' });
+  }
+});
+
+router.get('/broadcast/:broadcastId/stats', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const stats = await CommunicationsService.getBroadcastStats(req.params.broadcastId, companyId);
+    if (!stats) {
+      return res.status(404).json({ success: false, error: 'Broadcast not found' });
+    }
+    res.json({ success: true, stats });
+  } catch (error) {
+    logger.error({ error }, 'Get broadcast stats error');
+    res.status(500).json({ success: false, error: 'Failed to get stats' });
+  }
+});
+
+// ========== Communication Analytics ==========
+
+router.get('/analytics/overview', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { startDate, endDate } = req.query;
+    const analytics = await CommunicationsService.getOverviewAnalytics(companyId, {
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+    });
+    res.json({ success: true, analytics });
+  } catch (error) {
+    logger.error({ error }, 'Get overview analytics error');
+    res.status(500).json({ success: false, error: 'Failed to get analytics' });
+  }
+});
+
+router.get('/analytics/channel-performance', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { startDate, endDate } = req.query;
+    const performance = await CommunicationsService.getChannelPerformance(companyId, {
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+    });
+    res.json({ success: true, performance });
+  } catch (error) {
+    logger.error({ error }, 'Get channel performance error');
+    res.status(500).json({ success: false, error: 'Failed to get performance' });
+  }
+});
+
+router.get('/analytics/send-time-optimization', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const optimization = await CommunicationsService.getSendTimeOptimization(companyId);
+    res.json({ success: true, optimization });
+  } catch (error) {
+    logger.error({ error }, 'Get send time optimization error');
+    res.status(500).json({ success: false, error: 'Failed to get optimization data' });
+  }
+});
+
+router.get('/analytics/engagement-trends', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { period = '30d' } = req.query;
+    const trends = await CommunicationsService.getEngagementTrends(companyId, period as string);
+    res.json({ success: true, trends });
+  } catch (error) {
+    logger.error({ error }, 'Get engagement trends error');
+    res.status(500).json({ success: false, error: 'Failed to get trends' });
+  }
+});
+
+router.get('/analytics/top-templates', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { limit = '10' } = req.query;
+    const templates = await CommunicationsService.getTopPerformingTemplates(companyId, parseInt(limit as string));
+    res.json({ success: true, templates });
+  } catch (error) {
+    logger.error({ error }, 'Get top templates error');
+    res.status(500).json({ success: false, error: 'Failed to get templates' });
+  }
+});
+
+router.get('/analytics/campaign-roi', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { startDate, endDate } = req.query;
+    const roi = await CommunicationsService.getCampaignROI(companyId, {
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+    });
+    res.json({ success: true, roi });
+  } catch (error) {
+    logger.error({ error }, 'Get campaign ROI error');
+    res.status(500).json({ success: false, error: 'Failed to get ROI data' });
   }
 });
 

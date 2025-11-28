@@ -12,10 +12,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { 
-  UserCircle, 
-  Eye, 
-  FileText, 
+import {
+  UserCircle,
+  Eye,
+  FileText,
   Calendar,
   ShoppingCart,
   Receipt,
@@ -27,7 +27,12 @@ import {
   Activity,
   DollarSign,
   Clock,
-  AlertCircle
+  AlertCircle,
+  MessageSquare,
+  CheckCircle2,
+  XCircle,
+  Smartphone,
+  Send
 } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
@@ -315,6 +320,10 @@ export default function PatientProfile() {
             <Receipt className="h-4 w-4" />
             Invoices ({invoices.length})
           </TabsTrigger>
+          <TabsTrigger value="communications" className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Communications
+          </TabsTrigger>
         </TabsList>
 
         {/* Appointments Tab */}
@@ -546,7 +555,277 @@ export default function PatientProfile() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Communications Tab */}
+        <TabsContent value="communications">
+          <PatientCommunications patientId={patientId!} patient={patient} />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// Patient Communications Component
+function PatientCommunications({ patientId, patient }: { patientId: string; patient: any }) {
+  const { data: messagesData, isLoading: messagesLoading } = useQuery({
+    queryKey: [`/api/communications/messages/recipient/${patientId}`],
+    queryFn: async () => {
+      const res = await fetch(`/api/communications/messages/recipient/${patientId}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch messages');
+      return res.json();
+    },
+  });
+
+  const { data: scheduledData, isLoading: scheduledLoading } = useQuery({
+    queryKey: [`/api/communications/messages/scheduled-patient-${patientId}`],
+    queryFn: async () => {
+      const res = await fetch(`/api/communications/messages/scheduled?recipientId=${patientId}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) return { messages: [] };
+      return res.json();
+    },
+  });
+
+  const messages = messagesData?.messages || [];
+  const scheduledMessages = scheduledData?.messages || [];
+  const totalMessages = messages.length + scheduledMessages.length;
+
+  const getChannelIcon = (channel: string) => {
+    switch (channel) {
+      case 'email': return <Mail className="h-4 w-4" />;
+      case 'sms': return <Smartphone className="h-4 w-4" />;
+      case 'whatsapp': return <MessageSquare className="h-4 w-4" />;
+      case 'push': return <Send className="h-4 w-4" />;
+      default: return <MessageSquare className="h-4 w-4" />;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, { variant: "default" | "secondary" | "destructive"; icon: any }> = {
+      sent: { variant: "default", icon: CheckCircle2 },
+      delivered: { variant: "default", icon: CheckCircle2 },
+      opened: { variant: "default", icon: CheckCircle2 },
+      failed: { variant: "destructive", icon: XCircle },
+      scheduled: { variant: "secondary", icon: Clock },
+    };
+
+    const config = variants[status] || variants.sent;
+    const Icon = config.icon;
+
+    return (
+      <Badge variant={config.variant} className="gap-1">
+        <Icon className="h-3 w-3" />
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
+  };
+
+  const isLoading = messagesLoading || scheduledLoading;
+
+  return (
+    <div className="space-y-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Total Messages
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{totalMessages}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {messages.length} sent, {scheduledMessages.length} scheduled
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              Delivered
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">
+              {messages.filter((m: any) => ['delivered', 'opened'].includes(m.status)).length}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {messages.length > 0 &&
+                `${((messages.filter((m: any) => ['delivered', 'opened'].includes(m.status)).length / messages.length) * 100).toFixed(1)}% delivery rate`
+              }
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Activity className="h-4 w-4 text-blue-600" />
+              Engagement
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">
+              {messages.filter((m: any) => m.status === 'opened').length}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {messages.filter((m: any) => ['delivered', 'opened'].includes(m.status)).length > 0 &&
+                `${((messages.filter((m: any) => m.status === 'opened').length / messages.filter((m: any) => ['delivered', 'opened'].includes(m.status)).length) * 100).toFixed(1)}% open rate`
+              }
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Message History */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Communication History</CardTitle>
+              <CardDescription>
+                Messages sent to {patient.name}
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Link href={`/ecp/preferences`}>
+                <Button variant="outline" size="sm">
+                  Preferences
+                </Button>
+              </Link>
+              <Link href={`/ecp/templates`}>
+                <Button size="sm">
+                  <Send className="h-4 w-4 mr-2" />
+                  Send Message
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <TableSkeleton rows={5} columns={6} />
+          ) : totalMessages === 0 ? (
+            <div className="text-center py-12">
+              <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">No communications yet</h3>
+              <p className="text-muted-foreground mb-4">
+                No messages have been sent to this patient
+              </p>
+              <Link href={`/ecp/templates`}>
+                <Button>
+                  <Send className="h-4 w-4 mr-2" />
+                  Send First Message
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Scheduled Messages */}
+              {scheduledMessages.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Scheduled Messages ({scheduledMessages.length})
+                  </h4>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Scheduled For</TableHead>
+                        <TableHead>Channel</TableHead>
+                        <TableHead>Subject/Content</TableHead>
+                        <TableHead>Source</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {scheduledMessages.map((msg: any) => (
+                        <TableRow key={msg.id}>
+                          <TableCell className="font-mono text-sm">
+                            {format(new Date(msg.scheduledFor), "MMM dd, yyyy HH:mm")}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {getChannelIcon(msg.channel)}
+                              <span className="capitalize">{msg.channel}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate">
+                            {msg.subject || msg.body.substring(0, 50)}...
+                          </TableCell>
+                          <TableCell>
+                            {msg.campaignName || msg.workflowName || 'Direct'}
+                          </TableCell>
+                          <TableCell>{getStatusBadge('scheduled')}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {/* Sent Messages */}
+              {messages.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Message History ({messages.length})
+                  </h4>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Channel</TableHead>
+                        <TableHead>Subject/Content</TableHead>
+                        <TableHead>Source</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Delivered</TableHead>
+                        <TableHead>Opened</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {messages
+                        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                        .map((msg: any) => (
+                        <TableRow key={msg.id}>
+                          <TableCell className="font-mono text-sm">
+                            {format(new Date(msg.createdAt), "MMM dd, yyyy HH:mm")}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {getChannelIcon(msg.channel)}
+                              <span className="capitalize">{msg.channel}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate">
+                            {msg.subject || msg.body.substring(0, 50)}...
+                          </TableCell>
+                          <TableCell>
+                            {msg.campaignName || msg.workflowName || 'Direct'}
+                          </TableCell>
+                          <TableCell>{getStatusBadge(msg.status)}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {msg.deliveredAt ? format(new Date(msg.deliveredAt), "HH:mm") : '—'}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {msg.openedAt ? format(new Date(msg.openedAt), "HH:mm") : '—'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
