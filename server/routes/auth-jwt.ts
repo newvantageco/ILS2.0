@@ -19,6 +19,86 @@ import { createLogger } from '../utils/logger.js';
 const router = Router();
 const logger = createLogger('auth-jwt');
 
+// ============================================
+// ACCOUNT LOCKOUT SYSTEM
+// ============================================
+// In-memory storage for development. In production, use Redis.
+// Tracks failed login attempts and account lockouts
+
+interface LoginAttemptTracker {
+  attempts: number;
+  lastAttempt: number;
+  lockedUntil: number | null;
+}
+
+const loginAttempts: Map<string, LoginAttemptTracker> = new Map();
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+const ATTEMPT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes - reset attempts after this
+
+/**
+ * Check if an account is currently locked
+ */
+function isAccountLocked(email: string): { locked: boolean; remainingMs?: number } {
+  const tracker = loginAttempts.get(email.toLowerCase());
+  if (!tracker || !tracker.lockedUntil) {
+    return { locked: false };
+  }
+
+  const now = Date.now();
+  if (now >= tracker.lockedUntil) {
+    // Lockout expired, reset
+    loginAttempts.delete(email.toLowerCase());
+    return { locked: false };
+  }
+
+  return {
+    locked: true,
+    remainingMs: tracker.lockedUntil - now
+  };
+}
+
+/**
+ * Record a failed login attempt
+ */
+function recordFailedAttempt(email: string): { locked: boolean; attemptsLeft: number } {
+  const normalizedEmail = email.toLowerCase();
+  const now = Date.now();
+
+  let tracker = loginAttempts.get(normalizedEmail);
+
+  if (!tracker || (now - tracker.lastAttempt > ATTEMPT_WINDOW_MS)) {
+    // Reset if first attempt or outside window
+    tracker = { attempts: 0, lastAttempt: now, lockedUntil: null };
+  }
+
+  tracker.attempts++;
+  tracker.lastAttempt = now;
+
+  if (tracker.attempts >= MAX_FAILED_ATTEMPTS) {
+    tracker.lockedUntil = now + LOCKOUT_DURATION_MS;
+    loginAttempts.set(normalizedEmail, tracker);
+
+    // Schedule cleanup
+    setTimeout(() => {
+      loginAttempts.delete(normalizedEmail);
+    }, LOCKOUT_DURATION_MS);
+
+    logger.warn(`Account locked due to too many failed attempts: ${email}`);
+    return { locked: true, attemptsLeft: 0 };
+  }
+
+  loginAttempts.set(normalizedEmail, tracker);
+  return { locked: false, attemptsLeft: MAX_FAILED_ATTEMPTS - tracker.attempts };
+}
+
+/**
+ * Clear failed attempts on successful login
+ */
+function clearFailedAttempts(email: string): void {
+  loginAttempts.delete(email.toLowerCase());
+}
+
 // Validation schemas
 const loginSchema = z.object({
   email: z.string().email('Invalid email format'),
@@ -72,14 +152,30 @@ router.post('/login', async (req: Request, res: Response) => {
 
     logger.info(`Login attempt for: ${email}`);
 
+    // SECURITY: Check if account is locked due to too many failed attempts
+    const lockStatus = isAccountLocked(email);
+    if (lockStatus.locked) {
+      const remainingMinutes = Math.ceil((lockStatus.remainingMs || 0) / 60000);
+      logger.warn(`Login blocked: Account locked - ${email}, ${remainingMinutes} minutes remaining`);
+      return res.status(429).json({
+        success: false,
+        error: `Account is temporarily locked due to too many failed login attempts. Try again in ${remainingMinutes} minutes.`,
+        code: 'ACCOUNT_LOCKED',
+        lockedUntil: Date.now() + (lockStatus.remainingMs || 0)
+      });
+    }
+
     // Get user from database
     const user = await storage.getUserByEmail(email.toLowerCase());
 
     if (!user) {
+      // Record failed attempt even for non-existent users (prevents user enumeration timing attacks)
+      const result = recordFailedAttempt(email);
       logger.warn(`Login failed: User not found - ${email}`);
       return res.status(401).json({
         success: false,
-        error: 'Invalid email or password'
+        error: 'Invalid email or password',
+        attemptsRemaining: result.attemptsLeft
       });
     }
 
@@ -87,10 +183,22 @@ router.post('/login', async (req: Request, res: Response) => {
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!isPasswordValid) {
-      logger.warn(`Login failed: Invalid password - ${email}`);
+      const result = recordFailedAttempt(email);
+      logger.warn(`Login failed: Invalid password - ${email}, ${result.attemptsLeft} attempts remaining`);
+
+      if (result.locked) {
+        return res.status(429).json({
+          success: false,
+          error: 'Account is now locked due to too many failed login attempts. Try again in 30 minutes.',
+          code: 'ACCOUNT_LOCKED',
+          lockedUntil: Date.now() + LOCKOUT_DURATION_MS
+        });
+      }
+
       return res.status(401).json({
         success: false,
-        error: 'Invalid email or password'
+        error: 'Invalid email or password',
+        attemptsRemaining: result.attemptsLeft
       });
     }
 
@@ -102,6 +210,9 @@ router.post('/login', async (req: Request, res: Response) => {
         error: 'Account is inactive. Please contact support.'
       });
     }
+
+    // SECURITY: Clear failed attempts on successful login
+    clearFailedAttempts(email);
 
     // Get user permissions based on role
     const permissions = getUserPermissions(user.role);

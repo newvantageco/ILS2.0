@@ -40,6 +40,11 @@ passwordSchema
   .is().not().oneOf(COMMON_PASSWORDS);
 
 // Security headers middleware - Enhanced with helmet.js
+// SECURITY: unsafe-eval only in development for Vite HMR, never in production
+const scriptSrcDirective = process.env.NODE_ENV === 'production'
+  ? ["'self'", "'unsafe-inline'"]  // Production: No unsafe-eval
+  : ["'self'", "'unsafe-inline'", "'unsafe-eval'"]; // Dev: unsafe-eval for Vite HMR
+
 export const securityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
@@ -47,7 +52,7 @@ export const securityHeaders = helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // unsafe-eval needed for Vite HMR in dev
+      scriptSrc: scriptSrcDirective,
       connectSrc: ["'self'", "https:", "wss:"],
       frameSrc: ["'self'", "https://js.stripe.com"],
       objectSrc: ["'none'"],
