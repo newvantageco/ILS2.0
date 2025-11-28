@@ -62,6 +62,7 @@ import {
   Zap,
   Target,
   Rocket,
+  ClipboardCheck,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -199,6 +200,7 @@ const menuItems = {
   ],
   platform_admin: [
     { title: "Platform Dashboard", url: "/platform-admin/dashboard", icon: Home },
+    { title: "Company Approvals", url: "/platform-admin/company-approvals", icon: ClipboardCheck },
     { title: "All Users", url: "/platform-admin/users", icon: Users },
     { title: "All Companies", url: "/platform-admin/companies", icon: Building2 },
     { title: "System Health", url: "/platform-admin/system-health", icon: Activity },
@@ -223,6 +225,7 @@ const menuItems = {
   company_admin: {
     admin: [
       { title: "Admin Dashboard", url: "/company-admin/dashboard", icon: Home },
+      { title: "Pending Members", url: "/company-admin/pending-members", icon: UserCheck },
       { title: "User Management", url: "/company-admin/users", icon: Users },
       { title: "Permissions", url: "/admin/permissions", icon: KeyRound },
       { title: "Role Management", url: "/admin/roles", icon: Shield },

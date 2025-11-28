@@ -59,6 +59,7 @@ const APIKeysManagementPage = lazy(() => import("@/pages/admin/APIKeysManagement
 const CompanyApprovalDashboard = lazy(() => import("@/pages/admin/CompanyApprovalDashboard"));
 const CompanyAdminPage = lazy(() => import("@/pages/CompanyAdminPage"));
 const TenantSelectionPage = lazy(() => import("@/pages/TenantSelectionPage"));
+const MemberApprovalDashboard = lazy(() => import("@/components/MemberApprovalDashboard"));
 const DispenserDashboard = lazy(() => import("@/pages/DispenserDashboardModern"));
 
 // ECP Pages
@@ -779,6 +780,7 @@ function AuthenticatedApp() {
           <>
             {/* Company Admin Dashboard */}
             <Route path="/company-admin/dashboard" component={CompanyAdminPage} />
+            <Route path="/company-admin/pending-members" component={MemberApprovalDashboard} />
             <Route path="/company-admin/profile" component={CompanyAdminPage} />
             <Route path="/company-admin/users" component={CompanyAdminPage} />
             <Route path="/company-admin/suppliers" component={CompanyAdminPage} />
