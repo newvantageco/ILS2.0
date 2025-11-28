@@ -667,16 +667,51 @@ function AuthenticatedApp() {
 
         {userRole === "company_admin" && (
           <>
+            {/* Company Admin Dashboard */}
             <Route path="/company-admin/dashboard" component={CompanyAdminPage} />
             <Route path="/company-admin/profile" component={CompanyAdminPage} />
             <Route path="/company-admin/users" component={CompanyAdminPage} />
-            <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/company-admin/suppliers" component={CompanyAdminPage} />
             <Route path="/company-admin/settings" component={SettingsPage} />
             <Route path="/company-admin/analytics" component={AnalyticsDashboard} />
             <Route path="/company-admin/ai-assistant" component={AIAssistantPage} />
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
+            <Route path="/admin/roles" component={RoleManagementPage} />
+            <Route path="/admin/audit-logs" component={AuditLogsPage} />
+            
+            {/* ECP Routes - Company Admin has full visibility into clinical operations */}
+            <Route path="/ecp/dashboard" component={ECPDashboard} />
+            <Route path="/ecp/patients" component={PatientsPage} />
+            <Route path="/ecp/patients/:id" component={PatientProfile} />
+            <Route path="/ecp/patient/:id/test" component={EyeTestPage} />
+            <Route path="/ecp/patient/:id/test-wizard" component={EyeTestWizard} />
+            <Route path="/ecp/prescriptions" component={PrescriptionsPage} />
+            <Route path="/ecp/inventory" component={InventoryManagement} />
+            <Route path="/ecp/examinations" component={ExaminationList} />
+            <Route path="/ecp/examination/new" component={EyeExaminationComprehensive} />
+            <Route path="/ecp/examination/:id" component={EyeExaminationComprehensive} />
+            <Route path="/ecp/outside-rx" component={AddOutsideRx} />
+            <Route path="/ecp/pos" component={OpticalPOSPage} />
+            <Route path="/ecp/invoices" component={InvoicesPage} />
+            <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
+            <Route path="/ecp/test-rooms" component={TestRoomsPage} />
+            <Route path="/ecp/diary" component={DiaryPage} />
+            <Route path="/ecp/communications" component={CommunicationsHubPage} />
+            <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
+            <Route path="/ecp/orders" component={ECPDashboard} />
+            <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />
             <Route path="/ecp/company" component={CompanyManagementPage} />
+            <Route path="/ecp/bi-dashboard" component={BIDashboardPage} />
+            <Route path="/ecp/analytics" component={AnalyticsDashboard} />
+            <Route path="/ecp/analytics/practice-pulse" component={PracticePulseDashboard} />
+            <Route path="/ecp/analytics/financial" component={FinancialDashboard} />
+            <Route path="/ecp/analytics/operational" component={OperationalDashboard} />
+            <Route path="/ecp/analytics/patient" component={PatientDashboard} />
+            <Route path="/ecp/analytics/ai-insights" component={PlatformAIDashboard} />
+            <Route path="/ecp/compliance" component={ComplianceDashboardPage} />
+            <Route path="/ecp/prescription-templates" component={PrescriptionTemplatesPage} />
+            <Route path="/ecp/clinical-protocols" component={ClinicalProtocolsPage} />
+            <Route path="/order/:id" component={OrderDetailsPage} />
           </>
         )}
 

@@ -184,15 +184,34 @@ const menuItems = {
     { title: "AI Assistant", url: "/admin/ai-assistant", icon: Brain },
     { title: "BI Dashboard", url: "/admin/bi-dashboard", icon: BarChart3 },
   ],
-  company_admin: [
-    { title: "Dashboard", url: "/company-admin/dashboard", icon: Home },
-    { title: "Company Settings", url: "/ecp/company", icon: Building2 },
-    { title: "User Management", url: "/company-admin/users", icon: Users },
-    { title: "Diary / Bookings", url: "/ecp/test-rooms/bookings", icon: CalendarDays },
-    { title: "Permissions", url: "/admin/permissions", icon: KeyRound },
-    { title: "Analytics", url: "/company-admin/analytics", icon: BarChart3 },
-    { title: "AI Assistant", url: "/company-admin/ai-assistant", icon: Brain },
-  ],
+  company_admin: {
+    admin: [
+      { title: "Admin Dashboard", url: "/company-admin/dashboard", icon: Home },
+      { title: "User Management", url: "/company-admin/users", icon: Users },
+      { title: "Permissions", url: "/admin/permissions", icon: KeyRound },
+      { title: "Role Management", url: "/admin/roles", icon: Shield },
+      { title: "Audit Logs", url: "/admin/audit-logs", icon: FileText },
+      { title: "Company Settings", url: "/ecp/company", icon: Building2 },
+    ],
+    clinical: [
+      { title: "ECP Dashboard", url: "/ecp/dashboard", icon: Eye },
+      { title: "Patients", url: "/ecp/patients", icon: UserCircle },
+      { title: "Examinations", url: "/ecp/examinations", icon: Eye },
+      { title: "Prescriptions", url: "/ecp/prescriptions", icon: FileText },
+      { title: "Diary / Bookings", url: "/ecp/test-rooms/bookings", icon: CalendarDays },
+    ],
+    retail: [
+      { title: "Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
+      { title: "Inventory", url: "/ecp/inventory", icon: Archive },
+      { title: "Invoices", url: "/ecp/invoices", icon: FileText },
+    ],
+    insights: [
+      { title: "Analytics", url: "/company-admin/analytics", icon: BarChart3 },
+      { title: "AI Assistant", url: "/company-admin/ai-assistant", icon: Brain },
+      { title: "BI Dashboard", url: "/ecp/bi-dashboard", icon: LineChart },
+      { title: "Compliance", url: "/ecp/compliance", icon: Shield },
+    ],
+  },
   dispenser: [
     { title: "Dashboard", url: "/dispenser/dashboard", icon: Home },
     { title: "Inventory", url: "/dispenser/inventory", icon: Archive },
@@ -224,7 +243,7 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
   };
 
   // Check if items is grouped (has sections)
-  const isGrouped = userRole === "ecp";
+  const isGrouped = userRole === "ecp" || userRole === "company_admin";
 
   return (
     <Sidebar aria-label="Primary">
@@ -245,12 +264,12 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
       <SidebarContent>
         {isGrouped && typeof items === 'object' && !Array.isArray(items) ? (
           <>
-            {/* Main Section - Always Expanded */}
+            {/* Main/Admin Section - Always Expanded */}
             <SidebarGroup>
-              <SidebarGroupLabel>Main</SidebarGroupLabel>
+              <SidebarGroupLabel>{userRole === "company_admin" ? "Administration" : "Main"}</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {items.main.map((item) => (
+                  {(items.main || items.admin || []).map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild
