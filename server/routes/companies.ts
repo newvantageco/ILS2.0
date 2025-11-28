@@ -10,11 +10,54 @@ const logger = createLogger('companies');
 /**
  * GET /api/companies/available
  * Get list of companies users can join
+ *
+ * SECURITY:
+ * - Platform admins see all companies
+ * - Regular users see only their own company (for display purposes)
+ * - Unauthenticated users see no companies (must be authenticated)
  */
 router.get('/available', async (req: Request, res: Response) => {
   try {
-    // Get all active companies with member count
-    const companiesList = await db
+    const userRole = req.user?.role;
+    const userCompanyId = req.user?.companyId;
+
+    // If no user, return empty (this endpoint requires auth)
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // Platform admin sees all companies
+    if (userRole === 'platform_admin') {
+      const companiesList = await db
+        .select({
+          id: companies.id,
+          name: companies.name,
+          type: companies.type,
+          industry: sql<string>`COALESCE(${companies.type}, 'General')`,
+          size: sql<string>`'Not specified'`,
+          createdAt: companies.createdAt,
+          memberCount: sql<number>`(
+            SELECT COUNT(*)::int
+            FROM ${users}
+            WHERE ${users.companyId} = ${companies.id}
+          )`,
+        })
+        .from(companies)
+        .where(eq(companies.status, 'active'))
+        .orderBy(companies.name);
+
+      return res.json(companiesList);
+    }
+
+    // Regular users only see their own company
+    if (!userCompanyId) {
+      return res.status(403).json({
+        error: 'No company association',
+        message: 'You are not associated with any company'
+      });
+    }
+
+    const [userCompany] = await db
       .select({
         id: companies.id,
         name: companies.name,
@@ -23,16 +66,20 @@ router.get('/available', async (req: Request, res: Response) => {
         size: sql<string>`'Not specified'`,
         createdAt: companies.createdAt,
         memberCount: sql<number>`(
-          SELECT COUNT(*)::int 
-          FROM ${users} 
+          SELECT COUNT(*)::int
+          FROM ${users}
           WHERE ${users.companyId} = ${companies.id}
         )`,
       })
       .from(companies)
-      .where(eq(companies.status, 'active'))
-      .orderBy(companies.name);
+      .where(eq(companies.id, userCompanyId))
+      .limit(1);
 
-    res.json(companiesList);
+    if (!userCompany) {
+      return res.status(404).json({ error: 'Your company not found' });
+    }
+
+    res.json([userCompany]); // Return as array for consistency
   } catch (error) {
     logger.error({ error }, 'Error fetching available companies');
     res.status(500).json({ error: 'Failed to fetch companies' });
@@ -42,10 +89,30 @@ router.get('/available', async (req: Request, res: Response) => {
 /**
  * GET /api/companies/:id
  * Get company details by ID
+ *
+ * SECURITY:
+ * - Platform admins can view any company
+ * - Regular users can only view their own company
+ * - Returns 403 if user tries to access another company
  */
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const userRole = req.user?.role;
+    const userCompanyId = req.user?.companyId;
+
+    // Authentication check
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // Authorization check: Can user access this company?
+    if (userRole !== 'platform_admin' && userCompanyId !== id) {
+      return res.status(403).json({
+        error: 'Access denied',
+        message: 'You can only view your own company details'
+      });
+    }
 
     const [company] = await db
       .select()

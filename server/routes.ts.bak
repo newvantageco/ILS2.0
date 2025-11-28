@@ -549,29 +549,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
 
   // RCM (Revenue Cycle Management) routes
-  app.use('/api/rcm', ...secureRoute(), rcmRoutes);
+  app.use('/api/rcm', isAuthenticated, rcmRoutes);
 
   // Population Health Management routes
-  app.use('/api/population-health', ...secureRoute(), populationHealthRoutes);
+  app.use('/api/population-health', isAuthenticated, populationHealthRoutes);
 
   // Quality Measures & Compliance routes
-  app.use('/api/quality', ...secureRoute(), qualityRoutes);
+  app.use('/api/quality', isAuthenticated, qualityRoutes);
 
   // Mobile Health (mHealth) routes
-  app.use('/api/mhealth', ...secureRoute(), mhealthRoutes);
+  app.use('/api/mhealth', isAuthenticated, mhealthRoutes);
 
   // Clinical Research Platform routes
-  app.use('/api/research', ...secureRoute(), researchRoutes);
+  app.use('/api/research', isAuthenticated, researchRoutes);
 
   // Telehealth routes
-  app.use('/api/telehealth', ...secureRoute(), telehealthRoutes);
+  app.use('/api/telehealth', isAuthenticated, telehealthRoutes);
 
   // ============================================================================
   // NHS INTEGRATION ROUTES - NOW CONNECTED!
   // ============================================================================
 
   // NHS/PCSE Integration routes (claims, vouchers, exemptions)
-  app.use('/api/nhs', ...secureRoute(), nhsRoutes);
+  app.use('/api/nhs', isAuthenticated, nhsRoutes);
 
   // ============================================================================
   // PATIENT PORTAL & PUBLIC ROUTES - NOW CONNECTED!
@@ -585,7 +585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
 
   // GDPR Compliance routes
-  app.use('/api/gdpr', ...secureRoute(), gdprRoutes);
+  app.use('/api/gdpr', isAuthenticated, gdprRoutes);
 
   // Two-Factor Authentication routes
   app.use('/api/two-factor', twoFactorRoutes);
@@ -595,54 +595,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
 
   // Integration Framework routes
-  app.use('/api/integrations', ...secureRoute(), integrationsRoutes);
+  app.use('/api/integrations', isAuthenticated, integrationsRoutes);
 
   // Communications (email, SMS, campaigns) routes
-  app.use('/api/communications', ...secureRoute(), communicationsRoutes);
+  app.use('/api/communications', isAuthenticated, communicationsRoutes);
 
   // ============================================================================
   // MONITORING & OBSERVABILITY ROUTES - NOW CONNECTED!
   // ============================================================================
 
   // System Monitoring routes
-  app.use('/api/monitoring', ...secureRoute(), monitoringRoutes);
+  app.use('/api/monitoring', isAuthenticated, monitoringRoutes);
 
   // Observability (tracing, metrics) routes
-  app.use('/api/observability', ...secureRoute(), observabilityRoutes);
+  app.use('/api/observability', isAuthenticated, observabilityRoutes);
 
   // ============================================================================
   // ADDITIONAL FEATURE ROUTES - NOW CONNECTED!
   // ============================================================================
 
   // Contact Lens Management routes
-  app.use('/api/contact-lens', ...secureRoute(), contactLensRoutes);
+  app.use('/api/contact-lens', isAuthenticated, contactLensRoutes);
 
   // Clinical Reporting routes
-  app.use('/api/clinical-reporting', ...secureRoute(), clinicalReportingRoutes);
+  app.use('/api/clinical-reporting', isAuthenticated, clinicalReportingRoutes);
 
   // Face Analysis (AI-powered) routes
-  app.use('/api/face-analysis', ...secureRoute(), faceAnalysisRoutes);
+  app.use('/api/face-analysis', isAuthenticated, faceAnalysisRoutes);
 
   // Lens Recommendations (AI-powered) routes
-  app.use('/api/lens-recommendations', ...secureRoute(), lensRecommendationsRoutes);
+  app.use('/api/lens-recommendations', isAuthenticated, lensRecommendationsRoutes);
 
   // Data Import/Export routes
-  app.use('/api/import', ...secureRoute(), importRoutes);
+  app.use('/api/import', isAuthenticated, importRoutes);
 
   // BI Analytics routes
-  app.use('/api/bi-analytics', ...secureRoute(), biAnalyticsRoutes);
+  app.use('/api/bi-analytics', isAuthenticated, biAnalyticsRoutes);
 
   // API Management routes
-  app.use('/api/api-management', ...secureRoute(), apiManagementRoutes);
+  app.use('/api/api-management', isAuthenticated, apiManagementRoutes);
 
   // Payment Processing routes
   registerPaymentRoutes(app);
 
   // AI/ML Service routes
-  app.use('/api/ai-ml', ...secureRoute(), aiMLRoutes);
+  app.use('/api/ai-ml', isAuthenticated, aiMLRoutes);
 
   // Ophthalmic AI routes
-  app.use('/api/ophthalmic-ai', ...secureRoute(), ophthalamicAIRoutes);
+  app.use('/api/ophthalmic-ai', isAuthenticated, ophthalamicAIRoutes);
 
   // Order Tracking routes
   app.use('/api/order-tracking', orderTrackingRoutes);
