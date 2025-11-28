@@ -159,6 +159,10 @@ app.use('/api/auth/login', authRateLimiter);
 app.use('/api/auth/login-email', authRateLimiter);
 app.use('/api/auth/signup', authRateLimiter);
 app.use('/api/auth/signup-email', authRateLimiter);
+app.use('/api/auth/forgot-password', authRateLimiter);
+app.use('/api/auth/reset-password', authRateLimiter);
+app.use('/api/patient-portal/auth/forgot-password', authRateLimiter);
+app.use('/api/patient-portal/auth/reset-password', authRateLimiter);
 app.use('/api/onboarding', authRateLimiter);
 
 // ============== SESSION CONFIGURATION ==============

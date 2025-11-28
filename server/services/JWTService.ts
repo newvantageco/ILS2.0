@@ -277,6 +277,130 @@ export class JWTService {
       secretConfigured: JWT_SECRET !== 'change-this-secret-in-production'
     };
   }
+
+  // ============================================
+  // TOKEN REVOCATION / BLACKLIST
+  // ============================================
+  // In-memory storage for development. In production, use Redis.
+  // Tokens are stored with their JTI or hash and auto-expire
+
+  private revokedTokens: Map<string, number> = new Map();
+  private revokedUsers: Map<string, number> = new Map();
+
+  /**
+   * Revoke a specific token (add to blacklist)
+   * Called when user logs out
+   *
+   * @param token - The JWT token to revoke
+   */
+  revokeToken(token: string): void {
+    try {
+      const decoded = this.decodeToken(token);
+      if (!decoded || !decoded.exp) {
+        logger.warn('Cannot revoke token: invalid or missing expiry');
+        return;
+      }
+
+      const expiryMs = decoded.exp * 1000;
+      const now = Date.now();
+
+      // Only store if token hasn't already expired
+      if (expiryMs > now) {
+        // Use a hash of the token for storage efficiency
+        const tokenHash = this.hashToken(token);
+        this.revokedTokens.set(tokenHash, expiryMs);
+
+        // Schedule cleanup when token naturally expires
+        const ttl = expiryMs - now;
+        setTimeout(() => {
+          this.revokedTokens.delete(tokenHash);
+        }, ttl);
+
+        logger.info(`Token revoked for user: ${decoded.userId}, expires in ${Math.floor(ttl / 1000)}s`);
+      }
+    } catch (error) {
+      logger.error('Failed to revoke token:', error);
+    }
+  }
+
+  /**
+   * Revoke all tokens for a user
+   * Called on password change, account compromise, or admin action
+   *
+   * @param userId - The user ID whose tokens should be revoked
+   * @param expiresInMs - How long to keep the revocation active (default: 30 days)
+   */
+  revokeAllUserTokens(userId: string, expiresInMs: number = 30 * 24 * 60 * 60 * 1000): void {
+    const expiryTime = Date.now() + expiresInMs;
+    this.revokedUsers.set(userId, expiryTime);
+
+    // Schedule cleanup
+    setTimeout(() => {
+      this.revokedUsers.delete(userId);
+    }, expiresInMs);
+
+    logger.info(`All tokens revoked for user: ${userId}`);
+  }
+
+  /**
+   * Check if a token has been revoked
+   *
+   * @param token - The JWT token to check
+   * @returns true if revoked, false otherwise
+   */
+  isTokenRevoked(token: string): boolean {
+    try {
+      // Check token-level revocation
+      const tokenHash = this.hashToken(token);
+      if (this.revokedTokens.has(tokenHash)) {
+        const expiryMs = this.revokedTokens.get(tokenHash)!;
+        if (Date.now() < expiryMs) {
+          return true;
+        }
+        // Clean up expired entry
+        this.revokedTokens.delete(tokenHash);
+      }
+
+      // Check user-level revocation
+      const decoded = this.decodeToken(token);
+      if (decoded) {
+        const userRevocationTime = this.revokedUsers.get(decoded.userId);
+        if (userRevocationTime) {
+          // Token issued before revocation time is invalid
+          const tokenIssuedAt = (decoded.iat || 0) * 1000;
+          if (tokenIssuedAt < userRevocationTime - (30 * 24 * 60 * 60 * 1000)) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    } catch (error) {
+      logger.error('Error checking token revocation:', error);
+      return false; // Fail open for availability, but log the error
+    }
+  }
+
+  /**
+   * Simple hash function for token storage
+   * Uses first and last portions plus length for uniqueness
+   */
+  private hashToken(token: string): string {
+    // Use a simple but effective hash: prefix + suffix + length
+    const prefix = token.substring(0, 20);
+    const suffix = token.substring(token.length - 20);
+    return `${prefix}...${suffix}:${token.length}`;
+  }
+
+  /**
+   * Get revocation stats (for monitoring)
+   */
+  getRevocationStats() {
+    return {
+      revokedTokens: this.revokedTokens.size,
+      revokedUsers: this.revokedUsers.size
+    };
+  }
 }
 
 // Singleton instance

@@ -90,6 +90,16 @@ export const authenticateJWT = (
       return;
     }
 
+    // SECURITY: Check if token has been revoked (logout, password change, etc.)
+    if (jwtService.isTokenRevoked(token)) {
+      logger.warn('Rejected revoked token');
+      res.status(401).json({
+        error: 'Token has been revoked. Please login again.',
+        code: 'TOKEN_REVOKED'
+      });
+      return;
+    }
+
     // Verify and decode token
     let payload: JWTPayload;
     try {
@@ -183,6 +193,13 @@ export const optionalAuthenticateJWT = (
 
     if (!token) {
       // No token provided, continue as anonymous user
+      next();
+      return;
+    }
+
+    // Check if token is revoked
+    if (jwtService.isTokenRevoked(token)) {
+      logger.debug('Optional auth: token revoked, continuing as anonymous');
       next();
       return;
     }

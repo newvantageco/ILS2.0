@@ -239,29 +239,45 @@ router.post('/refresh', async (req: Request, res: Response) => {
 /**
  * POST /api/auth/logout
  *
- * Logout (client-side token deletion)
- * JWT tokens are stateless, so logout is handled client-side
- * This endpoint is for logging purposes
+ * Logout and revoke tokens
+ * Adds the access token to the blacklist so it cannot be reused
  */
 router.post('/logout', authenticateJWT, async (req: Request, res: Response) => {
   try {
     const user = (req as AuthenticatedRequest).user;
+    const token = (req as AuthenticatedRequest).token;
 
-    if (user) {
-      // Log logout event
+    if (user && token) {
+      // SECURITY: Revoke the access token so it cannot be reused
+      jwtService.revokeToken(token);
+
+      // Also revoke refresh token if present in cookies
+      const refreshToken = req.cookies?.refresh_token;
+      if (refreshToken) {
+        jwtService.revokeToken(refreshToken);
+      }
+
+      // Log logout event with revocation info
       await storage.createAuditLog({
         userId: user.id,
         companyId: user.companyId,
         eventType: 'logout',
         eventCategory: 'authentication',
-        description: 'User logged out',
+        description: 'User logged out - tokens revoked',
         metadata: {
-          email: user.email
+          email: user.email,
+          tokenRevoked: true,
+          refreshTokenRevoked: !!refreshToken
         }
       });
 
-      logger.info(`Logout: ${user.email}`);
+      logger.info(`Logout + tokens revoked: ${user.email}`);
     }
+
+    // Clear cookies
+    res.clearCookie('auth_token');
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token', { path: '/api/auth/refresh' });
 
     res.json({
       success: true,
