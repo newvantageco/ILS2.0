@@ -67,6 +67,7 @@ const EyeTestPage = lazy(() => import("@/pages/EyeTestPage"));
 const EyeTestWizard = lazy(() => import("@/components/eye-test/EyeTestWizard").then(m => ({ default: m.EyeTestWizard })));
 const DiaryPage = lazy(() => import("@/pages/DiaryPage"));
 const CommunicationsHubPage = lazy(() => import("@/pages/CommunicationsHubPage"));
+const RecallManagementPage = lazy(() => import("@/pages/RecallManagementPage"));
 const TestRoomsPage = lazy(() => import("@/pages/TestRoomsPage"));
 const TestRoomBookingsPage = lazy(() => import("@/pages/TestRoomBookingsPage"));
 const OpticalPOSPage = lazy(() => import("@/pages/OpticalPOSPage"));
@@ -493,6 +494,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/test-rooms" component={TestRoomsPage} />
             <Route path="/ecp/diary" component={DiaryPage} />
             <Route path="/ecp/communications" component={CommunicationsHubPage} />
+            <Route path="/ecp/recalls" component={RecallManagementPage} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />
@@ -695,6 +697,7 @@ function AuthenticatedApp() {
             {/* Admin Routes */}
             <Route path="/admin/dashboard" component={AdminDashboard} />
             <Route path="/admin/audit-logs" component={AuditLogsPage} />
+            <Route path="/admin/recalls" component={RecallManagementPage} />
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
             <Route path="/admin/ai-assistant" component={AIAssistantPage} />
             <Route path="/admin/bi-dashboard" component={BIDashboardPage} />
@@ -717,7 +720,8 @@ function AuthenticatedApp() {
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
             <Route path="/admin/roles" component={RoleManagementPage} />
             <Route path="/admin/audit-logs" component={AuditLogsPage} />
-            
+            <Route path="/admin/recalls" component={RecallManagementPage} />
+
             {/* ECP Routes - Company Admin has full visibility into clinical operations */}
             <Route path="/ecp/dashboard" component={ECPDashboard} />
             <Route path="/ecp/patients" component={PatientsPage} />
@@ -736,6 +740,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/test-rooms" component={TestRoomsPage} />
             <Route path="/ecp/diary" component={DiaryPage} />
             <Route path="/ecp/communications" component={CommunicationsHubPage} />
+            <Route path="/ecp/recalls" component={RecallManagementPage} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />

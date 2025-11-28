@@ -11,10 +11,10 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { CollapsibleSidebarGroup } from "@/components/CollapsibleSidebarGroup";
-import { 
-  Home, 
-  Package, 
-  ClipboardList, 
+import {
+  Home,
+  Package,
+  ClipboardList,
   TrendingUp,
   Settings,
   HelpCircle,
@@ -50,6 +50,7 @@ import {
   Heart,
   Flag,
   Keyboard,
+  Bell,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -72,6 +73,7 @@ const menuItems = {
       { title: "Examinations", url: "/ecp/examinations", icon: Eye },
       { title: "Prescriptions", url: "/ecp/prescriptions", icon: FileText },
       { title: "Diary", url: "/ecp/test-rooms/bookings", icon: CalendarDays },
+      { title: "Patient Recalls", url: "/ecp/recalls", icon: Bell },
     ],
     retail: [
       { title: "Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
@@ -143,6 +145,7 @@ const menuItems = {
     { title: "Companies", url: "/admin/companies", icon: Building2 },
     { title: "Orders", url: "/admin/orders", icon: ClipboardList },
     { title: "Prescriptions", url: "/admin/prescriptions", icon: FileText },
+    { title: "Patient Recalls", url: "/admin/recalls", icon: Bell },
     { title: "Email Templates", url: "/admin/email-templates", icon: Mail },
     { title: "Healthcare Analytics", url: "/admin/healthcare-analytics", icon: Heart },
     { title: "Laboratory Integration", url: "/admin/laboratory", icon: Beaker },
@@ -191,6 +194,7 @@ const menuItems = {
       { title: "Permissions", url: "/admin/permissions", icon: KeyRound },
       { title: "Role Management", url: "/admin/roles", icon: Shield },
       { title: "Audit Logs", url: "/admin/audit-logs", icon: FileText },
+      { title: "Patient Recalls", url: "/admin/recalls", icon: Bell },
       { title: "Company Settings", url: "/ecp/company", icon: Building2 },
     ],
     clinical: [
