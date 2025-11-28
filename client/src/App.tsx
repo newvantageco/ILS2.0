@@ -73,6 +73,7 @@ const DispenserHandoffPage = lazy(() => import("@/pages/DispenserHandoffPage"));
 const CommunicationTemplatesPage = lazy(() => import("@/pages/CommunicationTemplatesPage"));
 const CampaignManagerPage = lazy(() => import("@/pages/CampaignManagerPage"));
 const PatientEngagementDashboard = lazy(() => import("@/pages/PatientEngagementDashboard"));
+const WorkflowBuilderPage = lazy(() => import("@/pages/WorkflowBuilderPage"));
 const TestRoomsPage = lazy(() => import("@/pages/TestRoomsPage"));
 const TestRoomBookingsPage = lazy(() => import("@/pages/TestRoomBookingsPage"));
 const OpticalPOSPage = lazy(() => import("@/pages/OpticalPOSPage"));
@@ -505,6 +506,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/templates" component={CommunicationTemplatesPage} />
             <Route path="/ecp/campaigns" component={CampaignManagerPage} />
             <Route path="/ecp/engagement" component={PatientEngagementDashboard} />
+            <Route path="/ecp/workflows" component={WorkflowBuilderPage} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />
@@ -609,6 +611,7 @@ function AuthenticatedApp() {
             <Route path="/admin/templates" component={CommunicationTemplatesPage} />
             <Route path="/admin/campaigns" component={CampaignManagerPage} />
             <Route path="/admin/engagement" component={PatientEngagementDashboard} />
+            <Route path="/admin/workflows" component={WorkflowBuilderPage} />
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
             <Route path="/admin/roles" component={RoleManagementPage} />
             <Route path="/admin/returns" component={ReturnsManagementPage} />
@@ -719,6 +722,7 @@ function AuthenticatedApp() {
             <Route path="/admin/templates" component={CommunicationTemplatesPage} />
             <Route path="/admin/campaigns" component={CampaignManagerPage} />
             <Route path="/admin/engagement" component={PatientEngagementDashboard} />
+            <Route path="/admin/workflows" component={WorkflowBuilderPage} />
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
             <Route path="/admin/ai-assistant" component={AIAssistantPage} />
             <Route path="/admin/bi-dashboard" component={BIDashboardPage} />
@@ -768,6 +772,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/templates" component={CommunicationTemplatesPage} />
             <Route path="/ecp/campaigns" component={CampaignManagerPage} />
             <Route path="/ecp/engagement" component={PatientEngagementDashboard} />
+            <Route path="/ecp/workflows" component={WorkflowBuilderPage} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />

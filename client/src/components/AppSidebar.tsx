@@ -54,6 +54,7 @@ import {
   Clock,
   UserCheck,
   Send,
+  GitBranch,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -81,6 +82,7 @@ const menuItems = {
       { title: "Dispenser Handoff", url: "/ecp/handoff", icon: UserCheck },
       { title: "Message Templates", url: "/ecp/templates", icon: Mail },
       { title: "Campaign Manager", url: "/ecp/campaigns", icon: Send },
+      { title: "Workflow Automation", url: "/ecp/workflows", icon: GitBranch },
     ],
     retail: [
       { title: "Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
@@ -158,6 +160,7 @@ const menuItems = {
     { title: "Dispenser Handoff", url: "/admin/handoff", icon: UserCheck },
     { title: "Message Templates", url: "/admin/templates", icon: Mail },
     { title: "Campaign Manager", url: "/admin/campaigns", icon: Send },
+    { title: "Workflow Automation", url: "/admin/workflows", icon: GitBranch },
     { title: "Patient Engagement", url: "/admin/engagement", icon: Activity },
     { title: "Email Templates", url: "/admin/email-templates", icon: Mail },
     { title: "Healthcare Analytics", url: "/admin/healthcare-analytics", icon: Heart },
@@ -212,6 +215,7 @@ const menuItems = {
       { title: "Dispenser Handoff", url: "/admin/handoff", icon: UserCheck },
       { title: "Message Templates", url: "/admin/templates", icon: Mail },
       { title: "Campaign Manager", url: "/admin/campaigns", icon: Send },
+      { title: "Workflow Automation", url: "/admin/workflows", icon: GitBranch },
       { title: "Patient Engagement", url: "/admin/engagement", icon: Activity },
       { title: "Company Settings", url: "/ecp/company", icon: Building2 },
     ],
