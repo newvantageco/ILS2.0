@@ -58,6 +58,7 @@ import {
   History,
   UserCog,
   CalendarClock,
+  Inbox,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -88,6 +89,7 @@ const menuItems = {
       { title: "Workflow Automation", url: "/ecp/workflows", icon: GitBranch },
       { title: "Message History", url: "/ecp/messages", icon: History },
       { title: "Scheduled Queue", url: "/ecp/scheduled", icon: CalendarClock },
+      { title: "Communications Inbox", url: "/ecp/inbox", icon: Inbox },
       { title: "Patient Preferences", url: "/ecp/preferences", icon: UserCog },
     ],
     retail: [
@@ -227,6 +229,7 @@ const menuItems = {
       { title: "Workflow Automation", url: "/admin/workflows", icon: GitBranch },
       { title: "Message History", url: "/admin/messages", icon: History },
       { title: "Scheduled Queue", url: "/admin/scheduled", icon: CalendarClock },
+      { title: "Communications Inbox", url: "/admin/inbox", icon: Inbox },
       { title: "Patient Preferences", url: "/admin/preferences", icon: UserCog },
       { title: "Patient Engagement", url: "/admin/engagement", icon: Activity },
       { title: "Company Settings", url: "/ecp/company", icon: Building2 },

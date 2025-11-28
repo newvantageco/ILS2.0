@@ -547,4 +547,147 @@ router.post('/preferences/:patientId/opt-in', requireRole(MESSAGING_ROLES), asyn
   }
 });
 
+// ========== Inbox / Two-Way Communications ==========
+
+router.get('/inbox/conversations', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { status, channel, assignedTo, limit = '50', offset = '0' } = req.query;
+    const conversations = await CommunicationsService.listConversations(companyId, {
+      status: status as any,
+      channel: channel as any,
+      assignedTo: assignedTo as string,
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+    });
+    res.json({ success: true, conversations: conversations.conversations, total: conversations.total });
+  } catch (error) {
+    logger.error({ error }, 'List conversations error');
+    res.status(500).json({ success: false, error: 'Failed to list conversations' });
+  }
+});
+
+router.get('/inbox/conversations/:conversationId', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const conversation = await CommunicationsService.getConversation(req.params.conversationId, companyId);
+    if (!conversation) {
+      return res.status(404).json({ success: false, error: 'Conversation not found' });
+    }
+    res.json({ success: true, conversation });
+  } catch (error) {
+    logger.error({ error }, 'Get conversation error');
+    res.status(500).json({ success: false, error: 'Failed to get conversation' });
+  }
+});
+
+router.get('/inbox/conversations/:conversationId/messages', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const messages = await CommunicationsService.getConversationMessages(req.params.conversationId, companyId);
+    res.json({ success: true, messages });
+  } catch (error) {
+    logger.error({ error }, 'Get conversation messages error');
+    res.status(500).json({ success: false, error: 'Failed to get messages' });
+  }
+});
+
+router.post('/inbox/conversations/:conversationId/reply', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    const userId = (req as any).user?.id;
+    if (!companyId || !userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { content } = req.body;
+    const result = await CommunicationsService.replyToConversation(
+      req.params.conversationId,
+      companyId,
+      userId,
+      content
+    );
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    res.status(201).json(result);
+  } catch (error) {
+    logger.error({ error }, 'Reply to conversation error');
+    res.status(500).json({ success: false, error: 'Failed to send reply' });
+  }
+});
+
+router.put('/inbox/conversations/:conversationId/status', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { status } = req.body;
+    const conversation = await CommunicationsService.updateConversationStatus(
+      req.params.conversationId,
+      companyId,
+      status
+    );
+    if (!conversation) {
+      return res.status(404).json({ success: false, error: 'Conversation not found' });
+    }
+    res.json({ success: true, conversation });
+  } catch (error) {
+    logger.error({ error }, 'Update conversation status error');
+    res.status(500).json({ success: false, error: 'Failed to update status' });
+  }
+});
+
+router.put('/inbox/conversations/:conversationId/assign', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { assignedTo } = req.body;
+    const conversation = await CommunicationsService.assignConversation(
+      req.params.conversationId,
+      companyId,
+      assignedTo
+    );
+    if (!conversation) {
+      return res.status(404).json({ success: false, error: 'Conversation not found' });
+    }
+    res.json({ success: true, conversation });
+  } catch (error) {
+    logger.error({ error }, 'Assign conversation error');
+    res.status(500).json({ success: false, error: 'Failed to assign conversation' });
+  }
+});
+
+router.get('/inbox/stats', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const stats = await CommunicationsService.getInboxStats(companyId);
+    res.json({ success: true, stats });
+  } catch (error) {
+    logger.error({ error }, 'Get inbox stats error');
+    res.status(500).json({ success: false, error: 'Failed to get stats' });
+  }
+});
+
 export default router;
