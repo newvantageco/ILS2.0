@@ -69,6 +69,7 @@ const DiaryPage = lazy(() => import("@/pages/DiaryPage"));
 const CommunicationsHubPage = lazy(() => import("@/pages/CommunicationsHubPage"));
 const RecallManagementPage = lazy(() => import("@/pages/RecallManagementPage"));
 const WaitlistManagementPage = lazy(() => import("@/pages/WaitlistManagementPage"));
+const DispenserHandoffPage = lazy(() => import("@/pages/DispenserHandoffPage"));
 const TestRoomsPage = lazy(() => import("@/pages/TestRoomsPage"));
 const TestRoomBookingsPage = lazy(() => import("@/pages/TestRoomBookingsPage"));
 const OpticalPOSPage = lazy(() => import("@/pages/OpticalPOSPage"));
@@ -497,6 +498,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/communications" component={CommunicationsHubPage} />
             <Route path="/ecp/recalls" component={RecallManagementPage} />
             <Route path="/ecp/waitlist" component={WaitlistManagementPage} />
+            <Route path="/ecp/handoff" component={DispenserHandoffPage} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />
@@ -597,6 +599,7 @@ function AuthenticatedApp() {
             <Route path="/admin/audit-logs" component={AuditLogsPage} />
             <Route path="/admin/recalls" component={RecallManagementPage} />
             <Route path="/admin/waitlist" component={WaitlistManagementPage} />
+            <Route path="/admin/handoff" component={DispenserHandoffPage} />
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
             <Route path="/admin/roles" component={RoleManagementPage} />
             <Route path="/admin/returns" component={ReturnsManagementPage} />
@@ -703,6 +706,7 @@ function AuthenticatedApp() {
             <Route path="/admin/audit-logs" component={AuditLogsPage} />
             <Route path="/admin/recalls" component={RecallManagementPage} />
             <Route path="/admin/waitlist" component={WaitlistManagementPage} />
+            <Route path="/admin/handoff" component={DispenserHandoffPage} />
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
             <Route path="/admin/ai-assistant" component={AIAssistantPage} />
             <Route path="/admin/bi-dashboard" component={BIDashboardPage} />
@@ -748,6 +752,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/communications" component={CommunicationsHubPage} />
             <Route path="/ecp/recalls" component={RecallManagementPage} />
             <Route path="/ecp/waitlist" component={WaitlistManagementPage} />
+            <Route path="/ecp/handoff" component={DispenserHandoffPage} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />
@@ -769,6 +774,7 @@ function AuthenticatedApp() {
         {userRole === "dispenser" && (
           <>
             <Route path="/dispenser/dashboard" component={DispenserDashboard} />
+            <Route path="/dispenser/handoff" component={DispenserHandoffPage} />
             <Route path="/ecp/pos" component={OpticalPOSPage} />
             <Route path="/ecp/patients" component={PatientsPage} />
             <Route path="/ecp/inventory" component={InventoryManagement} />

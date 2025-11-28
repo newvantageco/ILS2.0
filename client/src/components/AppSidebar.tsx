@@ -52,6 +52,7 @@ import {
   Keyboard,
   Bell,
   Clock,
+  UserCheck,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -76,6 +77,7 @@ const menuItems = {
       { title: "Diary", url: "/ecp/test-rooms/bookings", icon: CalendarDays },
       { title: "Patient Recalls", url: "/ecp/recalls", icon: Bell },
       { title: "Waitlist Queue", url: "/ecp/waitlist", icon: Clock },
+      { title: "Dispenser Handoff", url: "/ecp/handoff", icon: UserCheck },
     ],
     retail: [
       { title: "Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
@@ -149,6 +151,7 @@ const menuItems = {
     { title: "Prescriptions", url: "/admin/prescriptions", icon: FileText },
     { title: "Patient Recalls", url: "/admin/recalls", icon: Bell },
     { title: "Waitlist Queue", url: "/admin/waitlist", icon: Clock },
+    { title: "Dispenser Handoff", url: "/admin/handoff", icon: UserCheck },
     { title: "Email Templates", url: "/admin/email-templates", icon: Mail },
     { title: "Healthcare Analytics", url: "/admin/healthcare-analytics", icon: Heart },
     { title: "Laboratory Integration", url: "/admin/laboratory", icon: Beaker },
@@ -199,6 +202,7 @@ const menuItems = {
       { title: "Audit Logs", url: "/admin/audit-logs", icon: FileText },
       { title: "Patient Recalls", url: "/admin/recalls", icon: Bell },
       { title: "Waitlist Queue", url: "/admin/waitlist", icon: Clock },
+      { title: "Dispenser Handoff", url: "/admin/handoff", icon: UserCheck },
       { title: "Company Settings", url: "/ecp/company", icon: Building2 },
     ],
     clinical: [
@@ -222,9 +226,10 @@ const menuItems = {
   },
   dispenser: [
     { title: "Dashboard", url: "/dispenser/dashboard", icon: Home },
+    { title: "Handoff Queue", url: "/dispenser/handoff", icon: UserCheck },
+    { title: "Point of Sale", url: "/dispenser/pos", icon: ShoppingCart },
     { title: "Inventory", url: "/dispenser/inventory", icon: Archive },
     { title: "Orders", url: "/dispenser/orders", icon: ClipboardList },
-    { title: "Point of Sale", url: "/dispenser/pos", icon: ShoppingCart },
     { title: "Patients", url: "/dispenser/patients", icon: UserCircle },
     { title: "Analytics", url: "/dispenser/analytics", icon: LineChart },
   ],
