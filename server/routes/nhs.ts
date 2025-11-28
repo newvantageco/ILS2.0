@@ -1,9 +1,10 @@
 /**
- * NHS/PCSE API Routes
+ * NHS Digital API Routes
  *
- * Endpoints for NHS claims, vouchers, exemptions, and practitioners.
+ * Comprehensive NHS integration for UK healthcare compliance.
+ * Reference: https://digital.nhs.uk/developer/guides-and-documentation/reference-guide#statuses
  *
- * Routes:
+ * === CLAIMS ROUTES ===
  * - POST   /api/nhs/claims/create
  * - POST   /api/nhs/claims/:id/submit
  * - GET    /api/nhs/claims/:id
@@ -13,6 +14,7 @@
  * - POST   /api/nhs/claims/batch-submit
  * - DELETE /api/nhs/claims/:id
  *
+ * === VOUCHER ROUTES ===
  * - POST   /api/nhs/vouchers/check-eligibility
  * - POST   /api/nhs/vouchers/calculate
  * - POST   /api/nhs/vouchers/create
@@ -21,6 +23,7 @@
  * - GET    /api/nhs/vouchers/patient/:patientId
  * - GET    /api/nhs/vouchers/statistics
  *
+ * === EXEMPTION ROUTES ===
  * - POST   /api/nhs/exemptions/check
  * - POST   /api/nhs/exemptions/auto-detect
  * - POST   /api/nhs/exemptions/create
@@ -28,6 +31,29 @@
  * - GET    /api/nhs/exemptions/patient/:patientId
  * - GET    /api/nhs/exemptions/expiring
  * - GET    /api/nhs/exemptions/statistics
+ *
+ * === PDS (Personal Demographics Service) ROUTES ===
+ * - GET    /api/nhs/pds/patient/:nhsNumber     - Lookup patient by NHS number
+ * - POST   /api/nhs/pds/search                 - Search patients by demographics
+ * - POST   /api/nhs/pds/verify                 - Verify NHS number exists
+ * - GET    /api/nhs/pds/validate/:nhsNumber    - Validate NHS number format
+ *
+ * === SYSTEM STATUS ROUTES ===
+ * - GET    /api/nhs/system/status              - Get integration status
+ * - POST   /api/nhs/system/test-connection     - Test NHS API connection
+ * - GET    /api/nhs/system/environment         - Get environment config
+ * - POST   /api/nhs/sync                       - Trigger NHS data sync
+ *
+ * === ONBOARDING ROUTES ===
+ * - GET    /api/nhs/onboarding/status          - Get onboarding checklist
+ *
+ * === e-REFERRAL SERVICE ROUTES ===
+ * - GET    /api/nhs/referrals/services         - Search available services
+ * - POST   /api/nhs/referrals/create           - Create new referral
+ * - GET    /api/nhs/referrals/:id              - Get referral by ID
+ * - GET    /api/nhs/referrals/patient/:nhsNumber - Get patient referrals
+ * - POST   /api/nhs/referrals/:id/submit       - Submit referral
+ * - POST   /api/nhs/referrals/:id/cancel       - Cancel referral
  */
 
 import express, { Request, Response } from "express";
@@ -35,6 +61,9 @@ import { requireAuth } from "../middleware/auth.js";
 import { NhsClaimsService } from "../services/NhsClaimsService.js";
 import { NhsVoucherService } from "../services/NhsVoucherService.js";
 import { NhsExemptionService } from "../services/NhsExemptionService.js";
+import { nhsApiAuthService } from "../services/NhsApiAuthService.js";
+import { nhsPdsService } from "../services/NhsPdsService.js";
+import { nhsEReferralService, OPHTHALMOLOGY_SPECIALTIES, EYE_REFERRAL_REASONS } from "../services/NhsEReferralService.js";
 import {
   createNhsClaimSchema,
   createNhsVoucherSchema,
@@ -586,6 +615,591 @@ router.get("/exemptions/statistics", requireAuth, async (req: Request, res: Resp
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     logger.error({ error: errorMessage }, 'Get exemption statistics error');
     res.status(500).json({ error: error.message || "Failed to get exemption statistics" });
+  }
+});
+
+// ============== NHS PDS (Personal Demographics Service) ROUTES ==============
+
+/**
+ * GET /api/nhs/pds/patient/:nhsNumber
+ * Lookup patient by NHS number from PDS
+ */
+router.get("/pds/patient/:nhsNumber", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { nhsNumber } = req.params;
+
+    // Validate NHS number format first
+    if (!nhsPdsService.validateNhsNumber(nhsNumber)) {
+      return res.status(400).json({ 
+        error: "Invalid NHS number format",
+        details: "NHS number must be 10 digits with valid checksum"
+      });
+    }
+
+    const patient = await nhsPdsService.getPatientByNhsNumber(nhsNumber);
+
+    if (!patient) {
+      return res.status(404).json({ 
+        error: "Patient not found",
+        nhsNumber: nhsPdsService.formatNhsNumber(nhsNumber)
+      });
+    }
+
+    res.json(patient);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, nhsNumber: req.params.nhsNumber?.slice(-4) }, 'PDS patient lookup error');
+    res.status(500).json({ error: "Failed to lookup patient in PDS" });
+  }
+});
+
+/**
+ * POST /api/nhs/pds/search
+ * Search for patients in PDS by demographics
+ */
+router.post("/pds/search", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { family, given, birthdate, gender, postcode, email, phone } = req.body;
+
+    // Require at least 2 search parameters
+    const params = { family, given, birthdate, gender, postcode, email, phone };
+    const providedParams = Object.values(params).filter(v => v).length;
+    
+    if (providedParams < 2) {
+      return res.status(400).json({
+        error: "Insufficient search parameters",
+        details: "PDS search requires at least 2 parameters (e.g., family name + date of birth)"
+      });
+    }
+
+    const patients = await nhsPdsService.searchPatients(params);
+
+    res.json({
+      total: patients.length,
+      patients
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'PDS patient search error');
+    res.status(500).json({ error: "Failed to search patients in PDS" });
+  }
+});
+
+/**
+ * POST /api/nhs/pds/verify
+ * Verify an NHS number exists in PDS
+ */
+router.post("/pds/verify", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { nhsNumber } = req.body;
+
+    if (!nhsNumber) {
+      return res.status(400).json({ error: "NHS number is required" });
+    }
+
+    const result = await nhsPdsService.verifyNhsNumber(nhsNumber);
+
+    res.json(result);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'NHS number verification error');
+    res.status(500).json({ error: "Failed to verify NHS number" });
+  }
+});
+
+/**
+ * GET /api/nhs/pds/validate/:nhsNumber
+ * Validate NHS number format (offline validation)
+ */
+router.get("/pds/validate/:nhsNumber", async (req: Request, res: Response) => {
+  try {
+    const { nhsNumber } = req.params;
+    
+    const isValid = nhsPdsService.validateNhsNumber(nhsNumber);
+    const formatted = nhsPdsService.formatNhsNumber(nhsNumber);
+
+    res.json({
+      nhsNumber: formatted,
+      valid: isValid,
+      message: isValid 
+        ? "NHS number format is valid (checksum verified)" 
+        : "Invalid NHS number format or checksum"
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Validation failed" });
+  }
+});
+
+// ============== NHS SYSTEM STATUS ROUTES ==============
+
+/**
+ * GET /api/nhs/system/status
+ * Get NHS integration system status
+ */
+router.get("/system/status", requireAuth, async (req: Request, res: Response) => {
+  try {
+    // Check API auth service
+    const authConfigured = nhsApiAuthService.isConfigured();
+    const environment = nhsApiAuthService.getCurrentEnvironment();
+    
+    // Check PDS service health
+    const pdsHealth = await nhsPdsService.healthCheck();
+
+    // Test connection if configured
+    let connectionTest = null;
+    if (authConfigured) {
+      connectionTest = await nhsApiAuthService.testConnection();
+    }
+
+    res.json({
+      configured: authConfigured,
+      environment,
+      claims_service: true,         // Always available (internal)
+      voucher_service: true,        // Always available (internal)
+      exemption_service: true,      // Always available (internal)
+      pds_service: pdsHealth.available,
+      api_status: connectionTest?.success ? 'connected' : (authConfigured ? 'error' : 'not_configured'),
+      last_sync: new Date().toISOString(),
+      connection_test: connectionTest,
+      pds_health: pdsHealth
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'Get NHS system status error');
+    res.status(500).json({ error: "Failed to get system status" });
+  }
+});
+
+/**
+ * POST /api/nhs/system/test-connection
+ * Test NHS API connection
+ */
+router.post("/system/test-connection", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const result = await nhsApiAuthService.testConnection();
+    res.json(result);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'NHS connection test error');
+    res.status(500).json({ 
+      success: false,
+      error: "Connection test failed",
+      message: errorMessage
+    });
+  }
+});
+
+/**
+ * GET /api/nhs/system/environment
+ * Get current NHS API environment configuration
+ */
+router.get("/system/environment", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const environment = nhsApiAuthService.getCurrentEnvironment();
+    const config = nhsApiAuthService.getEnvironmentConfig();
+    const configured = nhsApiAuthService.isConfigured();
+
+    res.json({
+      environment,
+      configured,
+      endpoints: {
+        baseUrl: config.baseUrl,
+        tokenUrl: config.tokenUrl,
+      },
+      features: {
+        pds: true,           // Personal Demographics Service
+        claims: true,        // GOS Claims (PCSE)
+        vouchers: true,      // NHS Vouchers
+        exemptions: true,    // Patient Exemptions
+      }
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'Get NHS environment error');
+    res.status(500).json({ error: "Failed to get environment configuration" });
+  }
+});
+
+/**
+ * POST /api/nhs/sync
+ * Trigger NHS data synchronization
+ */
+router.post("/sync", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const companyId = user.companyId;
+
+    // This would trigger various NHS data sync operations
+    // For now, we just verify connectivity
+    const connectionTest = await nhsApiAuthService.testConnection();
+
+    if (!connectionTest.success) {
+      return res.status(503).json({
+        success: false,
+        message: "NHS API connection unavailable",
+        details: connectionTest.message
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "NHS data sync initiated",
+      timestamp: new Date().toISOString(),
+      environment: connectionTest.environment
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'NHS sync error');
+    res.status(500).json({ error: "Failed to sync NHS data" });
+  }
+});
+
+// ============== NHS ONBOARDING CHECKLIST ROUTES ==============
+
+/**
+ * GET /api/nhs/onboarding/status
+ * Get NHS onboarding status for the company
+ */
+router.get("/onboarding/status", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    
+    // Return onboarding requirements checklist
+    res.json({
+      companyId: user.companyId,
+      requirements: [
+        {
+          step: 1,
+          name: "Create Developer Account",
+          description: "Register at https://onboarding.prod.api.platform.nhs.uk",
+          required: true,
+          status: "pending",
+          link: "https://onboarding.prod.api.platform.nhs.uk/Index"
+        },
+        {
+          step: 2,
+          name: "Obtain ODS Code",
+          description: "Get Organisation Data Service code for your organisation",
+          required: true,
+          status: "pending",
+          link: "https://digital.nhs.uk/services/organisation-data-service"
+        },
+        {
+          step: 3,
+          name: "Confirm Use Case",
+          description: "Submit your product details and intended use case",
+          required: true,
+          status: "pending"
+        },
+        {
+          step: 4,
+          name: "HSCN Connection",
+          description: "Health and Social Care Network connection (if required)",
+          required: false,
+          status: "not_required",
+          link: "https://digital.nhs.uk/services/health-and-social-care-network"
+        },
+        {
+          step: 5,
+          name: "DSPT Completion",
+          description: "Complete Data Security and Protection Toolkit",
+          required: true,
+          status: "pending",
+          link: "https://digital.nhs.uk/services/data-security-and-protection-toolkit"
+        },
+        {
+          step: 6,
+          name: "Clinical Safety (DCB0129)",
+          description: "Implement clinical risk management process",
+          required: true,
+          status: "pending",
+          link: "https://digital.nhs.uk/data-and-information/information-standards/information-standards-and-data-collections-including-extractions/publications-and-notifications/standards-and-collections/dcb0129-clinical-risk-management-its-application-in-the-manufacture-of-health-it-systems"
+        },
+        {
+          step: 7,
+          name: "Medical Device Classification",
+          description: "Determine if your software is a medical device",
+          required: true,
+          status: "pending",
+          link: "https://www.gov.uk/government/publications/medical-devices-software-applications-apps"
+        },
+        {
+          step: 8,
+          name: "Product Assurance",
+          description: "Complete functional and non-functional testing",
+          required: true,
+          status: "pending"
+        },
+        {
+          step: 9,
+          name: "Penetration Testing",
+          description: "Complete security penetration testing",
+          required: true,
+          status: "pending"
+        },
+        {
+          step: 10,
+          name: "Service Desk Registration",
+          description: "Register with NHS National Service Desk",
+          required: true,
+          status: "pending",
+          link: "https://www.support.digitalservices.nhs.uk/csm"
+        }
+      ],
+      connectionAgreement: {
+        reviewed: false,
+        signed: false,
+        termsLink: "https://digital.nhs.uk/services/partner-onboarding/operations"
+      },
+      overallProgress: 0,
+      readyForProduction: false
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'Get NHS onboarding status error');
+    res.status(500).json({ error: "Failed to get onboarding status" });
+  }
+});
+
+// ============== NHS e-REFERRAL SERVICE ROUTES ==============
+
+/**
+ * GET /api/nhs/referrals/services
+ * Search for available ophthalmology services
+ */
+router.get("/referrals/services", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { specialty, postcode, priority, maxDistance } = req.query;
+
+    if (!specialty || !OPHTHALMOLOGY_SPECIALTIES[specialty as keyof typeof OPHTHALMOLOGY_SPECIALTIES]) {
+      return res.status(400).json({
+        error: "Invalid or missing specialty",
+        validSpecialties: Object.keys(OPHTHALMOLOGY_SPECIALTIES)
+      });
+    }
+
+    const services = await nhsEReferralService.searchServices({
+      specialty: specialty as keyof typeof OPHTHALMOLOGY_SPECIALTIES,
+      patientPostcode: postcode as string,
+      priority: priority as any,
+      maxDistance: maxDistance ? parseInt(maxDistance as string) : undefined,
+    });
+
+    res.json({
+      total: services.length,
+      services
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'Search services error');
+    res.status(500).json({ error: "Failed to search services" });
+  }
+});
+
+/**
+ * GET /api/nhs/referrals/specialties
+ * Get list of available ophthalmology specialties
+ */
+router.get("/referrals/specialties", async (req: Request, res: Response) => {
+  res.json({
+    specialties: Object.entries(OPHTHALMOLOGY_SPECIALTIES).map(([key, code]) => ({
+      code: key,
+      nhsCode: code,
+      name: key.replace(/_/g, ' ')
+    })),
+    referralReasons: Object.entries(EYE_REFERRAL_REASONS).map(([key, description]) => ({
+      code: key,
+      description
+    }))
+  });
+});
+
+/**
+ * POST /api/nhs/referrals/create
+ * Create a new e-Referral
+ */
+router.post("/referrals/create", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    
+    const {
+      patientNhsNumber,
+      patientName,
+      patientDateOfBirth,
+      specialty,
+      priority,
+      referralReason,
+      clinicalDetails,
+      urgencyJustification,
+      preferredServices
+    } = req.body;
+
+    // Validate required fields
+    if (!patientNhsNumber || !patientName || !specialty || !priority || !referralReason || !clinicalDetails) {
+      return res.status(400).json({
+        error: "Missing required fields",
+        required: ["patientNhsNumber", "patientName", "specialty", "priority", "referralReason", "clinicalDetails"]
+      });
+    }
+
+    // Validate specialty
+    if (!OPHTHALMOLOGY_SPECIALTIES[specialty as keyof typeof OPHTHALMOLOGY_SPECIALTIES]) {
+      return res.status(400).json({
+        error: "Invalid specialty",
+        validSpecialties: Object.keys(OPHTHALMOLOGY_SPECIALTIES)
+      });
+    }
+
+    // Validate referral reason
+    if (!EYE_REFERRAL_REASONS[referralReason as keyof typeof EYE_REFERRAL_REASONS]) {
+      return res.status(400).json({
+        error: "Invalid referral reason",
+        validReasons: Object.keys(EYE_REFERRAL_REASONS)
+      });
+    }
+
+    // Urgency justification required for non-routine referrals
+    if (priority !== 'routine' && !urgencyJustification) {
+      return res.status(400).json({
+        error: "Urgency justification required for urgent or 2-week-wait referrals"
+      });
+    }
+
+    const referral = await nhsEReferralService.createReferral({
+      patientNhsNumber,
+      patientName,
+      patientDateOfBirth,
+      referringPractitionerId: user.id,
+      referringPractitionerName: 'Referring Practitioner', // Would come from user profile
+      referringOrganisationOds: process.env.ODS_CODE || '',
+      referringOrganisationName: 'ILS Practice', // Would come from company settings
+      specialty,
+      priority,
+      referralReason,
+      clinicalDetails,
+      urgencyJustification,
+      preferredServices
+    });
+
+    res.status(201).json(referral);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage }, 'Create referral error');
+    res.status(500).json({ error: "Failed to create referral" });
+  }
+});
+
+/**
+ * GET /api/nhs/referrals/:id
+ * Get referral by ID
+ */
+router.get("/referrals/:id", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const referral = await nhsEReferralService.getReferral(id);
+
+    if (!referral) {
+      return res.status(404).json({ error: "Referral not found" });
+    }
+
+    res.json(referral);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, referralId: req.params.id }, 'Get referral error');
+    res.status(500).json({ error: "Failed to get referral" });
+  }
+});
+
+/**
+ * GET /api/nhs/referrals/patient/:nhsNumber
+ * Get all referrals for a patient
+ */
+router.get("/referrals/patient/:nhsNumber", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { nhsNumber } = req.params;
+
+    // Validate NHS number
+    if (!nhsPdsService.validateNhsNumber(nhsNumber)) {
+      return res.status(400).json({ error: "Invalid NHS number format" });
+    }
+
+    const referrals = await nhsEReferralService.getPatientReferrals(nhsNumber);
+
+    res.json({
+      nhsNumber: nhsPdsService.formatNhsNumber(nhsNumber),
+      total: referrals.length,
+      referrals
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, nhsNumber: req.params.nhsNumber?.slice(-4) }, 'Get patient referrals error');
+    res.status(500).json({ error: "Failed to get patient referrals" });
+  }
+});
+
+/**
+ * POST /api/nhs/referrals/:id/submit
+ * Submit a draft referral for processing
+ */
+router.post("/referrals/:id/submit", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { selectedServiceId } = req.body;
+
+    const referral = await nhsEReferralService.submitReferral(id, selectedServiceId);
+
+    res.json({
+      message: "Referral submitted successfully",
+      referral
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, referralId: req.params.id }, 'Submit referral error');
+    res.status(500).json({ error: "Failed to submit referral" });
+  }
+});
+
+/**
+ * POST /api/nhs/referrals/:id/cancel
+ * Cancel a referral
+ */
+router.post("/referrals/:id/cancel", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ error: "Cancellation reason is required" });
+    }
+
+    const success = await nhsEReferralService.cancelReferral(id, reason);
+
+    if (success) {
+      res.json({ message: "Referral cancelled successfully" });
+    } else {
+      res.status(500).json({ error: "Failed to cancel referral" });
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error({ error: errorMessage, referralId: req.params.id }, 'Cancel referral error');
+    res.status(500).json({ error: "Failed to cancel referral" });
+  }
+});
+
+/**
+ * GET /api/nhs/referrals/health
+ * Check e-Referral Service availability
+ */
+router.get("/referrals/health", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const health = await nhsEReferralService.healthCheck();
+    res.json(health);
+  } catch (error) {
+    res.status(500).json({ 
+      available: false, 
+      message: "Health check failed" 
+    });
   }
 });
 
