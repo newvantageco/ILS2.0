@@ -398,6 +398,81 @@ router.get('/segments', requireRole(VIEW_ROLES), async (req, res) => {
   }
 });
 
+router.get('/segments/:segmentId', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const segment = await CampaignService.getSegment(req.params.segmentId, companyId);
+    if (!segment) {
+      return res.status(404).json({ success: false, error: 'Segment not found' });
+    }
+    res.json({ success: true, segment });
+  } catch (error) {
+    logger.error({ error }, 'Get segment error');
+    res.status(500).json({ success: false, error: 'Failed to get segment' });
+  }
+});
+
+router.put('/segments/:segmentId', requireRole(ADMIN_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { name, description, criteria } = req.body;
+    const segment = await CampaignService.updateSegment(req.params.segmentId, companyId, {
+      name,
+      description,
+      criteria,
+    });
+    if (!segment) {
+      return res.status(404).json({ success: false, error: 'Segment not found' });
+    }
+    res.json({ success: true, segment });
+  } catch (error) {
+    logger.error({ error }, 'Update segment error');
+    res.status(500).json({ success: false, error: 'Failed to update segment' });
+  }
+});
+
+router.delete('/segments/:segmentId', requireRole(ADMIN_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const success = await CampaignService.deleteSegment(req.params.segmentId, companyId);
+    if (!success) {
+      return res.status(404).json({ success: false, error: 'Segment not found' });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    logger.error({ error }, 'Delete segment error');
+    res.status(500).json({ success: false, error: 'Failed to delete segment' });
+  }
+});
+
+router.post('/segments/preview', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { criteria } = req.body;
+    const preview = await CampaignService.previewSegment(companyId, criteria);
+    res.json({ success: true, count: preview.count, patients: preview.patients });
+  } catch (error) {
+    logger.error({ error }, 'Preview segment error');
+    res.status(500).json({ success: false, error: 'Failed to preview segment' });
+  }
+});
+
 // ========== Workflows ==========
 
 router.post('/workflows', requireRole(ADMIN_ROLES), async (req, res) => {
