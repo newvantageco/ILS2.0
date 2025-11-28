@@ -39,6 +39,12 @@ const OnboardingFlow = lazy(() => import("@/pages/OnboardingFlow"));
 const EmailLoginPage = lazy(() => import("@/pages/EmailLoginPage"));
 const EmailSignupPage = lazy(() => import("@/pages/EmailSignupPage"));
 
+// Policy Pages
+const PrivacyPolicy = lazy(() => import("@/pages/policies/PrivacyPolicy"));
+const TermsOfService = lazy(() => import("@/pages/policies/TermsOfService"));
+const CookiePolicy = lazy(() => import("@/pages/policies/CookiePolicy"));
+const GDPRCompliance = lazy(() => import("@/pages/policies/GDPRCompliance"));
+
 // Dashboards - Using Modern versions for enhanced UX
 const ECPDashboard = lazy(() => import("@/pages/ECPDashboard"));
 const LabDashboard = lazy(() => import("@/pages/LabDashboardModern"));
@@ -328,6 +334,39 @@ function AuthenticatedApp() {
     return (
       <Suspense fallback={<RouteLoadingFallback />}>
         <EmailSignupPage />
+      </Suspense>
+    );
+  }
+
+  // Policy pages (public, no auth required)
+  if (location === '/privacy') {
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <PrivacyPolicy />
+      </Suspense>
+    );
+  }
+
+  if (location === '/terms') {
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <TermsOfService />
+      </Suspense>
+    );
+  }
+
+  if (location === '/cookies') {
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <CookiePolicy />
+      </Suspense>
+    );
+  }
+
+  if (location === '/gdpr') {
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <GDPRCompliance />
       </Suspense>
     );
   }
