@@ -56,7 +56,9 @@ const PlatformAdminPage = lazy(() => import("@/pages/PlatformAdminPage"));
 const SystemHealthDashboard = lazy(() => import("@/pages/admin/SystemHealthDashboard"));
 const SystemConfigPage = lazy(() => import("@/pages/admin/SystemConfigPage"));
 const APIKeysManagementPage = lazy(() => import("@/pages/admin/APIKeysManagementPage"));
+const CompanyApprovalDashboard = lazy(() => import("@/pages/admin/CompanyApprovalDashboard"));
 const CompanyAdminPage = lazy(() => import("@/pages/CompanyAdminPage"));
+const TenantSelectionPage = lazy(() => import("@/pages/TenantSelectionPage"));
 const DispenserDashboard = lazy(() => import("@/pages/DispenserDashboardModern"));
 
 // ECP Pages
@@ -432,8 +434,9 @@ function AuthenticatedApp() {
     return (
       <Suspense fallback={<RouteLoadingFallback />}>
         <Switch>
+          <Route path="/tenant-selection" component={TenantSelectionPage} />
           <Route path="/onboarding" component={OnboardingFlow} />
-          <Route><Redirect to="/onboarding" /></Route>
+          <Route><Redirect to="/tenant-selection" /></Route>
         </Switch>
       </Suspense>
     );
@@ -692,6 +695,7 @@ function AuthenticatedApp() {
             <Route path="/platform-admin/dashboard" component={PlatformAdminPage} />
             <Route path="/platform-admin/users" component={PlatformAdminPage} />
             <Route path="/platform-admin/companies" component={PlatformAdminPage} />
+            <Route path="/platform-admin/company-approvals" component={CompanyApprovalDashboard} />
             <Route path="/platform-admin/system-health" component={SystemHealthDashboard} />
             <Route path="/platform-admin/system-config" component={SystemConfigPage} />
             <Route path="/platform-admin/api-keys" component={APIKeysManagementPage} />

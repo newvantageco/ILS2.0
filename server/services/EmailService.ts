@@ -497,6 +497,390 @@ export class EmailService {
       html,
     });
   }
+
+  /**
+   * Send company approval notification email
+   */
+  async sendCompanyApprovalEmail(
+    recipientEmail: string,
+    recipientName: string,
+    companyName: string
+  ): Promise<boolean> {
+    const loginUrl = process.env.APP_URL || 'http://localhost:5000';
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+          .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+          }
+          .content {
+            background-color: #f0fdf4;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+          }
+          .success-box {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 25px 0;
+            border-left: 4px solid #10b981;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+          }
+          .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 14px 28px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+          }
+          .footer {
+            text-align: center;
+            color: #6b7280;
+            margin-top: 30px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Company Approved!</h1>
+        </div>
+        <div class="content">
+          <p>Dear ${recipientName},</p>
+          <p>Great news! Your company <strong>${companyName}</strong> has been approved on the Integrated Lens System platform.</p>
+
+          <div class="success-box">
+            <h2 style="color: #10b981; margin: 0 0 10px 0;">You're All Set!</h2>
+            <p style="margin: 0;">Your company is now active and you can start using all platform features.</p>
+          </div>
+
+          <h3>What's Next?</h3>
+          <ul>
+            <li>Log in to your dashboard</li>
+            <li>Invite your team members</li>
+            <li>Configure your company settings</li>
+            <li>Start managing your optical business</li>
+          </ul>
+
+          <div style="text-align: center;">
+            <a href="${loginUrl}/login" class="button">
+              Go to Dashboard
+            </a>
+          </div>
+
+          <div class="footer">
+            <p>Need help? Contact us at support@integratedlenssystem.com</p>
+            <p><strong>Integrated Lens System</strong></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return await this.sendEmail({
+      to: recipientEmail,
+      subject: `Your Company "${companyName}" Has Been Approved - ILS`,
+      html,
+    });
+  }
+
+  /**
+   * Send company rejection notification email
+   */
+  async sendCompanyRejectionEmail(
+    recipientEmail: string,
+    recipientName: string,
+    companyName: string,
+    reason?: string
+  ): Promise<boolean> {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+          .header {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+          }
+          .content {
+            background-color: #fef2f2;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+          }
+          .reason-box {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 25px 0;
+            border-left: 4px solid #ef4444;
+          }
+          .footer {
+            text-align: center;
+            color: #6b7280;
+            margin-top: 30px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Company Registration Update</h1>
+        </div>
+        <div class="content">
+          <p>Dear ${recipientName},</p>
+          <p>We regret to inform you that your company registration for <strong>${companyName}</strong> could not be approved at this time.</p>
+
+          ${reason ? `
+          <div class="reason-box">
+            <h3 style="color: #ef4444; margin: 0 0 10px 0;">Reason:</h3>
+            <p style="margin: 0;">${reason}</p>
+          </div>
+          ` : ''}
+
+          <h3>What You Can Do:</h3>
+          <ul>
+            <li>Review the reason provided above</li>
+            <li>Contact our support team for clarification</li>
+            <li>Submit a new registration with updated information</li>
+          </ul>
+
+          <p>If you believe this was a mistake, please don't hesitate to reach out to us.</p>
+
+          <div class="footer">
+            <p>Need help? Contact us at support@integratedlenssystem.com</p>
+            <p><strong>Integrated Lens System</strong></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return await this.sendEmail({
+      to: recipientEmail,
+      subject: `Company Registration Update - ${companyName}`,
+      html,
+    });
+  }
+
+  /**
+   * Send user approval notification email
+   */
+  async sendUserApprovalEmail(
+    recipientEmail: string,
+    recipientName: string,
+    companyName: string,
+    role: string
+  ): Promise<boolean> {
+    const loginUrl = process.env.APP_URL || 'http://localhost:5000';
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+          .header {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+          }
+          .content {
+            background-color: #eff6ff;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+          }
+          .success-box {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 25px 0;
+            border-left: 4px solid #3b82f6;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+          .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            padding: 14px 28px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+          }
+          .footer {
+            text-align: center;
+            color: #6b7280;
+            margin-top: 30px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Welcome to ${companyName}!</h1>
+        </div>
+        <div class="content">
+          <p>Dear ${recipientName},</p>
+          <p>Your request to join <strong>${companyName}</strong> has been approved!</p>
+
+          <div class="success-box">
+            <p><strong>Your Role:</strong> ${role.replace('_', ' ').toUpperCase()}</p>
+            <p>You now have access to the platform and can start using all features available to your role.</p>
+          </div>
+
+          <div style="text-align: center;">
+            <a href="${loginUrl}/login" class="button">
+              Start Using ILS
+            </a>
+          </div>
+
+          <div class="footer">
+            <p>Need help? Contact your company administrator or support@integratedlenssystem.com</p>
+            <p><strong>Integrated Lens System</strong></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return await this.sendEmail({
+      to: recipientEmail,
+      subject: `You've Been Added to ${companyName} - ILS`,
+      html,
+    });
+  }
+
+  /**
+   * Send pending join request notification to company admin
+   */
+  async sendJoinRequestNotification(
+    adminEmail: string,
+    adminName: string,
+    requestorName: string,
+    requestorEmail: string,
+    companyName: string
+  ): Promise<boolean> {
+    const dashboardUrl = process.env.APP_URL || 'http://localhost:5000';
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+          .header {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+          }
+          .content {
+            background-color: #fffbeb;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+          }
+          .request-box {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 25px 0;
+            border-left: 4px solid #f59e0b;
+          }
+          .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            padding: 14px 28px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+          }
+          .footer {
+            text-align: center;
+            color: #6b7280;
+            margin-top: 30px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>New Join Request</h1>
+        </div>
+        <div class="content">
+          <p>Dear ${adminName},</p>
+          <p>Someone has requested to join <strong>${companyName}</strong> on the ILS platform.</p>
+
+          <div class="request-box">
+            <h3 style="color: #f59e0b; margin: 0 0 15px 0;">Requestor Details</h3>
+            <p><strong>Name:</strong> ${requestorName}</p>
+            <p><strong>Email:</strong> ${requestorEmail}</p>
+          </div>
+
+          <p>Please review this request and approve or reject it through your admin dashboard.</p>
+
+          <div style="text-align: center;">
+            <a href="${dashboardUrl}/company-admin/users" class="button">
+              Review Request
+            </a>
+          </div>
+
+          <div class="footer">
+            <p><strong>Integrated Lens System</strong></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return await this.sendEmail({
+      to: adminEmail,
+      subject: `New Join Request for ${companyName} - Action Required`,
+      html,
+    });
+  }
 }
 
 // Create singleton instance
