@@ -194,6 +194,31 @@ router.get('/messages/stats', requireRole(VIEW_ROLES), async (req, res) => {
   }
 });
 
+router.get('/messages', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { channel, status, campaignId, search, limit = '100', offset = '0', startDate, endDate } = req.query;
+    const messages = await CommunicationsService.listMessages(companyId, {
+      channel: channel as any,
+      status: status as any,
+      campaignId: campaignId as string,
+      search: search as string,
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+    });
+    res.json({ success: true, messages: messages.messages, total: messages.total });
+  } catch (error) {
+    logger.error({ error }, 'List messages error');
+    res.status(500).json({ success: false, error: 'Failed to list messages' });
+  }
+});
+
 // ========== Campaigns ==========
 
 router.post('/campaigns', requireRole(ADMIN_ROLES), async (req, res) => {
