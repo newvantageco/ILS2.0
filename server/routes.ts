@@ -80,6 +80,7 @@ import {
   auditLog
 } from "./middleware/security";
 import { getCsrfToken, csrfProtection } from "./middleware/csrfProtection";
+import { requireMFA, checkMFASetup } from "./middleware/mfa-enforcement";
 import { 
   BadRequestError,
   UnauthorizedError,
@@ -369,10 +370,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerMarketplaceRoutes(app);
   
   // Platform Analytics: Cross-tenant insights & revenue (Chunk 7)
-  app.use('/api/platform-admin', platformAdminRoutes);
+  // SECURITY: MFA required for all platform admin access
+  app.use('/api/platform-admin', isAuthenticated, requireMFA, platformAdminRoutes);
 
   // System Admin: Configuration, monitoring, and operations
-  app.use('/api/system-admin', systemAdminRoutes);
+  // SECURITY: MFA required for all system admin access
+  app.use('/api/system-admin', isAuthenticated, requireMFA, systemAdminRoutes);
 
   // =============================================================================
   
@@ -456,7 +459,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/users', isAuthenticated, userManagementRoutes);
 
   // Register Audit Log routes (admin-only HIPAA compliance)
-  app.use('/api/admin/audit-logs', auditLogRoutes);
+  // SECURITY: MFA required for audit log access (sensitive data)
+  app.use('/api/admin/audit-logs', isAuthenticated, requireMFA, auditLogRoutes);
 
   // Register Archival & Data Retrieval routes (soft delete, historical data, reports)
   app.use('/api/archival', isAuthenticated, archivalRoutes);
