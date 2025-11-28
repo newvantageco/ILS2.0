@@ -1,5 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { globalLoadingManager } from "./globalLoading";
+import { getCsrfToken, fetchCsrfToken } from "./api";
 
 async function throwIfResNotOk(res: Response, clearCacheOnAuthFailure = true) {
   if (!res.ok) {
@@ -18,13 +19,38 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
+  retry = true,
 ): Promise<Response> {
+  // Build headers
+  const headers: Record<string, string> = {};
+  if (data) {
+    headers["Content-Type"] = "application/json";
+  }
+  
+  // Add CSRF token for non-GET requests
+  const methodUpper = method.toUpperCase();
+  if (methodUpper !== "GET" && methodUpper !== "HEAD" && methodUpper !== "OPTIONS") {
+    const csrfToken = getCsrfToken();
+    if (csrfToken) {
+      headers["X-CSRF-Token"] = csrfToken;
+    }
+  }
+  
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
+
+  // Handle CSRF token validation failure - retry once with fresh token
+  if (res.status === 403 && retry) {
+    const errorText = await res.clone().text();
+    if (errorText.includes("CSRF")) {
+      await fetchCsrfToken();
+      return apiRequest(method, url, data, false); // Retry without further retries
+    }
+  }
 
   await throwIfResNotOk(res);
   return res;
