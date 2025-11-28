@@ -442,4 +442,68 @@ router.get('/workflows/instances/:instanceId', requireRole(VIEW_ROLES), async (r
   }
 });
 
+// ========== Communication Preferences ==========
+
+router.get('/preferences/:patientId', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const preferences = await CommunicationsService.getPreferences(req.params.patientId, companyId);
+    res.json({ success: true, preferences });
+  } catch (error) {
+    logger.error({ error }, 'Get preferences error');
+    res.status(500).json({ success: false, error: 'Failed to get preferences' });
+  }
+});
+
+router.put('/preferences/:patientId', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const preferences = await CommunicationsService.updatePreferences(req.params.patientId, companyId, req.body);
+    res.json({ success: true, preferences });
+  } catch (error) {
+    logger.error({ error }, 'Update preferences error');
+    res.status(500).json({ success: false, error: 'Failed to update preferences' });
+  }
+});
+
+router.post('/preferences/:patientId/opt-out', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { channel, category } = req.body;
+    const preferences = await CommunicationsService.optOut(req.params.patientId, companyId, channel, category);
+    res.json({ success: true, preferences });
+  } catch (error) {
+    logger.error({ error }, 'Opt-out error');
+    res.status(500).json({ success: false, error: 'Failed to opt out' });
+  }
+});
+
+router.post('/preferences/:patientId/opt-in', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { channel, category } = req.body;
+    const preferences = await CommunicationsService.optIn(req.params.patientId, companyId, channel, category);
+    res.json({ success: true, preferences });
+  } catch (error) {
+    logger.error({ error }, 'Opt-in error');
+    res.status(500).json({ success: false, error: 'Failed to opt in' });
+  }
+});
+
 export default router;
