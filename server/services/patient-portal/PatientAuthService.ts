@@ -11,6 +11,7 @@ import { patients } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { jwtService } from '../JWTService.js';
 
 const logger = loggers.api;
 
@@ -446,7 +447,10 @@ export class PatientAuthService {
     account.updatedAt = new Date();
     this.accounts.set(accountId, account);
 
-    logger.info({ accountId }, 'Password changed successfully');
+    // SECURITY: Revoke all existing tokens - password change invalidates all sessions
+    jwtService.revokeAllUserTokens(accountId);
+
+    logger.info({ accountId }, 'Password changed successfully - all tokens revoked');
 
     return { success: true };
   }

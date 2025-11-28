@@ -26,10 +26,37 @@ function parseErrorMessage(error: unknown): string {
 }
 
 /**
+ * Check if error is a token revocation error
+ */
+function isTokenRevokedError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return error.message.includes('TOKEN_REVOKED') ||
+           error.message.includes('Token has been revoked');
+  }
+  return false;
+}
+
+/**
  * Check if error is an auth error that should redirect
  */
 function isAuthError(error: unknown): boolean {
   if (error instanceof Error) {
+    // Check for token revocation first - show specific message
+    if (isTokenRevokedError(error)) {
+      // Show user-friendly message for token revocation
+      if (toastFn) {
+        toastFn({
+          title: 'Session Expired',
+          description: 'Your session was ended because your password was changed. Please log in again.',
+          variant: 'destructive',
+        });
+      }
+      // Redirect to login after a short delay
+      setTimeout(() => {
+        window.location.href = '/login?reason=session_revoked';
+      }, 1500);
+      return true;
+    }
     return error.message.startsWith('401:') || error.message.startsWith('403:');
   }
   return false;

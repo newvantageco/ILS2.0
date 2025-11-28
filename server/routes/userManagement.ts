@@ -26,6 +26,7 @@ import {
 import { hashPassword } from '../localAuth';
 import { z } from 'zod';
 import { createLogger } from '../utils/logger';
+import { jwtService } from '../services/JWTService.js';
 
 const router = Router();
 const logger = createLogger('userManagement');
@@ -422,9 +423,12 @@ router.delete('/:id', requireCompanyOrPlatformAdmin, async (req, res) => {
       })
       .where(eq(users.id, id));
 
+    // SECURITY: Revoke all tokens for deactivated user
+    jwtService.revokeAllUserTokens(id);
+
     res.json({
       success: true,
-      message: 'User deactivated successfully'
+      message: 'User deactivated successfully - all sessions terminated'
     });
   } catch (error) {
     logger.error({ error, userId: id }, 'Error deleting user');
