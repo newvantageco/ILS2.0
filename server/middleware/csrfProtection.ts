@@ -10,19 +10,31 @@ import type { Request, Response, NextFunction } from 'express';
 import logger from '../utils/logger';
 
 
-const CSRF_SECRET = process.env.CSRF_SECRET || 'your-secret-csrf-token-change-in-production';
+const CSRF_SECRET = process.env.CSRF_SECRET;
+if (!CSRF_SECRET && process.env.NODE_ENV === 'production') {
+  logger.warn('CSRF_SECRET not set in production - CSRF protection may not work correctly');
+}
+
+// Use a fallback for development only
+const csrfSecretValue = CSRF_SECRET || (process.env.NODE_ENV !== 'production' ? 'dev-csrf-secret-change-me' : '');
 
 // Configure CSRF protection
+// Note: Removed __Host- prefix as it can cause issues with reverse proxies/load balancers
+// The __Host- prefix is very strict and requires the cookie to be set directly by the host
 const {
   invalidCsrfTokenError,
   doubleCsrfProtection,
 } = doubleCsrf({
-  getSecret: () => CSRF_SECRET,
+  getSecret: () => csrfSecretValue,
   getSessionIdentifier: (req: Request) => {
     // Use session ID or user ID as identifier
-    return (req as any).session?.id || (req as any).user?.id || 'anonymous';
+    // Fallback chain: session.id -> user.id -> IP-based identifier
+    const sessionId = (req as any).session?.id;
+    const userId = (req as any).user?.id;
+    const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    return sessionId || userId || `anon-${ip}`;
   },
-  cookieName: '__Host-psifi.x-csrf-token',
+  cookieName: 'csrf-token',  // Simplified name, works better with proxies
   cookieOptions: {
     sameSite: 'lax',
     path: '/',
