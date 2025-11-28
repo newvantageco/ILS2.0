@@ -219,6 +219,47 @@ router.get('/messages', requireRole(VIEW_ROLES), async (req, res) => {
   }
 });
 
+router.get('/messages/scheduled', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { channel, campaignId, limit = '100', offset = '0', startDate, endDate } = req.query;
+    const scheduledMessages = await CommunicationsService.getScheduledMessages(companyId, {
+      channel: channel as any,
+      campaignId: campaignId as string,
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+    });
+    res.json({ success: true, messages: scheduledMessages.messages, total: scheduledMessages.total });
+  } catch (error) {
+    logger.error({ error }, 'Get scheduled messages error');
+    res.status(500).json({ success: false, error: 'Failed to get scheduled messages' });
+  }
+});
+
+router.post('/messages/:messageId/cancel', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const result = await CommunicationsService.cancelScheduledMessage(req.params.messageId, companyId);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    res.json(result);
+  } catch (error) {
+    logger.error({ error }, 'Cancel scheduled message error');
+    res.status(500).json({ success: false, error: 'Failed to cancel message' });
+  }
+});
+
 // ========== Campaigns ==========
 
 router.post('/campaigns', requireRole(ADMIN_ROLES), async (req, res) => {

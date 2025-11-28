@@ -76,6 +76,7 @@ const PatientEngagementDashboard = lazy(() => import("@/pages/PatientEngagementD
 const WorkflowBuilderPage = lazy(() => import("@/pages/WorkflowBuilderPage"));
 const MessageHistoryPage = lazy(() => import("@/pages/MessageHistoryPage"));
 const CommunicationPreferencesPage = lazy(() => import("@/pages/CommunicationPreferencesPage"));
+const ScheduledMessagesPage = lazy(() => import("@/pages/ScheduledMessagesPage"));
 const TestRoomsPage = lazy(() => import("@/pages/TestRoomsPage"));
 const TestRoomBookingsPage = lazy(() => import("@/pages/TestRoomBookingsPage"));
 const OpticalPOSPage = lazy(() => import("@/pages/OpticalPOSPage"));
@@ -511,6 +512,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/workflows" component={WorkflowBuilderPage} />
             <Route path="/ecp/messages" component={MessageHistoryPage} />
             <Route path="/ecp/preferences" component={CommunicationPreferencesPage} />
+            <Route path="/ecp/scheduled" component={ScheduledMessagesPage} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />
@@ -618,6 +620,7 @@ function AuthenticatedApp() {
             <Route path="/admin/workflows" component={WorkflowBuilderPage} />
             <Route path="/admin/messages" component={MessageHistoryPage} />
             <Route path="/admin/preferences" component={CommunicationPreferencesPage} />
+            <Route path="/admin/scheduled" component={ScheduledMessagesPage} />
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
             <Route path="/admin/roles" component={RoleManagementPage} />
             <Route path="/admin/returns" component={ReturnsManagementPage} />
@@ -731,6 +734,7 @@ function AuthenticatedApp() {
             <Route path="/admin/workflows" component={WorkflowBuilderPage} />
             <Route path="/admin/messages" component={MessageHistoryPage} />
             <Route path="/admin/preferences" component={CommunicationPreferencesPage} />
+            <Route path="/admin/scheduled" component={ScheduledMessagesPage} />
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
             <Route path="/admin/ai-assistant" component={AIAssistantPage} />
             <Route path="/admin/bi-dashboard" component={BIDashboardPage} />
@@ -783,6 +787,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/workflows" component={WorkflowBuilderPage} />
             <Route path="/ecp/messages" component={MessageHistoryPage} />
             <Route path="/ecp/preferences" component={CommunicationPreferencesPage} />
+            <Route path="/ecp/scheduled" component={ScheduledMessagesPage} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />
