@@ -1,6 +1,70 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { QueryClient, QueryFunction, MutationCache, QueryCache } from "@tanstack/react-query";
 import { globalLoadingManager } from "./globalLoading";
 import { getCsrfToken, fetchCsrfToken } from "./api";
+
+/**
+ * Parse error message from various error formats
+ */
+function parseErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    // Try to parse JSON error message
+    try {
+      const match = error.message.match(/^\d+:\s*(.+)$/);
+      if (match) {
+        const parsed = JSON.parse(match[1]);
+        return parsed.error || parsed.message || match[1];
+      }
+    } catch {
+      // Not JSON, use as-is
+    }
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return 'An unexpected error occurred';
+}
+
+/**
+ * Check if error is an auth error that should redirect
+ */
+function isAuthError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return error.message.startsWith('401:') || error.message.startsWith('403:');
+  }
+  return false;
+}
+
+/**
+ * Global error handler for API errors
+ * Shows toast notifications for user-facing errors
+ */
+let toastFn: ((props: { title: string; description: string; variant?: 'default' | 'destructive' }) => void) | null = null;
+
+export function setGlobalToast(toast: typeof toastFn) {
+  toastFn = toast;
+}
+
+function showErrorToast(error: unknown, context?: string) {
+  const message = parseErrorMessage(error);
+
+  // Don't show toast for auth errors (handled by redirect)
+  if (isAuthError(error)) {
+    return;
+  }
+
+  // Show toast if available
+  if (toastFn) {
+    toastFn({
+      title: context || 'Error',
+      description: message,
+      variant: 'destructive',
+    });
+  } else {
+    // Fallback to console
+    console.error(`[API Error] ${context || 'Error'}:`, message);
+  }
+}
 
 async function throwIfResNotOk(res: Response, clearCacheOnAuthFailure = true) {
   if (!res.ok) {
@@ -78,7 +142,41 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
+// Global query cache with error handling
+const queryCache = new QueryCache({
+  onError: (error, query) => {
+    // Only show error toast for queries that have already been fetched
+    // This prevents showing errors for background refetches
+    if (query.state.data !== undefined) {
+      showErrorToast(error, 'Failed to refresh data');
+    }
+    // Log all query errors for debugging
+    console.error('[Query Error]', {
+      queryKey: query.queryKey,
+      error: parseErrorMessage(error),
+    });
+  },
+});
+
+// Global mutation cache with error handling
+const mutationCache = new MutationCache({
+  onError: (error, _variables, _context, mutation) => {
+    // Show toast for mutation errors (these are always user-initiated)
+    const mutationKey = mutation.options.mutationKey;
+    const context = Array.isArray(mutationKey) ? String(mutationKey[0]) : 'Operation failed';
+    showErrorToast(error, context);
+
+    // Log all mutation errors for debugging
+    console.error('[Mutation Error]', {
+      mutationKey,
+      error: parseErrorMessage(error),
+    });
+  },
+});
+
 export const queryClient = new QueryClient({
+  queryCache,
+  mutationCache,
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),

@@ -1,8 +1,10 @@
 import { Suspense, lazy, useState, useEffect } from "react";
 import React from "react";
 import { Switch, Route, Redirect } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { queryClient, setGlobalToast } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -902,17 +904,36 @@ function AuthenticatedApp() {
   );
 }
 
+/**
+ * Component to connect toast notifications to the global queryClient
+ * Must be rendered inside QueryClientProvider
+ */
+function GlobalErrorHandler({ children }: { children: React.ReactNode }) {
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Connect the toast function to the queryClient for global error handling
+    setGlobalToast(toast);
+  }, [toast]);
+
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <NotificationProvider>
-          <GlobalLoadingBar />
-          <AuthenticatedApp />
-          <FloatingAiChat />
-          <Toaster />
-        </NotificationProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <NotificationProvider>
+            <GlobalErrorHandler>
+              <GlobalLoadingBar />
+              <AuthenticatedApp />
+              <FloatingAiChat />
+              <Toaster />
+            </GlobalErrorHandler>
+          </NotificationProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

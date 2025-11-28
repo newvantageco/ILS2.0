@@ -22,10 +22,15 @@ const logger = createLogger('companies');
 /**
  * GET /api/companies/joinable
  * Get list of active companies that users can request to join
- * Public for authenticated users without a company
+ * Requires authentication - users must be logged in to browse companies
  */
-router.get('/joinable', async (req: Request, res: Response) => {
+router.get('/joinable', authenticateJWT, async (req: Request, res: Response) => {
   try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     // Get all active companies
     const companiesList = await db
       .select({
@@ -57,7 +62,7 @@ router.get('/joinable', async (req: Request, res: Response) => {
  * GET /api/companies/my-requests
  * Get current user's pending company join requests
  */
-router.get('/my-requests', async (req: Request, res: Response) => {
+router.get('/my-requests', authenticateJWT, async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -109,13 +114,8 @@ router.get('/my-requests', async (req: Request, res: Response) => {
  * GET /api/companies/pending
  * Get all companies pending approval (platform admin only)
  */
-router.get('/pending', async (req: Request, res: Response) => {
+router.get('/pending', authenticateJWT, requireRole('platform_admin'), async (req: Request, res: Response) => {
   try {
-    const userRole = req.user?.role;
-
-    if (userRole !== 'platform_admin') {
-      return res.status(403).json({ error: 'Platform admin access required' });
-    }
 
     const pendingCompanies = await db
       .select({
@@ -151,15 +151,10 @@ router.get('/pending', async (req: Request, res: Response) => {
  * POST /api/companies/:id/approve
  * Approve a pending company (platform admin only)
  */
-router.post('/:id/approve', async (req: Request, res: Response) => {
+router.post('/:id/approve', authenticateJWT, requireRole('platform_admin'), async (req: Request, res: Response) => {
   try {
     const { id: companyId } = req.params;
     const userId = req.user?.id;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'platform_admin') {
-      return res.status(403).json({ error: 'Platform admin access required' });
-    }
 
     // Get company
     const [company] = await db
@@ -243,16 +238,11 @@ router.post('/:id/approve', async (req: Request, res: Response) => {
  * POST /api/companies/:id/reject
  * Reject a pending company (platform admin only)
  */
-router.post('/:id/reject', async (req: Request, res: Response) => {
+router.post('/:id/reject', authenticateJWT, requireRole('platform_admin'), async (req: Request, res: Response) => {
   try {
     const { id: companyId } = req.params;
     const { reason } = req.body;
     const userId = req.user?.id;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'platform_admin') {
-      return res.status(403).json({ error: 'Platform admin access required' });
-    }
 
     // Get company
     const [company] = await db
@@ -333,13 +323,8 @@ router.post('/:id/reject', async (req: Request, res: Response) => {
  * GET /api/companies/all
  * Get all companies (platform admin only)
  */
-router.get('/all', async (req: Request, res: Response) => {
+router.get('/all', authenticateJWT, requireRole('platform_admin'), async (req: Request, res: Response) => {
   try {
-    const userRole = req.user?.role;
-
-    if (userRole !== 'platform_admin') {
-      return res.status(403).json({ error: 'Platform admin access required' });
-    }
 
     const allCompanies = await db
       .select({
