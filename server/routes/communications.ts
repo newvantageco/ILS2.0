@@ -774,4 +774,110 @@ router.get('/broadcast/:broadcastId/stats', requireRole(VIEW_ROLES), async (req,
   }
 });
 
+// ========== Communication Analytics ==========
+
+router.get('/analytics/overview', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { startDate, endDate } = req.query;
+    const analytics = await CommunicationsService.getOverviewAnalytics(companyId, {
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+    });
+    res.json({ success: true, analytics });
+  } catch (error) {
+    logger.error({ error }, 'Get overview analytics error');
+    res.status(500).json({ success: false, error: 'Failed to get analytics' });
+  }
+});
+
+router.get('/analytics/channel-performance', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { startDate, endDate } = req.query;
+    const performance = await CommunicationsService.getChannelPerformance(companyId, {
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+    });
+    res.json({ success: true, performance });
+  } catch (error) {
+    logger.error({ error }, 'Get channel performance error');
+    res.status(500).json({ success: false, error: 'Failed to get performance' });
+  }
+});
+
+router.get('/analytics/send-time-optimization', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const optimization = await CommunicationsService.getSendTimeOptimization(companyId);
+    res.json({ success: true, optimization });
+  } catch (error) {
+    logger.error({ error }, 'Get send time optimization error');
+    res.status(500).json({ success: false, error: 'Failed to get optimization data' });
+  }
+});
+
+router.get('/analytics/engagement-trends', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { period = '30d' } = req.query;
+    const trends = await CommunicationsService.getEngagementTrends(companyId, period as string);
+    res.json({ success: true, trends });
+  } catch (error) {
+    logger.error({ error }, 'Get engagement trends error');
+    res.status(500).json({ success: false, error: 'Failed to get trends' });
+  }
+});
+
+router.get('/analytics/top-templates', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { limit = '10' } = req.query;
+    const templates = await CommunicationsService.getTopPerformingTemplates(companyId, parseInt(limit as string));
+    res.json({ success: true, templates });
+  } catch (error) {
+    logger.error({ error }, 'Get top templates error');
+    res.status(500).json({ success: false, error: 'Failed to get templates' });
+  }
+});
+
+router.get('/analytics/campaign-roi', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { startDate, endDate } = req.query;
+    const roi = await CommunicationsService.getCampaignROI(companyId, {
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+    });
+    res.json({ success: true, roi });
+  } catch (error) {
+    logger.error({ error }, 'Get campaign ROI error');
+    res.status(500).json({ success: false, error: 'Failed to get ROI data' });
+  }
+});
+
 export default router;
