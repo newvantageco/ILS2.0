@@ -2,6 +2,11 @@
  * Communications API Routes
  *
  * Routes for messaging, campaigns, and engagement workflows
+ *
+ * SECURITY: All routes require authentication and appropriate role-based access
+ * - Template management: admin, company_admin, manager
+ * - Sending messages: admin, company_admin, receptionist, manager
+ * - Campaign management: admin, company_admin, manager
  */
 
 import express from 'express';
@@ -9,13 +14,23 @@ import { loggers } from '../utils/logger';
 import { CommunicationsService } from '../services/communications/CommunicationsService';
 import { CampaignService } from '../services/communications/CampaignService';
 import { EngagementWorkflowService } from '../services/communications/EngagementWorkflowService';
+import { requireRole } from '../middleware/auth';
 
 const router = express.Router();
 const logger = loggers.api;
 
+// Roles allowed to manage communication templates and campaigns
+const ADMIN_ROLES = ['admin', 'platform_admin', 'company_admin', 'manager'];
+
+// Roles allowed to send individual messages
+const MESSAGING_ROLES = ['admin', 'platform_admin', 'company_admin', 'manager', 'receptionist'];
+
+// Roles allowed to view message history
+const VIEW_ROLES = ['admin', 'platform_admin', 'company_admin', 'manager', 'receptionist', 'dispenser', 'ecp'];
+
 // ========== Templates ==========
 
-router.post('/templates', async (req, res) => {
+router.post('/templates', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -30,7 +45,7 @@ router.post('/templates', async (req, res) => {
   }
 });
 
-router.get('/templates', async (req, res) => {
+router.get('/templates', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -46,7 +61,7 @@ router.get('/templates', async (req, res) => {
   }
 });
 
-router.get('/templates/:templateId', async (req, res) => {
+router.get('/templates/:templateId', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -66,7 +81,7 @@ router.get('/templates/:templateId', async (req, res) => {
 
 // ========== Messages ==========
 
-router.post('/messages/send', async (req, res) => {
+router.post('/messages/send', requireRole(MESSAGING_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -95,7 +110,7 @@ router.post('/messages/send', async (req, res) => {
   }
 });
 
-router.post('/messages/send-template', async (req, res) => {
+router.post('/messages/send-template', requireRole(MESSAGING_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -124,7 +139,7 @@ router.post('/messages/send-template', async (req, res) => {
   }
 });
 
-router.get('/messages/:messageId', async (req, res) => {
+router.get('/messages/:messageId', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -142,7 +157,7 @@ router.get('/messages/:messageId', async (req, res) => {
   }
 });
 
-router.get('/messages/recipient/:recipientId', async (req, res) => {
+router.get('/messages/recipient/:recipientId', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -158,7 +173,7 @@ router.get('/messages/recipient/:recipientId', async (req, res) => {
   }
 });
 
-router.get('/messages/stats', async (req, res) => {
+router.get('/messages/stats', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -181,7 +196,7 @@ router.get('/messages/stats', async (req, res) => {
 
 // ========== Campaigns ==========
 
-router.post('/campaigns', async (req, res) => {
+router.post('/campaigns', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -196,7 +211,7 @@ router.post('/campaigns', async (req, res) => {
   }
 });
 
-router.get('/campaigns', async (req, res) => {
+router.get('/campaigns', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -212,7 +227,7 @@ router.get('/campaigns', async (req, res) => {
   }
 });
 
-router.get('/campaigns/:campaignId', async (req, res) => {
+router.get('/campaigns/:campaignId', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -230,7 +245,7 @@ router.get('/campaigns/:campaignId', async (req, res) => {
   }
 });
 
-router.post('/campaigns/:campaignId/launch', async (req, res) => {
+router.post('/campaigns/:campaignId/launch', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -248,7 +263,7 @@ router.post('/campaigns/:campaignId/launch', async (req, res) => {
   }
 });
 
-router.post('/campaigns/:campaignId/pause', async (req, res) => {
+router.post('/campaigns/:campaignId/pause', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -266,7 +281,7 @@ router.post('/campaigns/:campaignId/pause', async (req, res) => {
   }
 });
 
-router.get('/campaigns/:campaignId/analytics', async (req, res) => {
+router.get('/campaigns/:campaignId/analytics', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -286,7 +301,7 @@ router.get('/campaigns/:campaignId/analytics', async (req, res) => {
 
 // ========== Segments ==========
 
-router.post('/segments', async (req, res) => {
+router.post('/segments', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -302,7 +317,7 @@ router.post('/segments', async (req, res) => {
   }
 });
 
-router.get('/segments', async (req, res) => {
+router.get('/segments', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -319,7 +334,7 @@ router.get('/segments', async (req, res) => {
 
 // ========== Workflows ==========
 
-router.post('/workflows', async (req, res) => {
+router.post('/workflows', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -334,7 +349,7 @@ router.post('/workflows', async (req, res) => {
   }
 });
 
-router.get('/workflows', async (req, res) => {
+router.get('/workflows', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -350,7 +365,7 @@ router.get('/workflows', async (req, res) => {
   }
 });
 
-router.get('/workflows/:workflowId', async (req, res) => {
+router.get('/workflows/:workflowId', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -368,7 +383,7 @@ router.get('/workflows/:workflowId', async (req, res) => {
   }
 });
 
-router.post('/workflows/trigger', async (req, res) => {
+router.post('/workflows/trigger', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -384,7 +399,7 @@ router.post('/workflows/trigger', async (req, res) => {
   }
 });
 
-router.get('/workflows/instances/:instanceId', async (req, res) => {
+router.get('/workflows/instances/:instanceId', requireRole(VIEW_ROLES), async (req, res) => {
   try {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
