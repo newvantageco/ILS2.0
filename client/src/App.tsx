@@ -29,6 +29,7 @@ import { fetchCsrfToken } from "@/lib/api";
 // Only load the code for pages users actually visit
 const Landing = lazy(() => import("@/pages/Landing"));
 const LandingNew = lazy(() => import("@/pages/LandingNew"));
+const MarketingLandingPage = lazy(() => import("@/pages/MarketingLandingPage"));
 const Login = lazy(() => import("@/pages/Login"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const WelcomePage = lazy(() => import("@/pages/WelcomePage"));
@@ -313,6 +314,14 @@ function AuthenticatedApp() {
   }, []);
 
   // Public routes (accessible without auth) - wrapped in Suspense
+  if (location === '/landing' || location === '/marketing') {
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <MarketingLandingPage />
+      </Suspense>
+    );
+  }
+
   if (location === '/landing-new') {
     return (
       <Suspense fallback={<RouteLoadingFallback />}>
@@ -400,7 +409,7 @@ function AuthenticatedApp() {
   if (!user) {
     return (
       <Suspense fallback={<RouteLoadingFallback />}>
-        <LandingNew />
+        <MarketingLandingPage />
       </Suspense>
     );
   }
