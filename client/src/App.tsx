@@ -80,6 +80,7 @@ const ScheduledMessagesPage = lazy(() => import("@/pages/ScheduledMessagesPage")
 const CommunicationsInboxPage = lazy(() => import("@/pages/CommunicationsInboxPage"));
 const QuickSendPage = lazy(() => import("@/pages/QuickSendPage"));
 const CommunicationAnalyticsPage = lazy(() => import("@/pages/CommunicationAnalyticsPage"));
+const SegmentBuilderPage = lazy(() => import("@/pages/SegmentBuilderPage"));
 const TestRoomsPage = lazy(() => import("@/pages/TestRoomsPage"));
 const TestRoomBookingsPage = lazy(() => import("@/pages/TestRoomBookingsPage"));
 const OpticalPOSPage = lazy(() => import("@/pages/OpticalPOSPage"));
@@ -519,6 +520,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/inbox" component={CommunicationsInboxPage} />
             <Route path="/ecp/quick-send" component={QuickSendPage} />
             <Route path="/ecp/communication-analytics" component={CommunicationAnalyticsPage} />
+            <Route path="/ecp/segments" component={SegmentBuilderPage} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />
@@ -630,6 +632,7 @@ function AuthenticatedApp() {
             <Route path="/admin/inbox" component={CommunicationsInboxPage} />
             <Route path="/admin/quick-send" component={QuickSendPage} />
             <Route path="/admin/communication-analytics" component={CommunicationAnalyticsPage} />
+            <Route path="/admin/segments" component={SegmentBuilderPage} />
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
             <Route path="/admin/roles" component={RoleManagementPage} />
             <Route path="/admin/returns" component={ReturnsManagementPage} />
@@ -747,6 +750,7 @@ function AuthenticatedApp() {
             <Route path="/admin/inbox" component={CommunicationsInboxPage} />
             <Route path="/admin/quick-send" component={QuickSendPage} />
             <Route path="/admin/communication-analytics" component={CommunicationAnalyticsPage} />
+            <Route path="/admin/segments" component={SegmentBuilderPage} />
             <Route path="/admin/permissions" component={PermissionsManagementPage} />
             <Route path="/admin/ai-assistant" component={AIAssistantPage} />
             <Route path="/admin/bi-dashboard" component={BIDashboardPage} />
@@ -803,6 +807,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/inbox" component={CommunicationsInboxPage} />
             <Route path="/ecp/quick-send" component={QuickSendPage} />
             <Route path="/ecp/communication-analytics" component={CommunicationAnalyticsPage} />
+            <Route path="/ecp/segments" component={SegmentBuilderPage} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
             <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />
