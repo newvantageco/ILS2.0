@@ -17,7 +17,7 @@ import { normalizeEmail } from "../utils/normalizeEmail";
 import { db } from "../db";
 import { companies, users } from "@shared/schema";
 import { eq } from "drizzle-orm";
-import jwt from "jsonwebtoken";
+import { jwtService } from "../services/JWTService.js";
 
 const router = Router();
 const logger = createLogger("google-auth");
@@ -26,24 +26,75 @@ const logger = createLogger("google-auth");
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const APP_URL = process.env.APP_URL || "http://localhost:5000";
-const JWT_SECRET = process.env.JWT_SECRET || "ils-dev-secret-change-in-production";
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 // Check if Google OAuth is configured
 const isGoogleAuthConfigured = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
 
-// Generate JWT token for user
-function generateToken(user: any): string {
-  return jwt.sign(
-    {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      companyId: user.companyId,
-    },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
+/**
+ * Get permissions for a role - consistent with auth-jwt.ts
+ */
+function getUserPermissions(role: string): string[] {
+  const rolePermissions: Record<string, string[]> = {
+    'platform_admin': [
+      'admin.all',
+      'company.all',
+      'user.all',
+      'data.all',
+      'settings.all',
+      'reports.all',
+      'ai.all'
+    ],
+    'company_admin': [
+      'company.manage',
+      'user.manage',
+      'data.all',
+      'settings.manage',
+      'reports.all',
+      'ai.use'
+    ],
+    'admin': [
+      'company.manage',
+      'user.manage',
+      'data.all',
+      'settings.manage',
+      'reports.all',
+      'ai.use'
+    ],
+    'ecp': [
+      'data.view',
+      'data.create',
+      'data.update',
+      'reports.view',
+      'ai.use'
+    ],
+    'lab_tech': [
+      'data.view',
+      'data.create',
+      'data.update',
+      'reports.view',
+      'ai.use'
+    ],
+    'dispenser': [
+      'data.view',
+      'data.create',
+      'data.update',
+      'reports.view',
+      'ai.use'
+    ],
+    'engineer': [
+      'data.view',
+      'data.create',
+      'data.update',
+      'reports.view',
+      'ai.use'
+    ],
+    'supplier': [
+      'data.view',
+      'reports.view'
+    ]
+  };
+
+  return rolePermissions[role] || ['data.view'];
 }
 
 if (isGoogleAuthConfigured) {
@@ -199,6 +250,7 @@ router.get(
       // Successful authentication
       const user = req.user as Express.User & {
         id: string;
+        email?: string;
         role?: string;
         companyId?: string;
         accountStatus?: string;
@@ -208,15 +260,33 @@ router.get(
         return res.redirect("/login?error=no_user");
       }
 
-      // Generate JWT token
-      const token = generateToken(user);
+      // Get permissions based on role
+      const permissions = getUserPermissions(user.role || 'user');
 
-      // Set token in cookie for subsequent requests
-      res.cookie("auth_token", token, {
+      // Generate token pair using JWT service (consistent with auth-jwt.ts)
+      const tokens = jwtService.generateTokenPair({
+        userId: user.id,
+        companyId: user.companyId || '',
+        email: user.email || '',
+        role: user.role || 'user',
+        permissions
+      });
+
+      // Set access token in cookie
+      res.cookie("auth_token", tokens.accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        maxAge: tokens.expiresIn * 1000, // Convert seconds to ms
+      });
+
+      // Set refresh token in separate, stricter cookie
+      res.cookie("refresh_token", tokens.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict", // Stricter for refresh token
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        path: "/api/auth/refresh", // Only sent to refresh endpoint
       });
 
       // Determine redirect based on user state
@@ -239,7 +309,7 @@ router.get(
         redirectUrl = "/welcome";
       }
 
-      logger.info(`Google auth redirect: ${user.email} -> ${redirectUrl}`);
+      logger.info(`Google auth redirect: ${user.email} -> ${redirectUrl} (tokens issued)`);
       res.redirect(redirectUrl);
     } catch (error) {
       logger.error("Error in Google callback: " + (error instanceof Error ? error.message : String(error)));

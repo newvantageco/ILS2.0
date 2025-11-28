@@ -44,9 +44,16 @@ function extractToken(req: Request): string | null {
     return authHeader.substring(7); // Remove 'Bearer ' prefix
   }
 
-  // Check cookie
-  if (req.cookies && req.cookies.access_token) {
-    return req.cookies.access_token;
+  // Check cookies (support multiple cookie names for compatibility)
+  // - auth_token: Used by Google OAuth and general auth
+  // - access_token: Alternative naming convention
+  if (req.cookies) {
+    if (req.cookies.auth_token) {
+      return req.cookies.auth_token;
+    }
+    if (req.cookies.access_token) {
+      return req.cookies.access_token;
+    }
   }
 
   return null;
