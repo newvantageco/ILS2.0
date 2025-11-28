@@ -690,4 +690,88 @@ router.get('/inbox/stats', requireRole(VIEW_ROLES), async (req, res) => {
   }
 });
 
+// ========== Quick Send / Broadcast Messaging ==========
+
+router.post('/broadcast/preview', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { filters } = req.body;
+    const recipients = await CommunicationsService.getRecipientsByFilters(companyId, filters);
+    res.json({ success: true, recipients, count: recipients.length });
+  } catch (error) {
+    logger.error({ error }, 'Preview broadcast error');
+    res.status(500).json({ success: false, error: 'Failed to preview recipients' });
+  }
+});
+
+router.post('/broadcast/send', requireRole(MESSAGING_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    const userId = (req as any).user?.id;
+    if (!companyId || !userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { channel, filters, content, scheduledFor } = req.body;
+    const result = await CommunicationsService.sendBroadcast(
+      companyId,
+      userId,
+      channel,
+      filters,
+      content,
+      scheduledFor
+    );
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    res.status(201).json(result);
+  } catch (error) {
+    logger.error({ error }, 'Send broadcast error');
+    res.status(500).json({ success: false, error: 'Failed to send broadcast' });
+  }
+});
+
+router.get('/broadcast/history', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { limit = '50', offset = '0' } = req.query;
+    const broadcasts = await CommunicationsService.listBroadcasts(companyId, {
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+    });
+    res.json({ success: true, broadcasts: broadcasts.broadcasts, total: broadcasts.total });
+  } catch (error) {
+    logger.error({ error }, 'List broadcasts error');
+    res.status(500).json({ success: false, error: 'Failed to list broadcasts' });
+  }
+});
+
+router.get('/broadcast/:broadcastId/stats', requireRole(VIEW_ROLES), async (req, res) => {
+  try {
+    const companyId = (req as any).user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const stats = await CommunicationsService.getBroadcastStats(req.params.broadcastId, companyId);
+    if (!stats) {
+      return res.status(404).json({ success: false, error: 'Broadcast not found' });
+    }
+    res.json({ success: true, stats });
+  } catch (error) {
+    logger.error({ error }, 'Get broadcast stats error');
+    res.status(500).json({ success: false, error: 'Failed to get stats' });
+  }
+});
+
 export default router;
