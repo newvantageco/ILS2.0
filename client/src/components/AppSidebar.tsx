@@ -91,6 +91,7 @@ const menuItems = {
       { title: "My Orders", url: "/ecp/orders", icon: ClipboardList },
     ],
     insights: [
+      { title: "Patient Engagement", url: "/ecp/engagement", icon: Activity },
       { title: "AI Assistant", url: "/ecp/ai-assistant", icon: Brain },
       { title: "BI Dashboard", url: "/ecp/bi-dashboard", icon: BarChart3 },
       { title: "Analytics", url: "/ecp/analytics", icon: LineChart },
@@ -157,6 +158,7 @@ const menuItems = {
     { title: "Dispenser Handoff", url: "/admin/handoff", icon: UserCheck },
     { title: "Message Templates", url: "/admin/templates", icon: Mail },
     { title: "Campaign Manager", url: "/admin/campaigns", icon: Send },
+    { title: "Patient Engagement", url: "/admin/engagement", icon: Activity },
     { title: "Email Templates", url: "/admin/email-templates", icon: Mail },
     { title: "Healthcare Analytics", url: "/admin/healthcare-analytics", icon: Heart },
     { title: "Laboratory Integration", url: "/admin/laboratory", icon: Beaker },
@@ -210,6 +212,7 @@ const menuItems = {
       { title: "Dispenser Handoff", url: "/admin/handoff", icon: UserCheck },
       { title: "Message Templates", url: "/admin/templates", icon: Mail },
       { title: "Campaign Manager", url: "/admin/campaigns", icon: Send },
+      { title: "Patient Engagement", url: "/admin/engagement", icon: Activity },
       { title: "Company Settings", url: "/ecp/company", icon: Building2 },
     ],
     clinical: [
