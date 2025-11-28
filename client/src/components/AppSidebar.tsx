@@ -51,6 +51,7 @@ import {
   Flag,
   Keyboard,
   Bell,
+  Clock,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -74,6 +75,7 @@ const menuItems = {
       { title: "Prescriptions", url: "/ecp/prescriptions", icon: FileText },
       { title: "Diary", url: "/ecp/test-rooms/bookings", icon: CalendarDays },
       { title: "Patient Recalls", url: "/ecp/recalls", icon: Bell },
+      { title: "Waitlist Queue", url: "/ecp/waitlist", icon: Clock },
     ],
     retail: [
       { title: "Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
@@ -146,6 +148,7 @@ const menuItems = {
     { title: "Orders", url: "/admin/orders", icon: ClipboardList },
     { title: "Prescriptions", url: "/admin/prescriptions", icon: FileText },
     { title: "Patient Recalls", url: "/admin/recalls", icon: Bell },
+    { title: "Waitlist Queue", url: "/admin/waitlist", icon: Clock },
     { title: "Email Templates", url: "/admin/email-templates", icon: Mail },
     { title: "Healthcare Analytics", url: "/admin/healthcare-analytics", icon: Heart },
     { title: "Laboratory Integration", url: "/admin/laboratory", icon: Beaker },
@@ -195,6 +198,7 @@ const menuItems = {
       { title: "Role Management", url: "/admin/roles", icon: Shield },
       { title: "Audit Logs", url: "/admin/audit-logs", icon: FileText },
       { title: "Patient Recalls", url: "/admin/recalls", icon: Bell },
+      { title: "Waitlist Queue", url: "/admin/waitlist", icon: Clock },
       { title: "Company Settings", url: "/ecp/company", icon: Building2 },
     ],
     clinical: [
