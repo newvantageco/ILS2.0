@@ -379,13 +379,196 @@ export function useWeekAppointments(practitionerId?: string) {
   const startOfWeek = new Date(now);
   startOfWeek.setDate(now.getDate() - now.getDay());
   startOfWeek.setHours(0, 0, 0, 0);
-  
+
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 7);
-  
+
   return useIntegratedAppointments({
     startDate: startOfWeek,
     endDate: endOfWeek,
     practitionerId,
+  });
+}
+
+/**
+ * Hook for appointments in a date range
+ */
+export function useDateRangeAppointments(startDate: Date, endDate: Date, practitionerId?: string) {
+  return useIntegratedAppointments({
+    startDate,
+    endDate,
+    practitionerId,
+  });
+}
+
+/**
+ * Create appointment input type
+ */
+export interface CreateAppointmentInput {
+  patientId: string;
+  practitionerId?: string;
+  title: string;
+  description?: string;
+  type: 'eye_examination' | 'contact_lens_fitting' | 'frame_selection' | 'follow_up' | 'emergency' | 'consultation' | 'test_room_booking' | 'dispensing' | 'collection';
+  startTime: Date;
+  endTime: Date;
+  duration: number;
+  location?: string;
+  notes?: string;
+  isVirtual?: boolean;
+  virtualMeetingLink?: string;
+  reminderType?: 'email' | 'sms' | 'phone' | 'push_notification' | 'automated_call';
+}
+
+/**
+ * Hook for creating appointments
+ */
+export function useCreateAppointment() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (input: CreateAppointmentInput) => {
+      const response = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          ...input,
+          startTime: input.startTime.toISOString(),
+          endTime: input.endTime.toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create appointment');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Invalidate all appointment queries
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+
+      toast({
+        title: 'Appointment Created',
+        description: `Appointment has been scheduled successfully`,
+      });
+
+      return data;
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Booking Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+/**
+ * Hook for rescheduling appointments
+ */
+export function useRescheduleAppointment() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({
+      appointmentId,
+      newStartTime,
+      newEndTime,
+    }: {
+      appointmentId: string;
+      newStartTime: Date;
+      newEndTime: Date;
+    }) => {
+      const response = await fetch(`/api/appointments/${appointmentId}/reschedule`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          newStartTime: newStartTime.toISOString(),
+          newEndTime: newEndTime.toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reschedule appointment');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+
+      toast({
+        title: 'Appointment Rescheduled',
+        description: 'The appointment has been rescheduled successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Reschedule Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+/**
+ * Hook for cancelling appointments
+ */
+export function useCancelAppointment() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({
+      appointmentId,
+      reason,
+    }: {
+      appointmentId: string;
+      reason: string;
+    }) => {
+      const response = await fetch(`/api/appointments/${appointmentId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ reason }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to cancel appointment');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
+
+      toast({
+        title: 'Appointment Cancelled',
+        description: 'The appointment has been cancelled',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Cancellation Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
   });
 }

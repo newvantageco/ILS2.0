@@ -73,6 +73,7 @@ const InvoicesPage = lazy(() => import("@/pages/InvoicesPage"));
 const EyeTestPage = lazy(() => import("@/pages/EyeTestPage"));
 const EyeTestWizard = lazy(() => import("@/components/eye-test/EyeTestWizard").then(m => ({ default: m.EyeTestWizard })));
 const DiaryPage = lazy(() => import("@/pages/DiaryPage"));
+const DiaryCalendarPage = lazy(() => import("@/pages/DiaryCalendarPage"));
 const CommunicationsHubPage = lazy(() => import("@/pages/CommunicationsHubPage"));
 const RecallManagementPage = lazy(() => import("@/pages/RecallManagementPage"));
 const WaitlistManagementPage = lazy(() => import("@/pages/WaitlistManagementPage"));
@@ -523,6 +524,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/ecp/test-rooms" component={TestRoomsPage} />
             <Route path="/ecp/diary" component={DiaryPage} />
+            <Route path="/ecp/calendar" component={DiaryCalendarPage} />
             <Route path="/ecp/communications" component={CommunicationsHubPage} />
             <Route path="/ecp/recalls" component={RecallManagementPage} />
             <Route path="/ecp/waitlist" component={WaitlistManagementPage} />
@@ -812,6 +814,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/ecp/test-rooms" component={TestRoomsPage} />
             <Route path="/ecp/diary" component={DiaryPage} />
+            <Route path="/ecp/calendar" component={DiaryCalendarPage} />
             <Route path="/ecp/communications" component={CommunicationsHubPage} />
             <Route path="/ecp/recalls" component={RecallManagementPage} />
             <Route path="/ecp/waitlist" component={WaitlistManagementPage} />
