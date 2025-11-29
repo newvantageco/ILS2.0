@@ -35,6 +35,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { ErrorState } from "@/components/ErrorState";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 
 interface SupplierOrder {
   id: string;
@@ -61,7 +63,7 @@ export default function SupplierDashboardModern() {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch supplier orders
-  const { data: orders, isLoading } = useQuery<SupplierOrder[]>({
+  const { data: orders, isLoading, error, refetch } = useQuery<SupplierOrder[]>({
     queryKey: ["/api/supplier/orders"],
   });
 
@@ -74,6 +76,47 @@ export default function SupplierDashboardModern() {
     lowStockItems: 12, // Mock data
     averageFulfillmentTime: 2.5, // days - mock data
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="container max-w-7xl mx-auto py-6 space-y-6">
+        <div className="space-y-2">
+          <div className="h-10 w-64 bg-muted animate-pulse rounded" />
+          <div className="h-4 w-96 bg-muted animate-pulse rounded" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-32 bg-muted animate-pulse rounded-lg" />
+          ))}
+        </div>
+        <LoadingSkeleton variant="card" count={3} />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="container max-w-7xl mx-auto py-6 space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Package className="w-8 h-8 text-primary" />
+            Supplier Management
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Inventory, orders, and fulfillment tracking
+          </p>
+        </div>
+        <ErrorState
+          title="Couldn't load supplier data"
+          message="We had trouble loading your orders and inventory. Please check your connection and try again."
+          error={error}
+          onRetry={() => refetch()}
+        />
+      </div>
+    );
+  }
 
   const ordersByStatus = {
     pending: orders?.filter((o) => o.status === "pending") || [],

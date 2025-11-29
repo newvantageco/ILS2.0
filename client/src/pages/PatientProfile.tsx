@@ -37,6 +37,8 @@ import {
 import { format } from "date-fns";
 import { Link } from "wouter";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { ErrorState } from "@/components/ErrorState";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 
 interface PatientSummary {
   patient: {
@@ -107,7 +109,7 @@ export default function PatientProfile() {
   const [, params] = useRoute("/ecp/patients/:id");
   const patientId = params?.id;
 
-  const { data: summary, isLoading } = useQuery<PatientSummary>({
+  const { data: summary, isLoading, error, refetch } = useQuery<PatientSummary>({
     queryKey: [`/api/patients/${patientId}/summary`],
     enabled: !!patientId,
   });
@@ -128,11 +130,26 @@ export default function PatientProfile() {
             </Card>
           ))}
         </div>
-        <Card>
-          <CardContent className="pt-6">
-            <TableSkeleton rows={5} columns={4} />
-          </CardContent>
-        </Card>
+        <LoadingSkeleton variant="card" count={2} />
+      </div>
+    );
+  }
+
+  if (error || !summary) {
+    return (
+      <div className="space-y-6">
+        <Link href="/ecp/patients">
+          <Button variant="ghost">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Patients
+          </Button>
+        </Link>
+        <ErrorState
+          title="Couldn't load patient profile"
+          message="We had trouble loading this patient's information. Please try again."
+          error={error || undefined}
+          onRetry={() => refetch()}
+        />
       </div>
     );
   }

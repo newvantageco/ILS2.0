@@ -15,6 +15,8 @@ import { CardSkeleton } from "@/components/ui/CardSkeleton";
 import { TimestampDisplay } from "@/components/ui/TimestampDisplay";
 import { ChangeHistoryDialog } from "@/components/ui/ChangeHistoryDialog";
 import { useState } from "react";
+import { ErrorState } from "@/components/ErrorState";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import {
   Dialog,
   DialogContent,
@@ -76,7 +78,7 @@ export default function OrderDetailsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const { data: order, isLoading } = useQuery<Order>({
+  const { data: order, isLoading, error, refetch } = useQuery<Order>({
     queryKey: ['/api/orders', orderId],
     queryFn: async () => {
       const response = await fetch(`/api/orders/${orderId}`);
@@ -87,6 +89,33 @@ export default function OrderDetailsPage() {
     },
     enabled: !!orderId,
   });
+
+  if (isLoading) {
+    return (
+      <div className="container max-w-6xl mx-auto py-6 space-y-6">
+        <div className="h-10 w-32 bg-muted animate-pulse rounded" />
+        <LoadingSkeleton variant="card" count={3} />
+      </div>
+    );
+  }
+
+  if (error || !order) {
+    return (
+      <div className="container max-w-6xl mx-auto py-6 space-y-6">
+        <Link href="/ecp/dashboard">
+          <Button variant="ghost" className="mb-4">
+            <ChevronLeft className="mr-2 h-4 w-4" />Back to Dashboard
+          </Button>
+        </Link>
+        <ErrorState
+          title="Couldn't load order"
+          message="We had trouble loading this order. Please check the order ID and try again."
+          error={error || undefined}
+          onRetry={() => refetch()}
+        />
+      </div>
+    );
+  }
 
   const downloadPdfMutation = useMutation({
     mutationFn: async (id: string) => {
