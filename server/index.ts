@@ -350,14 +350,25 @@ app.get('/api/health/detailed', async (req: Request, res: Response) => {
   try {
     // Validate required environment variables
     if (!process.env.DATABASE_URL) {
-      logger.error({}, 'FATAL ERROR: DATABASE_URL environment variable is not set');
+      const dbError = 'DATABASE_URL environment variable is not set';
+      logger.error({}, `FATAL ERROR: ${dbError}`);
       logger.error({}, 'Please configure DATABASE_URL in your deployment secrets');
-      process.exit(1);
+      // Don't exit - allow health check server to start for diagnostics
+      if (!configError) configError = dbError;
     }
 
   log("Starting server initialization...");
 
-  await ensureMasterUser();
+  // Only initialize database-dependent services if DATABASE_URL is configured
+  if (process.env.DATABASE_URL) {
+    try {
+      await ensureMasterUser();
+    } catch (err) {
+      logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Failed to ensure master user - continuing anyway');
+    }
+  } else {
+    log("⚠️  Skipping database initialization - DATABASE_URL not set");
+  }
 
     // Metrics endpoint (optional)
     if (process.env.METRICS_ENABLED === 'true') {
