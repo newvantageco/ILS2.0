@@ -9,7 +9,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { Navigate } from "react-router-dom";
+import { Redirect } from "wouter";
 import { useUser } from "@/hooks/use-user";
 import { useState } from "react";
 import {
@@ -52,7 +52,7 @@ export default function PatientEngagementDashboard() {
 
   // Role-based access control
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Redirect to="/login" />;
   }
 
   if (!ALLOWED_ROLES.includes(user.role)) {

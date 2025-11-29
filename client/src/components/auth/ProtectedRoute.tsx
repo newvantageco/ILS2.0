@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Redirect, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/useAuth';
 import { RoleEnum } from '@shared/schema';
 
@@ -41,7 +41,7 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ config, children }) => {
   const { user, isLoading } = useAuth();
-  const location = useLocation();
+  const [pathname] = useLocation();
 
   // Show loading spinner while checking authentication
   if (isLoading) {
@@ -54,38 +54,25 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ config, children
 
   // Redirect to login if not authenticated
   if (!user) {
-    const loginState: LoginRedirectState = { from: location.pathname };
-    return <Navigate to="/login" state={loginState} replace />;
+    // Note: wouter's Redirect doesn't support state, storing in sessionStorage if needed
+    sessionStorage.setItem('redirectFrom', pathname);
+    return <Redirect to="/login" />;
   }
 
   // Check if user has required role
   if (config.roles.length > 0 && (!user.role || !config.roles.includes(user.role))) {
-    const unauthorizedState: UnauthorizedState = {
+    // Store unauthorized state in sessionStorage for the unauthorized page to use
+    sessionStorage.setItem('unauthorizedState', JSON.stringify({
       requiredRoles: config.roles,
       userRole: user.role,
-      attemptedPath: location.pathname,
-    };
-    return (
-      <Navigate
-        to="/unauthorized"
-        state={unauthorizedState}
-        replace
-      />
-    );
+      attemptedPath: pathname,
+    }));
+    return <Redirect to="/unauthorized" />;
   }
 
   // Check if user is associated with a company (if required)
   if (config.requireCompany && !user.companyId) {
-    const onboardingState: OnboardingState = {
-      message: 'Company association required',
-    };
-    return (
-      <Navigate
-        to="/onboarding/company"
-        state={onboardingState}
-        replace
-      />
-    );
+    return <Redirect to="/onboarding/company" />;
   }
 
   // Check if user has active subscription (if required)
