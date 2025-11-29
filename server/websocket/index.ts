@@ -44,7 +44,7 @@ export function setupWebSocket(server: Server, sessionMiddleware: any) {
 
   // Handle WebSocketServer errors to prevent crashes
   wss.on('error', (error) => {
-    logger.error('[WebSocket] WebSocketServer error:', error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, '[WebSocket] WebSocketServer error');
   });
 
   // Handle HTTP upgrade requests
@@ -123,7 +123,7 @@ export function setupWebSocket(server: Server, sessionMiddleware: any) {
           ws.send(JSON.stringify({ type: 'pong' }));
         }
       } catch (error) {
-        logger.error('[WebSocket] Error processing message:', error);
+        logger.error({ error: error instanceof Error ? error.message : String(error) }, '[WebSocket] Error processing message');
       }
     });
 
@@ -148,7 +148,7 @@ export function setupWebSocket(server: Server, sessionMiddleware: any) {
     });
 
     ws.on('error', (error) => {
-      logger.error('[WebSocket] Connection error:', error);
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, '[WebSocket] Connection error');
     });
   });
 
@@ -227,12 +227,12 @@ function safeSend(client: AuthenticatedWebSocket, message: string): boolean {
   try {
     client.send(message, (error) => {
       if (error) {
-        logger.error(`[WebSocket] Send error for user ${client.userId}:`, error);
+        logger.error({ error: error instanceof Error ? error.message : String(error), userId: client.userId }, '[WebSocket] Send error');
       }
     });
     return true;
   } catch (error) {
-    logger.error(`[WebSocket] Send exception for user ${client.userId}:`, error);
+    logger.error({ error: error instanceof Error ? error.message : String(error), userId: client.userId }, '[WebSocket] Send exception');
     return false;
   }
 }

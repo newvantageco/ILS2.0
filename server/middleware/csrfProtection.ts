@@ -61,7 +61,7 @@ export const generateCsrfToken = (req: Request, res: Response, next: NextFunctio
     res.locals.csrfToken = token;
     next();
   } catch (err) {
-    logger.error('CSRF token generation error:', err);
+    logger.error({ error: err instanceof Error ? err.message : String(err) }, 'CSRF token generation error');
     next(err);
   }
 };
@@ -99,7 +99,7 @@ export const getCsrfToken = (req: Request, res: Response) => {
     const token = generateToken(req, res);
     res.json({ csrfToken: token });
   } catch (err) {
-    logger.error('Failed to generate CSRF token:', err);
+    logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Failed to generate CSRF token');
     res.status(500).json({ error: 'Failed to generate CSRF token' });
   }
 };
