@@ -37,9 +37,14 @@ interface AuthenticatedWebSocket extends WebSocket {
 const companyRooms = new Map<string, Set<AuthenticatedWebSocket>>();
 
 export function setupWebSocket(server: Server, sessionMiddleware: any) {
-  const wss = new WebSocketServer({ 
+  const wss = new WebSocketServer({
     noServer: true,
     path: '/ws'
+  });
+
+  // Handle WebSocketServer errors to prevent crashes
+  wss.on('error', (error) => {
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, '[WebSocket] WebSocketServer error');
   });
 
   // Handle HTTP upgrade requests
@@ -118,7 +123,7 @@ export function setupWebSocket(server: Server, sessionMiddleware: any) {
           ws.send(JSON.stringify({ type: 'pong' }));
         }
       } catch (error) {
-        logger.error('[WebSocket] Error processing message:', error);
+        logger.error({ error: error instanceof Error ? error.message : String(error) }, '[WebSocket] Error processing message');
       }
     });
 
@@ -143,7 +148,7 @@ export function setupWebSocket(server: Server, sessionMiddleware: any) {
     });
 
     ws.on('error', (error) => {
-      logger.error('[WebSocket] Connection error:', error);
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, '[WebSocket] Connection error');
     });
   });
 
@@ -213,11 +218,31 @@ function setupEventListeners() {
 }
 
 /**
+ * Safely send a message to a WebSocket client with error handling
+ */
+function safeSend(client: AuthenticatedWebSocket, message: string): boolean {
+  if (client.readyState !== WebSocket.OPEN) {
+    return false;
+  }
+  try {
+    client.send(message, (error) => {
+      if (error) {
+        logger.error({ error: error instanceof Error ? error.message : String(error), userId: client.userId }, '[WebSocket] Send error');
+      }
+    });
+    return true;
+  } catch (error) {
+    logger.error({ error: error instanceof Error ? error.message : String(error), userId: client.userId }, '[WebSocket] Send exception');
+    return false;
+  }
+}
+
+/**
  * Broadcast message to all clients in a company room
  */
 function broadcastToCompany(companyId: string, message: any) {
   const room = companyRooms.get(companyId);
-  
+
   if (!room || room.size === 0) {
     return; // No clients in this room
   }
@@ -226,8 +251,7 @@ function broadcastToCompany(companyId: string, message: any) {
   let sentCount = 0;
 
   room.forEach((client: AuthenticatedWebSocket) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(messageStr);
+    if (safeSend(client, messageStr)) {
       sentCount++;
     }
   });
@@ -246,8 +270,7 @@ export function broadcastToAll(message: any) {
 
   companyRooms.forEach((room) => {
     room.forEach((client: AuthenticatedWebSocket) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(messageStr);
+      if (safeSend(client, messageStr)) {
         sentCount++;
       }
     });

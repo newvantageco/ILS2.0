@@ -43,7 +43,7 @@ import { createAIWorker } from "./workers/aiWorker";
 import { initializeRedis, getRedisConnection } from "./queue/config";
 import { storage } from "./storage";
 import logger from "./utils/logger";
-import { db, closePool } from "./db";
+import { db, closePool, isDatabaseAvailable } from "./db";
 import { sql } from "drizzle-orm";
 // Order-created workers (Strangler refactor) - register explicitly below
 import { registerOrderCreatedLimsWorker } from "./workers/OrderCreatedLimsWorker";
@@ -344,11 +344,11 @@ app.get('/api/health/detailed', async (req: Request, res: Response) => {
 
   try {
     // Check database connectivity
-    if (!dbReady) {
+    if (!dbReady && isDatabaseAvailable()) {
       await db.execute(sql`SELECT 1 FROM users LIMIT 1`);
       dbReady = true;
     }
-    databaseStatus = 'connected';
+    databaseStatus = isDatabaseAvailable() ? (dbReady ? 'connected' : 'initializing') : 'not_configured';
   } catch (error) {
     databaseStatus = 'initializing';
     databaseMessage = error instanceof Error ? error.message : 'Database connection pending';
@@ -382,7 +382,7 @@ app.get('/api/health/detailed', async (req: Request, res: Response) => {
   log("Starting server initialization...");
 
   // Only initialize database-dependent services if DATABASE_URL is configured
-  if (process.env.DATABASE_URL) {
+  if (process.env.DATABASE_URL && isDatabaseAvailable()) {
     try {
       // Test database connectivity
       await db.execute(sql`SELECT 1`);
@@ -581,13 +581,13 @@ app.get('/api/health/detailed', async (req: Request, res: Response) => {
     }
     
     // Initialize WebSocket server for real-time lab dashboard
-    if (process.env.NODE_ENV === "development") {
-      // Get session middleware to use for WebSocket authentication
-      const sessionMiddleware = app.get('sessionMiddleware');
-      if (sessionMiddleware) {
-        setupWebSocket(server, sessionMiddleware);
-        log(`✅ WebSocket server initialized on /ws endpoint`);
-      }
+    // Works in both development and production for live order updates
+    const sessionMiddlewareForWs = app.get('sessionMiddleware');
+    if (sessionMiddlewareForWs) {
+      setupWebSocket(server, sessionMiddlewareForWs);
+      log(`✅ WebSocket server initialized on /ws endpoint`);
+    } else {
+      log(`⚠️  WebSocket server not initialized - session middleware not available`);
     }
 
     // Initialize Socket.IO service for real-time notifications
