@@ -211,6 +211,21 @@ router.post('/login', async (req: Request, res: Response) => {
       });
     }
 
+    // SECURITY: Check if email is verified (skip for platform admins and Google OAuth users)
+    // Platform admins may be created via CLI/scripts without email verification
+    // Google OAuth users have verified emails through Google
+    const isPlatformAdmin = user.role === 'platform_admin';
+    const isGoogleOAuthUser = !user.passwordHash; // Google OAuth users don't have passwords
+
+    if (!user.isEmailVerified && !isPlatformAdmin && !isGoogleOAuthUser) {
+      logger.warn(`Login failed: Email not verified - ${email}`);
+      return res.status(403).json({
+        success: false,
+        error: 'Please verify your email address before logging in. Check your inbox for the verification link.',
+        code: 'EMAIL_NOT_VERIFIED'
+      });
+    }
+
     // SECURITY: Clear failed attempts on successful login
     clearFailedAttempts(email);
 
