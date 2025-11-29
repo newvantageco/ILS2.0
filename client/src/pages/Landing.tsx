@@ -403,10 +403,136 @@ export default function Landing() {
         <div className="text-center mb-12">
           <h3 className="text-3xl font-bold mb-3">Your Complete Practice, All in One Place</h3>
           <p className="text-muted-foreground text-lg">
-            Explore the powerful modules that unify your operations, from the front desk to the back office
+            10 powerful modules covering clinical care, patient communication, lab operations, NHS integration, and more
           </p>
         </div>
         <TabbedFeatures />
+      </section>
+
+      {/* UK NHS Integration Highlight */}
+      <section className="max-w-7xl mx-auto px-6 py-16">
+        <Card className="bg-gradient-to-br from-blue-500/5 via-blue-600/5 to-primary/5 border-blue-500/20 overflow-hidden">
+          <CardContent className="p-8 lg:p-12">
+            <div className="grid lg:grid-cols-2 gap-8 items-center">
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-xl bg-blue-500/10">
+                    <Building2 className="h-8 w-8 text-blue-600" />
+                  </div>
+                  <div>
+                    <Badge className="bg-blue-500 text-white">UK PRACTICES</Badge>
+                    <h3 className="text-2xl font-bold mt-1">Full NHS Integration</h3>
+                  </div>
+                </div>
+                <p className="text-lg text-muted-foreground">
+                  Purpose-built for UK optical practices. Seamlessly manage NHS GOS claims, e-Referrals,
+                  patient demographics, and voucher validation—all from one unified platform.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-blue-500 mt-0.5" />
+                    <div>
+                      <div className="font-medium text-sm">GOS Claims</div>
+                      <div className="text-xs text-muted-foreground">Automated submission & tracking</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-blue-500 mt-0.5" />
+                    <div>
+                      <div className="font-medium text-sm">e-Referrals</div>
+                      <div className="text-xs text-muted-foreground">NHS e-RS integration</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-blue-500 mt-0.5" />
+                    <div>
+                      <div className="font-medium text-sm">PDS Lookup</div>
+                      <div className="text-xs text-muted-foreground">Patient demographics service</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-blue-500 mt-0.5" />
+                    <div>
+                      <div className="font-medium text-sm">Voucher Validation</div>
+                      <div className="text-xs text-muted-foreground">Real-time exemption checking</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="relative bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-xl p-8 min-h-[300px] flex items-center justify-center">
+                <div className="text-center space-y-3">
+                  <div className="w-20 h-20 mx-auto rounded-2xl bg-blue-500/20 flex items-center justify-center">
+                    <Building2 className="h-10 w-10 text-blue-600" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">NHS Integration Dashboard</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Lab Operations Highlight */}
+      <section className="max-w-7xl mx-auto px-6 py-16">
+        <Card className="bg-gradient-to-br from-orange-500/5 via-amber-500/5 to-primary/5 border-orange-500/20 overflow-hidden">
+          <CardContent className="p-8 lg:p-12">
+            <div className="grid lg:grid-cols-2 gap-8 items-center">
+              <div className="order-2 lg:order-1 relative bg-gradient-to-br from-orange-500/10 to-amber-500/5 rounded-xl p-8 min-h-[300px] flex items-center justify-center">
+                <div className="text-center space-y-3">
+                  <div className="w-20 h-20 mx-auto rounded-2xl bg-orange-500/20 flex items-center justify-center">
+                    <Package className="h-10 w-10 text-orange-600" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Lab Production Dashboard</p>
+                </div>
+              </div>
+              <div className="order-1 lg:order-2 space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-xl bg-orange-500/10">
+                    <Package className="h-8 w-8 text-orange-600" />
+                  </div>
+                  <div>
+                    <Badge className="bg-orange-500 text-white">FOR LABS</Badge>
+                    <h3 className="text-2xl font-bold mt-1">Complete Lab Management</h3>
+                  </div>
+                </div>
+                <p className="text-lg text-muted-foreground">
+                  Streamline your lab operations with end-to-end production tracking, quality control workflows,
+                  equipment management, and intelligent supplier integration.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-orange-500 mt-0.5" />
+                    <div>
+                      <div className="font-medium text-sm">Work Tickets</div>
+                      <div className="text-xs text-muted-foreground">Full job lifecycle tracking</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-orange-500 mt-0.5" />
+                    <div>
+                      <div className="font-medium text-sm">Quality Control</div>
+                      <div className="text-xs text-muted-foreground">Defect tracking & approvals</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-orange-500 mt-0.5" />
+                    <div>
+                      <div className="font-medium text-sm">Equipment</div>
+                      <div className="text-xs text-muted-foreground">Maintenance scheduling</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-orange-500 mt-0.5" />
+                    <div>
+                      <div className="font-medium text-sm">Returns</div>
+                      <div className="text-xs text-muted-foreground">Non-adapt processing</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       {/* Human Social Proof Section - NEW */}
