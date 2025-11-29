@@ -14,16 +14,11 @@ restartPolicyMaxRetries = 10
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 
-# Start command (migrations run in Dockerfile)
-startCommand = "node dist/index.js"
+# NOTE: startCommand is intentionally omitted to use Dockerfile CMD
+# The Dockerfile runs docker-start.sh which handles:
+# 1. Database migrations (drizzle-kit push)
+# 2. Application startup (node dist/index.js)
 
 # Resource allocation
 # Railway will auto-scale based on usage
 # Recommended minimum for production: 2GB RAM, 2 vCPU
-
-[variables]
-# These are set automatically by Railway, but listed here for reference
-# Set actual values in Railway dashboard under service variables
-NODE_ENV = "production"
-PORT = "5000"
-HOST = "0.0.0.0"
