@@ -1,5 +1,6 @@
 import { db } from "../db";
 import crypto from 'crypto';
+import { encryptField, decryptField, isEncrypted } from './utils/encryption';
 import { 
   users, 
   userRoles,
@@ -957,8 +958,19 @@ export class DbStorage implements IStorage {
         throw new Error('Failed to generate customer number - function returned null or undefined');
       }
 
+      // SECURITY: Encrypt NHS number before storing (HIPAA/NHS Data Security compliance)
+      const patientData = { ...insertPatient };
+      if (patientData.nhsNumber && !isEncrypted(patientData.nhsNumber)) {
+        try {
+          patientData.nhsNumber = encryptField(patientData.nhsNumber);
+        } catch (encryptError) {
+          // Log but continue - encryption key may not be configured in dev
+          console.warn('NHS number encryption skipped - encryption key not configured');
+        }
+      }
+
       const [patient] = await db.insert(patients).values({
-        ...insertPatient,
+        ...patientData,
         customerNumber,
       }).returning();
 
@@ -993,6 +1005,17 @@ export class DbStorage implements IStorage {
         eq(patients.id, id),
         eq(patients.companyId, companyId)
       ));
+
+    // SECURITY: Decrypt NHS number when reading
+    if (patient && patient.nhsNumber && isEncrypted(patient.nhsNumber)) {
+      try {
+        patient.nhsNumber = decryptField(patient.nhsNumber);
+      } catch (decryptError) {
+        console.warn('NHS number decryption failed');
+        patient.nhsNumber = '***ENCRYPTED***';
+      }
+    }
+
     return patient;
   }
 
@@ -1528,25 +1551,48 @@ export class DbStorage implements IStorage {
 
   async getPatients(ecpId: string, companyId?: string): Promise<Patient[]> {
     const conditions = [eq(patients.ecpId, ecpId)];
-    
+
     if (companyId) {
       conditions.push(eq(patients.companyId, companyId));
     }
-    
-    return await db
+
+    const patientList = await db
       .select()
       .from(patients)
       .where(and(...conditions))
       .orderBy(desc(patients.createdAt));
+
+    // SECURITY: Decrypt NHS numbers when reading
+    return patientList.map(patient => {
+      if (patient.nhsNumber && isEncrypted(patient.nhsNumber)) {
+        try {
+          patient.nhsNumber = decryptField(patient.nhsNumber);
+        } catch (decryptError) {
+          patient.nhsNumber = '***ENCRYPTED***';
+        }
+      }
+      return patient;
+    });
   }
 
   async updatePatient(id: string, updates: Partial<Patient>): Promise<Patient | undefined> {
+    // SECURITY: Encrypt NHS number if being updated (HIPAA/NHS Data Security compliance)
+    const updatesData = { ...updates };
+    if (updatesData.nhsNumber && !isEncrypted(updatesData.nhsNumber)) {
+      try {
+        updatesData.nhsNumber = encryptField(updatesData.nhsNumber);
+      } catch (encryptError) {
+        // Log but continue - encryption key may not be configured in dev
+        console.warn('NHS number encryption skipped - encryption key not configured');
+      }
+    }
+
     const [patient] = await db
       .update(patients)
-      .set(updates)
+      .set(updatesData)
       .where(eq(patients.id, id))
       .returning();
-    
+
     return patient;
   }
 

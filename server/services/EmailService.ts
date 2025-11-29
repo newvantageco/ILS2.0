@@ -372,15 +372,17 @@ export class EmailService {
   }
 
   /**
-   * Send welcome email with login credentials
+   * Send welcome email with password setup link
+   * SECURITY: Never send plain text passwords via email
    */
   async sendWelcomeEmail(
     recipientEmail: string,
     recipientName: string,
-    password: string,
+    setupToken: string,
     companyName: string,
     role: string
   ): Promise<boolean> {
+    const setupUrl = `${process.env.APP_URL || 'http://localhost:5000'}/setup-password?token=${setupToken}`;
     const html = `
       <!DOCTYPE html>
       <html>
@@ -407,7 +409,7 @@ export class EmailService {
             padding: 30px;
             border-radius: 0 0 8px 8px;
           }
-          .credentials-box {
+          .info-box {
             background-color: white;
             padding: 25px;
             border-radius: 8px;
@@ -415,22 +417,21 @@ export class EmailService {
             border-left: 4px solid #667eea;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
           }
-          .credential-item {
+          .info-item {
             margin: 15px 0;
             padding: 12px;
             background-color: #f3f4f6;
             border-radius: 6px;
           }
-          .credential-label {
+          .info-label {
             font-weight: bold;
             color: #4b5563;
             font-size: 12px;
             text-transform: uppercase;
           }
-          .credential-value {
+          .info-value {
             font-size: 16px;
             color: #111827;
-            font-family: 'Courier New', monospace;
             margin-top: 5px;
           }
           .button {
@@ -447,41 +448,47 @@ export class EmailService {
             color: #6b7280;
             margin-top: 30px;
           }
+          .security-notice {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+          }
         </style>
       </head>
       <body>
         <div class="header">
-          <h1>🎉 Welcome to Integrated Lens System</h1>
+          <h1>Welcome to Integrated Lens System</h1>
         </div>
         <div class="content">
           <p>Dear ${recipientName},</p>
           <p>Your account for <strong>${companyName}</strong> has been created.</p>
-          
-          <div class="credentials-box">
-            <h3>🔐 Your Login Credentials</h3>
-            <div class="credential-item">
-              <div class="credential-label">Email</div>
-              <div class="credential-value">${recipientEmail}</div>
+
+          <div class="info-box">
+            <h3>Your Account Details</h3>
+            <div class="info-item">
+              <div class="info-label">Email</div>
+              <div class="info-value">${recipientEmail}</div>
             </div>
-            <div class="credential-item">
-              <div class="credential-label">Password</div>
-              <div class="credential-value">${password}</div>
-            </div>
-            <div class="credential-item">
-              <div class="credential-label">Role</div>
-              <div class="credential-value">${role.toUpperCase()}</div>
+            <div class="info-item">
+              <div class="info-label">Role</div>
+              <div class="info-value">${role.replace('_', ' ').toUpperCase()}</div>
             </div>
           </div>
 
+          <p>To complete your account setup, please click the button below to set your password:</p>
+
           <div style="text-align: center;">
-            <a href="${process.env.APP_URL || 'http://localhost:3000'}/login" class="button">
-              Log In to Your Account
+            <a href="${setupUrl}" class="button">
+              Set Your Password
             </a>
           </div>
 
-          <p style="color: #dc2626; font-weight: bold;">
-            ⚠️ Please change your password after logging in.
-          </p>
+          <div class="security-notice">
+            <strong>Security Notice:</strong> This link will expire in 24 hours. If you did not request this account, please ignore this email.
+          </div>
 
           <div class="footer">
             <p><strong>Integrated Lens System</strong></p>
@@ -493,7 +500,7 @@ export class EmailService {
 
     return await this.sendEmail({
       to: recipientEmail,
-      subject: `Welcome to Integrated Lens System - Your Login Credentials`,
+      subject: `Welcome to Integrated Lens System - Set Your Password`,
       html,
     });
   }

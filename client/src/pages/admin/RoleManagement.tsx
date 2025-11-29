@@ -58,7 +58,7 @@ import {
   Clock
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 
 interface DynamicRole {
@@ -167,20 +167,10 @@ export default function RoleManagement() {
   // Create role mutation
   const createRoleMutation = useMutation({
     mutationFn: async (data: { roleName: string; description: string }) => {
-      const response = await fetch("/api/roles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ 
-          name: data.roleName, 
-          description: data.description 
-        }),
+      const response = await apiRequest("POST", "/api/roles", {
+        name: data.roleName,
+        description: data.description
       });
-      
-      if (!response.ok) {
-        throw new Error("Failed to create role");
-      }
-      
       return response.json();
     },
     onSuccess: () => {
@@ -205,17 +195,7 @@ export default function RoleManagement() {
   // Update role permissions mutation
   const updatePermissionsMutation = useMutation({
     mutationFn: async ({ roleId, permissionIds }: { roleId: string; permissionIds: string[] }) => {
-      const response = await fetch(`/api/roles/${roleId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ permissionIds }),
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to update permissions");
-      }
-      
+      const response = await apiRequest("PUT", `/api/roles/${roleId}`, { permissionIds });
       return response.json();
     },
     onSuccess: () => {
@@ -237,17 +217,10 @@ export default function RoleManagement() {
   // Assign user to role mutation
   const assignUserMutation = useMutation({
     mutationFn: async ({ roleId, userId }: { roleId: string; userId: string }) => {
-      const response = await fetch(`/api/roles/users/${userId}/assign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ roleIds: [roleId], setPrimaryRoleId: roleId }),
+      const response = await apiRequest("POST", `/api/roles/users/${userId}/assign`, {
+        roleIds: [roleId],
+        setPrimaryRoleId: roleId
       });
-      
-      if (!response.ok) {
-        throw new Error("Failed to assign user");
-      }
-      
       return response.json();
     },
     onSuccess: () => {

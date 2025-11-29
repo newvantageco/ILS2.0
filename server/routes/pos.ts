@@ -606,4 +606,276 @@ router.get('/reports/staff-performance',
   }
 );
 
+// ============================================
+// Payment Terminal Routes (Stripe Terminal)
+// ============================================
+
+import PaymentTerminalService from '../services/PaymentTerminalService';
+
+// Get connection token for Stripe Terminal SDK
+router.get('/terminal/connection-token', async (req: Request, res: Response) => {
+  try {
+    const companyId = req.user?.companyId;
+    if (!companyId) {
+      return res.status(403).json({ error: 'Company context missing' });
+    }
+
+    const token = await PaymentTerminalService.createConnectionToken(companyId);
+    res.json({ secret: token });
+  } catch (error) {
+    logger.error({ error }, 'Failed to create terminal connection token');
+    res.status(500).json({ error: 'Failed to create connection token' });
+  }
+});
+
+// List available terminal readers
+router.get('/terminal/readers', async (req: Request, res: Response) => {
+  try {
+    const companyId = req.user?.companyId;
+    if (!companyId) {
+      return res.status(403).json({ error: 'Company context missing' });
+    }
+
+    const locationId = req.query.locationId as string | undefined;
+    const readers = await PaymentTerminalService.listReaders(companyId, locationId);
+    res.json({ readers });
+  } catch (error) {
+    logger.error({ error }, 'Failed to list terminal readers');
+    res.status(500).json({ error: 'Failed to list readers' });
+  }
+});
+
+// Register a new terminal reader
+router.post('/terminal/readers',
+  validateBody(z.object({
+    registrationCode: z.string(),
+    label: z.string(),
+    locationId: z.string().optional(),
+  })),
+  async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user?.companyId;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
+
+      const { registrationCode, label, locationId } = req.body;
+      const reader = await PaymentTerminalService.registerReader(
+        companyId,
+        registrationCode,
+        label,
+        locationId
+      );
+      res.json({ reader });
+    } catch (error) {
+      logger.error({ error }, 'Failed to register terminal reader');
+      res.status(500).json({ error: 'Failed to register reader' });
+    }
+  }
+);
+
+// Create a payment intent for terminal payment
+router.post('/terminal/payment-intent',
+  validateBody(z.object({
+    amount: z.number().positive(),
+    readerId: z.string(),
+    description: z.string().optional(),
+    patientId: z.string().optional(),
+    orderId: z.string().optional(),
+    currency: z.string().default('gbp'),
+  })),
+  async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user?.companyId;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
+
+      const { amount, readerId, description, patientId, orderId, currency } = req.body;
+
+      const paymentIntent = await PaymentTerminalService.createTerminalPaymentIntent({
+        companyId,
+        readerId,
+        amount,
+        currency,
+        description,
+        patientId,
+        orderId,
+      });
+
+      res.json({ paymentIntent });
+    } catch (error) {
+      logger.error({ error }, 'Failed to create terminal payment intent');
+      res.status(500).json({ error: 'Failed to create payment intent' });
+    }
+  }
+);
+
+// Process payment on a terminal reader
+router.post('/terminal/process-payment',
+  validateBody(z.object({
+    readerId: z.string(),
+    paymentIntentId: z.string(),
+  })),
+  async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user?.companyId;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
+
+      const { readerId, paymentIntentId } = req.body;
+      const reader = await PaymentTerminalService.processPayment(
+        readerId,
+        paymentIntentId,
+        companyId
+      );
+      res.json({ reader, status: reader.status });
+    } catch (error) {
+      logger.error({ error }, 'Failed to process terminal payment');
+      res.status(500).json({ error: 'Failed to process payment' });
+    }
+  }
+);
+
+// Cancel current reader action
+router.post('/terminal/readers/:readerId/cancel',
+  async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user?.companyId;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
+
+      const { readerId } = req.params;
+      const reader = await PaymentTerminalService.cancelReaderAction(readerId, companyId);
+      res.json({ reader });
+    } catch (error) {
+      logger.error({ error }, 'Failed to cancel reader action');
+      res.status(500).json({ error: 'Failed to cancel reader action' });
+    }
+  }
+);
+
+// Get reader status
+router.get('/terminal/readers/:readerId/status',
+  async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user?.companyId;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
+
+      const { readerId } = req.params;
+      const reader = await PaymentTerminalService.getReaderStatus(readerId, companyId);
+      res.json({ reader, status: reader.status });
+    } catch (error) {
+      logger.error({ error }, 'Failed to get reader status');
+      res.status(500).json({ error: 'Failed to get reader status' });
+    }
+  }
+);
+
+// Get payment intent status (for polling after terminal payment)
+router.get('/terminal/payment-intent/:paymentIntentId/status',
+  async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user?.companyId;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
+
+      const { paymentIntentId } = req.params;
+      const paymentIntent = await PaymentTerminalService.getPaymentIntentStatus(
+        paymentIntentId,
+        companyId
+      );
+      res.json({
+        status: paymentIntent.status,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+      });
+    } catch (error) {
+      logger.error({ error }, 'Failed to get payment intent status');
+      res.status(500).json({ error: 'Failed to get payment status' });
+    }
+  }
+);
+
+// Create a terminal location (for organizing readers)
+router.post('/terminal/locations',
+  validateBody(z.object({
+    displayName: z.string(),
+    address: z.object({
+      line1: z.string(),
+      city: z.string(),
+      postalCode: z.string(),
+      country: z.string().default('GB'),
+      state: z.string().optional(),
+    }),
+  })),
+  async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user?.companyId;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
+
+      const { displayName, address } = req.body;
+      const location = await PaymentTerminalService.createLocation(
+        companyId,
+        displayName,
+        address
+      );
+      res.json({ location });
+    } catch (error) {
+      logger.error({ error }, 'Failed to create terminal location');
+      res.status(500).json({ error: 'Failed to create location' });
+    }
+  }
+);
+
+// List terminal locations
+router.get('/terminal/locations', async (req: Request, res: Response) => {
+  try {
+    const companyId = req.user?.companyId;
+    if (!companyId) {
+      return res.status(403).json({ error: 'Company context missing' });
+    }
+
+    const locations = await PaymentTerminalService.listLocations(companyId);
+    res.json({ locations });
+  } catch (error) {
+    logger.error({ error }, 'Failed to list terminal locations');
+    res.status(500).json({ error: 'Failed to list locations' });
+  }
+});
+
+// Simulate terminal payment (test mode only)
+router.post('/terminal/simulate-payment',
+  validateBody(z.object({
+    readerId: z.string(),
+  })),
+  async (req: Request, res: Response) => {
+    try {
+      const companyId = req.user?.companyId;
+      if (!companyId) {
+        return res.status(403).json({ error: 'Company context missing' });
+      }
+
+      // Only allow in development/test mode
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ error: 'Simulated payments not available in production' });
+      }
+
+      const { readerId } = req.body;
+      const reader = await PaymentTerminalService.simulateTerminalPayment(readerId, companyId);
+      res.json({ reader });
+    } catch (error) {
+      logger.error({ error }, 'Failed to simulate terminal payment');
+      res.status(500).json({ error: 'Failed to simulate payment' });
+    }
+  }
+);
+
 export default router;
