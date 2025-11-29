@@ -23,10 +23,11 @@ run_migrations() {
   fi
 
   echo "[migrations] DATABASE_URL is configured"
-  echo "[migrations] Running drizzle-kit push --force..."
+  echo "[migrations] Running database migrations..."
 
-  # Run with timeout to prevent hanging (60 second timeout)
-  timeout 60 npx drizzle-kit push --force 2>&1
+  # Use drizzle-kit migrate (non-interactive) instead of push
+  # This runs pre-generated migration files without prompts
+  timeout 60 npx drizzle-kit migrate 2>&1
   EXIT_CODE=$?
 
   if [ $EXIT_CODE -eq 0 ]; then

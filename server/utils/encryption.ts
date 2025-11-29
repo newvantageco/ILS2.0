@@ -396,17 +396,19 @@ export function redactForLogging(data: string, visible: number = 4): string {
 
 /**
  * CLI utility for generating encryption keys
+ * Note: Disabled in bundled production build to avoid module format conflicts
+ * To generate keys, run: node -e "import('./server/utils/encryption.js').then(m => console.log(m.generateEncryptionKey()))"
  */
-if (require.main === module) {
-  console.log('Generating new AES-256 encryption key...');
-  console.log('');
-  console.log('Add this to your .env file (or AWS Secrets Manager):');
-  console.log('');
-  console.log(`DB_ENCRYPTION_KEY=${generateEncryptionKey()}`);
-  console.log('DB_ENCRYPTION_KEY_VERSION=v1');
-  console.log('');
-  console.log('⚠️  WARNING: Store this key securely!');
-  console.log('- Never commit to version control');
-  console.log('- Use AWS Secrets Manager in production');
-  console.log('- Implement key rotation every 90 days');
-}
+// if (require.main === module) {
+//   console.log('Generating new AES-256 encryption key...');
+//   console.log('');
+//   console.log('Add this to your .env file (or AWS Secrets Manager):');
+//   console.log('');
+//   console.log(`DB_ENCRYPTION_KEY=${generateEncryptionKey()}`);
+//   console.log('DB_ENCRYPTION_KEY_VERSION=v1');
+//   console.log('');
+//   console.log('⚠️  WARNING: Store this key securely!');
+//   console.log('- Never commit to version control');
+//   console.log('- Use AWS Secrets Manager in production');
+//   console.log('- Implement key rotation every 90 days');
+// }

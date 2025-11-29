@@ -18,7 +18,7 @@ healthcheckTimeout = 120
 
 # NOTE: startCommand is intentionally omitted to use Dockerfile CMD
 # The Dockerfile runs docker-start.sh which handles:
-# 1. Database migrations (drizzle-kit push)
+# 1. Database migrations (drizzle-kit migrate - runs pre-generated migrations)
 # 2. Application startup (node dist/index.js)
 
 # Resource allocation
