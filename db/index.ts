@@ -6,6 +6,7 @@
  *
  * IMPORTANT: This module does NOT throw at import time to allow
  * health checks to run even if DATABASE_URL is not configured.
+ * Database operations will throw at runtime if DATABASE_URL is missing.
  */
 import { drizzle, NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
@@ -15,9 +16,9 @@ import * as dotenv from "dotenv";
 // Load environment variables from .env file
 dotenv.config();
 
-// Initialize pool and db as null - they will be set if DATABASE_URL exists
-let pool: Pool | null = null;
-let db: NodePgDatabase<typeof schema> | null = null;
+// Internal nullable pool and db instances
+let _pool: Pool | null = null;
+let _db: NodePgDatabase<typeof schema> | null = null;
 
 if (!process.env.DATABASE_URL) {
   console.warn("WARNING: DATABASE_URL environment variable is not set");
@@ -32,7 +33,7 @@ if (!process.env.DATABASE_URL) {
 
   // Production-grade connection pooling configuration
   // Optimized for handling thousands of concurrent companies
-  pool = new Pool({
+  _pool = new Pool({
     connectionString: process.env.DATABASE_URL,
 
     // Connection Pool Settings
@@ -52,33 +53,66 @@ if (!process.env.DATABASE_URL) {
   });
 
   // Pool event handlers for monitoring and debugging
-  pool.on("connect", () => {
-    console.log("New database client connected. Pool size:", pool?.totalCount);
+  _pool.on("connect", () => {
+    console.log("New database client connected. Pool size:", _pool?.totalCount);
   });
 
-  pool.on("error", (err) => {
+  _pool.on("error", (err) => {
     console.error("Unexpected error on idle database client:", err);
   });
 
-  pool.on("remove", () => {
-    console.log("Database client removed. Pool size:", pool?.totalCount);
+  _pool.on("remove", () => {
+    console.log("Database client removed. Pool size:", _pool?.totalCount);
   });
 
   // Initialize Drizzle ORM
-  db = drizzle(pool, { schema });
+  _db = drizzle(_pool, { schema });
 
   console.log("Database connection initialized successfully");
-  console.log(`Connection pool configured: min=${pool.options.min}, max=${pool.options.max}`);
+  console.log(`Connection pool configured: min=${_pool.options.min}, max=${_pool.options.max}`);
 }
 
 // Graceful shutdown handler - only close pool if it exists
 process.on("SIGTERM", async () => {
-  if (pool) {
+  if (_pool) {
     console.log("SIGTERM received, closing database pool...");
-    await pool.end();
+    await _pool.end();
     console.log("Database pool closed");
   }
 });
 
-// Export pool for read replica configuration
-export { db, pool as primaryPool };
+/**
+ * Get database instance - throws if not initialized
+ * Use this in code that requires database access
+ */
+export function getDb(): NodePgDatabase<typeof schema> {
+  if (!_db) {
+    throw new Error('Database not initialized. Ensure DATABASE_URL is configured.');
+  }
+  return _db;
+}
+
+/**
+ * Get pool instance - throws if not initialized
+ */
+export function getPool(): Pool {
+  if (!_pool) {
+    throw new Error('Database pool not initialized. Ensure DATABASE_URL is configured.');
+  }
+  return _pool;
+}
+
+/**
+ * Check if database is available
+ */
+export function isDatabaseAvailable(): boolean {
+  return _pool !== null && _db !== null;
+}
+
+// Export db and pool as non-null types for backwards compatibility
+// TypeScript will not complain, but runtime access will throw if not initialized
+// Use isDatabaseAvailable() to check before accessing in code that needs graceful handling
+const db = _db as NodePgDatabase<typeof schema>;
+const primaryPool = _pool as Pool;
+
+export { db, primaryPool };

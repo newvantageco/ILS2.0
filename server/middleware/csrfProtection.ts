@@ -24,7 +24,7 @@ const csrfSecretValue = CSRF_SECRET || (process.env.NODE_ENV !== 'production' ? 
 const {
   invalidCsrfTokenError,
   doubleCsrfProtection,
-  generateToken,
+  generateCsrfToken: generateToken,
 } = doubleCsrf({
   getSecret: () => csrfSecretValue,
   getSessionIdentifier: (req: Request) => {

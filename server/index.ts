@@ -43,7 +43,7 @@ import { createAIWorker } from "./workers/aiWorker";
 import { initializeRedis, getRedisConnection } from "./queue/config";
 import { storage } from "./storage";
 import logger from "./utils/logger";
-import { db, closePool } from "./db";
+import { db, closePool, isDatabaseAvailable } from "./db";
 import { sql } from "drizzle-orm";
 // Order-created workers (Strangler refactor) - register explicitly below
 import { registerOrderCreatedLimsWorker } from "./workers/OrderCreatedLimsWorker";
@@ -342,11 +342,11 @@ app.get('/api/health/detailed', async (req: Request, res: Response) => {
 
   try {
     // Check database connectivity
-    if (!dbReady && db) {
+    if (!dbReady && isDatabaseAvailable()) {
       await db.execute(sql`SELECT 1 FROM users LIMIT 1`);
       dbReady = true;
     }
-    databaseStatus = db ? (dbReady ? 'connected' : 'initializing') : 'not_configured';
+    databaseStatus = isDatabaseAvailable() ? (dbReady ? 'connected' : 'initializing') : 'not_configured';
   } catch (error) {
     databaseStatus = 'initializing';
     databaseMessage = error instanceof Error ? error.message : 'Database connection pending';
@@ -380,7 +380,7 @@ app.get('/api/health/detailed', async (req: Request, res: Response) => {
   log("Starting server initialization...");
 
   // Only initialize database-dependent services if DATABASE_URL is configured
-  if (process.env.DATABASE_URL && db) {
+  if (process.env.DATABASE_URL && isDatabaseAvailable()) {
     try {
       // Test database connectivity
       await db.execute(sql`SELECT 1`);
