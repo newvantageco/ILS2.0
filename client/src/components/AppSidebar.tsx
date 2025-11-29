@@ -35,6 +35,7 @@ import {
   TestTube,
   Factory,
   CalendarDays,
+  CalendarRange,
   CheckCircle,
   Wrench,
   FileSearch,
@@ -84,7 +85,9 @@ const menuItems = {
     clinical: [
       { title: "Examinations", url: "/ecp/examinations", icon: Eye },
       { title: "Prescriptions", url: "/ecp/prescriptions", icon: FileText },
-      { title: "Diary", url: "/ecp/test-rooms/bookings", icon: CalendarDays },
+      { title: "Diary", url: "/ecp/diary", icon: CalendarDays },
+      { title: "Calendar", url: "/ecp/calendar", icon: CalendarRange },
+      { title: "Test Room Bookings", url: "/ecp/test-rooms/bookings", icon: Clock },
       { title: "Patient Recalls", url: "/ecp/recalls", icon: Bell },
       { title: "Waitlist Queue", url: "/ecp/waitlist", icon: Clock },
       { title: "Dispenser Handoff", url: "/ecp/handoff", icon: UserCheck },
