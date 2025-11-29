@@ -73,7 +73,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getUserDisplayName, getUserInitials } from "@/lib/authUtils";
 
 interface AppSidebarProps {
-  userRole?: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin" | "dispenser";
+  userRole?: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin" | "dispenser" | "store_manager";
 }
 
 const menuItems = {
@@ -284,9 +284,16 @@ const menuItems = {
     { title: "Patients", url: "/dispenser/patients", icon: UserCircle },
     { title: "Analytics", url: "/dispenser/analytics", icon: LineChart },
   ],
+  store_manager: [
+    { title: "Dashboard", url: "/store-manager/dashboard", icon: Home },
+    { title: "Staff", url: "/store-manager/staff", icon: Users },
+    { title: "Inventory", url: "/store-manager/inventory", icon: Archive },
+    { title: "Analytics", url: "/store-manager/analytics", icon: LineChart },
+    { title: "Settings", url: "/store-manager/settings", icon: Settings },
+  ],
 };
 
-const roleLabels = {
+const roleLabels: Record<string, string> = {
   ecp: "Eye Care Professional",
   lab_tech: "Lab Technician",
   supplier: "Supplier",
@@ -295,6 +302,7 @@ const roleLabels = {
   platform_admin: "Master Admin",
   company_admin: "Company Administrator",
   dispenser: "Dispenser",
+  store_manager: "Store Manager",
 };
 
 export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
@@ -460,10 +468,10 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
             )}
 
             {/* Advanced - Collapsible (for ECP) */}
-            {items.advanced && (
+            {'advanced' in items && items.advanced && (
               <CollapsibleSidebarGroup label="Advanced" defaultCollapsed={true}>
                 <SidebarMenu>
-                  {items.advanced.map((item) => (
+                  {(items.advanced as typeof menuItems.ecp.advanced).map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild
@@ -486,10 +494,10 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
             )}
 
             {/* Back Office - Collapsible (for Company Admin) */}
-            {items.backoffice && (
+            {'backoffice' in items && items.backoffice && (
               <CollapsibleSidebarGroup label="Back Office" defaultCollapsed={true}>
                 <SidebarMenu>
-                  {items.backoffice.map((item) => (
+                  {(items.backoffice as typeof menuItems.company_admin.backoffice).map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild
