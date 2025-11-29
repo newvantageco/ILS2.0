@@ -33,10 +33,12 @@ import {
   X,
   ChevronRight,
   Quote,
+  Menu,
 } from "lucide-react";
 
 export default function MarketingLandingPage() {
   const [selectedPlan, setSelectedPlan] = useState<"starter" | "professional" | "enterprise">("professional");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -70,7 +72,40 @@ export default function MarketingLandingPage() {
                 Get Started
               </Button>
             </div>
+            {/* Mobile menu button */}
+            <button
+              className="md:hidden p-2 rounded-md hover:bg-muted"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
           </div>
+          {/* Mobile menu panel */}
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t bg-background py-4 px-4 space-y-4">
+              <a href="#features" className="block text-sm font-medium hover:text-primary transition-colors py-2">
+                Features
+              </a>
+              <a href="#benefits" className="block text-sm font-medium hover:text-primary transition-colors py-2">
+                Benefits
+              </a>
+              <a href="#pricing" className="block text-sm font-medium hover:text-primary transition-colors py-2">
+                Pricing
+              </a>
+              <a href="#testimonials" className="block text-sm font-medium hover:text-primary transition-colors py-2">
+                Testimonials
+              </a>
+              <div className="flex flex-col gap-2 pt-4 border-t">
+                <Button variant="outline" className="w-full" onClick={() => window.location.href = "/login"}>
+                  Sign In
+                </Button>
+                <Button className="w-full" onClick={() => window.location.href = "/email-signup"}>
+                  Get Started
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
