@@ -419,19 +419,57 @@ export class NhsClaimsService {
   }
 
   /**
+   * Validate NHS number using Modulus 11 algorithm
+   * NHS numbers must be exactly 10 digits and pass checksum validation
+   */
+  private static validateNhsNumber(nhsNumber: string): boolean {
+    if (!nhsNumber) return false;
+
+    // Remove spaces and dashes
+    const cleanNumber = nhsNumber.replace(/[\s-]/g, '');
+
+    // Must be exactly 10 digits
+    if (!/^\d{10}$/.test(cleanNumber)) return false;
+
+    // Modulus 11 checksum validation
+    const weights = [10, 9, 8, 7, 6, 5, 4, 3, 2];
+    let sum = 0;
+
+    for (let i = 0; i < 9; i++) {
+      sum += parseInt(cleanNumber[i]) * weights[i];
+    }
+
+    const checkDigit = 11 - (sum % 11);
+    const expectedCheck = checkDigit === 11 ? 0 : checkDigit;
+
+    // Checksum 10 is invalid (no NHS numbers with checksum 10)
+    if (checkDigit === 10) return false;
+
+    return parseInt(cleanNumber[9]) === expectedCheck;
+  }
+
+  /**
    * Validate claim before submission
    */
   private static async validateClaim(claim: any) {
     const errors: string[] = [];
 
-    // Check patient NHS number (required for most claims)
+    // Check patient NHS number (required for most claims except GOS4 domiciliary)
     if (!claim.patientNhsNumber && claim.claimType !== "GOS4") {
-      errors.push("Patient NHS number is required");
+      errors.push("Patient NHS number is required for this claim type");
     }
 
-    // Validate NHS number format (10 digits)
-    if (claim.patientNhsNumber && !/^\d{10}$/.test(claim.patientNhsNumber)) {
-      errors.push("Invalid NHS number format (must be 10 digits)");
+    // Validate NHS number format and checksum using Modulus 11 algorithm
+    if (claim.patientNhsNumber && !this.validateNhsNumber(claim.patientNhsNumber)) {
+      errors.push("Invalid NHS number - must be 10 digits and pass checksum validation");
+    }
+
+    // GOS4 domiciliary claims require home visit eligibility
+    if (claim.claimType === "GOS4") {
+      // GOS4 claims require the patient to be unable to attend practice
+      if (!claim.domiciliaryJustification) {
+        errors.push("GOS4 claims require documented justification for home visit");
+      }
     }
 
     // Check exemption evidence if exemption claimed
@@ -445,11 +483,11 @@ export class NhsClaimsService {
       errors.push("Test date cannot be in the future");
     }
 
-    // Check test date is within claim period (usually 3 months)
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-    if (testDate < threeMonthsAgo) {
-      errors.push("Test date is too old (must be within 3 months)");
+    // Check test date is within NHS claim submission period (6 months per PCSE guidelines)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    if (testDate < sixMonthsAgo) {
+      errors.push("Test date is too old (NHS claims must be submitted within 6 months)");
     }
 
     if (errors.length > 0) {

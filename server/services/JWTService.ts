@@ -17,9 +17,10 @@ const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
 const JWT_ISSUER = 'ils-platform';
 const JWT_AUDIENCE = 'ils-api';
 
-// Warn if using default secret in production
+// CRITICAL: Fail fast if using default secret in production
 if (process.env.NODE_ENV === 'production' && JWT_SECRET === 'change-this-secret-in-production') {
-  logger.warn('⚠️  Using default JWT_SECRET in production! Please set a secure secret.');
+  logger.error('CRITICAL: JWT_SECRET environment variable is not set in production!');
+  throw new Error('JWT_SECRET environment variable must be set in production. Cannot start with insecure default.');
 }
 
 /**

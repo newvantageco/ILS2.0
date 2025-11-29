@@ -140,11 +140,13 @@ function generateActionDescription(method: string, path: string, user?: any): st
 }
 
 /**
- * Calculate retention date (7 years from now, per GOC requirements)
+ * Calculate retention date (8 years from now, per NHS PCSE requirements)
+ * NHS requires 8-year retention for patient data access audit trails
+ * GOC minimum is 7 years, but NHS compliance takes precedence
  */
 function calculateRetentionDate(): Date {
   const date = new Date();
-  date.setFullYear(date.getFullYear() + 7);
+  date.setFullYear(date.getFullYear() + 8);
   return date;
 }
 

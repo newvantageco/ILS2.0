@@ -226,16 +226,41 @@ const menuItems = {
     { title: "BI Dashboard", url: "/admin/bi-dashboard", icon: BarChart3 },
   ],
   company_admin: {
-    admin: [
-      { title: "Admin Dashboard", url: "/company-admin/dashboard", icon: Home },
-      { title: "Pending Members", url: "/company-admin/pending-members", icon: UserCheck },
-      { title: "User Management", url: "/company-admin/users", icon: Users },
-      { title: "Permissions", url: "/admin/permissions", icon: KeyRound },
-      { title: "Role Management", url: "/admin/roles", icon: Shield },
-      { title: "Audit Logs", url: "/admin/audit-logs", icon: FileText },
+    main: [
+      { title: "Dashboard", url: "/company-admin/dashboard", icon: Home },
+    ],
+    clinical: [
+      { title: "ECP Dashboard", url: "/ecp/dashboard", icon: Eye },
+      { title: "Patients", url: "/ecp/patients", icon: UserCircle },
+      { title: "Examinations", url: "/ecp/examinations", icon: Eye },
+      { title: "Prescriptions", url: "/ecp/prescriptions", icon: FileText },
+      { title: "Diary / Bookings", url: "/ecp/test-rooms/bookings", icon: CalendarDays },
       { title: "Patient Recalls", url: "/admin/recalls", icon: Bell },
       { title: "Waitlist Queue", url: "/admin/waitlist", icon: Clock },
       { title: "Dispenser Handoff", url: "/admin/handoff", icon: UserCheck },
+    ],
+    retail: [
+      { title: "Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
+      { title: "Inventory", url: "/ecp/inventory", icon: Archive },
+      { title: "Invoices", url: "/ecp/invoices", icon: Receipt },
+    ],
+    orders: [
+      { title: "New Order", url: "/ecp/new-order", icon: Package },
+      { title: "My Orders", url: "/ecp/orders", icon: ClipboardList },
+    ],
+    insights: [
+      { title: "Analytics", url: "/company-admin/analytics", icon: BarChart3 },
+      { title: "AI Assistant", url: "/company-admin/ai-assistant", icon: Brain },
+      { title: "BI Dashboard", url: "/ecp/bi-dashboard", icon: LineChart },
+      { title: "Patient Engagement", url: "/admin/engagement", icon: Activity },
+    ],
+    backoffice: [
+      { title: "Pending Members", url: "/company-admin/pending-members", icon: UserCheck },
+      { title: "User Management", url: "/company-admin/users", icon: Users },
+      { title: "Role Management", url: "/admin/roles", icon: Shield },
+      { title: "Permissions", url: "/admin/permissions", icon: KeyRound },
+      { title: "Audit Logs", url: "/admin/audit-logs", icon: FileText },
+      { title: "Company Settings", url: "/ecp/company", icon: Building2 },
       { title: "Message Templates", url: "/admin/templates", icon: Mail },
       { title: "Campaign Manager", url: "/admin/campaigns", icon: Send },
       { title: "Workflow Automation", url: "/admin/workflows", icon: GitBranch },
@@ -246,26 +271,8 @@ const menuItems = {
       { title: "Communication Analytics", url: "/admin/communication-analytics", icon: BarChart3 },
       { title: "Patient Segments", url: "/admin/segments", icon: Target },
       { title: "Patient Preferences", url: "/admin/preferences", icon: UserCog },
-      { title: "Patient Engagement", url: "/admin/engagement", icon: Activity },
-      { title: "Company Settings", url: "/ecp/company", icon: Building2 },
-    ],
-    clinical: [
-      { title: "ECP Dashboard", url: "/ecp/dashboard", icon: Eye },
-      { title: "Patients", url: "/ecp/patients", icon: UserCircle },
-      { title: "Examinations", url: "/ecp/examinations", icon: Eye },
-      { title: "Prescriptions", url: "/ecp/prescriptions", icon: FileText },
-      { title: "Diary / Bookings", url: "/ecp/test-rooms/bookings", icon: CalendarDays },
-    ],
-    retail: [
-      { title: "Point of Sale", url: "/ecp/pos", icon: ShoppingCart },
-      { title: "Inventory", url: "/ecp/inventory", icon: Archive },
-      { title: "Invoices", url: "/ecp/invoices", icon: FileText },
-    ],
-    insights: [
-      { title: "Analytics", url: "/company-admin/analytics", icon: BarChart3 },
-      { title: "AI Assistant", url: "/company-admin/ai-assistant", icon: Brain },
-      { title: "BI Dashboard", url: "/ecp/bi-dashboard", icon: LineChart },
       { title: "Compliance", url: "/ecp/compliance", icon: Shield },
+      { title: "NHS Integration", url: "/ecp/nhs", icon: Heart },
     ],
   },
   dispenser: [
@@ -321,19 +328,19 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
       <SidebarContent>
         {isGrouped && typeof items === 'object' && !Array.isArray(items) ? (
           <>
-            {/* Main/Admin Section - Always Expanded */}
+            {/* Main Section - Always Expanded */}
             <SidebarGroup>
-              <SidebarGroupLabel>{userRole === "company_admin" ? "Administration" : "Main"}</SidebarGroupLabel>
+              <SidebarGroupLabel>Main</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {(items.main || items.admin || []).map((item) => (
+                  {(items.main || []).map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild
                         isActive={location === item.url}
                         data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                       >
-                        <Link 
+                        <Link
                           href={item.url}
                           aria-label={item.title}
                           aria-current={location === item.url ? "page" : undefined}
@@ -349,124 +356,160 @@ export function AppSidebar({ userRole = "lab_tech" }: AppSidebarProps) {
             </SidebarGroup>
 
             {/* Clinical - Collapsible */}
-            <CollapsibleSidebarGroup label="Clinical" defaultCollapsed={true}>
-              <SidebarMenu>
-                {items.clinical.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location === item.url}
-                      data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-                    >
-                      <Link 
-                        href={item.url}
-                        aria-label={item.title}
-                        aria-current={location === item.url ? "page" : undefined}
+            {items.clinical && (
+              <CollapsibleSidebarGroup label="Clinical" defaultCollapsed={false}>
+                <SidebarMenu>
+                  {items.clinical.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                       >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </CollapsibleSidebarGroup>
+                        <Link
+                          href={item.url}
+                          aria-label={item.title}
+                          aria-current={location === item.url ? "page" : undefined}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </CollapsibleSidebarGroup>
+            )}
 
             {/* Retail - Collapsible */}
-            <CollapsibleSidebarGroup label="Retail" defaultCollapsed={true}>
-              <SidebarMenu>
-                {items.retail.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location === item.url}
-                      data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-                    >
-                      <Link 
-                        href={item.url}
-                        aria-label={item.title}
-                        aria-current={location === item.url ? "page" : undefined}
+            {items.retail && (
+              <CollapsibleSidebarGroup label="Retail" defaultCollapsed={false}>
+                <SidebarMenu>
+                  {items.retail.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                       >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </CollapsibleSidebarGroup>
+                        <Link
+                          href={item.url}
+                          aria-label={item.title}
+                          aria-current={location === item.url ? "page" : undefined}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </CollapsibleSidebarGroup>
+            )}
 
             {/* Orders - Collapsible */}
-            <CollapsibleSidebarGroup label="Orders" defaultCollapsed={true}>
-              <SidebarMenu>
-                {items.orders.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location === item.url}
-                      data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-                    >
-                      <Link 
-                        href={item.url}
-                        aria-label={item.title}
-                        aria-current={location === item.url ? "page" : undefined}
+            {items.orders && (
+              <CollapsibleSidebarGroup label="Orders" defaultCollapsed={true}>
+                <SidebarMenu>
+                  {items.orders.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                       >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </CollapsibleSidebarGroup>
+                        <Link
+                          href={item.url}
+                          aria-label={item.title}
+                          aria-current={location === item.url ? "page" : undefined}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </CollapsibleSidebarGroup>
+            )}
 
             {/* Insights - Collapsible */}
-            <CollapsibleSidebarGroup label="Insights" defaultCollapsed={true}>
-              <SidebarMenu>
-                {items.insights.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location === item.url}
-                      data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-                    >
-                      <Link 
-                        href={item.url}
-                        aria-label={item.title}
-                        aria-current={location === item.url ? "page" : undefined}
+            {items.insights && (
+              <CollapsibleSidebarGroup label="Insights" defaultCollapsed={true}>
+                <SidebarMenu>
+                  {items.insights.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                       >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </CollapsibleSidebarGroup>
+                        <Link
+                          href={item.url}
+                          aria-label={item.title}
+                          aria-current={location === item.url ? "page" : undefined}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </CollapsibleSidebarGroup>
+            )}
 
-            {/* Advanced - Collapsible */}
-            <CollapsibleSidebarGroup label="Advanced" defaultCollapsed={true}>
-              <SidebarMenu>
-                {items.advanced.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location === item.url}
-                      data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-                    >
-                      <Link 
-                        href={item.url}
-                        aria-label={item.title}
-                        aria-current={location === item.url ? "page" : undefined}
+            {/* Advanced - Collapsible (for ECP) */}
+            {items.advanced && (
+              <CollapsibleSidebarGroup label="Advanced" defaultCollapsed={true}>
+                <SidebarMenu>
+                  {items.advanced.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                       >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </CollapsibleSidebarGroup>
+                        <Link
+                          href={item.url}
+                          aria-label={item.title}
+                          aria-current={location === item.url ? "page" : undefined}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </CollapsibleSidebarGroup>
+            )}
+
+            {/* Back Office - Collapsible (for Company Admin) */}
+            {items.backoffice && (
+              <CollapsibleSidebarGroup label="Back Office" defaultCollapsed={true}>
+                <SidebarMenu>
+                  {items.backoffice.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        <Link
+                          href={item.url}
+                          aria-label={item.title}
+                          aria-current={location === item.url ? "page" : undefined}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </CollapsibleSidebarGroup>
+            )}
           </>
         ) : (
           <SidebarGroup>

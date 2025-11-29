@@ -1,19 +1,21 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Search, User, Check, Package, X, ArrowLeft, Mail, CheckCircle, Activity } from "lucide-react";
+import { Search, User, Check, Package, X, ArrowLeft, Mail, CheckCircle, Activity, Bell, MessageCircle, Phone, Calendar, Send, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import PatientSearchInput, { PatientProfile } from "@/components/shared/PatientSearchInput";
 import { useEmail } from "@/hooks/use-email";
+import { apiRequest } from "@/lib/queryClient";
 import {
   CustomerProfile,
   PrescriptionData,
@@ -41,6 +43,16 @@ interface Product {
   stockQuantity: number;
   category?: string | null;
   sku?: string | null;
+}
+
+interface RecallPatient {
+  patientId: string;
+  patientName: string;
+  email: string | null;
+  phone: string | null;
+  lastExamDate: string;
+  daysSinceExam: number;
+  preferredContact: string;
 }
 
 export default function OpticalPOSPage() {
@@ -73,10 +85,110 @@ export default function OpticalPOSPage() {
   const [lensMaterial, setLensMaterial] = useState<string>("polycarbonate");
   const [selectedCoatings, setSelectedCoatings] = useState<string[]>([]);
 
-  // Fetch products on mount
+  // Recalls state
+  const [recallPatients, setRecallPatients] = useState<RecallPatient[]>([]);
+  const [loadingRecalls, setLoadingRecalls] = useState(false);
+  const [sendingReminder, setSendingReminder] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("pos");
+
+  // Fetch products and recalls on mount
   useEffect(() => {
     fetchProducts();
+    fetchRecalls();
   }, []);
+
+  const fetchRecalls = async () => {
+    try {
+      setLoadingRecalls(true);
+      const response = await fetch('/api/recalls/due?monthsAgo=12&limit=20', { credentials: "include" });
+      if (!response.ok) throw new Error('Failed to fetch recalls');
+      const data = await response.json();
+      setRecallPatients(data);
+    } catch (error) {
+      console.error('Failed to load recalls:', error);
+    } finally {
+      setLoadingRecalls(false);
+    }
+  };
+
+  const sendWhatsAppReminder = async (patient: RecallPatient) => {
+    if (!patient.phone) {
+      toast({
+        title: "No Phone Number",
+        description: "This patient has no phone number on file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSendingReminder(patient.patientId);
+      const response = await apiRequest("POST", "/api/communications/messages/send", {
+        channel: "whatsapp",
+        recipientId: patient.patientId,
+        recipientType: "patient",
+        to: patient.phone,
+        templateId: null,
+        subject: "Eye Exam Reminder",
+        body: `Hi ${patient.patientName}! It's been over a year since your last eye exam. Regular checkups help maintain healthy vision. Please call us or visit our website to book your appointment. Thank you!`,
+        priority: "normal",
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Reminder Sent",
+          description: `WhatsApp reminder sent to ${patient.patientName}`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Failed to Send",
+        description: "Could not send WhatsApp reminder. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingReminder(null);
+    }
+  };
+
+  const sendSMSReminder = async (patient: RecallPatient) => {
+    if (!patient.phone) {
+      toast({
+        title: "No Phone Number",
+        description: "This patient has no phone number on file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSendingReminder(patient.patientId);
+      const response = await apiRequest("POST", "/api/communications/messages/send", {
+        channel: "sms",
+        recipientId: patient.patientId,
+        recipientType: "patient",
+        to: patient.phone,
+        subject: "Eye Exam Reminder",
+        body: `Hi ${patient.patientName}! Your annual eye exam is due. Please book your appointment with us soon.`,
+        priority: "normal",
+      });
+
+      if (response.ok) {
+        toast({
+          title: "SMS Sent",
+          description: `SMS reminder sent to ${patient.patientName}`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Failed to Send",
+        description: "Could not send SMS reminder. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingReminder(null);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -911,6 +1023,94 @@ export default function OpticalPOSPage() {
             </div>
           </Card>
         )}
+
+        {/* Patient Recalls Panel */}
+        <Card className="mt-4 p-4 bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 shadow-lg rounded-2xl">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-gray-900 text-base flex items-center gap-2">
+              <Bell className="h-4 w-4 text-amber-600" />
+              Recalls Due
+            </h3>
+            <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300">
+              {recallPatients.length}
+            </Badge>
+          </div>
+
+          {loadingRecalls ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-amber-600" />
+            </div>
+          ) : recallPatients.length === 0 ? (
+            <p className="text-sm text-gray-500 py-2">No patients due for recall</p>
+          ) : (
+            <ScrollArea className="h-[200px]">
+              <div className="space-y-3 pr-2">
+                {recallPatients.slice(0, 5).map((patient) => (
+                  <div key={patient.patientId} className="bg-white p-3 rounded-xl border border-amber-100 shadow-sm">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm text-gray-900 truncate">{patient.patientName}</p>
+                        <p className="text-xs text-gray-500">
+                          <Calendar className="inline h-3 w-3 mr-1" />
+                          {patient.daysSinceExam} days overdue
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-1 mt-2">
+                      {patient.phone && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 h-7 text-xs bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                            onClick={() => sendWhatsAppReminder(patient)}
+                            disabled={sendingReminder === patient.patientId}
+                          >
+                            {sendingReminder === patient.patientId ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <>
+                                <MessageCircle className="h-3 w-3 mr-1" />
+                                WhatsApp
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 h-7 text-xs bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                            onClick={() => sendSMSReminder(patient)}
+                            disabled={sendingReminder === patient.patientId}
+                          >
+                            {sendingReminder === patient.patientId ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <>
+                                <Phone className="h-3 w-3 mr-1" />
+                                SMS
+                              </>
+                            )}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+
+          {recallPatients.length > 5 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full mt-2 text-amber-700 hover:text-amber-800 hover:bg-amber-100"
+              onClick={() => setLocation('/ecp/recalls')}
+            >
+              View all {recallPatients.length} recalls
+            </Button>
+          )}
+        </Card>
       </div>
       </div>
       {/* Close Main Content wrapper */}

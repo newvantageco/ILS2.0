@@ -54,7 +54,10 @@ export const NotificationCenter: React.FC = () => {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const userId = user?.id;
-  const ws = useWebSocket(userId ? `ws://localhost:3000/ws?userId=${userId}` : null);
+  // Use dynamic WebSocket URL based on current host (works in both dev and production)
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = userId ? `${wsProtocol}//${window.location.host}/ws?userId=${userId}` : null;
+  const ws = useWebSocket(wsUrl);
   const { toast } = useToast();
 
   useEffect(() => {

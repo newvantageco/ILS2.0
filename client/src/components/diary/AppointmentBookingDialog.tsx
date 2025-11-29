@@ -44,6 +44,8 @@ import {
   Plus,
   Check,
   Loader2,
+  UserPlus,
+  ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, addMinutes, setHours, setMinutes, parseISO } from "date-fns";
@@ -93,6 +95,16 @@ interface Patient {
   email?: string | null;
   phone?: string | null;
   dateOfBirth?: string | null;
+  nhsNumber?: string | null;
+}
+
+interface NewPatientForm {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  dateOfBirth: string;
+  nhsNumber: string;
 }
 
 interface AppointmentBookingDialogProps {
@@ -119,6 +131,18 @@ export function AppointmentBookingDialog({
   const [patientSearch, setPatientSearch] = useState("");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
+
+  // New patient mode
+  const [showAddPatient, setShowAddPatient] = useState(false);
+  const [creatingPatient, setCreatingPatient] = useState(false);
+  const [newPatient, setNewPatient] = useState<NewPatientForm>({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    dateOfBirth: "",
+    nhsNumber: "",
+  });
 
   // Appointment details
   const [appointmentType, setAppointmentType] = useState<string>("eye_examination");
@@ -168,6 +192,15 @@ export function AppointmentBookingDialog({
       setIsVirtual(false);
       setVirtualMeetingLink("");
       setReminderType("email");
+      setShowAddPatient(false);
+      setNewPatient({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        dateOfBirth: "",
+        nhsNumber: "",
+      });
     }
   }, [open]);
 
@@ -213,9 +246,82 @@ export function AppointmentBookingDialog({
     return (
       p.name.toLowerCase().includes(q) ||
       (p.email || "").toLowerCase().includes(q) ||
-      (p.phone || "").toLowerCase().includes(q)
+      (p.phone || "").toLowerCase().includes(q) ||
+      (p.nhsNumber || "").toLowerCase().includes(q)
     );
   });
+
+  // Create new patient
+  const handleCreatePatient = async () => {
+    if (!newPatient.firstName || !newPatient.lastName) {
+      toast({
+        title: "Error",
+        description: "First name and last name are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setCreatingPatient(true);
+      const response = await fetch("/api/patients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: `${newPatient.firstName} ${newPatient.lastName}`,
+          firstName: newPatient.firstName,
+          lastName: newPatient.lastName,
+          email: newPatient.email || null,
+          phone: newPatient.phone || null,
+          dateOfBirth: newPatient.dateOfBirth || null,
+          nhsNumber: newPatient.nhsNumber || null,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create patient");
+      }
+
+      const createdPatient = await response.json();
+
+      // Add to patients list and select
+      const newPatientData: Patient = {
+        id: createdPatient.id,
+        name: createdPatient.name,
+        email: createdPatient.email,
+        phone: createdPatient.phone,
+        dateOfBirth: createdPatient.dateOfBirth,
+        nhsNumber: createdPatient.nhsNumber,
+      };
+
+      setPatients((prev) => [newPatientData, ...prev]);
+      setSelectedPatient(newPatientData);
+      setShowAddPatient(false);
+      setNewPatient({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        dateOfBirth: "",
+        nhsNumber: "",
+      });
+
+      toast({
+        title: "Patient Created",
+        description: `${newPatientData.name} has been added successfully`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to create patient",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingPatient(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!selectedPatient) {
@@ -313,65 +419,185 @@ export function AppointmentBookingDialog({
           {/* Step 1: Patient Selection */}
           {step === "patient" && (
             <div className="space-y-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  value={patientSearch}
-                  onChange={(e) => setPatientSearch(e.target.value)}
-                  placeholder="Search patients by name, email, or phone..."
-                  className="pl-10"
-                />
-              </div>
+              {!showAddPatient ? (
+                <>
+                  {/* Search and Add New button */}
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        value={patientSearch}
+                        onChange={(e) => setPatientSearch(e.target.value)}
+                        placeholder="Search by name, email, phone, or NHS number..."
+                        className="pl-10"
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowAddPatient(true)}
+                      className="flex-shrink-0"
+                    >
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Add New
+                    </Button>
+                  </div>
 
-              <ScrollArea className="h-[300px] border rounded-lg">
-                {loadingPatients ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : filteredPatients.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <User className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p>{patientSearch ? "No patients found" : "No patients available"}</p>
-                  </div>
-                ) : (
-                  <div className="p-2 space-y-2">
-                    {filteredPatients.map((patient) => (
-                      <button
-                        key={patient.id}
-                        onClick={() => setSelectedPatient(patient)}
-                        className={cn(
-                          "w-full text-left p-3 rounded-lg transition-all",
-                          selectedPatient?.id === patient.id
-                            ? "bg-primary text-primary-foreground"
-                            : "hover:bg-muted"
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
+                  <ScrollArea className="h-[300px] border rounded-lg">
+                    {loadingPatients ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : filteredPatients.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <User className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p className="mb-4">{patientSearch ? "No patients found" : "No patients available"}</p>
+                        <Button onClick={() => setShowAddPatient(true)}>
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Add New Patient
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="p-2 space-y-2">
+                        {filteredPatients.map((patient) => (
+                          <button
+                            key={patient.id}
+                            onClick={() => setSelectedPatient(patient)}
                             className={cn(
-                              "w-10 h-10 rounded-full flex items-center justify-center",
+                              "w-full text-left p-3 rounded-lg transition-all",
                               selectedPatient?.id === patient.id
-                                ? "bg-primary-foreground/20"
-                                : "bg-primary/10"
+                                ? "bg-primary text-primary-foreground"
+                                : "hover:bg-muted"
                             )}
                           >
-                            <User className="w-5 h-5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate">{patient.name}</div>
-                            <div className="text-sm opacity-75 truncate">
-                              {patient.email || patient.phone || "No contact info"}
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={cn(
+                                  "w-10 h-10 rounded-full flex items-center justify-center",
+                                  selectedPatient?.id === patient.id
+                                    ? "bg-primary-foreground/20"
+                                    : "bg-primary/10"
+                                )}
+                              >
+                                <User className="w-5 h-5" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium truncate">{patient.name}</div>
+                                <div className="text-sm opacity-75 truncate">
+                                  {patient.email || patient.phone || "No contact info"}
+                                </div>
+                                {patient.nhsNumber && (
+                                  <div className="text-xs opacity-60">NHS: {patient.nhsNumber}</div>
+                                )}
+                              </div>
+                              {selectedPatient?.id === patient.id && (
+                                <Check className="w-5 h-5 flex-shrink-0" />
+                              )}
                             </div>
-                          </div>
-                          {selectedPatient?.id === patient.id && (
-                            <Check className="w-5 h-5 flex-shrink-0" />
-                          )}
-                        </div>
-                      </button>
-                    ))}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </>
+              ) : (
+                /* Add New Patient Form */
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowAddPatient(false)}
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-1" />
+                      Back
+                    </Button>
+                    <h3 className="font-medium">Add New Patient</h3>
                   </div>
-                )}
-              </ScrollArea>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name *</Label>
+                      <Input
+                        id="firstName"
+                        value={newPatient.firstName}
+                        onChange={(e) => setNewPatient({ ...newPatient, firstName: e.target.value })}
+                        placeholder="First name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name *</Label>
+                      <Input
+                        id="lastName"
+                        value={newPatient.lastName}
+                        onChange={(e) => setNewPatient({ ...newPatient, lastName: e.target.value })}
+                        placeholder="Last name"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="patientEmail">Email</Label>
+                      <Input
+                        id="patientEmail"
+                        type="email"
+                        value={newPatient.email}
+                        onChange={(e) => setNewPatient({ ...newPatient, email: e.target.value })}
+                        placeholder="patient@email.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="patientPhone">Phone</Label>
+                      <Input
+                        id="patientPhone"
+                        type="tel"
+                        value={newPatient.phone}
+                        onChange={(e) => setNewPatient({ ...newPatient, phone: e.target.value })}
+                        placeholder="07xxx xxxxxx"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="patientDob">Date of Birth</Label>
+                      <Input
+                        id="patientDob"
+                        type="date"
+                        value={newPatient.dateOfBirth}
+                        onChange={(e) => setNewPatient({ ...newPatient, dateOfBirth: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="nhsNumber">NHS Number</Label>
+                      <Input
+                        id="nhsNumber"
+                        value={newPatient.nhsNumber}
+                        onChange={(e) => setNewPatient({ ...newPatient, nhsNumber: e.target.value })}
+                        placeholder="000 000 0000"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    className="w-full"
+                    onClick={handleCreatePatient}
+                    disabled={creatingPatient || !newPatient.firstName || !newPatient.lastName}
+                  >
+                    {creatingPatient ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Create Patient & Continue
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
