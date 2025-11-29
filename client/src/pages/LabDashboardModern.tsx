@@ -36,6 +36,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, isToday } from "date-fns";
+import { ErrorState } from "@/components/ErrorState";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 
 interface Order {
   id: string;
@@ -63,7 +65,7 @@ export default function LabDashboardModern() {
   const [activeTab, setActiveTab] = useState("production");
 
   // Fetch orders
-  const { data: orders, isLoading } = useQuery<Order[]>({
+  const { data: orders, isLoading, error, refetch } = useQuery<Order[]>({
     queryKey: ["/api/orders"],
   });
 
@@ -87,6 +89,49 @@ export default function LabDashboardModern() {
     qualityCheck: orders?.filter((o) => o.status === "quality_check") || [],
     completed: orders?.filter((o) => o.status === "completed") || [],
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="container max-w-7xl mx-auto py-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-10 w-64 bg-muted animate-pulse rounded" />
+            <div className="h-4 w-96 bg-muted animate-pulse rounded" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-32 bg-muted animate-pulse rounded-lg" />
+          ))}
+        </div>
+        <LoadingSkeleton variant="card" count={3} />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="container max-w-7xl mx-auto py-6 space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Beaker className="w-8 h-8 text-primary" />
+            Laboratory Production
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Real-time production tracking and quality management
+          </p>
+        </div>
+        <ErrorState
+          title="Couldn't load production data"
+          message="We had trouble loading your lab orders and production status. Please check your connection and try again."
+          error={error}
+          onRetry={() => refetch()}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="container max-w-7xl mx-auto py-6 space-y-6">
@@ -272,9 +317,7 @@ function ProductionKanban({ orders, isLoading }: {
     },
   ];
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
+  // Loading handled at parent level
 
   return (
     <div className="grid gap-4 md:grid-cols-4">
