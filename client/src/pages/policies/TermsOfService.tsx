@@ -166,8 +166,8 @@ export default function TermsOfService() {
               <li>Use automated systems to access the Service excessively</li>
             </ul>
             <p>
-              See our <Link href="/acceptable-use"><a className="text-blue-600 hover:underline">Acceptable Use Policy</a></Link> for 
-              full details.
+              For full details on acceptable use, please contact us at{" "}
+              <a href="mailto:legal@integratedlenssystem.com" className="text-blue-600 hover:underline">legal@integratedlenssystem.com</a>.
             </p>
 
             <h2>8. NHS Integration</h2>
@@ -197,8 +197,8 @@ export default function TermsOfService() {
               <li><strong>Data Backup:</strong> Daily automated backups with 30-day retention</li>
             </ul>
             <p>
-              See our <Link href="/sla"><a className="text-blue-600 hover:underline">SLA document</a></Link> for 
-              full details and service credits.
+              For full SLA details and service credits, please contact us at{" "}
+              <a href="mailto:support@integratedlenssystem.com" className="text-blue-600 hover:underline">support@integratedlenssystem.com</a>.
             </p>
 
             <h2>10. Intellectual Property</h2>

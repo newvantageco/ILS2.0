@@ -497,8 +497,12 @@ function AuthenticatedApp() {
         return "/platform-admin";
       case "company_admin":
         return "/company-admin";
+      case "dispenser":
+        return "/dispenser";
+      case "store_manager":
+        return "/store-manager";
       default:
-        return "/lab";
+        return "/ecp";
     }
   };
 
@@ -566,7 +570,6 @@ function AuthenticatedApp() {
             <Route path="/ecp/compliance" component={ComplianceDashboardPage} />
             <Route path="/ecp/prescription-templates" component={PrescriptionTemplatesPage} />
             <Route path="/ecp/clinical-protocols" component={ClinicalProtocolsPage} />
-            <Route path="/ecp/analytics" component={BusinessAnalyticsPage} />
             <Route path="/ecp/nhs" component={NHSIntegrationPage} />
             
             {/* Advanced Healthcare Systems */}

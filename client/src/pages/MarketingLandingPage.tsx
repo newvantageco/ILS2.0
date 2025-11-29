@@ -812,16 +812,16 @@ export default function MarketingLandingPage() {
                 <div><a href="#features" className="text-muted-foreground hover:text-foreground">Features</a></div>
                 <div><a href="#pricing" className="text-muted-foreground hover:text-foreground">Pricing</a></div>
                 <div><a href="/platform-showcase" className="text-muted-foreground hover:text-foreground">Platform Showcase</a></div>
-                <div><a href="#" className="text-muted-foreground hover:text-foreground">Integrations</a></div>
+                <div><a href="/platform-showcase#integrations" className="text-muted-foreground hover:text-foreground">Integrations</a></div>
               </div>
             </div>
             <div>
               <h4 className="font-semibold mb-3">Company</h4>
               <div className="space-y-2 text-sm">
-                <div><a href="#" className="text-muted-foreground hover:text-foreground">About Us</a></div>
+                <div><a href="mailto:info@integratedlenssystem.com" className="text-muted-foreground hover:text-foreground">About Us</a></div>
                 <div><a href="#testimonials" className="text-muted-foreground hover:text-foreground">Customers</a></div>
-                <div><a href="#" className="text-muted-foreground hover:text-foreground">Blog</a></div>
-                <div><a href="#" className="text-muted-foreground hover:text-foreground">Careers</a></div>
+                <div><span className="text-muted-foreground/60 cursor-default">Blog (Coming Soon)</span></div>
+                <div><a href="mailto:careers@integratedlenssystem.com" className="text-muted-foreground hover:text-foreground">Careers</a></div>
               </div>
             </div>
             <div>
@@ -830,7 +830,7 @@ export default function MarketingLandingPage() {
                 <div><a href="/privacy" className="text-muted-foreground hover:text-foreground">Privacy Policy</a></div>
                 <div><a href="/terms" className="text-muted-foreground hover:text-foreground">Terms of Service</a></div>
                 <div><a href="/gdpr" className="text-muted-foreground hover:text-foreground">GDPR</a></div>
-                <div><a href="#" className="text-muted-foreground hover:text-foreground">Security</a></div>
+                <div><a href="/gdpr#security" className="text-muted-foreground hover:text-foreground">Security</a></div>
               </div>
             </div>
           </div>
