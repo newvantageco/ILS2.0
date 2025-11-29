@@ -78,6 +78,8 @@ let serverReady = false;
 let dbReady = false;
 let configError: string | null = null;
 
+// Basic health check - always returns 200 for Railway container health
+// Use /health/ready for load balancer readiness checks
 const earlyHealthCheck = (req: Request, res: Response) => {
   // Return 200 immediately - container is healthy if HTTP server is running
   // Railway needs 200 OK to mark container as healthy
@@ -91,9 +93,27 @@ const earlyHealthCheck = (req: Request, res: Response) => {
   });
 };
 
+// Strict readiness check - returns 503 if not fully ready
+// Use this for load balancer health checks to avoid routing to broken instances
+const readinessCheck = (req: Request, res: Response) => {
+  const isReady = serverReady && dbReady && !configError;
+  const statusCode = isReady ? 200 : 503;
+
+  res.status(statusCode).json({
+    status: isReady ? 'ready' : 'not_ready',
+    server: serverReady ? 'ready' : 'starting',
+    database: dbReady ? 'connected' : 'initializing',
+    ...(configError && { configError }),
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+};
+
 // Register health checks FIRST, before any middleware that could fail
-app.get('/health', earlyHealthCheck);
-app.get('/api/health', earlyHealthCheck);
+app.get('/health', earlyHealthCheck);           // Railway health check (always 200)
+app.get('/api/health', earlyHealthCheck);       // Alternative path
+app.get('/health/ready', readinessCheck);       // Load balancer readiness (503 if not ready)
+app.get('/health/live', earlyHealthCheck);      // Kubernetes liveness (always 200)
 
 // ============== SECURITY MIDDLEWARE (PRODUCTION HARDENING) ==============
 // Apply helmet.js security headers (HSTS, CSP, X-Frame-Options, etc.)
@@ -362,9 +382,22 @@ app.get('/api/health/detailed', async (req: Request, res: Response) => {
   // Only initialize database-dependent services if DATABASE_URL is configured
   if (process.env.DATABASE_URL) {
     try {
-      await ensureMasterUser();
+      // Test database connectivity
+      await db.execute(sql`SELECT 1`);
+      dbReady = true;
+      log("✅ Database connection verified");
     } catch (err) {
-      logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Failed to ensure master user - continuing anyway');
+      logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Database connection failed');
+      if (!configError) configError = 'Database connection failed: ' + (err instanceof Error ? err.message : String(err));
+    }
+
+    // Only run master user setup if DB is connected
+    if (dbReady) {
+      try {
+        await ensureMasterUser();
+      } catch (err) {
+        logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Failed to ensure master user - continuing anyway');
+      }
     }
   } else {
     log("⚠️  Skipping database initialization - DATABASE_URL not set");
