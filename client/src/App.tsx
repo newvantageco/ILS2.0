@@ -1,8 +1,10 @@
 import { Suspense, lazy, useState, useEffect } from "react";
 import React from "react";
 import { Switch, Route, Redirect } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { queryClient, setGlobalToast } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -56,7 +58,10 @@ const PlatformAdminPage = lazy(() => import("@/pages/PlatformAdminPage"));
 const SystemHealthDashboard = lazy(() => import("@/pages/admin/SystemHealthDashboard"));
 const SystemConfigPage = lazy(() => import("@/pages/admin/SystemConfigPage"));
 const APIKeysManagementPage = lazy(() => import("@/pages/admin/APIKeysManagementPage"));
+const CompanyApprovalDashboard = lazy(() => import("@/pages/admin/CompanyApprovalDashboard"));
 const CompanyAdminPage = lazy(() => import("@/pages/CompanyAdminPage"));
+const TenantSelectionPage = lazy(() => import("@/pages/TenantSelectionPage"));
+const MemberApprovalDashboard = lazy(() => import("@/components/MemberApprovalDashboard"));
 const DispenserDashboard = lazy(() => import("@/pages/DispenserDashboardModern"));
 
 // ECP Pages
@@ -432,8 +437,9 @@ function AuthenticatedApp() {
     return (
       <Suspense fallback={<RouteLoadingFallback />}>
         <Switch>
+          <Route path="/tenant-selection" component={TenantSelectionPage} />
           <Route path="/onboarding" component={OnboardingFlow} />
-          <Route><Redirect to="/onboarding" /></Route>
+          <Route><Redirect to="/tenant-selection" /></Route>
         </Switch>
       </Suspense>
     );
@@ -692,6 +698,7 @@ function AuthenticatedApp() {
             <Route path="/platform-admin/dashboard" component={PlatformAdminPage} />
             <Route path="/platform-admin/users" component={PlatformAdminPage} />
             <Route path="/platform-admin/companies" component={PlatformAdminPage} />
+            <Route path="/platform-admin/company-approvals" component={CompanyApprovalDashboard} />
             <Route path="/platform-admin/system-health" component={SystemHealthDashboard} />
             <Route path="/platform-admin/system-config" component={SystemConfigPage} />
             <Route path="/platform-admin/api-keys" component={APIKeysManagementPage} />
@@ -775,6 +782,7 @@ function AuthenticatedApp() {
           <>
             {/* Company Admin Dashboard */}
             <Route path="/company-admin/dashboard" component={CompanyAdminPage} />
+            <Route path="/company-admin/pending-members" component={MemberApprovalDashboard} />
             <Route path="/company-admin/profile" component={CompanyAdminPage} />
             <Route path="/company-admin/users" component={CompanyAdminPage} />
             <Route path="/company-admin/suppliers" component={CompanyAdminPage} />
@@ -896,17 +904,36 @@ function AuthenticatedApp() {
   );
 }
 
+/**
+ * Component to connect toast notifications to the global queryClient
+ * Must be rendered inside QueryClientProvider
+ */
+function GlobalErrorHandler({ children }: { children: React.ReactNode }) {
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Connect the toast function to the queryClient for global error handling
+    setGlobalToast(toast);
+  }, [toast]);
+
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <NotificationProvider>
-          <GlobalLoadingBar />
-          <AuthenticatedApp />
-          <FloatingAiChat />
-          <Toaster />
-        </NotificationProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <NotificationProvider>
+            <GlobalErrorHandler>
+              <GlobalLoadingBar />
+              <AuthenticatedApp />
+              <FloatingAiChat />
+              <Toaster />
+            </GlobalErrorHandler>
+          </NotificationProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

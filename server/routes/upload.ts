@@ -123,10 +123,17 @@ router.post('/images',
         return res.status(400).json({ error: 'No files uploaded' });
       }
 
+      // SECURITY: Require companyId for file isolation
+      const companyId = req.user?.companyId;
+      if (!companyId) {
+        return res.status(401).json({ error: 'Company ID not found' });
+      }
+
       const uploadType = req.body.uploadType || 'product';
-      
+
+      // SECURITY: Include companyId in URL for proper tenant isolation
       const uploadedFiles = req.files.map(file => ({
-        url: `/uploads/${uploadType === 'profile' ? 'profiles' : 'products'}/${file.filename}`,
+        url: `/uploads/${companyId}/${uploadType === 'profile' ? 'profiles' : 'products'}/${file.filename}`,
         filename: file.filename,
         originalName: file.originalname,
         size: file.size,
@@ -140,7 +147,7 @@ router.post('/images',
       });
     } catch (error: any) {
       logger.error({ error, fileCount: req.files?.length }, 'Multiple file upload error');
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Failed to upload files',
         message: error.message,
       });

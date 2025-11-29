@@ -7,6 +7,7 @@
 import { loggers } from '../../utils/logger.js';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import { jwtService } from '../JWTService.js';
 
 const logger = loggers.api;
 
@@ -411,6 +412,9 @@ export class AdminOperationsService {
 
     this.users.set(userId, user);
 
+    // SECURITY: Revoke all existing tokens - password change invalidates all sessions
+    jwtService.revokeAllUserTokens(userId);
+
     this.logAudit({
       userId,
       userName: user.email,
@@ -420,7 +424,7 @@ export class AdminOperationsService {
       success: true,
     });
 
-    logger.info({ userId }, 'Password changed');
+    logger.info({ userId }, 'Password changed - all tokens revoked');
 
     return { success: true };
   }
@@ -447,6 +451,9 @@ export class AdminOperationsService {
 
     this.users.set(userId, user);
 
+    // SECURITY: Revoke all existing tokens - password reset invalidates all sessions
+    jwtService.revokeAllUserTokens(userId);
+
     this.logAudit({
       userId: resetBy,
       userName: 'Admin',
@@ -456,7 +463,7 @@ export class AdminOperationsService {
       success: true,
     });
 
-    logger.info({ userId, resetBy }, 'Password reset');
+    logger.info({ userId, resetBy }, 'Password reset - all tokens revoked');
 
     return this.sanitizeUser(user);
   }

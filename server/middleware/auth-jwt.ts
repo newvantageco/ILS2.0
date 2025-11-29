@@ -44,9 +44,16 @@ function extractToken(req: Request): string | null {
     return authHeader.substring(7); // Remove 'Bearer ' prefix
   }
 
-  // Check cookie
-  if (req.cookies && req.cookies.access_token) {
-    return req.cookies.access_token;
+  // Check cookies (support multiple cookie names for compatibility)
+  // - auth_token: Used by Google OAuth and general auth
+  // - access_token: Alternative naming convention
+  if (req.cookies) {
+    if (req.cookies.auth_token) {
+      return req.cookies.auth_token;
+    }
+    if (req.cookies.access_token) {
+      return req.cookies.access_token;
+    }
   }
 
   return null;
@@ -79,6 +86,16 @@ export const authenticateJWT = (
       res.status(401).json({
         error: 'Authentication required',
         code: 'NO_TOKEN'
+      });
+      return;
+    }
+
+    // SECURITY: Check if token has been revoked (logout, password change, etc.)
+    if (jwtService.isTokenRevoked(token)) {
+      logger.warn('Rejected revoked token');
+      res.status(401).json({
+        error: 'Token has been revoked. Please login again.',
+        code: 'TOKEN_REVOKED'
       });
       return;
     }
@@ -176,6 +193,13 @@ export const optionalAuthenticateJWT = (
 
     if (!token) {
       // No token provided, continue as anonymous user
+      next();
+      return;
+    }
+
+    // Check if token is revoked
+    if (jwtService.isTokenRevoked(token)) {
+      logger.debug('Optional auth: token revoked, continuing as anonymous');
       next();
       return;
     }
