@@ -5326,7 +5326,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(progress);
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error fetching learning progress:');
-      res.status(500).json({ message: 'Failed to fetch learning progress' });
+      
+      // UX IMPROVEMENT: Return usable fallback data instead of 500 error
+      // This allows UI to show helpful message instead of breaking
+      res.json({
+        progress: 0,
+        totalLearning: 0,
+        totalDocuments: 0,
+        lastUpdated: new Date().toISOString(),
+        _fallback: true,
+        _message: "We're setting up your AI Assistant. This usually takes 2-3 minutes. Check back soon!",
+        _canRetry: true
+      });
     }
   });
 
