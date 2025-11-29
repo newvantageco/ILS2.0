@@ -1,12 +1,17 @@
 # Nixpacks Configuration for Python RAG Service
+# Provides embedding generation and vector search for multi-tenant RAG
+
 [phases.setup]
-nixPkgs = ["python311", "gcc", "zlib", "glib"]
+nixPkgs = ["python311", "gcc", "zlib", "glib", "libpq"]
 
 [phases.install]
-cmds = ["pip install -r requirements.txt"]
+cmds = ["pip install --upgrade pip", "pip install -r requirements.txt"]
 
 [start]
 cmd = "uvicorn api.main:app --host 0.0.0.0 --port $PORT"
 
 [variables]
 PYTHON_ENV = "production"
+PYTHONUNBUFFERED = "1"
+TRANSFORMERS_CACHE = "/app/.cache"
+SENTENCE_TRANSFORMERS_HOME = "/app/.cache"
