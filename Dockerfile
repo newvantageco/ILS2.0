@@ -102,7 +102,9 @@ ENV NODE_ENV=production \
     HOST=0.0.0.0
 
 # Health check (uses PORT environment variable for Railway compatibility)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+# Note: Railway uses its own healthcheck (/api/health), this is for local Docker testing
+# Start period allows time for migrations + server startup
+HEALTHCHECK --interval=15s --timeout=10s --start-period=90s --retries=5 \
     CMD node -e "const port = process.env.PORT || 5000; require('http').get(\`http://localhost:\${port}/api/health\`, (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Use dumb-init to handle signals properly
