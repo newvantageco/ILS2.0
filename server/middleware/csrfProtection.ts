@@ -24,6 +24,7 @@ const csrfSecretValue = CSRF_SECRET || (process.env.NODE_ENV !== 'production' ? 
 const {
   invalidCsrfTokenError,
   doubleCsrfProtection,
+  generateToken,
 } = doubleCsrf({
   getSecret: () => csrfSecretValue,
   getSessionIdentifier: (req: Request) => {
@@ -50,13 +51,14 @@ const {
 });
 
 /**
- * Middleware to generate CSRF token
+ * Middleware to generate CSRF token and attach to res.locals
  * Call this on routes where you need to generate a token (like form pages)
  */
 export const generateCsrfToken = (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Token is automatically attached by doubleCsrfProtection middleware
-    res.locals.csrfToken = res.locals.csrfToken || '';
+    // Generate token using the csrf-csrf library
+    const token = generateToken(req, res);
+    res.locals.csrfToken = token;
     next();
   } catch (err) {
     logger.error('CSRF token generation error:', err);
@@ -87,11 +89,19 @@ export const csrfErrorHandler = (err: any, req: Request, res: Response, next: Ne
 /**
  * API endpoint to get CSRF token for AJAX requests
  * GET /api/csrf-token
+ *
+ * Frontend should call this endpoint to get a token, then include it in
+ * the X-CSRF-Token header for all state-changing requests (POST, PUT, DELETE, PATCH)
  */
 export const getCsrfToken = (req: Request, res: Response) => {
-  // Use doubleCsrfProtection middleware before this endpoint to generate token
-  const token = res.locals.csrfToken || '';
-  res.json({ csrfToken: token });
+  try {
+    // Generate a new CSRF token for the client
+    const token = generateToken(req, res);
+    res.json({ csrfToken: token });
+  } catch (err) {
+    logger.error('Failed to generate CSRF token:', err);
+    res.status(500).json({ error: 'Failed to generate CSRF token' });
+  }
 };
 
 /**

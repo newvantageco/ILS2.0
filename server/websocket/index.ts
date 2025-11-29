@@ -37,9 +37,14 @@ interface AuthenticatedWebSocket extends WebSocket {
 const companyRooms = new Map<string, Set<AuthenticatedWebSocket>>();
 
 export function setupWebSocket(server: Server, sessionMiddleware: any) {
-  const wss = new WebSocketServer({ 
+  const wss = new WebSocketServer({
     noServer: true,
     path: '/ws'
+  });
+
+  // Handle WebSocketServer errors to prevent crashes
+  wss.on('error', (error) => {
+    logger.error('[WebSocket] WebSocketServer error:', error);
   });
 
   // Handle HTTP upgrade requests
@@ -213,11 +218,31 @@ function setupEventListeners() {
 }
 
 /**
+ * Safely send a message to a WebSocket client with error handling
+ */
+function safeSend(client: AuthenticatedWebSocket, message: string): boolean {
+  if (client.readyState !== WebSocket.OPEN) {
+    return false;
+  }
+  try {
+    client.send(message, (error) => {
+      if (error) {
+        logger.error(`[WebSocket] Send error for user ${client.userId}:`, error);
+      }
+    });
+    return true;
+  } catch (error) {
+    logger.error(`[WebSocket] Send exception for user ${client.userId}:`, error);
+    return false;
+  }
+}
+
+/**
  * Broadcast message to all clients in a company room
  */
 function broadcastToCompany(companyId: string, message: any) {
   const room = companyRooms.get(companyId);
-  
+
   if (!room || room.size === 0) {
     return; // No clients in this room
   }
@@ -226,8 +251,7 @@ function broadcastToCompany(companyId: string, message: any) {
   let sentCount = 0;
 
   room.forEach((client: AuthenticatedWebSocket) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(messageStr);
+    if (safeSend(client, messageStr)) {
       sentCount++;
     }
   });
@@ -246,8 +270,7 @@ export function broadcastToAll(message: any) {
 
   companyRooms.forEach((room) => {
     room.forEach((client: AuthenticatedWebSocket) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(messageStr);
+      if (safeSend(client, messageStr)) {
         sentCount++;
       }
     });

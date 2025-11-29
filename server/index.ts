@@ -342,11 +342,11 @@ app.get('/api/health/detailed', async (req: Request, res: Response) => {
 
   try {
     // Check database connectivity
-    if (!dbReady) {
+    if (!dbReady && db) {
       await db.execute(sql`SELECT 1 FROM users LIMIT 1`);
       dbReady = true;
     }
-    databaseStatus = 'connected';
+    databaseStatus = db ? (dbReady ? 'connected' : 'initializing') : 'not_configured';
   } catch (error) {
     databaseStatus = 'initializing';
     databaseMessage = error instanceof Error ? error.message : 'Database connection pending';
@@ -380,7 +380,7 @@ app.get('/api/health/detailed', async (req: Request, res: Response) => {
   log("Starting server initialization...");
 
   // Only initialize database-dependent services if DATABASE_URL is configured
-  if (process.env.DATABASE_URL) {
+  if (process.env.DATABASE_URL && db) {
     try {
       // Test database connectivity
       await db.execute(sql`SELECT 1`);
@@ -579,13 +579,13 @@ app.get('/api/health/detailed', async (req: Request, res: Response) => {
     }
     
     // Initialize WebSocket server for real-time lab dashboard
-    if (process.env.NODE_ENV === "development") {
-      // Get session middleware to use for WebSocket authentication
-      const sessionMiddleware = app.get('sessionMiddleware');
-      if (sessionMiddleware) {
-        setupWebSocket(server, sessionMiddleware);
-        log(`✅ WebSocket server initialized on /ws endpoint`);
-      }
+    // Works in both development and production for live order updates
+    const sessionMiddlewareForWs = app.get('sessionMiddleware');
+    if (sessionMiddlewareForWs) {
+      setupWebSocket(server, sessionMiddlewareForWs);
+      log(`✅ WebSocket server initialized on /ws endpoint`);
+    } else {
+      log(`⚠️  WebSocket server not initialized - session middleware not available`);
     }
 
     // Initialize Socket.IO service for real-time notifications

@@ -4525,7 +4525,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { WebhookService } = await import('./services/WebhookService');
 
-      const webhookSecret = process.env.LIMS_WEBHOOK_SECRET || 'default-secret';
+      const webhookSecret = process.env.LIMS_WEBHOOK_SECRET;
+      if (!webhookSecret) {
+        logger.error({ feature: 'webhook' }, 'LIMS_WEBHOOK_SECRET not configured - webhook verification disabled');
+        return res.status(503).json({ error: 'Webhook service not configured' });
+      }
       const webhookService = new WebhookService(storage, {
         secret: webhookSecret,
       });
@@ -5635,7 +5639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "User must belong to a company" });
       }
 
-      const daysAhead = parseInt(req.query.days as string) || 30;
+      const daysAhead = Math.max(1, Math.min(365, parseInt(req.query.days as string) || 30));
       const equipment = await equipmentStorage.getDueCalibrations(user.companyId, daysAhead);
       res.json(equipment);
     } catch (error) {
@@ -5654,7 +5658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "User must belong to a company" });
       }
 
-      const daysAhead = parseInt(req.query.days as string) || 30;
+      const daysAhead = Math.max(1, Math.min(365, parseInt(req.query.days as string) || 30));
       const equipment = await equipmentStorage.getDueMaintenance(user.companyId, daysAhead);
       res.json(equipment);
     } catch (error) {
@@ -6035,7 +6039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "User must belong to a company" });
       }
 
-      const days = parseInt(req.query.days as string) || 7;
+      const days = Math.max(1, Math.min(90, parseInt(req.query.days as string) || 7));
       const velocity = await productionStorage.getProductionVelocity(user.companyId, days);
       res.json(velocity);
     } catch (error) {
@@ -6114,7 +6118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "User must belong to a company" });
       }
 
-      const days = parseInt(req.query.days as string) || 30;
+      const days = Math.max(1, Math.min(365, parseInt(req.query.days as string) || 30));
       const trends = await qcStorage.getDefectTrends(user.companyId, days);
       res.json(trends);
     } catch (error) {
