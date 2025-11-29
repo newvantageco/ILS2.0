@@ -26,9 +26,8 @@
         "numReplicas": 1,
         "restartPolicyType": "ON_FAILURE",
         "restartPolicyMaxRetries": 10,
-        "healthcheckPath": "/api/health",
-        "healthcheckTimeout": 300,
-        "startCommand": "node dist/index.js"
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 120
       },
       "resources": {
         "memory": "2GB",
@@ -67,7 +66,7 @@
         "restartPolicyType": "ON_FAILURE",
         "restartPolicyMaxRetries": 10,
         "healthcheckPath": "/health",
-        "healthcheckTimeout": 300,
+        "healthcheckTimeout": 120,
         "startCommand": "uvicorn api.main:app --host 0.0.0.0 --port $PORT"
       },
       "resources": {
@@ -105,7 +104,7 @@
         "restartPolicyType": "ON_FAILURE",
         "restartPolicyMaxRetries": 10,
         "healthcheckPath": "/health",
-        "healthcheckTimeout": 300,
+        "healthcheckTimeout": 120,
         "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT"
       },
       "resources": {
@@ -143,7 +142,7 @@
         "restartPolicyType": "ON_FAILURE",
         "restartPolicyMaxRetries": 10,
         "healthcheckPath": "/health",
-        "healthcheckTimeout": 300,
+        "healthcheckTimeout": 120,
         "startCommand": "uvicorn api.main:app --host 0.0.0.0 --port $PORT"
       },
       "resources": {

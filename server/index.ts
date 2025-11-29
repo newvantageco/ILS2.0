@@ -70,6 +70,28 @@ declare module 'http' {
   }
 }
 
+// ============== EARLY HEALTH CHECK (RAILWAY COMPATIBILITY) ==============
+// This health check runs BEFORE any other middleware to ensure Railway
+// can always reach the health endpoint, even if other middleware fails
+// or environment variables are misconfigured.
+let serverReady = false;
+let dbReady = false;
+
+const earlyHealthCheck = (req: Request, res: Response) => {
+  // Return 200 immediately - container is healthy if HTTP server is running
+  res.status(200).json({
+    status: 'ok',
+    server: serverReady ? 'ready' : 'starting',
+    database: dbReady ? 'connected' : 'initializing',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+};
+
+// Register health checks FIRST, before any middleware that could fail
+app.get('/health', earlyHealthCheck);
+app.get('/api/health', earlyHealthCheck);
+
 // ============== SECURITY MIDDLEWARE (PRODUCTION HARDENING) ==============
 // Apply helmet.js security headers (HSTS, CSP, X-Frame-Options, etc.)
 app.use(securityHeaders);
@@ -286,33 +308,28 @@ app.use(performanceMonitoring);
 // Set timeout for all requests (30 seconds default)
 app.use(requestTimeout(30000));
 
-// ============== HEALTH CHECK ENDPOINTS ==============
-// Health check returns 200 OK as soon as HTTP server is running
-// Database status is reported but doesn't block healthcheck success
-// This allows Railway to mark the container as healthy while DB initializes
-let dbReady = false;
-
-const healthCheck = async (req: Request, res: Response) => {
+// ============== DETAILED HEALTH CHECK ENDPOINT ==============
+// This provides more detailed health information for monitoring
+// The early health check (registered above) handles Railway's basic health checks
+app.get('/api/health/detailed', async (req: Request, res: Response) => {
   let databaseStatus = 'unknown';
   let databaseMessage = '';
 
   try {
-    // Check database connectivity in background (don't block response)
+    // Check database connectivity
     if (!dbReady) {
       await db.execute(sql`SELECT 1 FROM users LIMIT 1`);
       dbReady = true;
     }
     databaseStatus = 'connected';
   } catch (error) {
-    // Database not ready - log but don't fail health check
     databaseStatus = 'initializing';
     databaseMessage = error instanceof Error ? error.message : 'Database connection pending';
   }
 
-  // Always return 200 OK - container is healthy if HTTP server is running
-  // Individual API endpoints will handle database unavailability gracefully
   res.json({
     status: 'ok',
+    server: serverReady ? 'ready' : 'starting',
     database: databaseStatus,
     databaseReady: dbReady,
     ...(databaseMessage && { databaseMessage }),
@@ -321,9 +338,7 @@ const healthCheck = async (req: Request, res: Response) => {
     uptime: process.uptime(),
     memory: process.memoryUsage()
   });
-};
-app.get('/health', healthCheck);
-app.get('/api/health', healthCheck);
+});
 
 (async () => {
   try {
@@ -528,6 +543,9 @@ app.get('/api/health', healthCheck);
     log(`✅ Socket.IO service initialized for real-time notifications`);
     
     server.listen(port, host, () => {
+      // Mark server as ready for health checks
+      serverReady = true;
+
       log(`Server successfully started on port ${port}`);
       log(`Environment: ${app.get("env")}`);
       log(`API server running at http://${host}:${port}`);
