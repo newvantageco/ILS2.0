@@ -965,7 +965,7 @@ export class DbStorage implements IStorage {
           patientData.nhsNumber = encryptField(patientData.nhsNumber);
         } catch (encryptError) {
           // Log but continue - encryption key may not be configured in dev
-          console.warn('NHS number encryption skipped - encryption key not configured');
+          logger.warn({}, 'NHS number encryption skipped - encryption key not configured');
         }
       }
 
@@ -1011,7 +1011,7 @@ export class DbStorage implements IStorage {
       try {
         patient.nhsNumber = decryptField(patient.nhsNumber);
       } catch (decryptError) {
-        console.warn('NHS number decryption failed');
+        logger.warn({}, 'NHS number decryption failed');
         patient.nhsNumber = '***ENCRYPTED***';
       }
     }
@@ -1583,7 +1583,7 @@ export class DbStorage implements IStorage {
         updatesData.nhsNumber = encryptField(updatesData.nhsNumber);
       } catch (encryptError) {
         // Log but continue - encryption key may not be configured in dev
-        console.warn('NHS number encryption skipped - encryption key not configured');
+        logger.warn({}, 'NHS number encryption skipped - encryption key not configured');
       }
     }
 

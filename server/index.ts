@@ -74,6 +74,8 @@ declare module 'http' {
 // This health check runs BEFORE any other middleware to ensure Railway
 // can always reach the health endpoint, even if other middleware fails
 // or environment variables are misconfigured.
+// NOTE: Railway sends healthchecks from hostname healthcheck.railway.app
+// These endpoints are registered before CORS/security middleware to ensure accessibility.
 let serverReady = false;
 let dbReady = false;
 let configError: string | null = null;
@@ -131,7 +133,7 @@ if (!corsOrigin && process.env.NODE_ENV === 'production') {
   // Log error but don't crash - allow health checks to work
   const corsError = 'CORS_ORIGIN must be set in production (or use RAILWAY_PUBLIC_DOMAIN)';
   configError = corsError;
-  console.error(`❌ ${corsError}`);
+  logger.error({}, `❌ ${corsError}`);
 }
 
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -216,10 +218,10 @@ if (!sessionSecret) {
   // Generate a temporary secret (NOT secure for production, but allows diagnostics)
   const sessionError = 'SESSION_SECRET must be set in .env file for security';
   if (!configError) configError = sessionError;
-  console.error(`❌ ${sessionError}`);
-  console.error('   Generate one with: openssl rand -hex 32');
+  logger.error({}, `❌ ${sessionError}`);
+  logger.error({}, '   Generate one with: openssl rand -hex 32');
   sessionSecret = 'TEMPORARY_INSECURE_SECRET_' + Date.now();
-  console.error('   Using temporary session secret - SESSIONS WILL NOT PERSIST');
+  logger.error({}, '   Using temporary session secret - SESSIONS WILL NOT PERSIST');
 }
 
 // Session store: Use Redis if REDIS_URL is configured, otherwise memory
