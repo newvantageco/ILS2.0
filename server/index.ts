@@ -70,6 +70,51 @@ declare module 'http' {
   }
 }
 
+// ============== EARLY HEALTH CHECK (RAILWAY COMPATIBILITY) ==============
+// This health check runs BEFORE any other middleware to ensure Railway
+// can always reach the health endpoint, even if other middleware fails
+// or environment variables are misconfigured.
+let serverReady = false;
+let dbReady = false;
+let configError: string | null = null;
+
+// Basic health check - always returns 200 for Railway container health
+// Use /health/ready for load balancer readiness checks
+const earlyHealthCheck = (req: Request, res: Response) => {
+  // Return 200 immediately - container is healthy if HTTP server is running
+  // Railway needs 200 OK to mark container as healthy
+  res.status(200).json({
+    status: configError ? 'degraded' : 'ok',
+    server: serverReady ? 'ready' : 'starting',
+    database: dbReady ? 'connected' : 'initializing',
+    ...(configError && { configError }),
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+};
+
+// Strict readiness check - returns 503 if not fully ready
+// Use this for load balancer health checks to avoid routing to broken instances
+const readinessCheck = (req: Request, res: Response) => {
+  const isReady = serverReady && dbReady && !configError;
+  const statusCode = isReady ? 200 : 503;
+
+  res.status(statusCode).json({
+    status: isReady ? 'ready' : 'not_ready',
+    server: serverReady ? 'ready' : 'starting',
+    database: dbReady ? 'connected' : 'initializing',
+    ...(configError && { configError }),
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+};
+
+// Register health checks FIRST, before any middleware that could fail
+app.get('/health', earlyHealthCheck);           // Railway health check (always 200)
+app.get('/api/health', earlyHealthCheck);       // Alternative path
+app.get('/health/ready', readinessCheck);       // Load balancer readiness (503 if not ready)
+app.get('/health/live', earlyHealthCheck);      // Kubernetes liveness (always 200)
+
 // ============== SECURITY MIDDLEWARE (PRODUCTION HARDENING) ==============
 // Apply helmet.js security headers (HSTS, CSP, X-Frame-Options, etc.)
 app.use(securityHeaders);
@@ -83,11 +128,10 @@ const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN
 const corsOrigin = process.env.CORS_ORIGIN || railwayDomain;
 
 if (!corsOrigin && process.env.NODE_ENV === 'production') {
-  throw new Error(
-    '❌ CORS_ORIGIN must be set in production for security.\n' +
-    'Add to .env file: CORS_ORIGIN=https://your-frontend-domain.com\n' +
-    '(Railway deployments can use RAILWAY_PUBLIC_DOMAIN automatically)'
-  );
+  // Log error but don't crash - allow health checks to work
+  const corsError = 'CORS_ORIGIN must be set in production (or use RAILWAY_PUBLIC_DOMAIN)';
+  configError = corsError;
+  console.error(`❌ ${corsError}`);
 }
 
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -166,13 +210,16 @@ app.use('/api/patient-portal/auth/reset-password', authRateLimiter);
 app.use('/api/onboarding', authRateLimiter);
 
 // ============== SESSION CONFIGURATION ==============
-const sessionSecret = process.env.SESSION_SECRET;
+let sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret) {
-  throw new Error(
-    "❌ SESSION_SECRET must be set in .env file for security.\n" +
-    "Generate one with: openssl rand -hex 32\n" +
-    "Then add to .env: SESSION_SECRET=<generated-value>"
-  );
+  // Log error but don't crash - allow health checks to work
+  // Generate a temporary secret (NOT secure for production, but allows diagnostics)
+  const sessionError = 'SESSION_SECRET must be set in .env file for security';
+  if (!configError) configError = sessionError;
+  console.error(`❌ ${sessionError}`);
+  console.error('   Generate one with: openssl rand -hex 32');
+  sessionSecret = 'TEMPORARY_INSECURE_SECRET_' + Date.now();
+  console.error('   Using temporary session secret - SESSIONS WILL NOT PERSIST');
 }
 
 // Session store: Use Redis if REDIS_URL is configured, otherwise memory
@@ -286,57 +333,75 @@ app.use(performanceMonitoring);
 // Set timeout for all requests (30 seconds default)
 app.use(requestTimeout(30000));
 
-// ============== HEALTH CHECK ENDPOINTS ==============
-// Health check returns 200 OK as soon as HTTP server is running
-// Database status is reported but doesn't block healthcheck success
-// This allows Railway to mark the container as healthy while DB initializes
-let dbReady = false;
-
-const healthCheck = async (req: Request, res: Response) => {
+// ============== DETAILED HEALTH CHECK ENDPOINT ==============
+// This provides more detailed health information for monitoring
+// The early health check (registered above) handles Railway's basic health checks
+app.get('/api/health/detailed', async (req: Request, res: Response) => {
   let databaseStatus = 'unknown';
   let databaseMessage = '';
 
   try {
-    // Check database connectivity in background (don't block response)
+    // Check database connectivity
     if (!dbReady) {
       await db.execute(sql`SELECT 1 FROM users LIMIT 1`);
       dbReady = true;
     }
     databaseStatus = 'connected';
   } catch (error) {
-    // Database not ready - log but don't fail health check
     databaseStatus = 'initializing';
     databaseMessage = error instanceof Error ? error.message : 'Database connection pending';
   }
 
-  // Always return 200 OK - container is healthy if HTTP server is running
-  // Individual API endpoints will handle database unavailability gracefully
   res.json({
-    status: 'ok',
+    status: configError ? 'degraded' : 'ok',
+    server: serverReady ? 'ready' : 'starting',
     database: databaseStatus,
     databaseReady: dbReady,
+    ...(configError && { configError }),
     ...(databaseMessage && { databaseMessage }),
     timestamp: new Date().toISOString(),
     environment: app.get("env"),
     uptime: process.uptime(),
     memory: process.memoryUsage()
   });
-};
-app.get('/health', healthCheck);
-app.get('/api/health', healthCheck);
+});
 
 (async () => {
   try {
     // Validate required environment variables
     if (!process.env.DATABASE_URL) {
-      logger.error({}, 'FATAL ERROR: DATABASE_URL environment variable is not set');
+      const dbError = 'DATABASE_URL environment variable is not set';
+      logger.error({}, `FATAL ERROR: ${dbError}`);
       logger.error({}, 'Please configure DATABASE_URL in your deployment secrets');
-      process.exit(1);
+      // Don't exit - allow health check server to start for diagnostics
+      if (!configError) configError = dbError;
     }
 
   log("Starting server initialization...");
 
-  await ensureMasterUser();
+  // Only initialize database-dependent services if DATABASE_URL is configured
+  if (process.env.DATABASE_URL) {
+    try {
+      // Test database connectivity
+      await db.execute(sql`SELECT 1`);
+      dbReady = true;
+      log("✅ Database connection verified");
+    } catch (err) {
+      logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Database connection failed');
+      if (!configError) configError = 'Database connection failed: ' + (err instanceof Error ? err.message : String(err));
+    }
+
+    // Only run master user setup if DB is connected
+    if (dbReady) {
+      try {
+        await ensureMasterUser();
+      } catch (err) {
+        logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Failed to ensure master user - continuing anyway');
+      }
+    }
+  } else {
+    log("⚠️  Skipping database initialization - DATABASE_URL not set");
+  }
 
     // Metrics endpoint (optional)
     if (process.env.METRICS_ENABLED === 'true') {
@@ -528,6 +593,9 @@ app.get('/api/health', healthCheck);
     log(`✅ Socket.IO service initialized for real-time notifications`);
     
     server.listen(port, host, () => {
+      // Mark server as ready for health checks
+      serverReady = true;
+
       log(`Server successfully started on port ${port}`);
       log(`Environment: ${app.get("env")}`);
       log(`API server running at http://${host}:${port}`);

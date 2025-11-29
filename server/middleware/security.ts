@@ -354,7 +354,8 @@ export const globalRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req: Request) => req.path === '/health',
+  // Skip health check endpoints to prevent Railway health check failures
+  skip: (req: Request) => req.path === '/health' || req.path === '/api/health',
 });
 
 /**
