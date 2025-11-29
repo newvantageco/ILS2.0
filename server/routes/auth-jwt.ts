@@ -549,4 +549,208 @@ function getUserPermissions(role: string): string[] {
   return rolePermissions[role] || rolePermissions['user'];
 }
 
+// ============================================
+// PASSWORD SETUP (for new users invited via email)
+// ============================================
+
+/**
+ * Setup token validation schema
+ */
+const setupTokenSchema = z.object({
+  token: z.string().min(1, 'Token is required')
+});
+
+/**
+ * Password setup schema
+ */
+const setupPasswordSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain an uppercase letter')
+    .regex(/[a-z]/, 'Password must contain a lowercase letter')
+    .regex(/\d/, 'Password must contain a number')
+});
+
+/**
+ * POST /api/auth/validate-setup-token
+ *
+ * Validates a password setup token from welcome email
+ */
+router.post('/validate-setup-token', async (req: Request, res: Response) => {
+  try {
+    const validationResult = setupTokenSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({
+        valid: false,
+        error: 'Invalid token format'
+      });
+    }
+
+    const { token } = validationResult.data;
+
+    // Decode and verify the setup token (JWT-based)
+    try {
+      const payload = jwtService.verifyToken(token);
+
+      // Check if this is a setup token
+      if ((payload as any).type !== 'password_setup') {
+        return res.status(400).json({
+          valid: false,
+          error: 'Invalid token type'
+        });
+      }
+
+      // Find the user
+      const user = await storage.getUserByEmail((payload as any).setupEmail);
+      if (!user) {
+        return res.status(400).json({
+          valid: false,
+          error: 'User not found'
+        });
+      }
+
+      // Check if password is already set (user already completed setup)
+      if (user.password && user.password.length > 0) {
+        return res.status(400).json({
+          valid: false,
+          error: 'Password already set. Please login instead.'
+        });
+      }
+
+      res.json({
+        valid: true,
+        email: user.email,
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim()
+      });
+
+    } catch (tokenError) {
+      logger.debug('Setup token validation failed:', tokenError);
+      return res.status(400).json({
+        valid: false,
+        error: 'Token is invalid or expired'
+      });
+    }
+
+  } catch (error) {
+    logger.error('Setup token validation error:', error);
+    res.status(500).json({
+      valid: false,
+      error: 'Validation failed'
+    });
+  }
+});
+
+/**
+ * POST /api/auth/setup-password
+ *
+ * Sets password for a new user invited via email
+ */
+router.post('/setup-password', async (req: Request, res: Response) => {
+  try {
+    const validationResult = setupPasswordSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: validationResult.error.errors
+      });
+    }
+
+    const { token, password } = validationResult.data;
+
+    // Verify the setup token
+    let payload: any;
+    try {
+      payload = jwtService.verifyToken(token);
+
+      if (payload.type !== 'password_setup') {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid token type'
+        });
+      }
+    } catch (tokenError) {
+      return res.status(400).json({
+        success: false,
+        error: 'Token is invalid or expired'
+      });
+    }
+
+    // Find the user
+    const user = await storage.getUserByEmail(payload.setupEmail);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Check if password is already set
+    if (user.password && user.password.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password already set. Please login instead.'
+      });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Update the user's password
+    await storage.updateUser(user.id, {
+      password: hashedPassword,
+      isVerified: true, // Mark as verified since they've completed setup
+      accountStatus: 'active'
+    });
+
+    // Create audit log
+    await storage.createAuditLog({
+      userId: user.id,
+      companyId: user.companyId,
+      eventType: 'password_setup',
+      eventCategory: 'authentication',
+      description: 'User completed initial password setup',
+      metadata: {
+        email: user.email,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      }
+    });
+
+    logger.info(`Password setup completed for: ${user.email}`);
+
+    res.json({
+      success: true,
+      message: 'Password set successfully. You can now login.'
+    });
+
+  } catch (error) {
+    logger.error('Password setup error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Password setup failed. Please try again.'
+    });
+  }
+});
+
+/**
+ * Generate a password setup token for a user
+ * This is called when admin creates a new user
+ */
+export function generatePasswordSetupToken(email: string): string {
+  const payload = {
+    setupEmail: email,
+    type: 'password_setup',
+    userId: '', // Will be filled by JWTService
+    companyId: '',
+    email: email,
+    role: 'pending',
+    permissions: []
+  };
+
+  // Generate token that expires in 24 hours
+  const token = jwtService.generateAccessToken(payload);
+  return token;
+}
+
 export default router;

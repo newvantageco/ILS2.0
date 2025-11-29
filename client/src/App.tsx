@@ -42,6 +42,7 @@ const AccountSuspendedPage = lazy(() => import("@/pages/AccountSuspendedPage"));
 const OnboardingFlow = lazy(() => import("@/pages/OnboardingFlow"));
 const EmailLoginPage = lazy(() => import("@/pages/EmailLoginPage"));
 const EmailSignupPage = lazy(() => import("@/pages/EmailSignupPage"));
+const SetupPasswordPage = lazy(() => import("@/pages/SetupPasswordPage"));
 
 // Policy Pages
 const PrivacyPolicy = lazy(() => import("@/pages/policies/PrivacyPolicy"));
@@ -368,6 +369,15 @@ function AuthenticatedApp() {
     );
   }
 
+  // Password setup page (for new users invited via email)
+  if (location.startsWith('/setup-password')) {
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <SetupPasswordPage />
+      </Suspense>
+    );
+  }
+
   // Policy pages (public, no auth required)
   if (location === '/privacy') {
     return (
@@ -636,6 +646,8 @@ function AuthenticatedApp() {
             <Route path="/admin/dashboard" component={AdminDashboard} />
             <Route path="/admin/users" component={AdminDashboard} />
             <Route path="/admin/companies" component={CompanyManagementPage} />
+            <Route path="/admin/orders" component={AIPurchaseOrdersPage} />
+            <Route path="/admin/prescriptions" component={PrescriptionsPage} />
             <Route path="/ecp/test-rooms/bookings" component={TestRoomBookingsPage} />
             <Route path="/admin/audit-logs" component={AuditLogsPage} />
             <Route path="/admin/recalls" component={RecallManagementPage} />
@@ -852,6 +864,12 @@ function AuthenticatedApp() {
           <>
             <Route path="/dispenser/dashboard" component={DispenserDashboard} />
             <Route path="/dispenser/handoff" component={DispenserHandoffPage} />
+            <Route path="/dispenser/pos" component={OpticalPOSPage} />
+            <Route path="/dispenser/inventory" component={InventoryManagement} />
+            <Route path="/dispenser/orders" component={AIPurchaseOrdersPage} />
+            <Route path="/dispenser/patients" component={PatientsPage} />
+            <Route path="/dispenser/analytics" component={HealthcareAnalyticsPage} />
+            {/* Legacy ECP routes for backward compatibility */}
             <Route path="/ecp/pos" component={OpticalPOSPage} />
             <Route path="/ecp/patients" component={PatientsPage} />
             <Route path="/ecp/inventory" component={InventoryManagement} />
