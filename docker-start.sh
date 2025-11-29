@@ -48,6 +48,12 @@ run_migrations() {
 echo "[startup] Running database migrations..."
 run_migrations || echo "[startup] Migrations skipped or failed - continuing..."
 
+# Apply idempotent fix migration directly (handles enum conflicts)
+if [ -n "$DATABASE_URL" ] && [ -f "migrations/0003_fix_enums_idempotent.sql" ]; then
+  echo "[startup] Applying idempotent fix migration..."
+  psql "$DATABASE_URL" -f migrations/0003_fix_enums_idempotent.sql 2>&1 || echo "[startup] Fix migration completed or already applied"
+fi
+
 # Re-enable error checking for application startup
 set -e
 
