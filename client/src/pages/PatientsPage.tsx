@@ -23,8 +23,9 @@ import {
 import { useState } from "react";
 import { format } from "date-fns";
 import AddPatientModal from "@/components/AddPatientModal";
-import { TableSkeleton } from "@/components/ui/TableSkeleton";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { EmptyState } from "@/components/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { useAuth } from "@/hooks/useAuth";
 
 interface Patient {
@@ -47,7 +48,7 @@ export default function PatientsPage() {
   // Check if user is ECP (Eye Care Professional) - can create clinical examinations
   const canCreateExamination = user?.role === 'ecp' || user?.role === 'platform_admin' || user?.role === 'admin' || user?.role === 'company_admin';
 
-  const { data: patients, isLoading } = useQuery<Patient[]>({
+  const { data: patients, isLoading, error, refetch } = useQuery<Patient[]>({
     queryKey: ["/api/patients"],
   });
 
@@ -73,9 +74,28 @@ export default function PatientsPage() {
             <div className="h-8 w-48 bg-muted animate-pulse rounded" />
           </CardHeader>
           <CardContent>
-            <TableSkeleton rows={5} columns={6} />
+            <LoadingSkeleton variant="table" count={8} />
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Patients</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage patient records and examinations
+          </p>
+        </div>
+        <ErrorState
+          title="Couldn't load patients"
+          message="We had trouble loading your patient records. Please check your connection and try again."
+          error={error}
+          onRetry={() => refetch()}
+        />
       </div>
     );
   }
