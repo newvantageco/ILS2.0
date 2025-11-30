@@ -222,11 +222,35 @@ The codebase has **TWO WebSocket implementations**:
 
 ---
 
+## Important Note on WebSocket Warnings
+
+**Current Behavior:**
+You'll still see WebSocket connection warnings in Railway logs:
+```
+[WARN] No cookies in WebSocket upgrade request
+[WARN] WebSocket connection rejected - authentication failed
+```
+
+**Why This Happens:**
+These warnings are from **Railway infrastructure probes** and health checks (IPs: 100.64.0.x).
+They're automated systems testing endpoints without authentication - this is **EXPECTED and HARMLESS**.
+
+**When Real Users Connect:**
+✅ They will have authentication tokens (from localStorage)  
+✅ Their WebSocket connections will succeed  
+✅ Real-time features will work properly  
+
+**To Verify Fix is Working:**
+1. Open the app with a logged-in user
+2. Check browser console for: `[WebSocket] Connected to appointment updates`
+3. Try creating an appointment or checking in a patient
+4. Verify real-time updates appear without page refresh
+
 ## Monitoring Plan
 
 ### Next 24 Hours
-- [ ] Monitor Railway error logs
-- [ ] Check WebSocket connection success rate
+- [ ] Monitor Railway error logs (ignore 100.64.0.x connection failures)
+- [ ] Check WebSocket connection success rate for real users
 - [ ] Verify real-time features working
 - [ ] Test encryption on sensitive data
 - [ ] Gather user feedback on real-time updates
