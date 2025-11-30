@@ -90,21 +90,9 @@ export default function ScheduledMessagesPage() {
   const [timeRangeFilter, setTimeRangeFilter] = useState<string>('7'); // days
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Role-based access control
-  if (!user || !ALLOWED_ROLES.includes(user.role)) {
-    return (
-      <div className="container mx-auto py-8">
-        <Alert variant="destructive">
-          <Shield className="h-4 w-4" />
-          <AlertDescription>
-            Access denied. You don't have permission to view scheduled messages.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  const hasAccess = !!user && ALLOWED_ROLES.includes(user.role);
 
-  // Fetch scheduled messages
+  // Fetch scheduled messages - moved before conditional returns
   const { data: messagesData, isLoading, refetch } = useQuery({
     queryKey: ['/api/communications/messages/scheduled', channelFilter, timeRangeFilter],
     queryFn: async () => {
@@ -123,6 +111,7 @@ export default function ScheduledMessagesPage() {
       if (!res.ok) throw new Error('Failed to fetch scheduled messages');
       return res.json();
     },
+    enabled: hasAccess,
   });
 
   const messages: ScheduledMessage[] = messagesData?.messages || [];
@@ -247,6 +236,20 @@ export default function ScheduledMessagesPage() {
   }, {} as Record<string, ScheduledMessage[]>);
 
   const sortedDates = Object.keys(messagesByDate).sort();
+
+  // Role-based access control - placed after all hooks
+  if (!hasAccess) {
+    return (
+      <div className="container mx-auto py-8">
+        <Alert variant="destructive">
+          <Shield className="h-4 w-4" />
+          <AlertDescription>
+            Access denied. You don&apos;t have permission to view scheduled messages.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6">

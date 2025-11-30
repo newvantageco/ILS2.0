@@ -91,12 +91,12 @@ export function createPDFWorker() {
         
         logger.info(`✅ PDF job ${job.id} completed: ${pdfPath}`);
         return { 
-          success: true, 
+          success: true,
           path: pdfPath,
           generatedAt: new Date().toISOString()
         };
       } catch (error) {
-        logger.error(`❌ PDF job ${job.id} failed:`, error);
+        logger.error({ jobId: job.id, error: (error as Error)?.message }, '❌ PDF job failed');
         throw error;
       }
     },
@@ -113,15 +113,15 @@ export function createPDFWorker() {
 
   // Worker event handlers
   worker.on('completed', (job) => {
-    logger.info(`✅ PDF job ${job.id} completed`);
+    logger.info({ jobId: job.id }, '✅ PDF job completed');
   });
 
   worker.on('failed', (job, err) => {
-    logger.error(`❌ PDF job ${job?.id} failed:`, err.message);
+    logger.error({ jobId: job?.id, error: err.message }, '❌ PDF job failed');
   });
 
   worker.on('error', (err) => {
-    logger.error('PDF worker error:', err);
+    logger.error({ error: err.message }, 'PDF worker error');
   });
 
   logger.info('✅ PDF worker started');

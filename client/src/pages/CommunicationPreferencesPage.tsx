@@ -102,19 +102,7 @@ export default function CommunicationPreferencesPage() {
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [editedPreferences, setEditedPreferences] = useState<CommunicationPreferences | null>(null);
 
-  // Role-based access control
-  if (!user || !ALLOWED_ROLES.includes(user.role)) {
-    return (
-      <div className="container mx-auto py-8">
-        <Alert variant="destructive">
-          <Shield className="h-4 w-4" />
-          <AlertDescription>
-            Access denied. You don't have permission to manage communication preferences.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  const hasAccess = !!user && ALLOWED_ROLES.includes(user.role);
 
   // Fetch patients list (mock for now - would need real endpoint)
   const { data: patientsData, isLoading: patientsLoading } = useQuery({
@@ -129,6 +117,7 @@ export default function CommunicationPreferencesPage() {
       if (!res.ok) throw new Error('Failed to fetch patients');
       return res.json();
     },
+    enabled: hasAccess,
   });
 
   const patients: Patient[] = patientsData?.patients || [];
@@ -338,6 +327,20 @@ export default function CommunicationPreferencesPage() {
     noConsent: patients.filter(p => !p.preferences ||
       (!p.preferences.globalOptOut && !Object.values(p.preferences.channels).some(v => v))).length,
   };
+
+  // Role-based access control - placed after all hooks
+  if (!hasAccess) {
+    return (
+      <div className="container mx-auto py-8">
+        <Alert variant="destructive">
+          <Shield className="h-4 w-4" />
+          <AlertDescription>
+            Access denied. You don&apos;t have permission to manage communication preferences.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6">

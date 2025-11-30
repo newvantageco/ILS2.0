@@ -111,41 +111,9 @@ export default function WorkflowBuilderPage() {
   const [formTrigger, setFormTrigger] = useState<string>("recall_due");
 
   const ALLOWED_ROLES = ['admin', 'platform_admin', 'company_admin', 'manager'];
+  const hasAccess = !!user && ALLOWED_ROLES.includes(user.role);
 
-  // Role-based access control
-  if (!user) {
-    return <Redirect to="/login" />;
-  }
-
-  if (!ALLOWED_ROLES.includes(user.role)) {
-    return (
-      <div className="container mx-auto py-8">
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-900">
-              <Shield className="h-6 w-6" />
-              Access Restricted
-            </CardTitle>
-            <CardDescription className="text-red-700">
-              You do not have permission to manage automated workflows.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 text-sm text-red-800">
-              <p>
-                <strong>Required roles:</strong> Admin, Company Admin, or Manager
-              </p>
-              <p>
-                <strong>Your role:</strong> {user.role}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Fetch workflows
+  // Fetch workflows - moved before conditional returns
   const { data: workflowsData, isLoading, refetch } = useQuery({
     queryKey: ['/api/communications/workflows'],
     queryFn: async () => {
@@ -158,6 +126,7 @@ export default function WorkflowBuilderPage() {
         workflows: data.workflows as AutomatedWorkflow[],
       };
     },
+    enabled: hasAccess,
   });
 
   // Fetch templates for dropdown
@@ -171,6 +140,7 @@ export default function WorkflowBuilderPage() {
       const data = await res.json();
       return data.templates || [];
     },
+    enabled: hasAccess,
   });
 
   // Create workflow mutation
@@ -289,6 +259,39 @@ export default function WorkflowBuilderPage() {
       </div>
     );
   };
+
+  // Role-based access control - placed after all hooks
+  if (!user) {
+    return <Redirect to="/login" />;
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="container mx-auto py-8">
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-900">
+              <Shield className="h-6 w-6" />
+              Access Restricted
+            </CardTitle>
+            <CardDescription className="text-red-700">
+              You do not have permission to manage automated workflows.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 text-sm text-red-800">
+              <p>
+                <strong>Required roles:</strong> Admin, Company Admin, or Manager
+              </p>
+              <p>
+                <strong>Your role:</strong> {user.role}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8 space-y-6">

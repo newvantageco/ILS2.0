@@ -89,39 +89,7 @@ export default function RecallManagementPage() {
 
   // SECURITY: Only allow authorized roles
   const ALLOWED_ROLES = ['admin', 'platform_admin', 'company_admin', 'manager', 'receptionist'];
-
-  if (!user) {
-    return <Redirect to="/login" />;
-  }
-
-  if (!ALLOWED_ROLES.includes(user.role)) {
-    return (
-      <div className="container mx-auto py-12">
-        <Card className="max-w-2xl mx-auto border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-900">
-              <Shield className="h-6 w-6" />
-              Access Restricted
-            </CardTitle>
-            <CardDescription className="text-red-700">
-              You don't have permission to access Recall Management
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-red-800">
-              This feature is restricted to administrative and messaging roles only.
-            </p>
-            <p className="text-sm text-red-800 mt-2">
-              Your role: <Badge variant="outline">{user.role}</Badge>
-            </p>
-            <Button onClick={() => window.history.back()} variant="outline" className="mt-4">
-              Go Back
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const hasAccess = !!user && ALLOWED_ROLES.includes(user.role);
 
   // Fetch patients due for recall (placeholder - needs backend implementation)
   const { data: recallData, isLoading: recallLoading, refetch } = useQuery({
@@ -140,6 +108,7 @@ export default function RecallManagementPage() {
         }
       };
     },
+    enabled: hasAccess,
   });
 
   // Fetch recall campaigns
@@ -150,6 +119,7 @@ export default function RecallManagementPage() {
       if (!res.ok) return { campaigns: [] };
       return res.json();
     },
+    enabled: hasAccess,
   });
 
   // Fetch communication templates
@@ -160,6 +130,7 @@ export default function RecallManagementPage() {
       if (!res.ok) return { templates: [] };
       return res.json();
     },
+    enabled: hasAccess,
   });
 
   // Send recall campaign mutation
@@ -250,6 +221,40 @@ export default function RecallManagementPage() {
     t.name.toLowerCase().includes('checkup') ||
     t.name.toLowerCase().includes('annual')
   );
+
+  // Role-based access control - placed after all hooks
+  if (!user) {
+    return <Redirect to="/login" />;
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="container mx-auto py-12">
+        <Card className="max-w-2xl mx-auto border-red-200 bg-red-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-900">
+              <Shield className="h-6 w-6" />
+              Access Restricted
+            </CardTitle>
+            <CardDescription className="text-red-700">
+              You don&apos;t have permission to access Recall Management
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-red-800">
+              This feature is restricted to administrative and messaging roles only.
+            </p>
+            <p className="text-sm text-red-800 mt-2">
+              Your role: <Badge variant="outline">{user.role}</Badge>
+            </p>
+            <Button onClick={() => window.history.back()} variant="outline" className="mt-4">
+              Go Back
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6">

@@ -22,6 +22,7 @@ export default tseslint.config(
       'package-lock.json',
       'archive/',
       'attached_assets/',
+      '.backup/',
       '**/public/service-worker.js',
       '**/public/shopify-widgets/**',
       'client/shopify-widgets/**',

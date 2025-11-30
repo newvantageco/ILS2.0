@@ -5,7 +5,7 @@ import { z } from "zod";
 import { vector } from "./schema-pgvector";
 
 // Enums
-export const roleEnum = pgEnum("role", ["ecp", "admin", "lab_tech", "engineer", "supplier", "platform_admin", "company_admin", "dispenser"]);
+export const roleEnum = pgEnum("role", ["ecp", "admin", "lab_tech", "engineer", "supplier", "platform_admin", "company_admin", "dispenser", "store_manager"]);
 export const subscriptionPlanEnum = pgEnum("subscription_plan", ["free", "pro", "premium", "enterprise", "full", "free_ecp"]); // Legacy: full, free_ecp
 
 // Session storage table for Replit Auth
@@ -2280,7 +2280,7 @@ export type OrganizationSettings = typeof organizationSettings.$inferSelect;
 export type UpdateUserPreferences = z.infer<typeof updateUserPreferencesSchema>;
 export type UserPreferences = typeof userPreferences.$inferSelect;
 
-export type RoleEnum = "ecp" | "admin" | "lab_tech" | "engineer" | "supplier" | "platform_admin" | "company_admin" | "dispenser";
+export type RoleEnum = "ecp" | "admin" | "lab_tech" | "engineer" | "supplier" | "platform_admin" | "company_admin" | "dispenser" | "store_manager";
 export type UserRole = typeof userRoles.$inferSelect;
 export type UserWithRoles = User & {
   availableRoles: string[];
@@ -9850,8 +9850,7 @@ export type PatientPortalSetting = typeof patientPortalSettings.$inferSelect;
 export type InsertPatientPortalSetting = typeof patientPortalSettings.$inferInsert;
 export type AppointmentRequest = typeof appointmentRequests.$inferSelect;
 export type InsertAppointmentRequest = typeof appointmentRequests.$inferInsert;
-export type Message = typeof messages.$inferSelect;
-export type InsertMessage = typeof messages.$inferInsert;
+// Message and InsertMessage types are already exported above (Communications section)
 export type PatientDocument = typeof patientDocuments.$inferSelect;
 export type InsertPatientDocument = typeof patientDocuments.$inferInsert;
 export type PatientHealthMetric = typeof patientHealthMetrics.$inferSelect;

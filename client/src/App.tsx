@@ -240,7 +240,7 @@ class RouteErrorBoundary extends React.Component<
   }
 }
 
-function AppLayout({ children, userRole }: { children: React.ReactNode; userRole: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin" | "dispenser" }) {
+function AppLayout({ children, userRole }: { children: React.ReactNode; userRole: "ecp" | "lab_tech" | "supplier" | "engineer" | "admin" | "platform_admin" | "company_admin" | "dispenser" | "store_manager" }) {
   const { logout } = useAuth();
   const [showWelcome, setShowWelcome] = useState(false);
   
@@ -556,6 +556,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/segments" component={SegmentBuilderPage} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
+            <Route path="/ecp/new-order" component={NewOrderPage} />
             <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />
             <Route path="/ecp/company" component={CompanyManagementPage} />
             <Route path="/ecp/bi-dashboard" component={BIDashboardPage} />
@@ -847,6 +848,7 @@ function AuthenticatedApp() {
             <Route path="/ecp/segments" component={SegmentBuilderPage} />
             <Route path="/ecp/ai-assistant" component={AIAssistantPage} />
             <Route path="/ecp/orders" component={ECPDashboard} />
+            <Route path="/ecp/new-order" component={NewOrderPage} />
             <Route path="/ecp/ai-purchase-orders" component={AIPurchaseOrdersPage} />
             <Route path="/ecp/company" component={CompanyManagementPage} />
             <Route path="/ecp/bi-dashboard" component={BIDashboardPage} />

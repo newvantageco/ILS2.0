@@ -36,7 +36,7 @@ export const vector = (name: string, dimensions: number) =>
       // pgvector returns vectors as strings like "[1,2,3]"
       if (typeof value === 'string') {
         // Remove brackets and split by comma
-        const cleaned = value.replace(/[\[\]]/g, '');
+        const cleaned = value.replace(/[[\]]/g, '');
         return cleaned.split(',').map(Number);
       }
       // If already an array (shouldn't happen but defensive)

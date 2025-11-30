@@ -106,21 +106,9 @@ export default function MessageHistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState<string>('7'); // days
 
-  // Role-based access control
-  if (!user || !ALLOWED_ROLES.includes(user.role)) {
-    return (
-      <div className="container mx-auto py-8">
-        <Alert variant="destructive">
-          <Shield className="h-4 w-4" />
-          <AlertDescription>
-            Access denied. You don't have permission to view message history.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  const hasAccess = !!user && ALLOWED_ROLES.includes(user.role);
 
-  // Fetch messages with filters
+  // Fetch messages with filters - moved before conditional returns
   const { data: messagesData, isLoading: messagesLoading, refetch } = useQuery({
     queryKey: ['/api/communications/messages', channelFilter, statusFilter, searchQuery, dateFilter],
     queryFn: async () => {
@@ -142,6 +130,7 @@ export default function MessageHistoryPage() {
       if (!res.ok) throw new Error('Failed to fetch messages');
       return res.json();
     },
+    enabled: hasAccess,
   });
 
   const messages: Message[] = messagesData?.messages || [];
@@ -222,6 +211,20 @@ export default function MessageHistoryPage() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  // Role-based access control - placed after all hooks
+  if (!hasAccess) {
+    return (
+      <div className="container mx-auto py-8">
+        <Alert variant="destructive">
+          <Shield className="h-4 w-4" />
+          <AlertDescription>
+            Access denied. You don&apos;t have permission to view message history.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6">

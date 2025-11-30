@@ -95,26 +95,7 @@ export default function QuickSendPage() {
   const [showStatsDialog, setShowStatsDialog] = useState(false);
   const [selectedBroadcastId, setSelectedBroadcastId] = useState<string | null>(null);
 
-  // Check authorization
-  if (!user || !ALLOWED_ROLES.includes(user.role)) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <AlertCircle className="h-12 w-12 mx-auto text-destructive" />
-              <div>
-                <h3 className="font-semibold text-lg">Access Denied</h3>
-                <p className="text-muted-foreground">
-                  You don't have permission to send broadcast messages.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const hasAccess = !!user && ALLOWED_ROLES.includes(user.role);
 
   // Build filters object
   const buildFilters = (): RecipientFilters => {
@@ -144,7 +125,7 @@ export default function QuickSendPage() {
       if (!res.ok) throw new Error('Failed to preview recipients');
       return res.json();
     },
-    enabled: !!filterType,
+    enabled: hasAccess && !!filterType,
   });
 
   const recipients: Recipient[] = previewData?.recipients || [];
@@ -160,6 +141,7 @@ export default function QuickSendPage() {
       if (!res.ok) throw new Error('Failed to fetch history');
       return res.json();
     },
+    enabled: hasAccess,
   });
 
   const broadcasts: BroadcastHistory[] = historyData?.broadcasts || [];
@@ -258,6 +240,27 @@ export default function QuickSendPage() {
     };
     return labels[type] || type;
   };
+
+  // Check authorization - placed after all hooks
+  if (!hasAccess) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <AlertCircle className="h-12 w-12 mx-auto text-destructive" />
+              <div>
+                <h3 className="font-semibold text-lg">Access Denied</h3>
+                <p className="text-muted-foreground">
+                  You don&apos;t have permission to send broadcast messages.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
