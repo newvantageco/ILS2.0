@@ -9,8 +9,9 @@ cmds = ["pip install --upgrade pip", "pip install -r requirements-lite.txt"]
 
 [start]
 # Entry point is app:app (from app.py at root)
-# Use [::] for IPv4/IPv6 dual-stack compatibility on Railway
-cmd = "uvicorn app:app --host '[::]' --port $PORT --workers 1"
+# Use 0.0.0.0 for IPv4 compatibility - Railway health checks require IPv4
+# IPv6 [::] causes health check failures
+cmd = "uvicorn app:app --host 0.0.0.0 --port $PORT --workers 1"
 
 [variables]
 PYTHON_ENV = "production"
