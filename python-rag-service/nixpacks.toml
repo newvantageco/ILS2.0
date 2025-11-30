@@ -1,17 +1,29 @@
 # Nixpacks Configuration for Python RAG Service
 # Provides embedding generation and vector search for multi-tenant RAG
+# Railway-optimized with CPU-only PyTorch
 
 [phases.setup]
 nixPkgs = ["python311", "gcc", "zlib", "glib", "libpq"]
 
 [phases.install]
-cmds = ["pip install --upgrade pip", "pip install -r requirements.txt"]
+cmds = [
+    "pip install --upgrade pip",
+    "pip install --no-cache-dir -r requirements.txt"
+]
 
 [start]
-cmd = "uvicorn api.main:app --host 0.0.0.0 --port $PORT"
+cmd = "uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 1"
 
 [variables]
 PYTHON_ENV = "production"
 PYTHONUNBUFFERED = "1"
+# Cache directories for models
 TRANSFORMERS_CACHE = "/app/.cache"
 SENTENCE_TRANSFORMERS_HOME = "/app/.cache"
+HF_HOME = "/app/.cache"
+# CPU-only PyTorch settings
+PYTORCH_CUDA_ALLOC_CONF = "max_split_size_mb:128"
+OMP_NUM_THREADS = "1"
+MKL_NUM_THREADS = "1"
+# Memory optimization
+MALLOC_TRIM_THRESHOLD_ = "100000"
