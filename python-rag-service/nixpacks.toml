@@ -12,7 +12,8 @@ cmds = [
 ]
 
 [start]
-cmd = "uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 1"
+# Use [::] for IPv6 compatibility (Railway requirement)
+cmd = "uvicorn api.main:app --host '[::]' --port $PORT --workers 1"
 
 [variables]
 PYTHON_ENV = "production"

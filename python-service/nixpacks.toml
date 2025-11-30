@@ -1,5 +1,6 @@
 # Nixpacks Configuration for Python Analytics Service
 # Lightweight analytics and ML microservice
+# Railway-optimized with IPv6 support
 
 [phases.setup]
 nixPkgs = ["python311", "gcc", "zlib", "glib", "libpq"]
@@ -8,8 +9,11 @@ nixPkgs = ["python311", "gcc", "zlib", "glib", "libpq"]
 cmds = ["pip install --upgrade pip", "pip install --no-cache-dir -r requirements.txt"]
 
 [start]
-cmd = "uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+# Use [::] for IPv6 compatibility (Railway requirement)
+cmd = "uvicorn main:app --host '[::]' --port $PORT --workers 1"
 
 [variables]
 PYTHON_ENV = "production"
 PYTHONUNBUFFERED = "1"
+# Memory optimization
+OMP_NUM_THREADS = "1"

@@ -36,11 +36,20 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS configuration
+# CORS configuration - include Railway healthcheck hostname
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:5000")
+cors_origins = [
+    BACKEND_URL,
+    "http://localhost:3000",
+    "https://healthcheck.railway.app",  # Railway health checks
+]
+# In Railway environment, allow all origins for internal communication
+if os.getenv("RAILWAY_ENVIRONMENT"):
+    cors_origins.append("*")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[BACKEND_URL, "http://localhost:3000"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

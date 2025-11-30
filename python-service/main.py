@@ -53,9 +53,12 @@ default_origins = [
 # Merge origins, avoiding duplicates
 all_origins = list(set(cors_origins + default_origins))
 
-# In production on Railway, also allow all origins from same Railway project
+# Always add Railway's healthcheck hostname (required for health checks)
+all_origins.append("https://healthcheck.railway.app")
+
+# In production on Railway, allow all origins for internal communication
 if os.getenv("RAILWAY_ENVIRONMENT"):
-    all_origins.append("*")  # Railway internal communication
+    all_origins.append("*")
 
 app.add_middleware(
     CORSMiddleware,

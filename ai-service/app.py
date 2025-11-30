@@ -69,10 +69,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS
+# CORS - Railway uses healthcheck.railway.app for health checks
+# Must allow this origin for health checks to work
+cors_origins = settings.cors_origins.copy() if not settings.debug else ["*"]
+if not settings.debug:
+    # Always allow Railway's healthcheck hostname
+    cors_origins.append("https://healthcheck.railway.app")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins if not settings.debug else ["*"],
+    allow_origins=cors_origins if cors_origins else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

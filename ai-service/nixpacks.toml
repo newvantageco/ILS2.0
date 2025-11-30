@@ -1,5 +1,6 @@
 # Nixpacks Configuration for ILS 2.0 AI Service
 # Uses lightweight requirements for faster deployment
+# Railway-optimized with IPv6 support and memory-safe settings
 
 [phases.setup]
 nixPkgs = ["python311", "gcc", "zlib", "glib", "libpq"]
@@ -9,8 +10,13 @@ cmds = ["pip install --upgrade pip", "pip install -r requirements-lite.txt"]
 
 [start]
 # Entry point is app:app (from app.py at root)
-cmd = "uvicorn app:app --host 0.0.0.0 --port $PORT --workers 2"
+# Use [::] for IPv6 compatibility (Railway requirement)
+# Use 1 worker to avoid memory issues with AI/ML workloads
+cmd = "uvicorn app:app --host '[::]' --port $PORT --workers 1"
 
 [variables]
 PYTHON_ENV = "production"
 PYTHONUNBUFFERED = "1"
+# Memory optimization for AI workloads
+OMP_NUM_THREADS = "1"
+MKL_NUM_THREADS = "1"
