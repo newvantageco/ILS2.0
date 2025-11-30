@@ -219,8 +219,18 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
-async def check_db_health() -> bool:
-    """Check database health."""
+async def check_db_health(timeout: float = 5.0) -> bool:
+    """
+    Check database health with timeout.
+
+    Args:
+        timeout: Maximum seconds to wait for health check (default 5s)
+
+    Returns:
+        True if database is healthy, False otherwise
+    """
+    import asyncio
+
     if not is_db_configured():
         return False
 
@@ -229,9 +239,16 @@ async def check_db_health() -> bool:
         return False
 
     try:
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-        return True
+        # Use asyncio.wait_for to prevent hanging on slow database connections
+        async def _check():
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+            return True
+
+        return await asyncio.wait_for(_check(), timeout=timeout)
+    except asyncio.TimeoutError:
+        logger.warning(f"Database health check timed out after {timeout}s")
+        return False
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
         return False
