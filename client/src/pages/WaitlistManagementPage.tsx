@@ -87,44 +87,9 @@ export default function WaitlistManagementPage() {
   const [fulfillmentNotes, setFulfillmentNotes] = useState("");
 
   const ALLOWED_ROLES = ['admin', 'platform_admin', 'company_admin', 'manager', 'receptionist'];
+  const hasAccess = !!user && ALLOWED_ROLES.includes(user.role);
 
-  // Role-based access control
-  if (!user) {
-    return <Redirect to="/login" />;
-  }
-
-  if (!ALLOWED_ROLES.includes(user.role)) {
-    return (
-      <div className="container mx-auto py-8">
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-900">
-              <Shield className="h-6 w-6" />
-              Access Restricted
-            </CardTitle>
-            <CardDescription className="text-red-700">
-              You do not have permission to access waitlist management.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 text-sm text-red-800">
-              <p>
-                <strong>Required roles:</strong> Admin, Company Admin, Manager, or Receptionist
-              </p>
-              <p>
-                <strong>Your role:</strong> {user.role}
-              </p>
-              <p className="pt-2">
-                Please contact your administrator if you believe you should have access to this feature.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Fetch waitlist entries
+  // Fetch waitlist entries - moved before conditional returns
   const { data: waitlistData, isLoading, refetch } = useQuery({
     queryKey: ['/api/appointments/waitlist'],
     queryFn: async () => {
@@ -136,6 +101,7 @@ export default function WaitlistManagementPage() {
       }
       return res.json() as Promise<{ success: boolean; entries: WaitlistEntry[] }>;
     },
+    enabled: hasAccess,
   });
 
   // Fulfill waitlist entry mutation
@@ -300,6 +266,42 @@ export default function WaitlistManagementPage() {
         return <Badge variant="outline">{flexibility}</Badge>;
     }
   };
+
+  // Role-based access control - placed after all hooks
+  if (!user) {
+    return <Redirect to="/login" />;
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="container mx-auto py-8">
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-900">
+              <Shield className="h-6 w-6" />
+              Access Restricted
+            </CardTitle>
+            <CardDescription className="text-red-700">
+              You do not have permission to access waitlist management.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 text-sm text-red-800">
+              <p>
+                <strong>Required roles:</strong> Admin, Company Admin, Manager, or Receptionist
+              </p>
+              <p>
+                <strong>Your role:</strong> {user.role}
+              </p>
+              <p className="pt-2">
+                Please contact your administrator if you believe you should have access to this feature.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8 space-y-6">

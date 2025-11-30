@@ -78,45 +78,9 @@ export default function DispenserHandoffPage() {
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
 
   const ALLOWED_ROLES = ['admin', 'platform_admin', 'company_admin', 'manager', 'dispenser', 'ecp'];
+  const hasAccess = !!user && ALLOWED_ROLES.includes(user.role);
 
-  // Role-based access control
-  if (!user) {
-    return <Redirect to="/login" />;
-  }
-
-  if (!ALLOWED_ROLES.includes(user.role)) {
-    return (
-      <div className="container mx-auto py-8">
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-900">
-              <Shield className="h-6 w-6" />
-              Access Restricted
-            </CardTitle>
-            <CardDescription className="text-red-700">
-              You do not have permission to access the dispenser handoff queue.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 text-sm text-red-800">
-              <p>
-                <strong>Required roles:</strong> Admin, Company Admin, Manager, Dispenser, or ECP
-              </p>
-              <p>
-                <strong>Your role:</strong> {user.role}
-              </p>
-              <p className="pt-2">
-                This feature enables smooth patient handoff from clinical to retail operations.
-                Please contact your administrator if you believe you should have access.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Fetch recent examinations ready for handoff
+  // Fetch recent examinations ready for handoff - moved before conditional returns
   const { data: handoffData, isLoading, refetch } = useQuery({
     queryKey: ['/api/examinations/recent', timeFilter],
     queryFn: async () => {
@@ -134,6 +98,7 @@ export default function DispenserHandoffPage() {
       };
     },
     refetchInterval: 30000, // Auto-refresh every 30 seconds
+    enabled: hasAccess,
   });
 
   const handleClaimPatient = (exam: ExaminationHandoff) => {
@@ -196,6 +161,43 @@ export default function DispenserHandoffPage() {
 
     return <Badge variant="outline" className="bg-green-50">Routine</Badge>;
   };
+
+  // Role-based access control - placed after all hooks
+  if (!user) {
+    return <Redirect to="/login" />;
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="container mx-auto py-8">
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-900">
+              <Shield className="h-6 w-6" />
+              Access Restricted
+            </CardTitle>
+            <CardDescription className="text-red-700">
+              You do not have permission to access the dispenser handoff queue.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 text-sm text-red-800">
+              <p>
+                <strong>Required roles:</strong> Admin, Company Admin, Manager, Dispenser, or ECP
+              </p>
+              <p>
+                <strong>Your role:</strong> {user.role}
+              </p>
+              <p className="pt-2">
+                This feature enables smooth patient handoff from clinical to retail operations.
+                Please contact your administrator if you believe you should have access.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8 space-y-6">

@@ -49,41 +49,9 @@ export default function PatientEngagementDashboard() {
   const [timeRange, setTimeRange] = useState("30");
 
   const ALLOWED_ROLES = ['admin', 'platform_admin', 'company_admin', 'manager', 'ecp'];
+  const hasAccess = !!user && ALLOWED_ROLES.includes(user.role);
 
-  // Role-based access control
-  if (!user) {
-    return <Redirect to="/login" />;
-  }
-
-  if (!ALLOWED_ROLES.includes(user.role)) {
-    return (
-      <div className="container mx-auto py-8">
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-900">
-              <Shield className="h-6 w-6" />
-              Access Restricted
-            </CardTitle>
-            <CardDescription className="text-red-700">
-              You do not have permission to view engagement analytics.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 text-sm text-red-800">
-              <p>
-                <strong>Required roles:</strong> Admin, Company Admin, Manager, or ECP
-              </p>
-              <p>
-                <strong>Your role:</strong> {user.role}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Fetch recall statistics
+  // Fetch recall statistics - moved before conditional returns
   const { data: recallStats } = useQuery({
     queryKey: ['/api/recalls/stats'],
     queryFn: async () => {
@@ -93,6 +61,7 @@ export default function PatientEngagementDashboard() {
       if (!res.ok) throw new Error('Failed to fetch recall stats');
       return res.json();
     },
+    enabled: hasAccess,
   });
 
   // Fetch waitlist data
@@ -105,6 +74,7 @@ export default function PatientEngagementDashboard() {
       if (!res.ok) throw new Error('Failed to fetch waitlist');
       return res.json();
     },
+    enabled: hasAccess,
   });
 
   // Fetch campaigns
@@ -117,6 +87,7 @@ export default function PatientEngagementDashboard() {
       if (!res.ok) throw new Error('Failed to fetch campaigns');
       return res.json();
     },
+    enabled: hasAccess,
   });
 
   // Fetch message statistics
@@ -138,6 +109,7 @@ export default function PatientEngagementDashboard() {
       if (!res.ok) throw new Error('Failed to fetch message stats');
       return res.json();
     },
+    enabled: hasAccess,
   });
 
   // Fetch handoff queue
@@ -150,6 +122,7 @@ export default function PatientEngagementDashboard() {
       if (!res.ok) throw new Error('Failed to fetch handoff data');
       return res.json();
     },
+    enabled: hasAccess,
   });
 
   // Calculate key metrics
@@ -197,6 +170,39 @@ export default function PatientEngagementDashboard() {
     }
     return <Activity className="h-4 w-4 text-gray-400" />;
   };
+
+  // Role-based access control - placed after all hooks
+  if (!user) {
+    return <Redirect to="/login" />;
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="container mx-auto py-8">
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-900">
+              <Shield className="h-6 w-6" />
+              Access Restricted
+            </CardTitle>
+            <CardDescription className="text-red-700">
+              You do not have permission to view engagement analytics.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 text-sm text-red-800">
+              <p>
+                <strong>Required roles:</strong> Admin, Company Admin, Manager, or ECP
+              </p>
+              <p>
+                <strong>Your role:</strong> {user.role}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8 space-y-6">

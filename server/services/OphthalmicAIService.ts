@@ -123,7 +123,7 @@ export class OphthalmicAIService {
           'Authorization': `Bearer ${token}`,
         },
         body: body ? JSON.stringify(body) : undefined,
-        // @ts-ignore - node-fetch timeout
+        // @ts-expect-error - node-fetch timeout
         timeout: 60000, // 60 second timeout
       });
 
@@ -313,7 +313,7 @@ export class OphthalmicAIService {
   async checkHealth(): Promise<boolean> {
     try {
       const response = await fetch(`${this.serviceUrl}/health`, {
-        // @ts-ignore
+        // @ts-expect-error - node-fetch timeout
         timeout: 5000,
       });
 

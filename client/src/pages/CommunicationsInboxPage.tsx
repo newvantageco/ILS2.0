@@ -95,28 +95,9 @@ export default function CommunicationsInboxPage() {
   const [channelFilter, setChannelFilter] = useState<string>('all');
   const [replyText, setReplyText] = useState('');
 
-  // Check authorization
-  if (!user || !ALLOWED_ROLES.includes(user.role)) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <AlertCircle className="h-12 w-12 mx-auto text-destructive" />
-              <div>
-                <h3 className="font-semibold text-lg">Access Denied</h3>
-                <p className="text-muted-foreground">
-                  You don't have permission to access the communications inbox.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const hasAccess = !!user && ALLOWED_ROLES.includes(user.role);
 
-  // Fetch inbox stats
+  // Fetch inbox stats - moved before conditional returns for hooks rules
   const { data: statsData } = useQuery({
     queryKey: ['/api/communications/inbox/stats'],
     queryFn: async () => {
@@ -127,6 +108,7 @@ export default function CommunicationsInboxPage() {
       return res.json();
     },
     refetchInterval: 30000, // Refresh every 30 seconds
+    enabled: hasAccess,
   });
 
   const stats: InboxStats = statsData?.stats || {
@@ -152,6 +134,7 @@ export default function CommunicationsInboxPage() {
       return res.json();
     },
     refetchInterval: 15000, // Refresh every 15 seconds
+    enabled: hasAccess,
   });
 
   const conversations: Conversation[] = conversationsData?.conversations || [];
@@ -292,6 +275,27 @@ export default function CommunicationsInboxPage() {
     if (diffDays < 7) return `${diffDays}d ago`;
     return format(date, 'MMM d');
   };
+
+  // Check authorization - placed after all hooks
+  if (!hasAccess) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <AlertCircle className="h-12 w-12 mx-auto text-destructive" />
+              <div>
+                <h3 className="font-semibold text-lg">Access Denied</h3>
+                <p className="text-muted-foreground">
+                  You don&apos;t have permission to access the communications inbox.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
