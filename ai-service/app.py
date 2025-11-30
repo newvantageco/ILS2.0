@@ -31,17 +31,26 @@ security = HTTPBearer()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan manager."""
+    """Application lifespan manager with graceful startup."""
+    import asyncio
+
     # Startup
     logger.info("Starting ILS 2.0 AI Service...")
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Primary LLM Provider: {settings.primary_llm_provider}")
+    logger.info(f"Database configured: {bool(settings.database_url)}")
+    logger.info(f"OpenAI configured: {bool(settings.openai_api_key)}")
 
+    # Initialize database with timeout - don't block startup
     try:
-        await init_db()
+        await asyncio.wait_for(init_db(), timeout=30.0)
         logger.info("Database initialized")
+    except asyncio.TimeoutError:
+        logger.warning("Database initialization timed out - service will start in degraded mode")
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
+        logger.warning(f"Database initialization failed - service will start in degraded mode: {e}")
+
+    logger.info("AI Service started successfully (may be in degraded mode)")
 
     yield
 
@@ -203,11 +212,24 @@ def verify_jwt_token(credentials: HTTPAuthorizationCredentials = Security(securi
 @app.get("/")
 @app.get("/health")
 async def health_check():
-    """Health check endpoint. Returns 200 even in degraded mode for Railway."""
-    db_healthy = await check_db_health()
-    llm_available = llm_service.is_available()
+    """
+    Health check endpoint. Returns 200 even in degraded mode for Railway.
+    This endpoint must ALWAYS return 200 to prevent Railway from killing the service.
+    """
+    try:
+        # Check database with timeout (default 5s)
+        db_healthy = await check_db_health(timeout=3.0)
+    except Exception as e:
+        logger.warning(f"Database health check exception: {e}")
+        db_healthy = False
 
-    # Service is healthy only if both database and LLM are available
+    try:
+        llm_available = llm_service.is_available()
+    except Exception as e:
+        logger.warning(f"LLM availability check exception: {e}")
+        llm_available = False
+
+    # Service status - degraded is still operational
     is_healthy = db_healthy and llm_available
 
     return {

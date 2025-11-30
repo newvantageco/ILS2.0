@@ -1,28 +1,65 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from typing import List, Optional
 import os
+import logging
 from dotenv import load_dotenv
 from datetime import datetime
 from db_utils import get_order_trends_from_db, get_batch_report_from_db, db
 
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 load_dotenv()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager with startup logging."""
+    # Startup
+    logger.info("Starting ILS Python Analytics Service...")
+    logger.info(f"Environment: {os.getenv('RAILWAY_ENVIRONMENT', 'development')}")
+    logger.info(f"Port: {os.getenv('PORT', '8000')}")
+    logger.info(f"Database configured: {db.is_configured()}")
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down ILS Python Analytics Service...")
+
 
 app = FastAPI(
     title="ILS Analytics Service",
     description="Python microservice for analytics and ML in Integrated Lens System",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
-# CORS configuration - allow Node.js backend to call this service
+# CORS configuration - allow Node.js backend and Railway to call this service
+# Get allowed origins from environment or use defaults
+cors_origins = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else []
+cors_origins = [origin.strip() for origin in cors_origins if origin.strip()]
+
+# Add default origins for development
+default_origins = [
+    os.getenv("BACKEND_URL", "http://localhost:5000"),
+    "http://localhost:3000",  # Frontend dev server
+    "http://localhost:5001",  # Alternative backend port
+]
+
+# Merge origins, avoiding duplicates
+all_origins = list(set(cors_origins + default_origins))
+
+# In production on Railway, also allow all origins from same Railway project
+if os.getenv("RAILWAY_ENVIRONMENT"):
+    all_origins.append("*")  # Railway internal communication
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        os.getenv("BACKEND_URL", "http://localhost:5000"),
-        "http://localhost:3000",  # Frontend dev server
-        "http://localhost:5001",  # Alternative backend port
-    ],
+    allow_origins=all_origins if all_origins else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -31,10 +68,17 @@ app.add_middleware(
 # Health check endpoint
 @app.get("/health")
 async def health_check():
+    """
+    Health check endpoint. Returns 200 even in degraded mode for Railway.
+    This endpoint must ALWAYS return 200 to keep the service alive.
+    """
+    db_configured = db.is_configured()
+
     return {
-        "status": "healthy",
+        "status": "healthy" if db_configured else "degraded",
         "service": "python-analytics",
         "version": "1.0.0",
+        "database": "configured" if db_configured else "not_configured",
         "timestamp": datetime.utcnow().isoformat()
     }
 
