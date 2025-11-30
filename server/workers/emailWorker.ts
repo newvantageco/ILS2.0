@@ -94,10 +94,10 @@ export function createEmailWorker() {
             throw new Error(`Unknown email type: ${(job.data as any).type}`);
         }
         
-        logger.info(`✅ Email job ${job.id} completed successfully`);
+        logger.info({ jobId: job.id }, '✅ Email job completed successfully');
         return { success: true, sentAt: new Date().toISOString() };
       } catch (error) {
-        logger.error(`❌ Email job ${job.id} failed:`, error);
+        logger.error({ jobId: job.id, error: (error as Error)?.message }, '❌ Email job failed');
         throw error;
       }
     },
@@ -113,15 +113,15 @@ export function createEmailWorker() {
 
   // Worker event handlers
   worker.on('completed', (job) => {
-    logger.info(`✅ Email job ${job.id} completed`);
+    logger.info({ jobId: job.id }, '✅ Email job completed');
   });
 
   worker.on('failed', (job, err) => {
-    logger.error(`❌ Email job ${job?.id} failed:`, err.message);
+    logger.error({ jobId: job?.id, error: err.message }, '❌ Email job failed');
   });
 
   worker.on('error', (err) => {
-    logger.error('Email worker error:', err);
+    logger.error({ error: err.message }, 'Email worker error');
   });
 
   logger.info('✅ Email worker started');

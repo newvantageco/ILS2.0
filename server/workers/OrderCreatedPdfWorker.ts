@@ -47,37 +47,37 @@ export function registerOrderCreatedPdfWorker(storage: IStorage, opts?: PdfWorke
       while (attempt < maxAttempts && !success) {
         attempt += 1;
         try {
-          logger.info('PDF generation attempt', { orderId, attempt });
+          logger.info({ orderId, attempt }, 'PDF generation attempt');
           const pdfUrl = await generateFn(order);
 
           await storage.updateOrder(orderId, { pdfUrl });
-          logger.info('PDF generated and stored', { orderId, pdfUrl });
+          logger.info({ orderId, pdfUrl }, 'PDF generated and stored');
           success = true;
           break;
         } catch (err) {
           lastError = err;
-          logger.warn('PDF generation failed', { orderId, attempt, error: (err as Error)?.message || String(err) });
+          logger.warn({ orderId, attempt, error: (err as Error)?.message || String(err) }, 'PDF generation failed');
 
           if (attempt >= maxAttempts) {
             // Mark order with PDF error so it can be retried via DLQ or manual intervention
             try {
               await storage.updateOrder(orderId, { pdfErrorMessage: (err as Error)?.message || String(err) });
             } catch (dbErr) {
-              logger.error('Failed to mark order with pdf error', (dbErr as Error)?.message || String(dbErr), { orderId });
+              logger.error({ orderId, error: (dbErr as Error)?.message || String(dbErr) }, 'Failed to mark order with pdf error');
             }
 
-            logger.error('PDF generation permanently failed', (err as Error)?.message || String(err), { orderId });
+            logger.error({ orderId, error: (err as Error)?.message || String(err) }, 'PDF generation permanently failed');
             break;
           }
 
           const backoffMs = baseBackoffMs * Math.pow(2, attempt - 1);
-          logger.info('Backing off before PDF retry', { orderId, attempt, backoffMs });
+          logger.info({ orderId, attempt, backoffMs }, 'Backing off before PDF retry');
           await sleep(backoffMs);
         }
       }
 
     } catch (err) {
-      logger.error("OrderCreatedPdfWorker error", (err as Error)?.message || String(err), {});
+      logger.error({ error: (err as Error)?.message || String(err) }, 'OrderCreatedPdfWorker error');
     }
   });
 }
