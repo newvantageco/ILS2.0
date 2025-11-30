@@ -111,41 +111,9 @@ export default function CampaignManagerPage() {
   const [formScheduleTime, setFormScheduleTime] = useState("");
 
   const ALLOWED_ROLES = ['admin', 'platform_admin', 'company_admin', 'manager'];
+  const hasAccess = !!user && ALLOWED_ROLES.includes(user.role);
 
-  // Role-based access control
-  if (!user) {
-    return <Redirect to="/login" />;
-  }
-
-  if (!ALLOWED_ROLES.includes(user.role)) {
-    return (
-      <div className="container mx-auto py-8">
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-900">
-              <Shield className="h-6 w-6" />
-              Access Restricted
-            </CardTitle>
-            <CardDescription className="text-red-700">
-              You do not have permission to manage campaigns.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 text-sm text-red-800">
-              <p>
-                <strong>Required roles:</strong> Admin, Company Admin, or Manager
-              </p>
-              <p>
-                <strong>Your role:</strong> {user.role}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Fetch campaigns
+  // Fetch campaigns - moved before conditional returns for hooks rules
   const { data: campaignsData, isLoading, refetch } = useQuery({
     queryKey: ['/api/communications/campaigns', filterStatus],
     queryFn: async () => {
@@ -163,6 +131,7 @@ export default function CampaignManagerPage() {
         campaigns: data.campaigns as Campaign[],
       };
     },
+    enabled: hasAccess,
   });
 
   // Fetch templates for dropdown
@@ -176,6 +145,7 @@ export default function CampaignManagerPage() {
       const data = await res.json();
       return data.templates || [];
     },
+    enabled: hasAccess,
   });
 
   // Create campaign mutation
@@ -274,6 +244,39 @@ export default function CampaignManagerPage() {
       });
     },
   });
+
+  // Role-based access control - placed after all hooks
+  if (!user) {
+    return <Redirect to="/login" />;
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="container mx-auto py-8">
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-900">
+              <Shield className="h-6 w-6" />
+              Access Restricted
+            </CardTitle>
+            <CardDescription className="text-red-700">
+              You do not have permission to manage campaigns.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 text-sm text-red-800">
+              <p>
+                <strong>Required roles:</strong> Admin, Company Admin, or Manager
+              </p>
+              <p>
+                <strong>Your role:</strong> {user.role}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const resetForm = () => {
     setFormName("");

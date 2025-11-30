@@ -115,65 +115,20 @@ export default function CommunicationsHubPage() {
 
   // SECURITY: Only allow authorized roles to access communications
   const ALLOWED_ROLES = ['admin', 'platform_admin', 'company_admin', 'manager', 'receptionist'];
+  const hasAccess = !!user && ALLOWED_ROLES.includes(user.role);
 
-  if (!user) {
-    return <Redirect to="/login" />;
-  }
-
-  if (!ALLOWED_ROLES.includes(user.role)) {
-    return (
-      <div className="container mx-auto py-12">
-        <Card className="max-w-2xl mx-auto border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-900">
-              <Shield className="h-6 w-6" />
-              Access Restricted
-            </CardTitle>
-            <CardDescription className="text-red-700">
-              You don't have permission to access the Communications Hub
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-red-800">
-                The Communications Hub is restricted to administrative and messaging roles only.
-              </p>
-              <div className="bg-white p-4 rounded border border-red-200">
-                <p className="text-sm font-medium text-gray-900 mb-2">Allowed Roles:</p>
-                <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-                  <li>Administrator</li>
-                  <li>Company Administrator</li>
-                  <li>Manager</li>
-                  <li>Receptionist</li>
-                </ul>
-              </div>
-              <p className="text-sm text-red-800">
-                Your role: <Badge variant="outline">{user.role}</Badge>
-              </p>
-              <p className="text-sm text-red-800">
-                If you believe you should have access, please contact your company administrator.
-              </p>
-              <Button onClick={() => window.history.back()} variant="outline">
-                Go Back
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Fetch templates
+  // Fetch templates - moved before conditional returns for hooks rules
   const { data: templatesData, isLoading: templatesLoading } = useQuery({
     queryKey: ['/api/communications/templates', selectedChannel !== 'all' ? selectedChannel : undefined],
     queryFn: async () => {
-      const url = selectedChannel !== 'all' 
+      const url = selectedChannel !== 'all'
         ? `/api/communications/templates?channel=${selectedChannel}`
         : '/api/communications/templates';
       const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch templates');
       return res.json();
     },
+    enabled: hasAccess,
   });
 
   // Fetch message stats
@@ -184,6 +139,7 @@ export default function CommunicationsHubPage() {
       if (!res.ok) throw new Error('Failed to fetch stats');
       return res.json();
     },
+    enabled: hasAccess,
   });
 
   // Fetch campaigns
@@ -194,6 +150,7 @@ export default function CommunicationsHubPage() {
       if (!res.ok) throw new Error('Failed to fetch campaigns');
       return res.json();
     },
+    enabled: hasAccess,
   });
 
   // Send message mutation
@@ -294,6 +251,54 @@ export default function CommunicationsHubPage() {
       </Badge>
     );
   };
+
+  // Role-based access control - placed after all hooks
+  if (!user) {
+    return <Redirect to="/login" />;
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="container mx-auto py-12">
+        <Card className="max-w-2xl mx-auto border-red-200 bg-red-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-900">
+              <Shield className="h-6 w-6" />
+              Access Restricted
+            </CardTitle>
+            <CardDescription className="text-red-700">
+              You don&apos;t have permission to access the Communications Hub
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-red-800">
+                The Communications Hub is restricted to administrative and messaging roles only.
+              </p>
+              <div className="bg-white p-4 rounded border border-red-200">
+                <p className="text-sm font-medium text-gray-900 mb-2">Allowed Roles:</p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+                  <li>Administrator</li>
+                  <li>Company Administrator</li>
+                  <li>Manager</li>
+                  <li>Receptionist</li>
+                </ul>
+              </div>
+              <p className="text-sm text-red-800">
+                Your role: <Badge variant="outline">{user.role}</Badge>
+              </p>
+              <p className="text-sm text-red-800">
+                If you believe you should have access, please contact your company administrator.
+              </p>
+              <Button onClick={() => window.history.back()} variant="outline">
+                Go Back
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container max-w-7xl py-8 space-y-6">

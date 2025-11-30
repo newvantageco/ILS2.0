@@ -111,44 +111,9 @@ export default function CommunicationTemplatesPage() {
   const [formBody, setFormBody] = useState("");
 
   const ALLOWED_ROLES = ['admin', 'platform_admin', 'company_admin', 'manager'];
+  const hasAccess = !!user && ALLOWED_ROLES.includes(user.role);
 
-  // Role-based access control
-  if (!user) {
-    return <Redirect to="/login" />;
-  }
-
-  if (!ALLOWED_ROLES.includes(user.role)) {
-    return (
-      <div className="container mx-auto py-8">
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-900">
-              <Shield className="h-6 w-6" />
-              Access Restricted
-            </CardTitle>
-            <CardDescription className="text-red-700">
-              You do not have permission to manage communication templates.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 text-sm text-red-800">
-              <p>
-                <strong>Required roles:</strong> Admin, Company Admin, or Manager
-              </p>
-              <p>
-                <strong>Your role:</strong> {user.role}
-              </p>
-              <p className="pt-2">
-                Template management is restricted to administrators to ensure message quality and compliance.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Fetch templates
+  // Fetch templates - moved before conditional returns for hooks rules
   const { data: templatesData, isLoading, refetch } = useQuery({
     queryKey: ['/api/communications/templates', filterChannel, filterCategory],
     queryFn: async () => {
@@ -167,6 +132,7 @@ export default function CommunicationTemplatesPage() {
         templates: data.templates as CommunicationTemplate[],
       };
     },
+    enabled: hasAccess,
   });
 
   // Create template mutation
@@ -335,6 +301,42 @@ export default function CommunicationTemplatesPage() {
     '{{ecpName}}',
     '{{lastExamDate}}',
   ];
+
+  // Role-based access control - placed after all hooks
+  if (!user) {
+    return <Redirect to="/login" />;
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="container mx-auto py-8">
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-900">
+              <Shield className="h-6 w-6" />
+              Access Restricted
+            </CardTitle>
+            <CardDescription className="text-red-700">
+              You do not have permission to manage communication templates.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 text-sm text-red-800">
+              <p>
+                <strong>Required roles:</strong> Admin, Company Admin, or Manager
+              </p>
+              <p>
+                <strong>Your role:</strong> {user.role}
+              </p>
+              <p className="pt-2">
+                Template management is restricted to administrators to ensure message quality and compliance.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8 space-y-6">

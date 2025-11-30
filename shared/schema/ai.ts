@@ -11,7 +11,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Import core tables for foreign keys - using direct imports
-import { companies, patients, users, orders } from "../shared/schema";
+import { companies, patients, users, orders } from "../schema";
 
 // Enums
 export const recommendationTypeEnum = pgEnum("recommendation_type", ["lens", "treatment", "lifestyle", "follow_up", "equipment"]);

@@ -9850,8 +9850,7 @@ export type PatientPortalSetting = typeof patientPortalSettings.$inferSelect;
 export type InsertPatientPortalSetting = typeof patientPortalSettings.$inferInsert;
 export type AppointmentRequest = typeof appointmentRequests.$inferSelect;
 export type InsertAppointmentRequest = typeof appointmentRequests.$inferInsert;
-export type Message = typeof messages.$inferSelect;
-export type InsertMessage = typeof messages.$inferInsert;
+// Message and InsertMessage types are already exported above (Communications section)
 export type PatientDocument = typeof patientDocuments.$inferSelect;
 export type InsertPatientDocument = typeof patientDocuments.$inferInsert;
 export type PatientHealthMetric = typeof patientHealthMetrics.$inferSelect;

@@ -11,7 +11,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Import core tables for foreign keys - using direct imports
-import { companies, patients, users } from "../shared/schema";
+import { companies, patients, users } from "../schema";
 
 // Enums
 export const carePlanStatusEnum = pgEnum("care_plan_status", ["draft", "active", "completed", "on_hold", "cancelled"]);
