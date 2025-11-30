@@ -50,10 +50,27 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS configuration (adjust for production)
+# CORS configuration for Railway deployment
+# Include healthcheck.railway.app for Railway health checks
+cors_origins = [
+    "http://localhost:5000",
+    "http://localhost:3000",
+    "https://healthcheck.railway.app",  # Railway health checks
+]
+
+# Add production URLs from environment if available
+if os.getenv("BACKEND_URL"):
+    cors_origins.append(os.getenv("BACKEND_URL"))
+if os.getenv("FRONTEND_URL"):
+    cors_origins.append(os.getenv("FRONTEND_URL"))
+
+# In production on Railway, also allow wildcard for internal communication
+if os.getenv("RAILWAY_ENVIRONMENT"):
+    cors_origins.append("*")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5000", "http://localhost:3000"],  # Update with your frontend URLs
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -784,10 +801,11 @@ async def shutdown_event():
 
 if __name__ == "__main__":
     import uvicorn
-    
+
+    # Use [::] for IPv4/IPv6 dual-stack compatibility on Railway
     uvicorn.run(
         "main:app",
-        host="0.0.0.0",
+        host="::",
         port=8080,
         reload=True,
         log_level="info",

@@ -9,8 +9,18 @@ cmds = ["pip install --upgrade pip", "pip install -r requirements-lite.txt"]
 
 [start]
 # Entry point is app:app (from app.py at root)
-cmd = "uvicorn app:app --host 0.0.0.0 --port $PORT --workers 2"
+# Use [::] for IPv4/IPv6 dual-stack compatibility on Railway
+cmd = "uvicorn app:app --host '[::]' --port $PORT --workers 1"
 
 [variables]
 PYTHON_ENV = "production"
 PYTHONUNBUFFERED = "1"
+# Memory optimization for AI/ML workloads on Railway
+OMP_NUM_THREADS = "1"
+MKL_NUM_THREADS = "1"
+NUMEXPR_NUM_THREADS = "1"
+OPENBLAS_NUM_THREADS = "1"
+# Prevent memory fragmentation
+MALLOC_TRIM_THRESHOLD_ = "100000"
+# Limit PyTorch memory usage if present
+PYTORCH_CUDA_ALLOC_CONF = "max_split_size_mb:128"

@@ -48,6 +48,7 @@ default_origins = [
     os.getenv("BACKEND_URL", "http://localhost:5000"),
     "http://localhost:3000",  # Frontend dev server
     "http://localhost:5001",  # Alternative backend port
+    "https://healthcheck.railway.app",  # Railway health checks
 ]
 
 # Merge origins, avoiding duplicates
@@ -368,9 +369,10 @@ async def recommend_lens(request: LensRecommendationRequest):
 
 if __name__ == "__main__":
     import uvicorn
+    # Use [::] for IPv4/IPv6 dual-stack compatibility on Railway
     uvicorn.run(
         "main:app",
-        host="0.0.0.0", 
+        host="::",
         port=int(os.getenv("PORT", "8000")),
         reload=False  # Disable reload to prevent constant reloading
     )
