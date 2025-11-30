@@ -11,7 +11,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { PlatformAIService, AIContext, AICommand } from "../services/PlatformAIService";
-import { getStorage } from "../storage";
+import { storage } from "../storage";
 import { createLogger } from "../utils/logger";
 
 const router = Router();
@@ -22,7 +22,7 @@ let aiService: PlatformAIService | null = null;
 
 function getAIService(): PlatformAIService {
   if (!aiService) {
-    aiService = new PlatformAIService(getStorage());
+    aiService = new PlatformAIService(storage);
   }
   return aiService;
 }
