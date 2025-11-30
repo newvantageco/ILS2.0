@@ -242,8 +242,9 @@ export class RealtimeService {
    * Get authentication token
    */
   private getAuthToken(): string | null {
-    // Try multiple sources for the token
-    const token = localStorage.getItem('authToken') || 
+    // Try multiple sources for the token (using correct key: ils_access_token)
+    const token = localStorage.getItem('ils_access_token') || 
+                  localStorage.getItem('authToken') || 
                   sessionStorage.getItem('authToken') ||
                   document.cookie.split(';').find(c => c.trim().startsWith('authToken='))?.split('=')[1];
     

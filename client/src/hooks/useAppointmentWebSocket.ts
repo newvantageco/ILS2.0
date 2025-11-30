@@ -62,10 +62,16 @@ export function useAppointmentWebSocket(options: UseAppointmentWebSocketOptions 
       return;
     }
     
-    // Initialize Socket.IO connection
+    // Get auth token from localStorage
+    const token = localStorage.getItem('ils_access_token');
+    
+    // Initialize Socket.IO connection with auth token
     const socket = io(window.location.origin, {
       transports: ['websocket', 'polling'],
       withCredentials: true,
+      auth: {
+        token: token
+      }
     });
     
     socketRef.current = socket;
