@@ -1,6 +1,10 @@
 """
 Database connection and management
 Handles PostgreSQL with pgvector extension
+
+NOTE: This module uses lazy initialization to allow the service to start
+even if DATABASE_URL is not configured. Health checks will return False
+and database operations will fail gracefully.
 """
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -9,28 +13,58 @@ from sqlalchemy import text, Column, Integer, String, Text, Boolean, TIMESTAMP, 
 from sqlalchemy.dialects.postgresql import UUID
 from pgvector.sqlalchemy import Vector
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 import uuid
 from datetime import datetime
 
 from config import settings
 from utils.logger import logger
 
-# Create async engine
-engine = create_async_engine(
-    settings.database_url.replace("postgresql://", "postgresql+asyncpg://"),
-    pool_size=settings.db_pool_size,
-    max_overflow=10,
-    pool_pre_ping=True,
-    echo=settings.debug,
-)
+# Lazy initialization - engine and session factory created only when needed
+_engine = None
+_async_session_local = None
+_db_available = False
 
-# Create async session factory
-AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
+def _get_engine():
+    """Get or create the async engine (lazy initialization)."""
+    global _engine, _db_available
+    if _engine is None:
+        if not settings.database_url:
+            logger.warning("DATABASE_URL not configured. Database operations unavailable.")
+            _db_available = False
+            return None
+        try:
+            _engine = create_async_engine(
+                settings.database_url.replace("postgresql://", "postgresql+asyncpg://"),
+                pool_size=settings.db_pool_size,
+                max_overflow=10,
+                pool_pre_ping=True,
+                echo=settings.debug,
+            )
+            _db_available = True
+        except Exception as e:
+            logger.error(f"Failed to create database engine: {e}")
+            _db_available = False
+            return None
+    return _engine
+
+def _get_session_factory():
+    """Get or create the async session factory (lazy initialization)."""
+    global _async_session_local
+    if _async_session_local is None:
+        engine = _get_engine()
+        if engine is None:
+            return None
+        _async_session_local = async_sessionmaker(
+            engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
+    return _async_session_local
+
+def is_db_configured() -> bool:
+    """Check if database is configured."""
+    return bool(settings.database_url)
 
 Base = declarative_base()
 
@@ -144,6 +178,15 @@ class AIMessage(Base):
 
 async def init_db():
     """Initialize database and ensure pgvector extension is enabled."""
+    if not is_db_configured():
+        logger.warning("Skipping database initialization - DATABASE_URL not configured")
+        return
+
+    engine = _get_engine()
+    if engine is None:
+        logger.warning("Skipping database initialization - engine not available")
+        return
+
     try:
         async with engine.begin() as conn:
             # Enable pgvector extension
@@ -155,13 +198,17 @@ async def init_db():
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
-        raise
+        # Don't raise - allow service to start in degraded mode
 
 
 @asynccontextmanager
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Get database session context manager."""
-    async with AsyncSessionLocal() as session:
+    session_factory = _get_session_factory()
+    if session_factory is None:
+        raise RuntimeError("Database not configured. Set DATABASE_URL environment variable.")
+
+    async with session_factory() as session:
         try:
             yield session
             await session.commit()
@@ -174,6 +221,13 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def check_db_health() -> bool:
     """Check database health."""
+    if not is_db_configured():
+        return False
+
+    engine = _get_engine()
+    if engine is None:
+        return False
+
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))

@@ -203,14 +203,19 @@ def verify_jwt_token(credentials: HTTPAuthorizationCredentials = Security(securi
 @app.get("/")
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
+    """Health check endpoint. Returns 200 even in degraded mode for Railway."""
     db_healthy = await check_db_health()
+    llm_available = llm_service.is_available()
+
+    # Service is healthy only if both database and LLM are available
+    is_healthy = db_healthy and llm_available
 
     return {
         "service": settings.app_name,
         "version": settings.app_version,
-        "status": "healthy" if db_healthy else "degraded",
+        "status": "healthy" if is_healthy else "degraded",
         "database": "connected" if db_healthy else "disconnected",
+        "llm": "available" if llm_available else "unavailable",
         "timestamp": datetime.utcnow().isoformat(),
     }
 
