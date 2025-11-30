@@ -12,8 +12,9 @@ cmds = [
 ]
 
 [start]
-# Use [::] for IPv4/IPv6 dual-stack compatibility on Railway
-cmd = "uvicorn api.main:app --host '[::]' --port $PORT --workers 1"
+# Use 0.0.0.0 for IPv4 compatibility - Railway health checks require IPv4
+# IPv6 [::] causes health check failures
+cmd = "uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 1"
 
 [variables]
 PYTHON_ENV = "production"

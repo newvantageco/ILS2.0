@@ -94,6 +94,7 @@ import { registerMetricsRoutes } from "./routes/metrics";
 import { registerBiRoutes } from "./routes/bi";
 import { registerSaaSRoutes } from "./routes/saas-analytics";
 import { registerMasterAIRoutes } from "./routes/master-ai";
+import platformAIRoutes from "./routes/platform-ai";
 import { registerAINotificationRoutes } from "./routes/ai-notifications";
 import { registerAutonomousPORoutes } from "./routes/ai-purchase-orders";
 // AI Assistant routes are now in master-ai.ts
@@ -352,10 +353,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // =============================================================================
   // CONSOLIDATED AI SYSTEM (1 Service Active)
   // =============================================================================
-  
+
   // Master AI: Tenant intelligence & assistance (chat, tools, learning)
   registerMasterAIRoutes(app, storage);
-  
+
+  // Platform AI: Integrated AI layer for commands, insights, predictions, and quick actions
+  // This is the unified API for the new AI Command Center UI
+  app.use('/api/platform-ai', ...secureRoute(), platformAIRoutes);
+
   // AI Notifications: Proactive insights & daily briefings
   registerAINotificationRoutes(app);
 

@@ -67,7 +67,7 @@
         "restartPolicyMaxRetries": 10,
         "healthcheckPath": "/health",
         "healthcheckTimeout": 120,
-        "startCommand": "uvicorn api.main:app --host 0.0.0.0 --port $PORT"
+        "startCommand": "uvicorn app:app --host 0.0.0.0 --port $PORT --workers 1"
       },
       "resources": {
         "memory": "4GB",
@@ -80,7 +80,10 @@
       "environmentVariables": {
         "PYTHON_ENV": "production",
         "PORT": "8080",
-        "DATABASE_URL": "${{Postgres.DATABASE_URL}}"
+        "DATABASE_URL": "${{Postgres.DATABASE_URL}}",
+        "OPENAI_API_KEY": "${{OPENAI_API_KEY}}",
+        "ANTHROPIC_API_KEY": "${{ANTHROPIC_API_KEY}}",
+        "JWT_SECRET": "${{JWT_SECRET}}"
       }
     },
     {
@@ -105,7 +108,7 @@
         "restartPolicyMaxRetries": 10,
         "healthcheckPath": "/health",
         "healthcheckTimeout": 120,
-        "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT"
+        "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
       },
       "resources": {
         "memory": "2GB",
@@ -143,7 +146,7 @@
         "restartPolicyMaxRetries": 10,
         "healthcheckPath": "/health",
         "healthcheckTimeout": 120,
-        "startCommand": "uvicorn api.main:app --host 0.0.0.0 --port $PORT"
+        "startCommand": "uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 1"
       },
       "resources": {
         "memory": "4GB",
@@ -156,7 +159,8 @@
       "environmentVariables": {
         "PYTHON_ENV": "production",
         "PORT": "8001",
-        "DATABASE_URL": "${{Postgres.DATABASE_URL}}"
+        "DATABASE_URL": "${{Postgres.DATABASE_URL}}",
+        "OPENAI_API_KEY": "${{OPENAI_API_KEY}}"
       }
     }
   ],

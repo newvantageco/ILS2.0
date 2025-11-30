@@ -12,7 +12,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { RoleSwitcherDropdown } from "@/components/RoleSwitcherDropdown";
 import { NotificationCenter } from "@/components/NotificationCenter";
-import { FloatingAiChat } from "@/components/FloatingAiChat";
+import { FloatingAIButton } from "@/components/ai/AICommandCenter";
 import { PageTransition } from "@/components/ui/PageTransition";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { GlobalKeyboardShortcuts } from "@/components/GlobalKeyboardShortcuts";
@@ -32,6 +32,8 @@ import { fetchCsrfToken } from "@/lib/api";
 const Landing = lazy(() => import("@/pages/Landing"));
 const LandingNew = lazy(() => import("@/pages/LandingNew"));
 const MarketingLandingPage = lazy(() => import("@/pages/MarketingLandingPage"));
+const ModernLanding = lazy(() => import("@/pages/ModernLanding"));
+const ModernAuth = lazy(() => import("@/pages/ModernAuth"));
 const Login = lazy(() => import("@/pages/Login"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const WelcomePage = lazy(() => import("@/pages/WelcomePage"));
@@ -52,6 +54,7 @@ const GDPRCompliance = lazy(() => import("@/pages/policies/GDPRCompliance"));
 
 // Dashboards - Using Modern versions for enhanced UX
 const ECPDashboard = lazy(() => import("@/pages/ECPDashboard"));
+const ECPDashboardV2 = lazy(() => import("@/pages/ECPDashboardV2"));
 const LabDashboard = lazy(() => import("@/pages/LabDashboardModern"));
 const SupplierDashboard = lazy(() => import("@/pages/SupplierDashboardModern"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
@@ -337,6 +340,22 @@ function AuthenticatedApp() {
     );
   }
 
+  if (location === '/modern' || location === '/home') {
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <ModernLanding />
+      </Suspense>
+    );
+  }
+
+  if (location === '/auth' || location === '/signin' || location === '/signup') {
+    return (
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <ModernAuth />
+      </Suspense>
+    );
+  }
+
   if (location === '/pricing') {
     return (
       <Suspense fallback={<RouteLoadingFallback />}>
@@ -522,6 +541,7 @@ function AuthenticatedApp() {
         {userRole === "ecp" && (
           <>
             <Route path="/ecp/dashboard" component={ECPDashboard} />
+            <Route path="/ecp/dashboard-v2" component={ECPDashboardV2} />
             <Route path="/ecp/patients" component={PatientsPage} />
             <Route path="/ecp/patients/:id" component={PatientProfile} />
             <Route path="/ecp/patient/:id/test" component={EyeTestPage} />
@@ -954,7 +974,7 @@ export default function App() {
             <GlobalErrorHandler>
               <GlobalLoadingBar />
               <AuthenticatedApp />
-              <FloatingAiChat />
+              <FloatingAIButton />
               <Toaster />
             </GlobalErrorHandler>
           </NotificationProvider>
