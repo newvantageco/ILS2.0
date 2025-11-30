@@ -67,15 +67,31 @@ async def general_exception_handler(request, exc):
     )
 
 
+# Service status tracking for health checks
+_service_status = {
+    "embedding_model_loaded": False,
+    "database_connected": False,
+    "startup_error": None
+}
+
+
 # Health check endpoint
 @app.get("/health", response_model=HealthCheckResponse, tags=["Health"])
 async def health_check():
     """
-    Health check endpoint to verify service is running
+    Health check endpoint to verify service is running.
+    Returns 200 even in degraded mode to allow Railway to see the service is running.
     """
-    logger.info("Health check requested")
+    # Determine status based on service initialization
+    if _service_status["embedding_model_loaded"] and _service_status["database_connected"]:
+        status = "healthy"
+    elif _service_status["startup_error"]:
+        status = "degraded"
+    else:
+        status = "starting"
+
     return HealthCheckResponse(
-        status="healthy",
+        status=status,
         service="rag-service",
         version="2.0.0"
     )
@@ -273,27 +289,49 @@ async def index_document(request: IndexDocumentRequest):
 @app.on_event("startup")
 async def startup_event():
     """
-    Initialize services on startup
+    Initialize services on startup.
+    Failures are logged but don't prevent the service from starting
+    (allows health checks to work even in degraded mode).
     """
+    global _service_status
+
     logger.info("Starting ILS RAG Service...")
     logger.info(f"Environment: {os.getenv('ENVIRONMENT', 'development')}")
     logger.info(f"Database URL configured: {bool(os.getenv('DATABASE_URL'))}")
     logger.info(f"Backend URL: {BACKEND_URL}")
 
+    errors = []
+
+    # Initialize embedding service
     try:
-        # Initialize embedding service
         logger.info("Loading embedding model...")
         embedding_service.load_model()
-
-        # Initialize RAG service
-        logger.info("Connecting to database...")
-        rag_service.connect()
-
-        logger.info("✅ RAG Service started successfully")
-
+        _service_status["embedding_model_loaded"] = True
+        logger.info("✅ Embedding model loaded")
     except Exception as e:
-        logger.error(f"❌ Failed to start RAG Service: {str(e)}")
-        raise
+        error_msg = f"Failed to load embedding model: {str(e)}"
+        logger.error(f"❌ {error_msg}")
+        errors.append(error_msg)
+
+    # Initialize RAG service (database connection)
+    if os.getenv('DATABASE_URL'):
+        try:
+            logger.info("Connecting to database...")
+            rag_service.connect()
+            _service_status["database_connected"] = True
+            logger.info("✅ Database connected")
+        except Exception as e:
+            error_msg = f"Failed to connect to database: {str(e)}"
+            logger.error(f"❌ {error_msg}")
+            errors.append(error_msg)
+    else:
+        logger.warning("⚠️  DATABASE_URL not configured - database features disabled")
+
+    if errors:
+        _service_status["startup_error"] = "; ".join(errors)
+        logger.warning(f"⚠️  RAG Service started in DEGRADED mode: {_service_status['startup_error']}")
+    else:
+        logger.info("✅ RAG Service started successfully")
 
 
 # Shutdown event

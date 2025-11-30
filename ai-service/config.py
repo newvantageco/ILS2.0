@@ -30,7 +30,8 @@ class Settings(BaseSettings):
     # ================================
     # Security
     # ================================
-    jwt_secret: str = Field(..., env="JWT_SECRET")
+    # JWT_SECRET is required for auth but service can start without it (health checks)
+    jwt_secret: str = Field(default="", env="JWT_SECRET")
     jwt_algorithm: str = "HS256"
     jwt_expiration_minutes: int = 60
     cors_origins: list[str] = Field(
@@ -41,14 +42,16 @@ class Settings(BaseSettings):
     # ================================
     # Database
     # ================================
-    database_url: str = Field(..., env="DATABASE_URL")
+    # DATABASE_URL is required for full functionality but service can start without it
+    database_url: Optional[str] = Field(default=None, env="DATABASE_URL")
     db_pool_size: int = Field(default=20, env="DB_POOL_MAX")
     db_pool_min: int = Field(default=5, env="DB_POOL_MIN")
 
     # ================================
     # AI Services - External APIs
     # ================================
-    openai_api_key: str = Field(..., env="OPENAI_API_KEY")
+    # OPENAI_API_KEY is required for AI features but service can start without it
+    openai_api_key: str = Field(default="", env="OPENAI_API_KEY")
     anthropic_api_key: Optional[str] = Field(default=None, env="ANTHROPIC_API_KEY")
 
     # Default models

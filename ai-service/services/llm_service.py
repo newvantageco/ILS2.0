@@ -17,13 +17,34 @@ class LLMService:
     """Unified LLM service with OpenAI and Anthropic support."""
 
     def __init__(self):
-        self.openai_client = AsyncOpenAI(api_key=settings.openai_api_key)
+        # Lazy initialization - clients created only if API keys are provided
+        self.openai_client = None
         self.anthropic_client = None
+        self._openai_available = False
+        self._anthropic_available = False
+
+        if settings.openai_api_key:
+            try:
+                self.openai_client = AsyncOpenAI(api_key=settings.openai_api_key)
+                self._openai_available = True
+            except Exception as e:
+                logger.warning(f"Failed to initialize OpenAI client: {e}")
+        else:
+            logger.warning("OPENAI_API_KEY not configured. OpenAI features unavailable.")
+
         if settings.anthropic_api_key:
-            self.anthropic_client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+            try:
+                self.anthropic_client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+                self._anthropic_available = True
+            except Exception as e:
+                logger.warning(f"Failed to initialize Anthropic client: {e}")
 
         self.primary_provider = settings.primary_llm_provider
         self.fallback_provider = settings.fallback_llm_provider
+
+    def is_available(self) -> bool:
+        """Check if any LLM provider is available."""
+        return self._openai_available or self._anthropic_available
 
     async def generate_completion(
         self,
@@ -76,6 +97,9 @@ class LLMService:
         system_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Generate completion using OpenAI."""
+        if not self.openai_client or not self._openai_available:
+            raise Exception("OpenAI client not configured. Set OPENAI_API_KEY.")
+
         # Prepare messages
         formatted_messages = []
         if system_prompt:
@@ -109,8 +133,8 @@ class LLMService:
         system_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Generate completion using Anthropic Claude."""
-        if not self.anthropic_client:
-            raise Exception("Anthropic client not configured")
+        if not self.anthropic_client or not self._anthropic_available:
+            raise Exception("Anthropic client not configured. Set ANTHROPIC_API_KEY.")
 
         # Anthropic requires system prompt separate from messages
         response = await self.anthropic_client.messages.create(
@@ -143,6 +167,9 @@ class LLMService:
         Returns:
             List of embedding vectors
         """
+        if not self.openai_client or not self._openai_available:
+            raise Exception("OpenAI client not configured. Set OPENAI_API_KEY for embeddings.")
+
         try:
             response = await self.openai_client.embeddings.create(
                 model=settings.openai_embedding_model,
@@ -159,19 +186,22 @@ class LLMService:
         """Check health of LLM services."""
         health = {
             "openai": False,
+            "openai_configured": self._openai_available,
             "anthropic": False,
+            "anthropic_configured": self._anthropic_available,
             "timestamp": datetime.utcnow().isoformat(),
         }
 
         # Check OpenAI
-        try:
-            await self.openai_client.models.list()
-            health["openai"] = True
-        except Exception as e:
-            logger.error(f"OpenAI health check failed: {e}")
+        if self.openai_client and self._openai_available:
+            try:
+                await self.openai_client.models.list()
+                health["openai"] = True
+            except Exception as e:
+                logger.error(f"OpenAI health check failed: {e}")
 
         # Check Anthropic
-        if self.anthropic_client:
+        if self.anthropic_client and self._anthropic_available:
             try:
                 # Simple test message
                 await self.anthropic_client.messages.create(

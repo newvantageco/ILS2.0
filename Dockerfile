@@ -44,6 +44,7 @@ RUN npm run build
 FROM node:22-slim AS production
 
 # Install runtime dependencies only
+# postgresql-client is needed for psql in docker-start.sh migrations
 RUN apt-get update && apt-get install -y \
     libcairo2 \
     libjpeg62-turbo \
@@ -51,6 +52,7 @@ RUN apt-get update && apt-get install -y \
     libpangocairo-1.0-0 \
     libgif7 \
     dumb-init \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
