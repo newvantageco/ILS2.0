@@ -58,6 +58,7 @@ README.md
 replit.md
 start-dev.sh
 start-dev.mjs
+docker-start-dev.sh
 
 # Test files
 test
@@ -70,19 +71,10 @@ playwright.config.ts
 jest.config.mjs
 tsconfig.test.json
 
-# Scripts (development only, except docker-start.sh)
+# Scripts (development only, docker-start.sh is needed for production)
 scripts/*.sh
 !scripts/docker-start.sh
 scripts/*.mjs
-check-*.sh
-test-*.sh
-test-*.js
-test-*.cjs
-test-*.mjs
-setup-*.sh
-
-# IMPORTANT: Include docker-start.sh at root (required for production)
-!docker-start.sh
 
 # Database files
 # Note: migrations/*.sql are needed for schema setup
