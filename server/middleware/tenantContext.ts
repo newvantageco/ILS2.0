@@ -6,36 +6,22 @@
  * - Sets app.current_tenant session variable for Row-Level Security (RLS)
  * - Sets app.current_user_role for platform admin bypass
  * - Ensures all database queries are scoped to the user's company at the database level
+ *
+ * SECURITY: This is a critical security component. All API routes that access
+ * tenant-scoped data MUST use this middleware after authentication.
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../db';
 import { users, companies } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
-import { createLogger, type Logger } from '../utils/logger';
+import { createLogger } from '../utils/logger';
 
-// Extend Express Request to include tenant context
-declare global {
-  namespace Express {
-    interface Request {
-      tenantId?: string;
-      companyData?: any;
-      tenantContext?: TenantContext;
-    }
-  }
-}
+// Import shared type definitions
+import type { TenantContext } from '../types/express.d';
 
-/**
- * Tenant context interface for AI and multi-tenant operations
- */
-export interface TenantContext {
-  tenantId: string;
-  tenantCode?: string;
-  subscriptionTier?: string;
-  aiQueriesLimit?: number;
-  aiQueriesUsed?: number;
-  features?: Record<string, boolean>;
-}
+// Re-export for convenience
+export type { TenantContext };
 
 /**
  * Middleware to set tenant context from authenticated user
