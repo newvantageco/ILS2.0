@@ -11,7 +11,8 @@ cmds = ["pip install --upgrade pip", "pip install -r requirements-lite.txt"]
 # Entry point is app:app (from app.py at root)
 # Use 0.0.0.0 for IPv4 compatibility - Railway health checks require IPv4
 # IPv6 [::] causes health check failures
-cmd = "uvicorn app:app --host 0.0.0.0 --port $PORT --workers 1"
+# Use sh -c to ensure $PORT environment variable is expanded
+cmd = "sh -c 'uvicorn app:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1'"
 
 [variables]
 PYTHON_ENV = "production"

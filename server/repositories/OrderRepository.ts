@@ -9,7 +9,6 @@ import { db } from '../db';
 import {
   orders,
   orderTimeline,
-  orderLineItems,
   patients,
   users,
 } from '@shared/schema';
@@ -99,18 +98,11 @@ export class OrderRepository extends BaseRepository<typeof orders, Order, Order>
       .where(eq(orderTimeline.orderId, id))
       .orderBy(desc(orderTimeline.timestamp));
 
-    // Get line items
-    const lineItems = await db
-      .select()
-      .from(orderLineItems)
-      .where(eq(orderLineItems.orderId, id));
-
     return {
       ...result.order,
       patient: result.patient,
       ecp: result.ecp,
       timeline,
-      lineItems,
     };
   }
 
