@@ -1274,16 +1274,6 @@ kill -9 <PID>
 - 8080 → Adminer
 - 8081 → Redis Commander
 
-##### AI Service Unhealthy (Known Issue)
-
-**Error**: `sqlalchemy.exc.InvalidRequestError: Attribute name 'metadata' is reserved`
-
-**Status**: Known issue in ai-service/services/database.py - AIMessage model uses reserved attribute name
-
-**Workaround**: The main app and Python service work without AI service. AI features will be degraded until this is fixed.
-
-**Fix Required**: Rename the `metadata` column in AIMessage model to `message_metadata` or similar.
-
 ##### Container logs show errors
 
 **Solution**: Check specific service logs:

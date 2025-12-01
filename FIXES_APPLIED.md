@@ -82,6 +82,41 @@
 
 ---
 
+### 7. ✅ AI Service SQLAlchemy Metadata Error (CRITICAL)
+**Problem:** AI service failing to start with `InvalidRequestError: Attribute name 'metadata' is reserved`
+
+**Root Cause:** SQLAlchemy reserves the 'metadata' attribute for internal use in declarative base classes. The AIMessage model was using 'metadata' as a column name, causing a conflict.
+
+**Fix Applied:**
+- Researched solution on Stack Overflow
+- Renamed Python attribute from `metadata` to `message_metadata`
+- Used Column name parameter to keep database column as 'metadata'
+- This preserves database schema while avoiding SQLAlchemy conflict
+
+**Files Modified:**
+- `ai-service/services/database.py` - AIMessage model (line 171)
+
+**Code Change:**
+```python
+# Before (caused error):
+metadata = Column(JSON, nullable=True)
+
+# After (fixed):
+message_metadata = Column('metadata', JSON, nullable=True)
+```
+
+**Result:**
+- AI service starts successfully ✅
+- Database connection established ✅
+- Container health check: HEALTHY ✅
+- All 3 services operational ✅
+
+**References:**
+- [Stack Overflow Solution](https://stackoverflow.com/questions/55461914/)
+- [SQLAlchemy Issue #2050](https://github.com/sqlalchemy/sqlalchemy/issues/2050)
+
+---
+
 ## Scripts Created
 
 ### 1. `rebuild-all-services.sh`
