@@ -2,6 +2,7 @@ import type { Express, Response, Request } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { authRepository } from "./repositories/AuthRepository";
 import { setupAuth as setupReplitAuth, isAuthenticated } from "./replitAuth";
 import type { AuthenticatedRequest } from "./middleware/auth";
 import { hashPassword } from "./localAuth";
@@ -679,13 +680,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Auth routes
+  // SECURITY: Uses AuthRepository for audited cross-tenant access during authentication
   app.get('/api/auth/user', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
-      const user = await storage.getUserWithRoles_Internal(userId);
+      // Use AuthRepository with audit logging for auth flows
+      const user = await authRepository.findUserWithRoles(userId, {
+        ip: req.ip,
+        reason: 'Get current user session'
+      });
       res.json(user);
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error fetching user');
@@ -694,10 +700,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bootstrap endpoint - returns user and role-based redirect path
+  // SECURITY: Uses AuthRepository for audited cross-tenant access during authentication
   app.get('/api/auth/bootstrap', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await storage.getUserWithRoles_Internal(userId);
+      // Use AuthRepository with audit logging for auth flows
+      const user = await authRepository.findUserWithRoles(userId, {
+        ip: req.ip,
+        reason: 'Bootstrap session'
+      });
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -761,11 +772,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Complete signup endpoint
+  // SECURITY: Uses AuthRepository for audited cross-tenant access during authentication
   app.post('/api/auth/complete-signup', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await storage.getUserById_Internal(userId);
-      
+      // Use AuthRepository with audit logging for signup flow
+      const user = await authRepository.findUserById(userId, {
+        ip: req.ip,
+        reason: 'Complete signup flow'
+      });
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
