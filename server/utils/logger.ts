@@ -257,3 +257,88 @@ export function logAudit(
 
 // For backward compatibility with old logger interface
 export { logger };
+
+// ============================================
+// CONTEXT-AWARE LOGGING
+// ============================================
+
+/**
+ * Get a logger with automatic request context
+ *
+ * Creates a child logger that automatically includes correlation ID,
+ * tenant ID, and user ID from the current async context.
+ *
+ * Usage:
+ * ```typescript
+ * const log = getContextLogger();
+ * log.info('Operation completed'); // Automatically includes correlationId
+ * ```
+ */
+export function getContextLogger(additionalContext?: Record<string, any>): Logger {
+  // Dynamic import to avoid circular dependency
+  let ctx: Record<string, any> = {};
+  try {
+    // Try to get context from AsyncLocalStorage
+    const { requestContext } = require('../context');
+    ctx = requestContext?.toLogContext?.() || {};
+  } catch {
+    // Context not available, continue without it
+  }
+
+  return logger.child({
+    ...ctx,
+    ...additionalContext,
+  });
+}
+
+/**
+ * Log with automatic request context
+ *
+ * Convenience functions that automatically include request context.
+ */
+export const contextLog = {
+  info(message: string, data?: Record<string, any>) {
+    getContextLogger(data).info(message);
+  },
+  warn(message: string, data?: Record<string, any>) {
+    getContextLogger(data).warn(message);
+  },
+  error(message: string, data?: Record<string, any>) {
+    getContextLogger(data).error(message);
+  },
+  debug(message: string, data?: Record<string, any>) {
+    getContextLogger(data).debug(message);
+  },
+};
+
+/**
+ * Wrap an operation with automatic context logging
+ */
+export async function loggedContextOperation<T>(
+  operation: string,
+  fn: () => Promise<T>,
+  additionalContext?: Record<string, any>
+): Promise<T> {
+  const log = getContextLogger({ operation, ...additionalContext });
+  const startTime = Date.now();
+
+  try {
+    log.debug(`Starting: ${operation}`);
+    const result = await fn();
+    const duration = Date.now() - startTime;
+    log.info({ duration, success: true }, `Completed: ${operation} in ${duration}ms`);
+    return result;
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    log.error({
+      duration,
+      success: false,
+      err: error instanceof Error ? {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+      } : error,
+    }, `Failed: ${operation} after ${duration}ms`);
+    throw error;
+  }
+}

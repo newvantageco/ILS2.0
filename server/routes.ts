@@ -106,6 +106,13 @@ import unifiedAIRoutes from "./routes/domains/ai";
 import { deprecateAIRoute } from "./middleware/deprecation";
 // Domain routes registry for organized route management
 import { registerDomainRoutes, registerLegacyAIRoutes } from "./routes/domains";
+// Request context for correlation ID propagation
+import {
+  requestContextMiddleware,
+  enrichUserContext,
+  requestTimingMiddleware,
+  errorContextMiddleware
+} from "./middleware/requestContextMiddleware";
 import { registerMarketplaceRoutes } from "./routes/marketplace";
 import { registerQueueRoutes } from "./routes/queue";
 import platformAdminRoutes from "./routes/platform-admin";
@@ -281,9 +288,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Apply security headers to all requests
   app.use(securityHeaders);
-  
+
   // Configure CORS
   app.use(corsConfig);
+
+  // =============================================================================
+  // REQUEST CONTEXT & TRACING
+  // =============================================================================
+  // Set up AsyncLocalStorage-based request context for automatic correlation ID
+  // propagation to all async operations (database queries, background jobs, etc.)
+  app.use(requestTimingMiddleware);  // Track request timing
+  app.use(requestContextMiddleware);  // Set up correlation ID and request context
   
   // Setup comprehensive rate limiting for all endpoints
   setupRateLimiting(app);
@@ -6268,10 +6283,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(qcStorage.defectTypes);
   });
 
+  // =============================================================================
+  // ERROR HANDLING WITH REQUEST CONTEXT
+  // =============================================================================
+  // Add error context middleware to enrich errors with correlation IDs
+  app.use(errorContextMiddleware);
+
   const httpServer = createServer(app);
-  
+
   // Initialize WebSocket server for real-time updates
   websocketService.initialize(httpServer);
-  
+
   return httpServer;
 }
