@@ -146,7 +146,9 @@ export function serveStatic(app: Express) {
     const indexPath = path.resolve(distPath, "index.html");
     logger.info(`[serveStatic] Serving index.html for path: ${req.path}, file: ${indexPath}`);
 
-    res.sendFile(indexPath, (err) => {
+    // IMPORTANT: Return here to prevent middleware chain from continuing
+    // Express will handle the response through sendFile's callback
+    return res.sendFile(indexPath, (err) => {
       if (err) {
         // Don't log or handle aborted requests - they're normal when client cancels
         if (err.message === 'Request aborted' || err.code === 'ECONNABORTED') {
@@ -155,7 +157,7 @@ export function serveStatic(app: Express) {
         logger.error(`[serveStatic] Failed to serve index.html: ${err.message}`, { path: req.path, indexPath });
         // Don't call next if headers already sent
         if (!res.headersSent) {
-          next(err);
+          return next(err);
         }
       } else {
         logger.info(`[serveStatic] Successfully served index.html for: ${req.path}`);

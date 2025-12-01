@@ -173,6 +173,7 @@ export function errorLoggingMiddleware(
 
 /**
  * Response time tracking middleware
+ * Uses 'finish' event instead of overriding res.end to avoid header conflicts
  */
 export function responseTimeMiddleware(
   req: Request,
@@ -181,15 +182,13 @@ export function responseTimeMiddleware(
 ) {
   const startTime = Date.now();
 
-  // Capture original end function
-  const originalEnd = res.end;
+  // Set header immediately (before any response is sent)
+  // This will be updated when the response finishes
+  res.setHeader('X-Response-Time', '0');
 
-  // Override end function
-  res.end = function (this: Response, ...args: any[]) {
+  // Listen for 'finish' event - fires when response has been sent
+  res.on('finish', () => {
     const duration = Date.now() - startTime;
-
-    // Add response time header
-    res.setHeader('X-Response-Time', duration.toString());
 
     // Log slow requests
     if (duration > 1000) {
@@ -204,10 +203,25 @@ export function responseTimeMiddleware(
         `Slow request: ${req.method} ${req.url} took ${duration}ms`
       );
     }
+  });
 
-    // Call original end
-    return originalEnd.apply(this, args as Parameters<typeof originalEnd>);
-  };
+  // Also listen for 'close' event - fires if connection terminated early
+  res.on('close', () => {
+    const duration = Date.now() - startTime;
+
+    // Only log if request didn't finish normally
+    if (!res.writableFinished) {
+      logger.debug(
+        {
+          correlationId: (req as any).correlationId,
+          method: req.method,
+          url: req.url,
+          duration,
+        },
+        `Request connection closed early: ${req.method} ${req.url}`
+      );
+    }
+  });
 
   next();
 }

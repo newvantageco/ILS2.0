@@ -214,19 +214,21 @@ export class APIOptimizer {
     res.send = function(data: any) {
       const endTime = performance.now();
       const responseTime = endTime - startTime;
-      
+
       // Cache response if applicable
       if (rule && rule.cacheTTL > 0 && req.method === 'GET' && res.statusCode === 200) {
         APIOptimizer.prototype.cacheResponse(req, data, rule.cacheTTL);
       }
-      
+
       // Record metrics
       APIOptimizer.prototype.recordMetric(endpoint, responseTime, false);
-      
-      // Add performance headers
-      res.setHeader('X-Response-Time', `${responseTime.toFixed(2)}ms`);
-      res.setHeader('X-Cache-Status', data ? 'HIT' : 'MISS');
-      
+
+      // Add performance headers (only if headers haven't been sent yet)
+      if (!res.headersSent) {
+        res.setHeader('X-Response-Time', `${responseTime.toFixed(2)}ms`);
+        res.setHeader('X-Cache-Status', data ? 'HIT' : 'MISS');
+      }
+
       return originalSend.call(this, data);
     };
 

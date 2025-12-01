@@ -113,6 +113,7 @@ export function enrichUserContext(
  *
  * Logs request completion with timing information.
  * Should be added early in the middleware chain.
+ * Uses 'finish' event instead of overriding res.end to avoid header conflicts.
  */
 export function requestTimingMiddleware(
   req: Request,
@@ -121,14 +122,12 @@ export function requestTimingMiddleware(
 ): void {
   const startTime = Date.now();
 
-  // Override res.end to capture timing
-  const originalEnd = res.end.bind(res);
+  // Set header early (before response starts)
+  res.setHeader('X-Response-Time', '0ms');
 
-  res.end = function (this: Response, ...args: any[]): Response {
+  // Listen for 'finish' event - fires when response has been sent
+  res.on('finish', () => {
     const duration = Date.now() - startTime;
-
-    // Set response time header
-    res.setHeader('X-Response-Time', `${duration}ms`);
 
     // Log request completion
     const ctx = requestContext.toLogContext();
@@ -150,9 +149,18 @@ export function requestTimingMiddleware(
     } else if (req.path !== '/health' && req.path !== '/api/health') {
       logger.info(logData, `${req.method} ${req.path} ${res.statusCode} - ${duration}ms`);
     }
+  });
 
-    return originalEnd.apply(this, args as any);
-  } as typeof res.end;
+  // Also listen for 'close' event - fires if connection terminated early
+  res.on('close', () => {
+    if (!res.writableFinished) {
+      const duration = Date.now() - startTime;
+      logger.debug({
+        ...requestContext.toLogContext(),
+        duration,
+      }, `Request connection closed early: ${req.method} ${req.path}`);
+    }
+  });
 
   next();
 }
