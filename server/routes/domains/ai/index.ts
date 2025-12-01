@@ -18,14 +18,12 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { db } from '../../../db';
-import { aiConversations, aiMessages, aiFeedback } from '@shared/schema';
-import { eq, and, desc } from 'drizzle-orm';
 import { createUnifiedAIService } from '../../../services/unified-ai';
 import { secureRoute } from '../../../middleware/secureRoute';
 import { aiQueryLimiter } from '../../../middleware/rateLimiter';
 import { createLogger } from '../../../utils/logger';
 import { asyncHandler } from '../../../middleware/errorHandler';
+import { attachRepositories, AIRepository } from '../../../repositories';
 
 const router = Router();
 const logger = createLogger('AIRoutes');
@@ -67,6 +65,13 @@ function getAIService(req: Request) {
     throw new Error('Tenant context required');
   }
   return createUnifiedAIService(companyId);
+}
+
+function getAIRepo(req: Request): AIRepository {
+  if (!req.repos?.ai) {
+    throw new Error('AI repository not available - ensure attachRepositories middleware is applied');
+  }
+  return req.repos.ai;
 }
 
 function getUserId(req: Request): string {
@@ -120,26 +125,16 @@ router.post(
 router.get(
   '/conversations',
   ...secureRoute(),
+  attachRepositories,
   asyncHandler(async (req: Request, res: Response) => {
-    const companyId = req.tenantId;
+    const aiRepo = getAIRepo(req);
     const userId = getUserId(req);
     const { limit = '20', offset = '0' } = req.query;
 
-    const conversations = await db
-      .select({
-        id: aiConversations.id,
-        title: aiConversations.title,
-        createdAt: aiConversations.createdAt,
-        updatedAt: aiConversations.updatedAt,
-      })
-      .from(aiConversations)
-      .where(and(
-        eq(aiConversations.companyId, companyId!),
-        eq(aiConversations.userId, userId)
-      ))
-      .orderBy(desc(aiConversations.updatedAt))
-      .limit(parseInt(limit as string))
-      .offset(parseInt(offset as string));
+    const conversations = await aiRepo.getUserConversations(userId, {
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+    });
 
     res.json({
       success: true,
@@ -159,45 +154,26 @@ router.get(
 router.get(
   '/conversations/:id',
   ...secureRoute(),
+  attachRepositories,
   asyncHandler(async (req: Request, res: Response) => {
-    const companyId = req.tenantId;
-    const userId = getUserId(req);
+    const aiRepo = getAIRepo(req);
     const { id } = req.params;
 
-    // Get conversation
-    const [conversation] = await db
-      .select()
-      .from(aiConversations)
-      .where(and(
-        eq(aiConversations.id, id),
-        eq(aiConversations.companyId, companyId!),
-        eq(aiConversations.userId, userId)
-      ));
+    // Get conversation with messages (tenant-scoped via repository)
+    const result = await aiRepo.getConversationWithMessages(id);
 
-    if (!conversation) {
+    if (!result) {
       return res.status(404).json({
         success: false,
         error: 'Conversation not found',
       });
     }
 
-    // Get messages
-    const messages = await db
-      .select({
-        id: aiMessages.id,
-        role: aiMessages.role,
-        content: aiMessages.content,
-        createdAt: aiMessages.createdAt,
-      })
-      .from(aiMessages)
-      .where(eq(aiMessages.conversationId, id))
-      .orderBy(aiMessages.createdAt);
-
     res.json({
       success: true,
       data: {
-        conversation,
-        messages,
+        conversation: result.conversation,
+        messages: result.messages,
       },
     });
   })
@@ -210,37 +186,20 @@ router.get(
 router.delete(
   '/conversations/:id',
   ...secureRoute(),
+  attachRepositories,
   asyncHandler(async (req: Request, res: Response) => {
-    const companyId = req.tenantId;
-    const userId = getUserId(req);
+    const aiRepo = getAIRepo(req);
     const { id } = req.params;
 
-    // Verify ownership
-    const [conversation] = await db
-      .select()
-      .from(aiConversations)
-      .where(and(
-        eq(aiConversations.id, id),
-        eq(aiConversations.companyId, companyId!),
-        eq(aiConversations.userId, userId)
-      ));
+    // Delete conversation and messages (tenant-scoped via repository)
+    const deleted = await aiRepo.deleteConversation(id);
 
-    if (!conversation) {
+    if (!deleted) {
       return res.status(404).json({
         success: false,
         error: 'Conversation not found',
       });
     }
-
-    // Delete messages first (foreign key)
-    await db
-      .delete(aiMessages)
-      .where(eq(aiMessages.conversationId, id));
-
-    // Delete conversation
-    await db
-      .delete(aiConversations)
-      .where(eq(aiConversations.id, id));
 
     res.json({
       success: true,

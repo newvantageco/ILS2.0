@@ -31,15 +31,16 @@ export interface TenantContext {
 /**
  * Repository interfaces for tenant-scoped data access
  * These will be populated by the repository factory middleware
+ *
+ * Note: Import TypedRepositories from server/repositories for full typing
  */
 export interface Repositories {
-  orders?: any;
-  patients?: any;
-  users?: any;
-  invoices?: any;
-  products?: any;
-  ai?: any;
-  // Add more repositories as they are created
+  orders?: import('../repositories/OrderRepository').OrderRepository;
+  patients?: import('../repositories/PatientRepository').PatientRepository;
+  users?: import('../repositories/UserRepository').UserRepository;
+  ai?: import('../repositories/AIRepository').AIRepository;
+  invoices?: any; // TODO: Create InvoiceRepository
+  products?: any; // TODO: Create ProductRepository
 }
 
 declare global {

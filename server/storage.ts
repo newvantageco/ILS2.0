@@ -1,3 +1,25 @@
+/**
+ * @deprecated This file is deprecated. Use the repository pattern instead.
+ *
+ * Migration Guide:
+ * - For tenant-scoped operations: import { createRepositories } from './repositories'
+ * - For authentication flows: import { AuthRepository } from './repositories/AuthRepository'
+ * - For background workers: import { WorkerRepository } from './repositories/WorkerRepository'
+ *
+ * Example migration:
+ *   // Before (storage.ts):
+ *   const order = await storage.getOrder(id, companyId);
+ *
+ *   // After (repository):
+ *   const repos = createRepositories(companyId);
+ *   const order = await repos.orders.findById(id);
+ *
+ * This file will be removed in a future release. All new code should use repositories.
+ *
+ * @see server/repositories/index.ts
+ * @see docs/INTERNAL_METHOD_MIGRATION.md
+ */
+
 import { db } from "../db";
 import crypto from 'crypto';
 import { encryptField, decryptField, isEncrypted } from './utils/encryption';
@@ -713,6 +735,17 @@ export interface IStorage {
   getCampaignRecipientsByRecipient(recipientId: string): Promise<CampaignRecipient[]>;
 }
 
+/**
+ * @deprecated Use domain repositories instead.
+ * - OrderRepository for orders
+ * - PatientRepository for patients
+ * - UserRepository for users
+ * - AIRepository for AI-related data
+ * - AuthRepository for authentication flows
+ * - WorkerRepository for background workers
+ *
+ * @see server/repositories/index.ts
+ */
 export class DbStorage implements IStorage {
   async getUser(id: string, companyId: string): Promise<User | undefined> {
     const [user] = await db.select()
@@ -724,8 +757,11 @@ export class DbStorage implements IStorage {
     return user;
   }
 
-  // Internal method for authentication - bypasses tenant isolation
-  // ONLY use this for authentication flows where we need to get the user's companyId
+  /**
+   * @deprecated Use AuthRepository.findUserById() instead.
+   * This method bypasses tenant isolation and should only be used for authentication.
+   * @see server/repositories/AuthRepository.ts
+   */
   async getUserById_Internal(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
@@ -881,7 +917,11 @@ export class DbStorage implements IStorage {
     };
   }
 
-  // Internal method for authentication - bypasses tenant isolation
+  /**
+   * @deprecated Use AuthRepository.findUserWithRoles() instead.
+   * This method bypasses tenant isolation and should only be used for authentication.
+   * @see server/repositories/AuthRepository.ts
+   */
   async getUserWithRoles_Internal(id: string): Promise<UserWithRoles | undefined> {
     const user = await this.getUserById_Internal(id);
     if (!user) return undefined;
@@ -1060,7 +1100,11 @@ export class DbStorage implements IStorage {
     };
   }
 
-  // Internal method for workers - bypasses tenant isolation
+  /**
+   * @deprecated Use WorkerRepository.getOrderForPdf() instead.
+   * This method bypasses tenant isolation and should only be used for background workers.
+   * @see server/repositories/WorkerRepository.ts
+   */
   async getOrderById_Internal(id: string): Promise<OrderWithDetails | undefined> {
     const result = await db
       .select({
@@ -7554,4 +7598,8 @@ export class DbStorage implements IStorage {
   }
 }
 
+/**
+ * @deprecated Use createRepositories() from './repositories' instead.
+ * This export will be removed in a future release.
+ */
 export const storage = new DbStorage();
