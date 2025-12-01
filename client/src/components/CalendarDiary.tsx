@@ -86,13 +86,13 @@ export default function CalendarDiary({
   });
 
   // Fetch appointments for selected date range
-  const { data: appointments = [] } = useQuery({
+  const { data: appointments = [] } = useQuery<Array<{startTime: string; endTime: string; [key: string]: any}>>({
     queryKey: ['/api/appointments', selectedDate.toISOString(), practitionerId],
   });
 
   // Generate time slots for a given day
   const generateTimeSlots = (date: Date): TimeSlot[] => {
-    const dayName = format(date, 'EEEE').toLowerCase();
+    const dayName = format(date, 'EEEE').toLowerCase() as keyof typeof settings.workingHours;
     const daySettings = settings?.workingHours?.[dayName];
 
     if (!daySettings || !daySettings.start || !daySettings.end) {
@@ -115,13 +115,13 @@ export default function CalendarDiary({
       const timeString = format(currentTime, 'HH:mm');
 
       // Check if time is within a break
-      const isBreak = daySettings.breaks?.some(breakPeriod => {
+      const isBreak = daySettings.breaks?.some((breakPeriod: { start: string; end: string }) => {
         return timeString >= breakPeriod.start && timeString < breakPeriod.end;
       });
 
       if (!isBreak) {
         // Check if there's an appointment at this time
-        const appointment = appointments.find((apt: any) => {
+        const appointment = appointments?.find((apt) => {
           const aptStart = parseISO(apt.startTime);
           return isSameDay(aptStart, date) && format(aptStart, 'HH:mm') === timeString;
         });
@@ -145,7 +145,8 @@ export default function CalendarDiary({
   };
 
   const getAppointmentColor = (type: string) => {
-    return settings?.colorScheme?.[type] || '#6b7280';
+    const colorScheme = settings?.colorScheme as Record<string, string> | undefined;
+    return colorScheme?.[type] || '#6b7280';
   };
 
   const handleDateChange = (direction: 'prev' | 'next') => {

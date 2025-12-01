@@ -233,7 +233,7 @@ export function WizardStepper({
             <motion.div
               key={currentStep}
               custom={direction}
-              initial={(dir) => ({
+              initial={(dir: any) => ({
                 opacity: 0,
                 x: dir === 'forward' ? 50 : -50,
               })}
@@ -241,7 +241,7 @@ export function WizardStepper({
                 opacity: 1,
                 x: 0,
               }}
-              exit={(dir) => ({
+              exit={(dir: any) => ({
                 opacity: 0,
                 x: dir === 'forward' ? -50 : 50,
               })}

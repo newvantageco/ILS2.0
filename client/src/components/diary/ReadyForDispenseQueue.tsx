@@ -37,7 +37,7 @@ export function ReadyForDispenseQueue() {
   const [, setLocation] = useLocation();
   
   // Enable real-time notifications
-  useDispenserNotifications(user?.companyId);
+  useDispenserNotifications(user?.companyId ?? undefined);
   
   if (isLoading) {
     return (

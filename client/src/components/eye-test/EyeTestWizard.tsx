@@ -306,28 +306,28 @@ export function EyeTestWizard() {
           {currentStep === 0 && (
             <PatientHistoryStep
               data={testData.patientHistory}
-              onChange={(data) => updateTestData("patientHistory", data)}
+              onChange={(data: any) => updateTestData("patientHistory", data)}
             />
           )}
-          
+
           {currentStep === 1 && (
             <VisualAcuityStep
               data={testData.visualAcuity}
-              onChange={(data) => updateTestData("visualAcuity", data)}
+              onChange={(data: any) => updateTestData("visualAcuity", data)}
             />
           )}
-          
+
           {currentStep === 2 && (
             <ColorVisionStep
               data={testData.colorBlindness}
-              onChange={(data) => updateTestData("colorBlindness", data)}
+              onChange={(data: any) => updateTestData("colorBlindness", data)}
             />
           )}
-          
+
           {currentStep === 3 && (
             <VisualFieldStep
               data={testData.visualField}
-              onChange={(data) => updateTestData("visualField", data)}
+              onChange={(data: any) => updateTestData("visualField", data)}
             />
           )}
           
@@ -415,7 +415,7 @@ function VisualAcuityStep({ data, onChange }: any) {
   return (
     <div className="space-y-4">
       <VisualAcuityChart
-        onResultChange={(results) => onChange(results)}
+        onResultChange={(results: any) => onChange(results)}
       />
     </div>
   );
@@ -425,7 +425,7 @@ function ColorVisionStep({ data, onChange }: any) {
   return (
     <div className="space-y-4">
       <ColorBlindnessTest
-        onComplete={(result) => onChange(result)}
+        onComplete={(result: any) => onChange(result)}
       />
     </div>
   );
@@ -435,7 +435,7 @@ function VisualFieldStep({ data, onChange }: any) {
   return (
     <div className="space-y-4">
       <VisualFieldTest
-        onTestComplete={(results) => onChange(results)}
+        onTestComplete={(results: any) => onChange(results)}
       />
     </div>
   );
