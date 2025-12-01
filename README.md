@@ -284,6 +284,43 @@ While others focus on one piece of the puzzle, ILS 2.0 unifies your entire opera
 
 ### Quick Start
 
+#### Option 1: Docker Compose (Recommended for Local Development)
+
+The easiest way to run ILS 2.0 locally with all services:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/newvantageco/ILS2.0.git
+cd ILS2.0
+
+# 2. Start all services with Docker Compose
+docker-compose up
+
+# OR rebuild and start fresh
+./rebuild-all-services.sh
+```
+
+**What gets started:**
+- **Main App** (Node.js + React) - Port 5005
+- **Python Analytics Service** - Port 8000
+- **AI Service** - Port 8082
+- **PostgreSQL** - Port 5432
+- **Redis** - Port 6379
+- **Adminer** (Database UI) - Port 8080
+- **Redis Commander** - Port 8081
+- **MailHog** (Email testing) - Port 8025
+
+**Access the application:**
+- **Frontend**: [http://localhost:5005](http://localhost:5005)
+- **API Health**: [http://localhost:5005/api/health](http://localhost:5005/api/health)
+- **Python Service**: [http://localhost:8000/health](http://localhost:8000/health)
+- **AI Service**: [http://localhost:8082/health](http://localhost:8082/health)
+- **Adminer**: [http://localhost:8080](http://localhost:8080)
+- **Redis Commander**: [http://localhost:8081](http://localhost:8081)
+- **MailHog**: [http://localhost:8025](http://localhost:8025)
+
+#### Option 2: Manual Setup (Development without Docker)
+
 #### 1. Clone the repository
 
 ```bash
@@ -312,9 +349,9 @@ SESSION_SECRET=your_secure_random_string_here
 
 # Application URLs
 NODE_ENV=development
-PORT=5000
-APP_URL=http://localhost:5000
-CORS_ORIGIN=http://localhost:5000
+PORT=5005
+APP_URL=http://localhost:5005
+CORS_ORIGIN=http://localhost:5005
 
 # Email (Resend recommended)
 RESEND_API_KEY=re_xxxxxxxxxxxx
@@ -335,9 +372,16 @@ MASTER_USER_ORGANIZATION=Platform Control
 # Redis (Optional - background jobs)
 REDIS_URL=redis://localhost:6379
 
-# AI Services (Optional)
+# Python Services (for local development without Docker)
+PYTHON_SERVICE_URL=http://localhost:8000
+AI_SERVICE_URL=http://localhost:8082
+
+# AI API Keys (Required for AI features)
 OPENAI_API_KEY=sk-xxxxxxxxxxxx
 ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
+
+# Workers (enable background job processing)
+WORKERS_ENABLED=true
 ```
 
 #### 4. Initialize database
@@ -358,16 +402,16 @@ npm run db:push     # Push Drizzle schema
 npm run dev
 
 # OR start individually:
-npm run dev:node     # Node.js server only (port 5000)
+npm run dev:node     # Node.js server only (port 5005)
 npm run dev:python   # Python analytics service only (port 8000)
 ```
 
 #### 6. Access the application
 
-- **Frontend**: [http://localhost:5000](http://localhost:5000)
-- **API**: [http://localhost:5000/api](http://localhost:5000/api)
-- **Health Check**: [http://localhost:5000/api/health](http://localhost:5000/api/health)
-- **Metrics**: [http://localhost:5000/metrics](http://localhost:5000/metrics)
+- **Frontend**: [http://localhost:5005](http://localhost:5005)
+- **API**: [http://localhost:5005/api](http://localhost:5005/api)
+- **Health Check**: [http://localhost:5005/api/health](http://localhost:5005/api/health)
+- **Metrics**: [http://localhost:5005/metrics](http://localhost:5005/metrics)
 - **Python Service**: [http://localhost:8000](http://localhost:8000) (if running)
 
 ---
@@ -891,22 +935,48 @@ Railway is the recommended platform for deploying ILS 2.0 as a SaaS application.
 
 ### Docker Deployment
 
-#### Using Docker Compose (Development)
+#### Using Docker Compose (Local Development)
+
+The docker-compose.yml includes all services needed for local development:
 
 ```bash
+# Start all services
 docker-compose up
+
+# OR use the rebuild script for fresh start
+./rebuild-all-services.sh
+
+# Stop all services
+docker-compose down
+
+# View logs
+docker-compose logs -f
+
+# View specific service logs
+docker-compose logs -f app
+docker-compose logs -f python-service
+docker-compose logs -f ai-service
 ```
 
-This starts:
-- PostgreSQL 16 (primary database)
-- Redis 7 (caching and sessions)
-- ILS Application container
+**Services started by docker-compose:**
+- **ILS App** - Main Node.js application (port 5005)
+- **Python Service** - Analytics service (port 8000)
+- **AI Service** - RAG and AI features (port 8082)
+- **PostgreSQL 16** - Primary database (port 5432)
+- **Redis 7** - Caching and job queue (port 6379)
+- **Adminer** - Database management UI (port 8080)
+- **Redis Commander** - Redis management UI (port 8081)
+- **MailHog** - Email testing (port 8025)
+
+**Important Environment Files:**
+- `.env.docker` - Used by Docker Compose services
+- `.env` - Used for local non-Docker development
 
 #### Building Production Image
 
 ```bash
 docker build -t ils2.0:latest .
-docker run -p 5000:5000 --env-file .env ils2.0:latest
+docker run -p 5005:5005 --env-file .env ils2.0:latest
 ```
 
 ### Kubernetes Deployment
@@ -1125,8 +1195,14 @@ STRIPE_PRICE_ENTERPRISE_YEARLY=
 ```bash
 OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
-PYTHON_SERVICE_URL=http://localhost:8000
-AI_SERVICE_URL=http://localhost:8080
+
+# For Docker Compose (container names)
+PYTHON_SERVICE_URL=http://python-service:8000
+AI_SERVICE_URL=http://ai-service:8082
+
+# For local development (localhost)
+# PYTHON_SERVICE_URL=http://localhost:8000
+# AI_SERVICE_URL=http://localhost:8082
 ```
 
 #### Storage
@@ -1156,12 +1232,84 @@ POSTHOG_API_KEY=
 
 ### Common Issues
 
+#### Docker Compose Issues
+
+##### Services won't start
+
+**Solution**:
+```bash
+# Stop all containers
+docker-compose down
+
+# Remove old volumes
+docker-compose down -v
+
+# Rebuild and start fresh
+./rebuild-all-services.sh
+
+# OR manually rebuild
+docker-compose build --no-cache
+docker-compose up
+```
+
+##### Port conflicts
+
+**Error**: `Bind for 0.0.0.0:5005 failed: port is already allocated`
+
+**Solution**: Check which process is using the port and stop it:
+```bash
+# Check what's using port 5005
+lsof -i :5005
+
+# Kill the process (replace PID with actual process ID)
+kill -9 <PID>
+```
+
+**Common port conflicts:**
+- 5005 → Main app
+- 8000 → Python service
+- 8082 → AI service
+- 5432 → PostgreSQL
+- 6379 → Redis
+- 8080 → Adminer
+- 8081 → Redis Commander
+
+##### AI Service Unhealthy (Known Issue)
+
+**Error**: `sqlalchemy.exc.InvalidRequestError: Attribute name 'metadata' is reserved`
+
+**Status**: Known issue in ai-service/services/database.py - AIMessage model uses reserved attribute name
+
+**Workaround**: The main app and Python service work without AI service. AI features will be degraded until this is fixed.
+
+**Fix Required**: Rename the `metadata` column in AIMessage model to `message_metadata` or similar.
+
+##### Container logs show errors
+
+**Solution**: Check specific service logs:
+```bash
+# View all logs
+docker-compose logs -f
+
+# View specific service
+docker-compose logs -f app
+docker-compose logs -f python-service
+docker-compose logs -f ai-service
+docker-compose logs -f postgres
+
+# Check health status
+docker ps
+```
+
 #### Cannot connect to database
 
-**Solution**: Check `DATABASE_URL` in `.env`. Verify network access to Postgres instance.
+**Solution**: Check `DATABASE_URL` in `.env` or `.env.docker`. Verify network access to Postgres instance.
 
 ```bash
-# Test database connection
+# Test database connection (Docker)
+docker exec -it ils-postgres psql -U ils_user -d ils_db
+
+# Test database connection (direct)
 psql $DATABASE_URL
 ```
 
@@ -1170,8 +1318,29 @@ psql $DATABASE_URL
 **Solution**: Redis is **optional**. Jobs will fall back to immediate execution. To fix, verify `REDIS_URL` or `REDIS_HOST`/`REDIS_PORT`.
 
 ```bash
-# Test Redis connection
+# Test Redis connection (Docker)
+docker exec -it ils-redis redis-cli ping
+
+# Test Redis connection (direct)
 redis-cli -u $REDIS_URL ping
+```
+
+#### Service URL misconfiguration
+
+**Problem**: App can't reach Python/AI services
+
+**Solution**: Check environment variables match your setup:
+
+**For Docker Compose** (in `.env.docker`):
+```bash
+PYTHON_SERVICE_URL=http://python-service:8000
+AI_SERVICE_URL=http://ai-service:8082
+```
+
+**For local development** (in `.env`):
+```bash
+PYTHON_SERVICE_URL=http://localhost:8000
+AI_SERVICE_URL=http://localhost:8082
 ```
 
 #### TypeScript errors
@@ -1187,7 +1356,7 @@ npm run check
 
 **Solution**:
 1. Ensure test database is clean: `npm run db:setup`
-2. Check for port conflicts (5000, 8000, 6379)
+2. Check for port conflicts (5005, 8000, 8082, 6379)
 3. Run tests individually: `npm run test:unit`, `npm run test:components`
 
 #### Python service won't start
@@ -1196,6 +1365,7 @@ npm run check
 1. Verify Python 3.10+ installed: `python3 --version`
 2. Install dependencies: `pip install -r python-service/requirements.txt`
 3. Check port 8000 availability
+4. Check Docker logs: `docker-compose logs -f python-service`
 
 #### Build failures
 
@@ -1203,13 +1373,25 @@ npm run check
 1. Clear build cache: `rm -rf dist client/dist`
 2. Reinstall dependencies: `rm -rf node_modules && npm install`
 3. Check Node.js version: `node --version` (requires 22+)
+4. For Docker: `docker-compose build --no-cache`
 
 #### Session issues / Can't stay logged in
 
 **Solution**:
-1. Verify `SESSION_SECRET` is set in `.env`
+1. Verify `SESSION_SECRET` is set in `.env` or `.env.docker`
 2. Check Redis connection if using Redis sessions
 3. Clear browser cookies and try again
+
+#### Database migration errors
+
+**Error**: Conflicting enum types
+
+**Solution**: Use the migration fix script:
+```bash
+./fix-migrations.sh
+```
+
+This script drops conflicting enum types and reruns the schema push.
 
 ---
 
@@ -1300,14 +1482,29 @@ Built with care by the New Vantage Co engineering team.
 
 ---
 
-**Last Updated**: November 2025
+**Last Updated**: December 2025
 **Version**: 2.0
-**Status**: Production Ready (98.5% health score)
+**Status**: Production Ready
 
 ---
 
-**Quick Links:**
-- **Health Check**: [http://localhost:5000/api/health](http://localhost:5000/api/health)
-- **Metrics Dashboard**: [http://localhost:5000/metrics](http://localhost:5000/metrics)
+## Quick Links (Local Development)
+
+**Main Application:**
+- **Frontend**: [http://localhost:5005](http://localhost:5005)
+- **Health Check**: [http://localhost:5005/api/health](http://localhost:5005/api/health)
+- **Metrics Dashboard**: [http://localhost:5005/metrics](http://localhost:5005/metrics)
+
+**Python Services:**
+- **Python Analytics**: [http://localhost:8000/health](http://localhost:8000/health)
+- **AI Service**: [http://localhost:8082/health](http://localhost:8082/health)
+
+**Development Tools:**
+- **Adminer** (Database UI): [http://localhost:8080](http://localhost:8080)
+- **Redis Commander**: [http://localhost:8081](http://localhost:8081)
+- **MailHog** (Email Testing): [http://localhost:8025](http://localhost:8025)
+
+**Documentation:**
 - **Full Documentation**: `/docs` folder
 - **Test Coverage**: Run `npm run test:coverage`
+- **Fixes Applied**: See [FIXES_APPLIED.md](./FIXES_APPLIED.md)
