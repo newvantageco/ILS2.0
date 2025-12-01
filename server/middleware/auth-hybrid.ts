@@ -1,24 +1,21 @@
 /**
- * Hybrid Authentication Middleware
+ * JWT Authentication Middleware
  *
- * Supports both JWT and session-based authentication for gradual migration.
- * Tries JWT first, then falls back to session authentication.
- * This allows existing sessions to continue working while new logins use JWT.
+ * JWT-based authentication for all protected routes.
+ * Legacy session-based authentication has been removed.
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { authenticateJWT, type AuthenticatedRequest as JWTAuthRequest } from './auth-jwt.js';
-import { isAuthenticated } from '../replitAuth.js';
 import { createLogger } from '../utils/logger.js';
-import type { AuthenticatedRequest as SessionAuthRequest } from './auth.js';
 
-const logger = createLogger('auth-hybrid');
+const logger = createLogger('auth-jwt-wrapper');
 
 /**
- * Hybrid Authentication Middleware
+ * JWT Authentication Middleware (renamed from authenticateHybrid)
  *
- * Tries JWT authentication first (from Authorization header),
- * falls back to session authentication if JWT is not present or invalid.
+ * Uses JWT tokens from Authorization header for authentication.
+ * Legacy session-based authentication has been removed.
  *
  * Usage:
  * ```typescript
@@ -33,59 +30,28 @@ export const authenticateHybrid = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  // Check if Authorization header with JWT exists
-  const authHeader = req.headers.authorization;
-
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    // Try JWT authentication
-    try {
-      authenticateJWT(req, res, (err?: any) => {
-        if (err) {
-          // JWT auth failed, try session
-          logger.debug('JWT auth failed, falling back to session');
-          trySessionAuth(req, res, next);
-        } else {
-          // JWT auth succeeded
-          logger.debug('Authenticated via JWT');
-          next();
-        }
-      });
-      return;
-    } catch (error) {
-      logger.debug('JWT auth error, trying session:', error);
-      // Continue to session auth
-    }
-  }
-
-  // No JWT or JWT failed, try session authentication
-  trySessionAuth(req, res, next);
-};
-
-/**
- * Helper function to attempt session authentication
- */
-function trySessionAuth(req: Request, res: Response, next: NextFunction): void {
+  // Use JWT authentication only
   try {
-    isAuthenticated(req, res, (err?: any) => {
+    authenticateJWT(req, res, (err?: any) => {
       if (err) {
-        logger.debug('Session auth also failed');
+        logger.debug('JWT authentication failed');
         res.status(401).json({
           error: 'Authentication required',
           message: 'Please login with valid credentials'
         });
       } else {
-        logger.debug('Authenticated via session');
+        logger.debug('Authenticated via JWT');
         next();
       }
     });
   } catch (error) {
-    logger.debug('Session auth error');
+    logger.error('JWT authentication error:', error);
     res.status(401).json({
       error: 'Authentication required',
       message: 'Please login with valid credentials'
     });
   }
-}
+};
 
 /**
  * Optional Hybrid Authentication Middleware

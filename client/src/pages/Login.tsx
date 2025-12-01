@@ -7,14 +7,10 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useLocation } from "wouter";
-import { SiReplit, SiGoogle } from "react-icons/si";
+import { SiGoogle } from "react-icons/si";
 
 export default function Login() {
   const [, setLocation] = useLocation();
-
-  const handleReplitLogin = () => {
-    window.location.href = "/api/login";
-  };
 
   const handleGoogleLogin = () => {
     window.location.href = "/api/auth/google";
@@ -107,32 +103,6 @@ export default function Login() {
                   >
                     <Mail className="h-4 w-4" />
                     Continue with Email
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Replit Sign In */}
-              <Card className="border-2 hover:border-primary/40 transition-all duration-300 cursor-pointer group">
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 group-hover:scale-105 transition-all duration-300">
-                      <SiReplit className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">Sign In with Replit</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Use your Replit SSO credentials
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={handleReplitLogin}
-                    variant="outline"
-                    className="w-full gap-2 h-11"
-                    data-testid="button-replit-login-page"
-                  >
-                    <SiReplit className="h-4 w-4" />
-                    Continue with Replit
                   </Button>
                 </CardContent>
               </Card>
