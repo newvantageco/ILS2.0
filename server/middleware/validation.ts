@@ -256,3 +256,32 @@ export const validatePrescriptionInput = (req: Request, res: Response, next: Nex
   }
   next();
 };
+
+// ============================================
+// UK-SPECIFIC VALIDATION RE-EXPORTS
+// ============================================
+
+export {
+  // Validation functions
+  validateNHSNumber,
+  validateUKPostcode,
+  validateUKPhoneNumber,
+  validateGOCNumber,
+  validateNINO,
+  // Formatting functions
+  formatNHSNumber,
+  formatUKPostcode,
+  formatUKPhoneE164,
+  formatNINO,
+  // Zod schemas
+  nhsNumberSchema,
+  ukPostcodeSchema,
+  ukPhoneSchema,
+  gocNumberSchema,
+  ninoSchema,
+  ukDateSchema,
+  ukAddressSchema,
+  ukPatientSchema,
+  gocPractitionerSchema,
+  nhsGOSFormSchema,
+} from '../utils/ukValidation';

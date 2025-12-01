@@ -157,7 +157,7 @@ Content-Type: application/json
   "intervention": "Drug X 10mg daily",
   "primaryObjective": "Assess efficacy in reducing systolic BP",
   "targetEnrollment": 500,
-  "startDate": "2025-03-01T00:00:00Z",
+  "startDate": "2026-03-01T00:00:00Z",
   "estimatedCompletionDate": "2027-03-01T00:00:00Z"
 }
 ```
@@ -184,7 +184,7 @@ Content-Type: application/json
 
 {
   "version": "1.0",
-  "effectiveDate": "2025-03-01T00:00:00Z",
+  "effectiveDate": "2026-03-01T00:00:00Z",
   "primaryEndpoints": ["Change in systolic BP from baseline to week 12"],
   "secondaryEndpoints": ["Change in diastolic BP", "Adverse event rate"],
   "inclusionCriteria": [
@@ -602,7 +602,7 @@ const trialResponse = await fetch('/api/research/trials', {
     intervention: "Drug X 10mg daily",
     primaryObjective: "Assess efficacy in reducing systolic BP",
     targetEnrollment: 500,
-    startDate: "2025-03-01",
+    startDate: "2026-03-01",
     estimatedCompletionDate: "2027-03-01"
   })
 });
@@ -614,7 +614,7 @@ await fetch(`/api/research/trials/${trial.data.id}/protocol`, {
   headers: {'Content-Type': 'application/json'},
   body: JSON.stringify({
     version: "1.0",
-    effectiveDate: "2025-03-01",
+    effectiveDate: "2026-03-01",
     primaryEndpoints: ["Change in systolic BP from baseline to week 12"],
     secondaryEndpoints: ["Change in diastolic BP", "Adverse event rate"],
     inclusionCriteria: ["Age 18-75 years", "SBP 140-180 mmHg"],

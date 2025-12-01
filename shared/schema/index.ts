@@ -1,43 +1,61 @@
 /**
- * Main Schema Index
- * 
- * This file imports and re-exports all domain-specific schemas.
- * This replaces the monolithic 3,000+ line schema.ts file with
- * a clean, modular architecture.
+ * Schema Index - Modular Schema Exports
+ *
+ * This file provides a unified export for modular schema definitions.
+ * It re-exports from domain-specific schema modules while maintaining
+ * backward compatibility with the main schema.ts file.
+ *
+ * @module shared/schema
  */
 
-// Core domain - essential business entities
-export * from './core';
+// ============================================
+// CORE EXPORTS
+// ============================================
 
-// Healthcare domain - care plans, goals, interventions, risk factors
-export * from './healthcare';
+// Core enums - shared across domains
+export * from './core/enums';
 
-// AI domain - recommendations, risk scores, analytics
+// ============================================
+// DOMAIN EXPORTS
+// ============================================
+
+// AI Domain - conversations, knowledge base, learning
 export * from './ai';
 
-// Additional domains can be added here as the application grows
-// export * from './billing';
-// export * from './inventory';
-// export * from './rcm';
+// Clinical Domain - examinations, prescriptions, test rooms
+export * from './clinical';
 
-// Re-export commonly used imports for convenience
-export { 
-  pgTable, 
-  text, 
-  varchar, 
-  timestamp, 
-  jsonb, 
-  index, 
-  pgEnum, 
-  integer, 
-  decimal, 
-  numeric, 
-  real, 
-  boolean, 
-  date, 
-  uniqueIndex
-} from "drizzle-orm/pg-core";
+// Billing Domain - invoices, payments, subscriptions
+export * from './billing';
 
-export { createInsertSchema } from "drizzle-zod";
-export { sql } from "drizzle-orm";
-export { z } from "zod";
+// Inventory Domain - products, stock, frame characteristics
+export * from './inventory';
+
+// Analytics Domain - metrics, audit logs, SaaS analytics
+export * from './analytics';
+
+// NHS Domain - UK healthcare NHS/PCSE integration
+export * from './nhs';
+
+// Communications Domain - email templates, logs, tracking
+export * from './communications';
+
+// ============================================
+// BACKWARD COMPATIBILITY
+// ============================================
+
+/**
+ * Re-export everything from main schema for backward compatibility.
+ * This ensures existing imports continue to work:
+ *
+ * ```typescript
+ * import { users, orders } from '@shared/schema';
+ * ```
+ *
+ * New code can use domain imports:
+ *
+ * ```typescript
+ * import { aiConversations } from '@shared/schema/ai';
+ * ```
+ */
+export * from '../schema';

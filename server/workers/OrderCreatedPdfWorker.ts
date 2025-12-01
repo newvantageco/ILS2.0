@@ -1,6 +1,7 @@
 import eventBus from "../lib/eventBus";
-import type { IStorage } from "../storage";
+import { createWorkerRepository } from "../repositories/WorkerRepository";
 import { createLogger } from "../utils/logger";
+import crypto from "crypto";
 
 const logger = createLogger("OrderCreatedPdfWorker");
 
@@ -15,17 +16,22 @@ type PdfWorkerOptions = {
   generateFn?: (order: any) => Promise<string>;
 };
 
-export function registerOrderCreatedPdfWorker(storage: IStorage, opts?: PdfWorkerOptions) {
+export function registerOrderCreatedPdfWorker(opts?: PdfWorkerOptions) {
   const generateFn = opts?.generateFn ?? defaultGenerateOrderPdfAndStore;
 
   eventBus.subscribe("order.submitted", async (payload) => {
+    // Create a unique worker ID for this job execution
+    const workerId = `pdf-worker-${crypto.randomUUID().slice(0, 8)}`;
+    const workerRepo = createWorkerRepository(workerId, 'OrderCreatedPdfWorker');
+
     try {
       const { orderId } = payload as any;
-      logger.info("Generating PDF for order", { orderId });
+      logger.info("Generating PDF for order", { orderId, workerId });
 
-      const order = await storage.getOrderById_Internal(orderId);
+      // Use WorkerRepository with audit logging instead of _Internal method
+      const order = await workerRepo.getOrderWithDetails(orderId);
       if (!order) {
-        logger.warn("Order not found for PDF generation", { orderId });
+        logger.warn("Order not found for PDF generation", { orderId, workerId });
         return;
       }
 
@@ -47,31 +53,32 @@ export function registerOrderCreatedPdfWorker(storage: IStorage, opts?: PdfWorke
       while (attempt < maxAttempts && !success) {
         attempt += 1;
         try {
-          logger.info({ orderId, attempt }, 'PDF generation attempt');
+          logger.info({ orderId, attempt, workerId }, 'PDF generation attempt');
           const pdfUrl = await generateFn(order);
 
-          await storage.updateOrder(orderId, { pdfUrl });
-          logger.info({ orderId, pdfUrl }, 'PDF generated and stored');
+          // Use WorkerRepository for audited update
+          await workerRepo.updateOrder(orderId, { pdfUrl } as any);
+          logger.info({ orderId, pdfUrl, workerId }, 'PDF generated and stored');
           success = true;
           break;
         } catch (err) {
           lastError = err;
-          logger.warn({ orderId, attempt, error: (err as Error)?.message || String(err) }, 'PDF generation failed');
+          logger.warn({ orderId, attempt, workerId, error: (err as Error)?.message || String(err) }, 'PDF generation failed');
 
           if (attempt >= maxAttempts) {
             // Mark order with PDF error so it can be retried via DLQ or manual intervention
             try {
-              await storage.updateOrder(orderId, { pdfErrorMessage: (err as Error)?.message || String(err) });
+              await workerRepo.updateOrder(orderId, { pdfErrorMessage: (err as Error)?.message || String(err) } as any);
             } catch (dbErr) {
-              logger.error({ orderId, error: (dbErr as Error)?.message || String(dbErr) }, 'Failed to mark order with pdf error');
+              logger.error({ orderId, workerId, error: (dbErr as Error)?.message || String(dbErr) }, 'Failed to mark order with pdf error');
             }
 
-            logger.error({ orderId, error: (err as Error)?.message || String(err) }, 'PDF generation permanently failed');
+            logger.error({ orderId, workerId, error: (err as Error)?.message || String(err) }, 'PDF generation permanently failed');
             break;
           }
 
           const backoffMs = baseBackoffMs * Math.pow(2, attempt - 1);
-          logger.info({ orderId, attempt, backoffMs }, 'Backing off before PDF retry');
+          logger.info({ orderId, attempt, workerId, backoffMs }, 'Backing off before PDF retry');
           await sleep(backoffMs);
         }
       }

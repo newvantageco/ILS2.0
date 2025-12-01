@@ -2,6 +2,7 @@ import type { Express, Response, Request } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { authRepository } from "./repositories/AuthRepository";
 import { setupAuth as setupReplitAuth, isAuthenticated } from "./replitAuth";
 import type { AuthenticatedRequest } from "./middleware/auth";
 import { hashPassword } from "./localAuth";
@@ -99,6 +100,19 @@ import { registerAINotificationRoutes } from "./routes/ai-notifications";
 import { registerAutonomousPORoutes } from "./routes/ai-purchase-orders";
 // AI Assistant routes are now in master-ai.ts
 import { registerDemandForecastingRoutes } from "./routes/demand-forecasting";
+
+// NEW: Unified AI routes (consolidates all AI services)
+import unifiedAIRoutes from "./routes/domains/ai";
+import { deprecateAIRoute } from "./middleware/deprecation";
+// Domain routes registry for organized route management
+import { registerDomainRoutes, registerLegacyAIRoutes } from "./routes/domains";
+// Request context for correlation ID propagation
+import {
+  requestContextMiddleware,
+  enrichUserContext,
+  requestTimingMiddleware,
+  errorContextMiddleware
+} from "./middleware/requestContextMiddleware";
 import { registerMarketplaceRoutes } from "./routes/marketplace";
 import { registerQueueRoutes } from "./routes/queue";
 import platformAdminRoutes from "./routes/platform-admin";
@@ -274,9 +288,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Apply security headers to all requests
   app.use(securityHeaders);
-  
+
   // Configure CORS
   app.use(corsConfig);
+
+  // =============================================================================
+  // REQUEST CONTEXT & TRACING
+  // =============================================================================
+  // Set up AsyncLocalStorage-based request context for automatic correlation ID
+  // propagation to all async operations (database queries, background jobs, etc.)
+  app.use(requestTimingMiddleware);  // Track request timing
+  app.use(requestContextMiddleware);  // Set up correlation ID and request context
   
   // Setup comprehensive rate limiting for all endpoints
   setupRateLimiting(app);
@@ -351,26 +373,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // =============================================================================
-  // CONSOLIDATED AI SYSTEM (1 Service Active)
+  // DOMAIN ROUTE REGISTRY (NEW)
+  // =============================================================================
+  // This registers routes using the new domain-organized structure.
+  // Routes are organized by business domain for better maintainability.
+  // See docs/ROUTE_ORGANIZATION.md for details.
+  //
+  // NOTE: Individual route registrations below are being migrated to the
+  // domain registry. Once migration is complete, the calls below can be
+  // removed and only registerDomainRoutes will be needed.
   // =============================================================================
 
-  // Master AI: Tenant intelligence & assistance (chat, tools, learning)
+  registerDomainRoutes(app);
+
+  // Register legacy AI routes with deprecation warnings
+  registerLegacyAIRoutes(app);
+
+  // =============================================================================
+  // =============================================================================
+  // UNIFIED AI SYSTEM (Already registered via domain registry above)
+  // =============================================================================
+  // All AI endpoints are now consolidated under /api/ai/*
+  // See docs/AI_SERVICES_ANALYSIS.md for migration guide
+  // The line below is commented out as it's now handled by registerDomainRoutes
+  // app.use('/api/ai', ...secureRoute(), unifiedAIRoutes);
+
+  // =============================================================================
+  // DEPRECATED AI ROUTES - Will be removed after sunset date
+  // Migrate to /api/ai/* endpoints
+  // =============================================================================
+
+  // Master AI: DEPRECATED - Use /api/ai/chat instead
+  // Sunset: 30 days from deployment
+  app.use('/api/master-ai', deprecateAIRoute('/api/master-ai', '/api/ai'));
   registerMasterAIRoutes(app, storage);
 
-  // Platform AI: Integrated AI layer for commands, insights, predictions, and quick actions
-  // This is the unified API for the new AI Command Center UI
-  app.use('/api/platform-ai', ...secureRoute(), platformAIRoutes);
+  // Platform AI: DEPRECATED - Use /api/ai/* instead
+  app.use('/api/platform-ai', deprecateAIRoute('/api/platform-ai', '/api/ai'), ...secureRoute(), platformAIRoutes);
 
-  // AI Notifications: Proactive insights & daily briefings
+  // AI Notifications: DEPRECATED - Use /api/ai/briefing instead
+  app.use('/api/ai-notifications', deprecateAIRoute('/api/ai-notifications', '/api/ai/briefing'));
   registerAINotificationRoutes(app);
 
   // Company-specific AI Assistant (chat, knowledge, learning)
   // registerAiAssistantRoutes(app); // Moved to master-ai
 
-  // Autonomous Purchasing: AI-generated purchase orders
+  // Autonomous Purchasing: DEPRECATED - Use /api/ai/actions instead
+  app.use('/api/ai-purchase-orders', deprecateAIRoute('/api/ai-purchase-orders', '/api/ai/actions'));
   registerAutonomousPORoutes(app);
-  
-  // Demand Forecasting: Predictive AI for inventory & staffing (Chunk 5)
+
+  // Demand Forecasting: DEPRECATED - Use /api/ai/predictions/demand instead
+  app.use('/api/demand-forecasting', deprecateAIRoute('/api/demand-forecasting', '/api/ai/predictions/demand'));
   registerDemandForecastingRoutes(app);
   
   // Company Marketplace: B2B network and connections (Chunk 6)
@@ -647,11 +700,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Payment Processing routes
   registerPaymentRoutes(app);
 
-  // AI/ML Service routes
-  app.use('/api/ai-ml', ...secureRoute(), aiMLRoutes);
+  // AI/ML Service routes - DEPRECATED, Use /api/ai/clinical/* instead
+  app.use('/api/ai-ml', deprecateAIRoute('/api/ai-ml', '/api/ai/clinical'), ...secureRoute(), aiMLRoutes);
 
-  // Ophthalmic AI routes
-  app.use('/api/ophthalmic-ai', ...secureRoute(), ophthalamicAIRoutes);
+  // Ophthalmic AI routes - DEPRECATED, Use /api/ai/chat instead
+  app.use('/api/ophthalmic-ai', deprecateAIRoute('/api/ophthalmic-ai', '/api/ai/chat'), ...secureRoute(), ophthalamicAIRoutes);
 
   // Order Tracking routes
   app.use('/api/order-tracking', orderTrackingRoutes);
@@ -679,13 +732,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Auth routes
+  // SECURITY: Uses AuthRepository for audited cross-tenant access during authentication
   app.get('/api/auth/user', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
-      const user = await storage.getUserWithRoles_Internal(userId);
+      // Use AuthRepository with audit logging for auth flows
+      const user = await authRepository.findUserWithRoles(userId, {
+        ip: req.ip,
+        reason: 'Get current user session'
+      });
       res.json(user);
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error fetching user');
@@ -694,10 +752,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bootstrap endpoint - returns user and role-based redirect path
+  // SECURITY: Uses AuthRepository for audited cross-tenant access during authentication
   app.get('/api/auth/bootstrap', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await storage.getUserWithRoles_Internal(userId);
+      // Use AuthRepository with audit logging for auth flows
+      const user = await authRepository.findUserWithRoles(userId, {
+        ip: req.ip,
+        reason: 'Bootstrap session'
+      });
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -761,11 +824,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Complete signup endpoint
+  // SECURITY: Uses AuthRepository for audited cross-tenant access during authentication
   app.post('/api/auth/complete-signup', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await storage.getUserById_Internal(userId);
-      
+      // Use AuthRepository with audit logging for signup flow
+      const user = await authRepository.findUserById(userId, {
+        ip: req.ip,
+        reason: 'Complete signup flow'
+      });
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -6215,10 +6283,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(qcStorage.defectTypes);
   });
 
+  // =============================================================================
+  // ERROR HANDLING WITH REQUEST CONTEXT
+  // =============================================================================
+  // Add error context middleware to enrich errors with correlation IDs
+  app.use(errorContextMiddleware);
+
   const httpServer = createServer(app);
-  
+
   // Initialize WebSocket server for real-time updates
   websocketService.initialize(httpServer);
-  
+
   return httpServer;
 }

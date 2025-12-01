@@ -57,6 +57,10 @@ import LimsClient from "../packages/lims-client/src/LimsClient";
 import { initializeEventSystem } from "./events";
 import "./events/handlers/subscriptionEvents"; // Load subscription event handlers
 import { metricsHandler } from "./lib/metrics";
+import { swaggerRouter } from "./middleware/swagger";
+import { globalCacheControl } from "./middleware/cacheControl";
+import { metricsMiddleware, performHealthCheck } from "./lib/application-metrics";
+import { tracingMiddleware } from "./middleware/tracing";
 
 // Import Redis session store (Chunk 10)
 import RedisStore from "connect-redis";
@@ -331,6 +335,25 @@ app.use('/api', auditMiddleware);
 // Track API response times, database queries, and system metrics
 app.use(performanceMonitoring);
 
+// ============== HTTP CACHING ==============
+// Apply Cache-Control headers and ETag support based on route patterns
+// PHI/sensitive routes are automatically excluded from caching
+app.use('/api', globalCacheControl());
+
+// ============== APPLICATION METRICS ==============
+// Collect HTTP request metrics (latency, status codes, error rates)
+if (process.env.METRICS_ENABLED === 'true') {
+  app.use(metricsMiddleware());
+}
+
+// ============== DISTRIBUTED TRACING ==============
+// Create trace spans for request flows with W3C Trace Context propagation
+// Enable with TRACING_ENABLED=true or OTEL_ENABLED=true
+if (process.env.TRACING_ENABLED === 'true' || process.env.OTEL_ENABLED === 'true') {
+  app.use(tracingMiddleware());
+  logger.info({}, '✅ Distributed tracing enabled');
+}
+
 // ============== REQUEST TIMEOUT (DDoS Protection) ==============
 // Set timeout for all requests (30 seconds default)
 app.use(requestTimeout(30000));
@@ -339,33 +362,37 @@ app.use(requestTimeout(30000));
 // This provides more detailed health information for monitoring
 // The early health check (registered above) handles Railway's basic health checks
 app.get('/api/health/detailed', async (req: Request, res: Response) => {
-  let databaseStatus = 'unknown';
-  let databaseMessage = '';
-
   try {
-    // Check database connectivity
-    if (!dbReady && isDatabaseAvailable()) {
-      await db.execute(sql`SELECT 1 FROM users LIMIT 1`);
-      dbReady = true;
-    }
-    databaseStatus = isDatabaseAvailable() ? (dbReady ? 'connected' : 'initializing') : 'not_configured';
-  } catch (error) {
-    databaseStatus = 'initializing';
-    databaseMessage = error instanceof Error ? error.message : 'Database connection pending';
-  }
+    // Use comprehensive health check service
+    const healthResult = await performHealthCheck();
 
-  res.json({
-    status: configError ? 'degraded' : 'ok',
-    server: serverReady ? 'ready' : 'starting',
-    database: databaseStatus,
-    databaseReady: dbReady,
-    ...(configError && { configError }),
-    ...(databaseMessage && { databaseMessage }),
-    timestamp: new Date().toISOString(),
-    environment: app.get("env"),
-    uptime: process.uptime(),
-    memory: process.memoryUsage()
-  });
+    // Legacy compatibility fields
+    const databaseStatus = healthResult.checks.database.status === 'up'
+      ? 'connected'
+      : healthResult.checks.database.status === 'degraded'
+        ? 'slow'
+        : 'disconnected';
+
+    res.json({
+      status: healthResult.status,
+      server: serverReady ? 'ready' : 'starting',
+      database: databaseStatus,
+      databaseReady: healthResult.checks.database.status === 'up',
+      redis: healthResult.checks.redis.status,
+      ...(configError && { configError }),
+      checks: healthResult.checks,
+      timestamp: healthResult.timestamp,
+      environment: app.get("env"),
+      uptime: healthResult.uptime,
+      memory: process.memoryUsage()
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'unhealthy',
+      error: error instanceof Error ? error.message : 'Health check failed',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 (async () => {
@@ -410,6 +437,10 @@ app.get('/api/health/detailed', async (req: Request, res: Response) => {
       app.get('/metrics', metricsHandler);
       logger.info({}, '✅ Metrics endpoint enabled at /metrics');
     }
+
+    // API Documentation (Swagger/OpenAPI)
+    app.use('/api/docs', swaggerRouter);
+    logger.info({}, '✅ API documentation available at /api/docs');
 
     // Routes will be registered, then static files served at the end
     // Don't intercept root route - let it fall through to static file server
