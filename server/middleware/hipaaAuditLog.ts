@@ -13,9 +13,10 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { db } from "../../db";
-import { sql } from "drizzle-orm";
+import { db } from "../db";
+import { auditLogs } from "@shared/schema/analytics";
 import { createLogger } from "../utils/logger";
+import { requestContext } from "../context";
 
 const logger = createLogger("HIPAAAudit");
 
@@ -198,53 +199,59 @@ function sanitizeRequestBody(body: any): object | undefined {
 }
 
 /**
- * Write audit entry to database
+ * Map HTTP method to audit event type
+ */
+function getEventType(method: string, phiAccessed: boolean): string {
+  if (phiAccessed) {
+    if (method === 'GET') return 'phi_access';
+    if (method === 'POST') return 'create';
+    if (['PUT', 'PATCH'].includes(method)) return 'update';
+    if (method === 'DELETE') return 'delete';
+  }
+
+  switch (method) {
+    case 'GET': return 'read';
+    case 'POST': return 'create';
+    case 'PUT':
+    case 'PATCH': return 'update';
+    case 'DELETE': return 'delete';
+    default: return 'access';
+  }
+}
+
+/**
+ * Write audit entry to database using schema-based table
  */
 async function writeAuditEntry(entry: HIPAAAuditEntry): Promise<void> {
   try {
-    await db.execute(sql`
-      INSERT INTO hipaa_audit_logs (
-        timestamp,
-        user_id,
-        user_role,
-        tenant_id,
-        action,
-        method,
-        path,
-        resource_type,
-        resource_id,
-        phi_accessed,
-        phi_fields,
-        ip_address,
-        user_agent,
-        outcome,
-        status_code,
-        failure_reason,
-        request_body,
-        response_time,
-        session_id
-      ) VALUES (
-        ${entry.timestamp},
-        ${entry.userId},
-        ${entry.userRole},
-        ${entry.tenantId},
-        ${entry.action},
-        ${entry.method},
-        ${entry.path},
-        ${entry.resourceType},
-        ${entry.resourceId},
-        ${entry.phiAccessed},
-        ${JSON.stringify(entry.phiFields)},
-        ${entry.ipAddress},
-        ${entry.userAgent},
-        ${entry.outcome},
-        ${entry.statusCode},
-        ${entry.failureReason || null},
-        ${entry.requestBody ? JSON.stringify(entry.requestBody) : null},
-        ${entry.responseTime},
-        ${entry.sessionId || null}
-      )
-    `);
+    // Get correlation ID from request context
+    const ctx = requestContext.get();
+
+    await db.insert(auditLogs).values({
+      timestamp: entry.timestamp,
+      userId: entry.userId,
+      userRole: entry.userRole as any,
+      companyId: entry.tenantId,
+      eventType: getEventType(entry.method, entry.phiAccessed) as any,
+      resourceType: entry.resourceType,
+      resourceId: entry.resourceId,
+      action: entry.action,
+      ipAddress: entry.ipAddress,
+      userAgent: entry.userAgent,
+      endpoint: entry.path,
+      method: entry.method,
+      statusCode: entry.statusCode,
+      success: entry.outcome === 'success',
+      errorMessage: entry.failureReason,
+      metadata: {
+        responseTime: entry.responseTime,
+        sessionId: entry.sessionId,
+        correlationId: ctx?.correlationId,
+        requestBody: entry.requestBody,
+      },
+      phiAccessed: entry.phiAccessed,
+      phiFields: entry.phiFields,
+    });
   } catch (error) {
     // Log to file as backup if database write fails
     logger.error({

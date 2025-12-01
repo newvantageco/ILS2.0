@@ -40,17 +40,40 @@ export const qualityIssueTypeEnum = pgEnum("quality_issue_type", [
 ]);
 
 export const auditEventTypeEnum = pgEnum("audit_event_type", [
+  // Standard CRUD operations
   "access",
   "create",
   "read",
   "update",
   "delete",
+  // Authentication events
   "login",
   "logout",
   "auth_attempt",
+  "mfa_verify",
+  "password_change",
+  "password_reset",
+  "session_expired",
+  // Authorization events
   "permission_change",
+  "role_change",
+  "access_denied",
+  // Data operations
   "export",
-  "print"
+  "print",
+  "download",
+  "upload",
+  "share",
+  // PHI-specific events (HIPAA)
+  "phi_access",
+  "phi_export",
+  "phi_print",
+  "phi_share",
+  // Security events
+  "security_alert",
+  "suspicious_activity",
+  "rate_limit_exceeded",
+  "ip_blocked"
 ]);
 
 export const feedbackTypeEnum = pgEnum("feedback_type", [
