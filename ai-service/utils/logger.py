@@ -7,7 +7,7 @@ import os
 from loguru import logger
 
 # Get settings from environment
-log_level = os.getenv("LOG_LEVEL", "INFO")
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()  # Ensure uppercase for loguru
 log_json = os.getenv("LOG_JSON", "true").lower() == "true"
 
 # Remove default handler
