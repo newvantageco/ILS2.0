@@ -37,7 +37,8 @@ ENV PORT=8001
 EXPOSE 8001
 
 # Health check using PORT environment variable
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+# Longer start-period (3min) to allow model download on first deployment
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
     CMD curl -f http://localhost:${PORT}/health || exit 1
 
 # Run the application with shell form to expand $PORT
