@@ -277,21 +277,11 @@ import {
 } from "./middleware/rateLimiter";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // ============================================================================
-  // HELPER: Extract requesting user context from authenticated request
-  // Used for tenant-aware operations (P0-2 security fix)
-  // ============================================================================
-  const getRequestingUser = (req: AuthenticatedRequest) => ({
-    id: req.user!.id,
-    companyId: req.user!.companyId || null,
-    role: req.user!.role
-  });
-
   // Apply comprehensive security middleware stack
   if (process.env.NODE_ENV === 'production') {
     // Enforce HTTPS in production
     // app.use(enforceTLS);
-
+    
     // Validate SSL certificates
     // app.use('/api', validateSSLCertificate);
   }
@@ -956,14 +946,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
       const { role } = req.body as { role: string };
-
-      // Security: Use tenant-aware method instead of _Internal (P0-2 fix)
-      const user = await authRepository.getUserByIdWithTenantCheck(
-        userId,
-        getRequestingUser(req),
-        { reason: 'Add role to user', ip: req.ip }
-      );
-
+      
+      const user = await storage.getUserById_Internal(userId);
+      
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -989,22 +974,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.addUserRole(userId, role);
-
-      // Security: Use tenant-aware method instead of _Internal (P0-2 fix)
-      const updatedUser = await authRepository.getUserWithRolesWithTenantCheck(
-        userId,
-        getRequestingUser(req),
-        { reason: 'Fetch updated user with roles', ip: req.ip }
-      );
+      const updatedUser = await storage.getUserWithRoles_Internal(userId);
       res.json(updatedUser);
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error adding role');
-
-      // Handle tenant isolation errors
-      if (error instanceof Error && error.message.includes('Cannot access users from different tenant')) {
-        return res.status(403).json({ message: "Unauthorized" });
-      }
-
       res.status(500).json({ message: "Failed to add role" });
     }
   });
@@ -1184,8 +1157,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.status(500).json({ message: "Failed to create session" });
           }
 
-          // Fetch full user from database (login flow - no tenant check needed)
-          authRepository.findUserById(user.claims.sub, { reason: "Login session establishment", ip: req.ip }).then((dbUser) => {
+          // Fetch full user from database
+          storage.getUserById_Internal(user.claims.sub).then((dbUser) => {
             if (!dbUser) {
               return res.status(404).json({ message: "User not found" });
             }
@@ -1251,14 +1224,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/orders', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-
-      // Security: Use tenant-aware method instead of _Internal (P0-2 fix)
-      const user = await authRepository.getUserByIdWithTenantCheck(
-        userId,
-        getRequestingUser(req),
-        { reason: 'Create order - validate ECP role', ip: req.ip }
-      );
-
+      const user = await storage.getUserById_Internal(userId);
+      
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can create orders" });
       }
@@ -1379,7 +1346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/orders', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -1420,7 +1387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/orders/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -1453,7 +1420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/orders/:id/oma', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -1511,7 +1478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/orders/:id/oma', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -1553,7 +1520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/orders/:id/oma', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -1596,7 +1563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/orders/:id/status', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -1661,7 +1628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/orders/:id/pdf', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -1721,7 +1688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/orders/:id/lab-ticket', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -1830,7 +1797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/orders/:id/email', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -1923,7 +1890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/suppliers', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
         return res.status(403).json({ message: "Only lab staff can view suppliers" });
@@ -1940,7 +1907,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/suppliers', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
         return res.status(403).json({ message: "Only lab staff can create suppliers" });
@@ -1963,7 +1930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/suppliers/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
         return res.status(403).json({ message: "Only lab staff can update suppliers" });
@@ -1991,7 +1958,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/suppliers/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
         return res.status(403).json({ message: "Only lab staff can delete suppliers" });
@@ -2014,7 +1981,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/stats', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -2040,7 +2007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/consult-logs', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can create consult logs" });
@@ -2076,7 +2043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/consult-logs', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -2102,7 +2069,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/orders/:orderId/consult-logs', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -2128,7 +2095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/consult-logs/:id/respond', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
         return res.status(403).json({ message: "Only lab staff can respond to consult logs" });
@@ -2156,7 +2123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/purchase-orders', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
         return res.status(403).json({ message: "Only lab staff can create purchase orders" });
@@ -2194,7 +2161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/purchase-orders', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -2224,7 +2191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/purchase-orders/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -2251,7 +2218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/purchase-orders/:id/status', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -2287,7 +2254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/technical-documents', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'supplier') {
         return res.status(403).json({ message: "Only suppliers can upload technical documents" });
@@ -2311,7 +2278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/technical-documents', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -2331,7 +2298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/technical-documents/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'supplier') {
         return res.status(403).json({ message: "Only suppliers can delete their own documents" });
@@ -2354,7 +2321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/purchase-orders/:id/pdf', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer' && user.role !== 'supplier')) {
         return res.status(403).json({ message: "Access denied" });
@@ -2394,7 +2361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/purchase-orders/:id/email', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
         return res.status(403).json({ message: "Only lab staff can email purchase orders" });
@@ -2445,7 +2412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/orders/:id/ship', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
         return res.status(403).json({ message: "Only lab staff can mark orders as shipped" });
@@ -2486,7 +2453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/settings/organization', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer' && user.role !== 'platform_admin' && user.role !== 'admin')) {
         return res.status(403).json({ message: "Only lab staff or admins can view organization settings" });
@@ -2503,7 +2470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/settings/organization', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer' && user.role !== 'platform_admin' && user.role !== 'admin')) {
         return res.status(403).json({ message: "Only lab staff or admins can update organization settings" });
@@ -2556,7 +2523,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/users', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -2573,7 +2540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/stats', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -2590,7 +2557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/admin/users/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -2632,7 +2599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/admin/users/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -2675,7 +2642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/platform-admin/users', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'platform_admin') {
         return res.status(403).json({ message: "Platform admin access required" });
@@ -2693,7 +2660,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/platform-admin/companies', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'platform_admin') {
         return res.status(403).json({ message: "Platform admin access required" });
@@ -2711,7 +2678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/platform-admin/users/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'platform_admin') {
         return res.status(403).json({ message: "Platform admin access required" });
@@ -2733,7 +2700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/platform-admin/users/:id/reset-password', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
 
       if (!user || user.role !== 'platform_admin') {
         return res.status(403).json({ message: "Platform admin access required" });
@@ -2764,7 +2731,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/platform-admin/users/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'platform_admin') {
         return res.status(403).json({ message: "Platform admin access required" });
@@ -2795,7 +2762,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/company-admin/profile', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'company_admin') {
         return res.status(403).json({ message: "Company admin access required" });
@@ -2821,7 +2788,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/company-admin/profile', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'company_admin') {
         return res.status(403).json({ message: "Company admin access required" });
@@ -2847,7 +2814,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/company-admin/users', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'company_admin') {
         return res.status(403).json({ message: "Company admin access required" });
@@ -2870,7 +2837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/company-admin/suppliers', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'company_admin') {
         return res.status(403).json({ message: "Company admin access required" });
@@ -2892,7 +2859,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/company-admin/users', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'company_admin') {
         return res.status(403).json({ message: "Company admin access required" });
@@ -2993,7 +2960,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/company-admin/users/:userId', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const adminUserId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(adminUserId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(adminUserId);
       
       if (!user || user.role !== 'company_admin') {
         return res.status(403).json({ message: "Company admin access required" });
@@ -3040,7 +3007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/company-admin/users/:userId', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const adminUserId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(adminUserId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(adminUserId);
       
       if (!user || user.role !== 'company_admin') {
         return res.status(403).json({ message: "Company admin access required" });
@@ -3082,7 +3049,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/patients', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view patients" });
@@ -3103,7 +3070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/patients/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view patients" });
@@ -3134,7 +3101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/patients/:id/summary', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view patient summaries" });
@@ -3211,7 +3178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/patients/:id/examination-form', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -3335,7 +3302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/patients', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
 
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can add patients" });
@@ -3427,7 +3394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/patients/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can update patients" });
@@ -3495,7 +3462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/patients/:id/history', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user) {
         return res.status(403).json({ message: "Access denied" });
@@ -3547,7 +3514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/shopify/status', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can access Shopify integration" });
@@ -3569,7 +3536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/shopify/verify', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can configure Shopify" });
@@ -3598,7 +3565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/shopify/sync', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can sync Shopify data" });
@@ -3629,7 +3596,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/examinations', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view examinations" });
@@ -3659,7 +3626,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/examinations/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view examinations" });
@@ -3689,7 +3656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/patients/:id/examinations', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view examinations" });
@@ -3720,7 +3687,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/examinations', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can create examinations" });
@@ -3754,7 +3721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/examinations/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can update examinations" });
@@ -3785,7 +3752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/examinations/:id/finalize', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can finalize examinations" });
@@ -3821,7 +3788,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/prescriptions', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view prescriptions" });
@@ -3842,7 +3809,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/prescriptions/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view prescriptions" });
@@ -3872,7 +3839,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/prescriptions', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can create prescriptions" });
@@ -3908,7 +3875,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/prescriptions/:id/sign', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can sign prescriptions" });
@@ -3948,7 +3915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/prescriptions/:id/pdf', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can download prescriptions" });
@@ -3989,7 +3956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/prescriptions/:id/email', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can email prescriptions" });
@@ -4027,7 +3994,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/products', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view products" });
@@ -4048,7 +4015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/products/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view products" });
@@ -4078,7 +4045,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/products', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can create products" });
@@ -4112,7 +4079,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/products/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can update products" });
@@ -4143,7 +4110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/products/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can delete products" });
@@ -4180,7 +4147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/invoices', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view invoices" });
@@ -4201,7 +4168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/invoices/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can view invoices" });
@@ -4231,7 +4198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/invoices', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can create invoices" });
@@ -4277,7 +4244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/invoices/:id/status', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can update invoice status" });
@@ -4313,7 +4280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/invoices/:id/payment', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can record payments" });
@@ -4350,7 +4317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/invoices/:id/pdf', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can download invoice PDFs" });
@@ -4412,7 +4379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/invoices/:id/email', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can email invoices" });
@@ -4502,7 +4469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/invoices/:id/receipt', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can generate receipts" });
@@ -4551,7 +4518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/orders/:id/send-confirmation', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || (user.role !== 'lab_tech' && user.role !== 'engineer')) {
         return res.status(403).json({ message: "Only lab staff can send order confirmations" });
@@ -4675,7 +4642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/alerts/prescriptions', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
 
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can access prescription alerts" });
@@ -4696,7 +4663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/alerts/prescriptions/:id/dismiss', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
 
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can manage alerts" });
@@ -4719,7 +4686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/orders/analyze-risk', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
 
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can analyze orders" });
@@ -4783,7 +4750,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/recommendations/bi', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
 
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can access BI recommendations" });
@@ -4804,7 +4771,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/recommendations/bi/analyze', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
 
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can trigger BI analysis" });
@@ -4836,7 +4803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/recommendations/bi/:id/acknowledge', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
 
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can acknowledge recommendations" });
@@ -4857,7 +4824,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/recommendations/bi/:id/start-implementation', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
 
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can start implementations" });
@@ -4878,7 +4845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/recommendations/bi/:id/complete-implementation', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
 
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "Only ECPs can complete implementations" });
@@ -4903,7 +4870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/companies', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
 
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -4933,7 +4900,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/companies', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
 
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -5153,7 +5120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/companies/:id/resend-credentials', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
 
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -5272,7 +5239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/ai-assistant/ask', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5321,7 +5288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/ai-assistant/conversations', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5339,7 +5306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/ai-assistant/conversations/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       const conversationId = req.params.id;
       
       if (!user || !user.companyId) {
@@ -5363,7 +5330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/ai-assistant/knowledge/upload', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5404,7 +5371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/ai-assistant/knowledge', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5422,7 +5389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/ai-assistant/learning-progress', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5451,7 +5418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/ai-assistant/stats', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5469,7 +5436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/ai/usage/stats', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: 'User company not found' });
@@ -5495,7 +5462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/ai-assistant/conversations/:id/feedback', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       const conversationId = req.params.id;
       const { messageId, helpful, feedback } = req.body as { messageId: string; helpful: boolean; feedback?: string };
 
@@ -5531,7 +5498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/ai-intelligence/dashboard', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5549,7 +5516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/ai-intelligence/insights', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5567,7 +5534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/ai-intelligence/opportunities', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5585,7 +5552,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/ai-intelligence/alerts', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5603,7 +5570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/ai-intelligence/forecast', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5628,7 +5595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/orders/analyze-risk', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || user.role !== 'ecp') {
         return res.status(403).json({ message: "ECP access required" });
@@ -5704,7 +5671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/equipment', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5732,7 +5699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/equipment/stats', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5750,7 +5717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/equipment/due-calibration', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5769,7 +5736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/equipment/due-maintenance', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5788,7 +5755,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/equipment/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5810,7 +5777,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/equipment', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5839,7 +5806,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/equipment/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5871,7 +5838,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/equipment/:id', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5898,7 +5865,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/equipment/:id/maintenance', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5938,7 +5905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/equipment/:id/calibration', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -5985,7 +5952,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/production/stats', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -6003,7 +5970,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/production/orders', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -6025,7 +5992,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/production/orders/:id/timeline', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -6043,7 +6010,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/production/orders/:id/status', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -6078,7 +6045,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/production/orders/:id/timeline', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -6114,7 +6081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/production/stages', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -6132,7 +6099,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/production/bottlenecks', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -6150,7 +6117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/production/velocity', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -6175,7 +6142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/quality-control/orders', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -6193,7 +6160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/quality-control/stats', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -6211,7 +6178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/quality-control/metrics', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -6229,7 +6196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/quality-control/defect-trends', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -6248,7 +6215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/quality-control/inspect/:orderId', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });
@@ -6292,7 +6259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/quality-control/orders/:orderId/history', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.claims?.sub || req.user!.id;
-      const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User lookup", ip: req.ip });
+      const user = await storage.getUserById_Internal(userId);
       
       if (!user || !user.companyId) {
         return res.status(403).json({ message: "User must belong to a company" });

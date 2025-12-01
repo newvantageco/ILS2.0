@@ -65,11 +65,6 @@ export class WebhookService {
       }
 
       // Get the order
-      // NOTE: Using _Internal here is acceptable because:
-      // 1. This is an authenticated webhook from external LIMS system (not user request)
-      // 2. Webhook is system-to-system communication
-      // 3. Access is audit logged above
-      // 4. Order was created by legitimate user; webhook is updating its status
       const order = await this.storage.getOrderById_Internal(payload.orderId);
       if (!order) {
         this.logger.warn("Webhook received for non-existent order", {
@@ -173,10 +168,6 @@ export class WebhookService {
 
     // Get order to determine organization for room-based broadcasting
     try {
-      // NOTE: Using _Internal here is acceptable because:
-      // 1. This is internal event broadcasting (not user request)
-      // 2. Websocket broadcasts go to authorized users in same org only
-      // 3. Used to get ecpId for room-based broadcasting (tenant-aware)
       const order = await this.storage.getOrderById_Internal(data.orderId);
       if (order) {
         // Broadcast order status update to organization room

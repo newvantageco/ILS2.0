@@ -329,19 +329,8 @@ import logger from './utils/logger';
 export interface IStorage {
   getUser(id: string, companyId: string): Promise<User | undefined>;
   getUserWithRoles(id: string, companyId: string): Promise<UserWithRoles | undefined>;
-
-  /**
-   * @deprecated SECURITY: Bypasses tenant isolation (P0-2)
-   * DO NOT USE - Use AuthRepository.getUserByIdWithTenantCheck() instead
-   * Kept only for documented system-level operations (webhooks/workers)
-   */
+  // Internal methods for authentication - bypass tenant isolation
   getUserById_Internal(id: string): Promise<User | undefined>;
-
-  /**
-   * @deprecated SECURITY: Bypasses tenant isolation (P0-2)
-   * DO NOT USE - Use AuthRepository.getUserWithRolesWithTenantCheck() instead
-   * Kept only for documented system-level operations
-   */
   getUserWithRoles_Internal(id: string): Promise<UserWithRoles | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
@@ -363,12 +352,7 @@ export interface IStorage {
   
   createOrder(order: InsertOrder): Promise<Order>;
   getOrder(id: string, companyId: string): Promise<OrderWithDetails | undefined>;
-
-  /**
-   * @deprecated SECURITY: Bypasses tenant isolation (P0-2)
-   * DO NOT USE - Use getOrder(id, companyId) instead
-   * Kept only for documented system-level operations (webhooks/workers)
-   */
+  // Internal method for workers - bypasses tenant isolation
   getOrderById_Internal(id: string): Promise<OrderWithDetails | undefined>;
   getOrders(filters?: {
     ecpId?: string;
@@ -774,25 +758,11 @@ export class DbStorage implements IStorage {
   }
 
   /**
-   * @deprecated SECURITY: This method bypasses tenant isolation (P0-2).
-   *
-   * ❌ DO NOT USE in new code.
-   * ✅ Use AuthRepository.getUserByIdWithTenantCheck() instead.
-   *
-   * This method is kept ONLY for documented system-level operations:
-   * - External webhooks (WebhookService)
-   * - Background workers (OrderCreatedLimsWorker)
-   *
+   * @deprecated Use AuthRepository.findUserById() instead.
+   * This method bypasses tenant isolation and should only be used for authentication.
    * @see server/repositories/AuthRepository.ts
-   * @see docs/P0-2-COMPLETE.md for documented exemptions
    */
   async getUserById_Internal(id: string): Promise<User | undefined> {
-    // Log usage for monitoring
-    console.warn('⚠️  SECURITY: getUserById_Internal called - should use AuthRepository instead', {
-      id,
-      stack: new Error().stack?.split('\n')[2]?.trim()
-    });
-
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
@@ -948,23 +918,11 @@ export class DbStorage implements IStorage {
   }
 
   /**
-   * @deprecated SECURITY: This method bypasses tenant isolation (P0-2).
-   *
-   * ❌ DO NOT USE in new code.
-   * ✅ Use AuthRepository.getUserWithRolesWithTenantCheck() instead.
-   *
-   * This method is kept ONLY for documented system-level operations.
-   *
+   * @deprecated Use AuthRepository.findUserWithRoles() instead.
+   * This method bypasses tenant isolation and should only be used for authentication.
    * @see server/repositories/AuthRepository.ts
-   * @see docs/P0-2-COMPLETE.md for documented exemptions
    */
   async getUserWithRoles_Internal(id: string): Promise<UserWithRoles | undefined> {
-    // Log usage for monitoring
-    console.warn('⚠️  SECURITY: getUserWithRoles_Internal called - should use AuthRepository instead', {
-      id,
-      stack: new Error().stack?.split('\n')[2]?.trim()
-    });
-
     const user = await this.getUserById_Internal(id);
     if (!user) return undefined;
 
@@ -1143,25 +1101,11 @@ export class DbStorage implements IStorage {
   }
 
   /**
-   * @deprecated SECURITY: This method bypasses tenant isolation (P0-2).
-   *
-   * ❌ DO NOT USE in new code.
-   * ✅ Use storage.getOrder(id, companyId) instead.
-   *
-   * This method is kept ONLY for documented system-level operations:
-   * - External webhooks (WebhookService - LIMS status updates)
-   * - Background workers (OrderCreatedLimsWorker)
-   *
-   * @see server/storage.ts getOrder() for tenant-safe alternative
-   * @see docs/P0-2-COMPLETE.md for documented exemptions
+   * @deprecated Use WorkerRepository.getOrderForPdf() instead.
+   * This method bypasses tenant isolation and should only be used for background workers.
+   * @see server/repositories/WorkerRepository.ts
    */
   async getOrderById_Internal(id: string): Promise<OrderWithDetails | undefined> {
-    // Log usage for monitoring
-    console.warn('⚠️  SECURITY: getOrderById_Internal called - should use getOrder(id, companyId) instead', {
-      id,
-      stack: new Error().stack?.split('\n')[2]?.trim()
-    });
-
     const result = await db
       .select({
         order: orders,

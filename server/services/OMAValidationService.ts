@@ -81,9 +81,8 @@ export class OMAValidationService {
    * Main validation entry point
    * Validates an order by comparing prescription data with OMA file
    */
-  async validateOrder(orderId: string, companyId: string): Promise<ValidationResult> {
-    // Security: Use tenant-safe method instead of _Internal (P0-2 fix)
-    const order = await this.storage.getOrder(orderId, companyId);
+  async validateOrder(orderId: string): Promise<ValidationResult> {
+    const order = await this.storage.getOrderById_Internal(orderId);
     if (!order) {
       throw new Error(`Order ${orderId} not found`);
     }

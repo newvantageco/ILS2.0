@@ -213,10 +213,9 @@ export class OrderService {
     };
   }
 
-  async getOrderStatus(orderId: string, companyId: string): Promise<JobStatusResponse | null> {
+  async getOrderStatus(orderId: string): Promise<JobStatusResponse | null> {
     try {
-      // Security: Use tenant-safe method instead of _Internal (P0-2 fix)
-      const order = await this.storage.getOrder(orderId, companyId);
+      const order = await this.storage.getOrderById_Internal(orderId);
 
       if (!order || !order.jobId) {
         return null;
