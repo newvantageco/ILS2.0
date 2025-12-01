@@ -246,6 +246,7 @@ async def health():
     return {
         "status": "ok",
         "service": "ai-service",
+        "version": "1.0.0",
         "timestamp": datetime.utcnow().isoformat(),
     }
 
