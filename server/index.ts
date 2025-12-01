@@ -58,6 +58,7 @@ import { initializeEventSystem } from "./events";
 import "./events/handlers/subscriptionEvents"; // Load subscription event handlers
 import { metricsHandler } from "./lib/metrics";
 import { swaggerRouter } from "./middleware/swagger";
+import { globalCacheControl } from "./middleware/cacheControl";
 
 // Import Redis session store (Chunk 10)
 import RedisStore from "connect-redis";
@@ -331,6 +332,11 @@ app.use('/api', auditMiddleware);
 // ============== PERFORMANCE MONITORING ==============
 // Track API response times, database queries, and system metrics
 app.use(performanceMonitoring);
+
+// ============== HTTP CACHING ==============
+// Apply Cache-Control headers and ETag support based on route patterns
+// PHI/sensitive routes are automatically excluded from caching
+app.use('/api', globalCacheControl());
 
 // ============== REQUEST TIMEOUT (DDoS Protection) ==============
 // Set timeout for all requests (30 seconds default)
