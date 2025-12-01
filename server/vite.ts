@@ -123,6 +123,12 @@ export function serveStatic(app: Express) {
       return next();
     }
     // Serve index.html for all other routes (client-side routing)
-    res.sendFile(path.resolve(distPath, "index.html"));
+    const indexPath = path.resolve(distPath, "index.html");
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        logger.error(`Failed to serve index.html from ${indexPath}: ${err.message}`);
+        next(err);
+      }
+    });
   });
 }
