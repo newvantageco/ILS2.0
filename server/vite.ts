@@ -132,6 +132,11 @@ export function serveStatic(app: Express) {
 
   // fall through to index.html for client-side routing (but NOT for API routes)
   app.use((req, res, next) => {
+    // Skip if response already sent (file was served by express.static)
+    if (res.headersSent) {
+      return;
+    }
+
     // Skip API routes, health check, and other server endpoints
     if (req.path.startsWith('/api') || req.path === '/health' || req.path.startsWith('/uploads')) {
       return next();
