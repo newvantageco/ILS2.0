@@ -92,10 +92,24 @@ export function serveStatic(app: Express) {
   // Build output is at /app/dist/public when bundled server runs from /app/dist/index.js
   const distPath = path.resolve(process.cwd(), "dist", "public");
 
+  logger.info(`[serveStatic] Initializing static file serving from: ${distPath}`);
+  logger.info(`[serveStatic] Current working directory: ${process.cwd()}`);
+
   if (!fs.existsSync(distPath)) {
+    logger.error(`[serveStatic] Build directory not found: ${distPath}`);
     throw new Error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`,
     );
+  }
+
+  // Log directory contents for diagnostics
+  try {
+    const files = fs.readdirSync(distPath);
+    logger.info(`[serveStatic] Files in ${distPath}: ${files.join(', ')}`);
+    const indexExists = fs.existsSync(path.resolve(distPath, 'index.html'));
+    logger.info(`[serveStatic] index.html exists: ${indexExists}`);
+  } catch (err) {
+    logger.error(`[serveStatic] Error reading directory: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   // Serve static files with aggressive caching for production performance
@@ -122,12 +136,17 @@ export function serveStatic(app: Express) {
     if (req.path.startsWith('/api') || req.path === '/health' || req.path.startsWith('/uploads')) {
       return next();
     }
+
     // Serve index.html for all other routes (client-side routing)
     const indexPath = path.resolve(distPath, "index.html");
+    logger.info(`[serveStatic] Serving index.html for path: ${req.path}, file: ${indexPath}`);
+
     res.sendFile(indexPath, (err) => {
       if (err) {
-        logger.error(`Failed to serve index.html from ${indexPath}: ${err.message}`);
+        logger.error(`[serveStatic] Failed to serve index.html: ${err.message}`, { path: req.path, indexPath });
         next(err);
+      } else {
+        logger.info(`[serveStatic] Successfully served index.html for: ${req.path}`);
       }
     });
   });
