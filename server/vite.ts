@@ -148,8 +148,15 @@ export function serveStatic(app: Express) {
 
     res.sendFile(indexPath, (err) => {
       if (err) {
+        // Don't log or handle aborted requests - they're normal when client cancels
+        if (err.message === 'Request aborted' || err.code === 'ECONNABORTED') {
+          return;
+        }
         logger.error(`[serveStatic] Failed to serve index.html: ${err.message}`, { path: req.path, indexPath });
-        next(err);
+        // Don't call next if headers already sent
+        if (!res.headersSent) {
+          next(err);
+        }
       } else {
         logger.info(`[serveStatic] Successfully served index.html for: ${req.path}`);
       }
