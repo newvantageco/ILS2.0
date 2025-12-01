@@ -31,10 +31,14 @@ export * from './billing';
 // Inventory Domain - products, stock, frame characteristics
 export * from './inventory';
 
-// Future domains (uncomment as migration progresses):
-// export * from './analytics';
-// export * from './nhs';
-// export * from './communications';
+// Analytics Domain - metrics, audit logs, SaaS analytics
+export * from './analytics';
+
+// NHS Domain - UK healthcare NHS/PCSE integration
+export * from './nhs';
+
+// Communications Domain - email templates, logs, tracking
+export * from './communications';
 
 // ============================================
 // BACKWARD COMPATIBILITY
