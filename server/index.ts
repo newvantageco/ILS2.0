@@ -57,6 +57,7 @@ import LimsClient from "../packages/lims-client/src/LimsClient";
 import { initializeEventSystem } from "./events";
 import "./events/handlers/subscriptionEvents"; // Load subscription event handlers
 import { metricsHandler } from "./lib/metrics";
+import { swaggerRouter } from "./middleware/swagger";
 
 // Import Redis session store (Chunk 10)
 import RedisStore from "connect-redis";
@@ -410,6 +411,10 @@ app.get('/api/health/detailed', async (req: Request, res: Response) => {
       app.get('/metrics', metricsHandler);
       logger.info({}, '✅ Metrics endpoint enabled at /metrics');
     }
+
+    // API Documentation (Swagger/OpenAPI)
+    app.use('/api/docs', swaggerRouter);
+    logger.info({}, '✅ API documentation available at /api/docs');
 
     // Routes will be registered, then static files served at the end
     // Don't intercept root route - let it fall through to static file server
