@@ -15,6 +15,10 @@
     "build:native": "cd native && cargo build --release && cp target/release/libils_core.so ils-core/ils-core.node 2>/dev/null || cp target/release/ils_core.dll ils-core/ils-core.node 2>/dev/null || cp target/release/libils_core.dylib ils-core/ils-core.node 2>/dev/null || echo 'Native build skipped'",
     "build:native:debug": "cd native && cargo build",
     "build:native:clean": "cd native && cargo clean",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui",
     "test:native": "cd native && cargo test",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "node --max-old-space-size=4096 node_modules/typescript/lib/tsc.js",
@@ -170,6 +174,9 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.0",
+    "@vitest/ui": "^2.1.0",
+    "vitest": "^2.1.0",
     "@eslint/js": "^9.39.1",
     "@replit/vite-plugin-cartographer": "^0.3.1",
     "@replit/vite-plugin-dev-banner": "^0.1.1",
