@@ -21,7 +21,7 @@ This document summarizes the comprehensive security and architecture refactoring
 
 - Unified 7 disparate AI routes under `/api/ai/*`
 - Created deprecation middleware with proper HTTP headers (Sunset, Link, Warning)
-- Set fixed sunset date: **2025-03-01** for legacy endpoints
+- Set fixed sunset date: **2026-03-01** for legacy endpoints
 - Documented migration guide in `docs/AI_SERVICES_ANALYSIS.md`
 
 **Deprecated Routes**:
@@ -263,7 +263,7 @@ docs/
 ## Migration Notes
 
 ### Deprecated Routes
-All deprecated AI routes will be removed after **2025-03-01**. Update client code to use the new unified `/api/ai/*` endpoints.
+All deprecated AI routes will be removed after **2026-03-01**. Update client code to use the new unified `/api/ai/*` endpoints.
 
 ### Breaking Changes
 1. Repository methods now require `tenantId` in constructor

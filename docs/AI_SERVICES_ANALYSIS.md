@@ -392,13 +392,13 @@ All legacy AI routes are deprecated and will be removed after **March 1, 2025**.
 
 | Legacy Route | New Route | Sunset Date |
 |--------------|-----------|-------------|
-| `/api/master-ai/*` | `/api/ai/chat`, `/api/ai/conversations` | 2025-03-01 |
-| `/api/platform-ai/*` | `/api/ai/*` | 2025-03-01 |
-| `/api/ai-notifications/*` | `/api/ai/briefing` | 2025-03-01 |
-| `/api/ai-purchase-orders/*` | `/api/ai/actions` | 2025-03-01 |
-| `/api/demand-forecasting/*` | `/api/ai/predictions/demand` | 2025-03-01 |
-| `/api/ai-ml/*` | `/api/ai/clinical/*` | 2025-03-01 |
-| `/api/ophthalmic-ai/*` | `/api/ai/chat` | 2025-03-01 |
+| `/api/master-ai/*` | `/api/ai/chat`, `/api/ai/conversations` | 2026-03-01 |
+| `/api/platform-ai/*` | `/api/ai/*` | 2026-03-01 |
+| `/api/ai-notifications/*` | `/api/ai/briefing` | 2026-03-01 |
+| `/api/ai-purchase-orders/*` | `/api/ai/actions` | 2026-03-01 |
+| `/api/demand-forecasting/*` | `/api/ai/predictions/demand` | 2026-03-01 |
+| `/api/ai-ml/*` | `/api/ai/clinical/*` | 2026-03-01 |
+| `/api/ophthalmic-ai/*` | `/api/ai/chat` | 2026-03-01 |
 
 ### Deprecation Headers
 

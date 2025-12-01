@@ -113,13 +113,13 @@ export function deprecate(options: DeprecationOptions = {}): RequestHandler {
  * These dates are tracked for migration planning
  */
 const AI_ROUTE_SUNSET_DATES: Record<string, string> = {
-  '/api/master-ai': '2025-03-01',
-  '/api/platform-ai': '2025-03-01',
-  '/api/ai-notifications': '2025-03-01',
-  '/api/ai-purchase-orders': '2025-03-01',
-  '/api/demand-forecasting': '2025-03-01',
-  '/api/ai-ml': '2025-03-01',
-  '/api/ophthalmic-ai': '2025-03-01',
+  '/api/master-ai': '2026-03-01',
+  '/api/platform-ai': '2026-03-01',
+  '/api/ai-notifications': '2026-03-01',
+  '/api/ai-purchase-orders': '2026-03-01',
+  '/api/demand-forecasting': '2026-03-01',
+  '/api/ai-ml': '2026-03-01',
+  '/api/ophthalmic-ai': '2026-03-01',
 };
 
 /**
