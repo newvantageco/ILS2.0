@@ -81,6 +81,9 @@ test-*.cjs
 test-*.mjs
 setup-*.sh
 
+# IMPORTANT: Include docker-start.sh at root (required for production)
+!docker-start.sh
+
 # Database files
 # Note: migrations/*.sql are needed for schema setup
 db/*.db
