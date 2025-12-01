@@ -403,6 +403,42 @@ app.get('/api/health/detailed', async (req: Request, res: Response) => {
   }
 });
 
+// ============== DIAGNOSTIC ENDPOINT FOR PRODUCTION DEBUGGING ==============
+// Temporary endpoint to diagnose frontend serving issues
+app.get('/api/diagnostic/filesystem', (req: Request, res: Response) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+
+    const cwd = process.cwd();
+    const distPath = path.resolve(cwd, 'dist');
+    const publicPath = path.resolve(cwd, 'dist', 'public');
+    const indexPath = path.resolve(publicPath, 'index.html');
+
+    const diagnostics = {
+      cwd,
+      distPath,
+      publicPath,
+      indexPath,
+      distExists: fs.existsSync(distPath),
+      publicExists: fs.existsSync(publicPath),
+      indexExists: fs.existsSync(indexPath),
+      distContents: fs.existsSync(distPath) ? fs.readdirSync(distPath) : [],
+      publicContents: fs.existsSync(publicPath) ? fs.readdirSync(publicPath).slice(0, 20) : [],
+      indexSize: fs.existsSync(indexPath) ? fs.statSync(indexPath).size : 0,
+      env: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    };
+
+    res.json(diagnostics);
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Diagnostic failed',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+  }
+});
+
 (async () => {
   try {
     // Validate required environment variables
