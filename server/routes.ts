@@ -100,6 +100,10 @@ import { registerAINotificationRoutes } from "./routes/ai-notifications";
 import { registerAutonomousPORoutes } from "./routes/ai-purchase-orders";
 // AI Assistant routes are now in master-ai.ts
 import { registerDemandForecastingRoutes } from "./routes/demand-forecasting";
+
+// NEW: Unified AI routes (consolidates all AI services)
+import unifiedAIRoutes from "./routes/domains/ai";
+import { deprecateAIRoute } from "./middleware/deprecation";
 import { registerMarketplaceRoutes } from "./routes/marketplace";
 import { registerQueueRoutes } from "./routes/queue";
 import platformAdminRoutes from "./routes/platform-admin";
@@ -352,26 +356,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // =============================================================================
-  // CONSOLIDATED AI SYSTEM (1 Service Active)
+  // =============================================================================
+  // UNIFIED AI SYSTEM (NEW)
+  // =============================================================================
+  // All AI endpoints are now consolidated under /api/ai/*
+  // See docs/AI_SERVICES_ANALYSIS.md for migration guide
+
+  app.use('/api/ai', ...secureRoute(), unifiedAIRoutes);
+
+  // =============================================================================
+  // DEPRECATED AI ROUTES - Will be removed after sunset date
+  // Migrate to /api/ai/* endpoints
   // =============================================================================
 
-  // Master AI: Tenant intelligence & assistance (chat, tools, learning)
+  // Master AI: DEPRECATED - Use /api/ai/chat instead
+  // Sunset: 30 days from deployment
+  app.use('/api/master-ai', deprecateAIRoute('/api/master-ai', '/api/ai'));
   registerMasterAIRoutes(app, storage);
 
-  // Platform AI: Integrated AI layer for commands, insights, predictions, and quick actions
-  // This is the unified API for the new AI Command Center UI
-  app.use('/api/platform-ai', ...secureRoute(), platformAIRoutes);
+  // Platform AI: DEPRECATED - Use /api/ai/* instead
+  app.use('/api/platform-ai', deprecateAIRoute('/api/platform-ai', '/api/ai'), ...secureRoute(), platformAIRoutes);
 
-  // AI Notifications: Proactive insights & daily briefings
+  // AI Notifications: DEPRECATED - Use /api/ai/briefing instead
+  app.use('/api/ai-notifications', deprecateAIRoute('/api/ai-notifications', '/api/ai/briefing'));
   registerAINotificationRoutes(app);
 
   // Company-specific AI Assistant (chat, knowledge, learning)
   // registerAiAssistantRoutes(app); // Moved to master-ai
 
-  // Autonomous Purchasing: AI-generated purchase orders
+  // Autonomous Purchasing: DEPRECATED - Use /api/ai/actions instead
+  app.use('/api/ai-purchase-orders', deprecateAIRoute('/api/ai-purchase-orders', '/api/ai/actions'));
   registerAutonomousPORoutes(app);
-  
-  // Demand Forecasting: Predictive AI for inventory & staffing (Chunk 5)
+
+  // Demand Forecasting: DEPRECATED - Use /api/ai/predictions/demand instead
+  app.use('/api/demand-forecasting', deprecateAIRoute('/api/demand-forecasting', '/api/ai/predictions/demand'));
   registerDemandForecastingRoutes(app);
   
   // Company Marketplace: B2B network and connections (Chunk 6)
@@ -648,11 +666,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Payment Processing routes
   registerPaymentRoutes(app);
 
-  // AI/ML Service routes
-  app.use('/api/ai-ml', ...secureRoute(), aiMLRoutes);
+  // AI/ML Service routes - DEPRECATED, Use /api/ai/clinical/* instead
+  app.use('/api/ai-ml', deprecateAIRoute('/api/ai-ml', '/api/ai/clinical'), ...secureRoute(), aiMLRoutes);
 
-  // Ophthalmic AI routes
-  app.use('/api/ophthalmic-ai', ...secureRoute(), ophthalamicAIRoutes);
+  // Ophthalmic AI routes - DEPRECATED, Use /api/ai/chat instead
+  app.use('/api/ophthalmic-ai', deprecateAIRoute('/api/ophthalmic-ai', '/api/ai/chat'), ...secureRoute(), ophthalamicAIRoutes);
 
   // Order Tracking routes
   app.use('/api/order-tracking', orderTrackingRoutes);
