@@ -407,7 +407,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAdminRoutes(app);
   
   // Register ECP Features routes (test rooms, GOC compliance, prescription templates)
-  app.use('/api/ecp', ecpRoutes);
+  // SECURITY: Uses secureRoute() for JWT auth + tenant context (RLS enforcement)
+  app.use('/api/ecp', ...secureRoute(), ecpRoutes);
 
   // Register Onboarding routes (automated multi-tenant signup with company creation)
   app.use('/api/onboarding', signupLimiter, onboardingRoutes);
@@ -496,12 +497,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/archival', ...secureRoute(), archivalRoutes);
 
   // Register Email Tracking & Communication routes (invoices, reminders, recalls with analytics)
-  app.use('/api/emails', emailRoutes);
-  app.use('/api/scheduled-emails', scheduledEmailRoutes);
-  app.use('/api/order-emails', orderEmailRoutes);
+  // SECURITY: Uses secureRoute() for JWT auth + tenant context (RLS enforcement)
+  app.use('/api/emails', ...secureRoute(), emailRoutes);
+  app.use('/api/scheduled-emails', ...secureRoute(), scheduledEmailRoutes);
+  app.use('/api/order-emails', ...secureRoute(), orderEmailRoutes);
 
   // Register Event System routes (Chunk 9: event monitoring, webhooks, WebSocket stats)
-  app.use('/api/events', eventRoutes);
+  // SECURITY: Uses secureRoute() for JWT auth + tenant context (RLS enforcement)
+  app.use('/api/events', ...secureRoute(), eventRoutes);
 
   // Register Python Analytics routes (ML predictions, QC analysis, advanced analytics)
   app.use(pythonAnalyticsRoutes);
@@ -533,16 +536,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/query-optimizer', ...secureRoute(), queryOptimizerRoutes);
 
   // ML Models routes (machine learning model management)
-  app.use('/api/ml/models', mlModelsRoutes);
+  // SECURITY: Uses secureRoute() for JWT auth + tenant context (RLS enforcement)
+  app.use('/api/ml/models', ...secureRoute(), mlModelsRoutes);
 
   // Python ML routes (Python ML service integration and monitoring)
-  app.use('/api/python-ml', pythonMLRoutes);
+  // SECURITY: Uses secureRoute() for JWT auth + tenant context (RLS enforcement)
+  app.use('/api/python-ml', ...secureRoute(), pythonMLRoutes);
 
   // Shopify Integration routes (e-commerce platform sync)
-  app.use('/api/shopify', shopifyRoutes);
+  // SECURITY: Uses secureRoute() for JWT auth + tenant context (RLS enforcement)
+  app.use('/api/shopify', ...secureRoute(), shopifyRoutes);
 
   // Feature Flags routes (feature toggle and A/B testing)
-  app.use('/api/feature-flags', featureFlagsRoutes);
+  // SECURITY: Uses secureRoute() for JWT auth + tenant context (RLS enforcement)
+  app.use('/api/feature-flags', ...secureRoute(), featureFlagsRoutes);
 
   // Dynamic RBAC routes (role and permission management)
   // SECURITY: Uses secureRoute() for JWT auth + tenant context (RLS enforcement)
@@ -594,7 +601,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/gdpr', ...secureRoute(), gdprRoutes);
 
   // Two-Factor Authentication routes
-  app.use('/api/two-factor', twoFactorRoutes);
+  // SECURITY: Uses secureRoute() - 2FA management requires authenticated user context
+  app.use('/api/two-factor', ...secureRoute(), twoFactorRoutes);
 
   // ============================================================================
   // INTEGRATION & COMMUNICATION ROUTES - NOW CONNECTED!
@@ -654,13 +662,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/ophthalmic-ai', ...secureRoute(), ophthalamicAIRoutes);
 
   // Order Tracking routes
-  app.use('/api/order-tracking', orderTrackingRoutes);
+  // SECURITY: Uses secureRoute() for JWT auth + tenant context (RLS enforcement)
+  app.use('/api/order-tracking', ...secureRoute(), orderTrackingRoutes);
 
   // User Feedback & NPS routes
-  app.use('/api', feedbackRoutes);
+  // SECURITY: Uses secureRoute() for JWT auth + tenant context (RLS enforcement)
+  app.use('/api/feedback', ...secureRoute(), feedbackRoutes);
 
   // Notifications routes
-  app.use(notificationsRoutes);
+  // SECURITY: Uses secureRoute() for JWT auth + tenant context (RLS enforcement)
+  app.use('/api/notifications', ...secureRoute(), notificationsRoutes);
 
   const FULL_PLAN = "full" as const;
   const FREE_ECP_PLAN = "free_ecp" as const;

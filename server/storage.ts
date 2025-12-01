@@ -312,14 +312,16 @@ export interface IStorage {
   getUserWithRoles_Internal(id: string): Promise<UserWithRoles | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-  updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
-  deleteUser(id: string): Promise<boolean>;
-  getAllUsers(): Promise<User[]>;
-  getUserStats(): Promise<{ total: number; pending: number; active: number; suspended: number }>;
-  getSuppliers(): Promise<User[]>;
+  // SECURITY: Tenant-scoped user operations require companyId
+  updateUser(id: string, companyId: string, updates: Partial<User>): Promise<User | undefined>;
+  deleteUser(id: string, companyId: string): Promise<boolean>;
+  // SECURITY: Platform admin only - returns cross-tenant data
+  getAllUsers(companyId?: string): Promise<User[]>;
+  getUserStats(companyId?: string): Promise<{ total: number; pending: number; active: number; suspended: number }>;
+  getSuppliers(companyId?: string): Promise<User[]>;
   createSupplier(supplier: Partial<UpsertUser>): Promise<User>;
-  updateSupplier(id: string, updates: Partial<UpsertUser>): Promise<User | undefined>;
-  deleteSupplier(id: string): Promise<boolean>;
+  updateSupplier(id: string, companyId: string, updates: Partial<UpsertUser>): Promise<User | undefined>;
+  deleteSupplier(id: string, companyId: string): Promise<boolean>;
   getUserAvailableRoles(userId: string): Promise<string[]>;
   addUserRole(userId: string, role: string): Promise<void>;
   removeUserRole(userId: string, role: string): Promise<void>;
@@ -339,17 +341,18 @@ export interface IStorage {
     limit?: number;
     offset?: number;
   }): Promise<OrderWithDetails[]>;
-  updateOrderStatus(id: string, status: Order["status"]): Promise<Order | undefined>;
-  updateOrderWithLimsJob(id: string, limsData: {
+  // SECURITY: Tenant-scoped order operations require companyId
+  updateOrderStatus(id: string, companyId: string, status: Order["status"]): Promise<Order | undefined>;
+  updateOrderWithLimsJob(id: string, companyId: string, limsData: {
     jobId: string;
     jobStatus: string;
     sentToLabAt: Date;
     jobErrorMessage?: string | null;
   }): Promise<Order | undefined>;
-  // Generic order update helper (used by workers to set PDF URL, error messages, etc.)
-  updateOrder(id: string, updates: Partial<Order>): Promise<Order | undefined>;
-  markOrderAsShipped(id: string, trackingNumber: string): Promise<OrderWithDetails | undefined>;
-  getOrderStats(ecpId?: string): Promise<{
+  // SECURITY: Tenant-scoped order update requires companyId
+  updateOrder(id: string, companyId: string, updates: Partial<Order>): Promise<Order | undefined>;
+  markOrderAsShipped(id: string, companyId: string, trackingNumber: string): Promise<OrderWithDetails | undefined>;
+  getOrderStats(companyId: string, ecpId?: string): Promise<{
     total: number;
     pending: number;
     inProduction: number;
@@ -357,20 +360,23 @@ export interface IStorage {
   }>;
 
   createConsultLog(log: Omit<InsertConsultLog, 'ecpId'> & { ecpId: string }): Promise<ConsultLog>;
-  getConsultLogs(orderId: string): Promise<ConsultLog[]>;
-  getAllConsultLogs(ecpId?: string): Promise<ConsultLog[]>;
-  respondToConsultLog(id: string, response: string): Promise<ConsultLog | undefined>;
+  // SECURITY: Tenant-scoped consult log operations require companyId
+  getConsultLogs(orderId: string, companyId: string): Promise<ConsultLog[]>;
+  getAllConsultLogs(companyId: string, ecpId?: string): Promise<ConsultLog[]>;
+  respondToConsultLog(id: string, companyId: string, response: string): Promise<ConsultLog | undefined>;
 
   createPurchaseOrder(po: InsertPurchaseOrder & { lineItems: InsertPOLineItem[] }, createdById: string): Promise<PurchaseOrderWithDetails>;
-  getPurchaseOrder(id: string): Promise<PurchaseOrderWithDetails | undefined>;
-  getPurchaseOrderById(id: string): Promise<PurchaseOrderWithDetails | undefined>;
-  getPurchaseOrders(filters?: {
+  // SECURITY: Tenant-scoped PO operations require companyId
+  getPurchaseOrder(id: string, companyId: string): Promise<PurchaseOrderWithDetails | undefined>;
+  getPurchaseOrderById(id: string, companyId: string): Promise<PurchaseOrderWithDetails | undefined>;
+  getPurchaseOrders(companyId: string, filters?: {
     supplierId?: string;
     status?: string;
     limit?: number;
     offset?: number;
   }): Promise<PurchaseOrderWithDetails[]>;
-  updatePOStatus(id: string, status: PurchaseOrder["status"], trackingNumber?: string, actualDeliveryDate?: Date): Promise<PurchaseOrder | undefined>;
+  // SECURITY: Tenant-scoped PO status update requires companyId
+  updatePOStatus(id: string, companyId: string, status: PurchaseOrder["status"], trackingNumber?: string, actualDeliveryDate?: Date): Promise<PurchaseOrder | undefined>;
 
   createTechnicalDocument(doc: InsertTechnicalDocument, supplierId: string): Promise<TechnicalDocument>;
   getTechnicalDocuments(supplierId?: string): Promise<TechnicalDocumentWithSupplier[]>;
@@ -780,44 +786,60 @@ export class DbStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
+  // SECURITY: Tenant-scoped update requires companyId to prevent cross-tenant modifications
+  async updateUser(id: string, companyId: string, updates: Partial<User>): Promise<User | undefined> {
     const [user] = await db
       .update(users)
       .set({
         ...updates,
         updatedAt: new Date(),
       })
-      .where(eq(users.id, id))
+      .where(and(eq(users.id, id), eq(users.companyId, companyId)))
       .returning();
     return user;
   }
 
-  async getAllUsers(): Promise<User[]> {
-    const allUsers = await db
+  // SECURITY: When companyId provided, filters to tenant; otherwise returns all (platform admin only)
+  async getAllUsers(companyId?: string): Promise<User[]> {
+    const query = db
       .select()
-      .from(users)
-      .orderBy(desc(users.createdAt));
-    return allUsers;
+      .from(users);
+
+    if (companyId) {
+      return await query
+        .where(eq(users.companyId, companyId))
+        .orderBy(desc(users.createdAt));
+    }
+
+    // Platform admin: return all users across tenants
+    return await query.orderBy(desc(users.createdAt));
   }
 
-  async getUserStats(): Promise<{ total: number; pending: number; active: number; suspended: number }> {
-    const allUsers = await this.getAllUsers();
-    
+  // SECURITY: When companyId provided, filters to tenant; otherwise aggregates all (platform admin only)
+  async getUserStats(companyId?: string): Promise<{ total: number; pending: number; active: number; suspended: number }> {
+    const allUsers = await this.getAllUsers(companyId);
+
     const stats = {
       total: allUsers.length,
       pending: allUsers.filter(u => u.accountStatus === 'pending').length,
       active: allUsers.filter(u => u.accountStatus === 'active').length,
       suspended: allUsers.filter(u => u.accountStatus === 'suspended').length,
     };
-    
+
     return stats;
   }
 
-  async getSuppliers(): Promise<User[]> {
+  // SECURITY: When companyId provided, filters to tenant; otherwise returns all (platform admin only)
+  async getSuppliers(companyId?: string): Promise<User[]> {
+    const conditions = [eq(users.role, 'supplier')];
+    if (companyId) {
+      conditions.push(eq(users.companyId, companyId));
+    }
+
     const suppliers = await db
       .select()
       .from(users)
-      .where(eq(users.role, 'supplier'))
+      .where(and(...conditions))
       .orderBy(users.organizationName, users.lastName);
     return suppliers;
   }
@@ -835,38 +857,41 @@ export class DbStorage implements IStorage {
     return newSupplier;
   }
 
-  async updateSupplier(id: string, updates: Partial<UpsertUser>): Promise<User | undefined> {
+  // SECURITY: Tenant-scoped update requires companyId to prevent cross-tenant modifications
+  async updateSupplier(id: string, companyId: string, updates: Partial<UpsertUser>): Promise<User | undefined> {
     const [updatedSupplier] = await db
       .update(users)
       .set({
         ...updates,
         updatedAt: new Date(),
       })
-      .where(and(eq(users.id, id), eq(users.role, 'supplier')))
+      .where(and(eq(users.id, id), eq(users.role, 'supplier'), eq(users.companyId, companyId)))
       .returning();
     return updatedSupplier;
   }
 
-  async deleteSupplier(id: string): Promise<boolean> {
+  // SECURITY: Tenant-scoped delete requires companyId to prevent cross-tenant deletions
+  async deleteSupplier(id: string, companyId: string): Promise<boolean> {
     const result = await db
       .delete(users)
-      .where(and(eq(users.id, id), eq(users.role, 'supplier')))
+      .where(and(eq(users.id, id), eq(users.role, 'supplier'), eq(users.companyId, companyId)))
       .returning();
     return result.length > 0;
   }
 
-  async deleteUser(id: string): Promise<boolean> {
+  // SECURITY: Tenant-scoped delete requires companyId to prevent cross-tenant deletions
+  async deleteUser(id: string, companyId: string): Promise<boolean> {
     // First delete user roles
     await db
       .delete(userRoles)
       .where(eq(userRoles.userId, id));
-    
-    // Then delete the user
+
+    // Then delete the user (with companyId check for tenant isolation)
     const result = await db
       .delete(users)
-      .where(eq(users.id, id))
+      .where(and(eq(users.id, id), eq(users.companyId, companyId)))
       .returning();
-    
+
     return result.length > 0;
   }
 
@@ -1149,20 +1174,22 @@ export class DbStorage implements IStorage {
     }));
   }
 
-  async updateOrderStatus(id: string, status: Order["status"]): Promise<Order | undefined> {
+  // SECURITY: Tenant-scoped order status update requires companyId
+  async updateOrderStatus(id: string, companyId: string, status: Order["status"]): Promise<Order | undefined> {
     const [order] = await db
       .update(orders)
-      .set({ 
+      .set({
         status,
         completedAt: status === "completed" ? new Date() : undefined,
       })
-      .where(eq(orders.id, id))
+      .where(and(eq(orders.id, id), eq(orders.companyId, companyId)))
       .returning();
-    
+
     return order;
   }
 
-  async updateOrderWithLimsJob(id: string, limsData: {
+  // SECURITY: Tenant-scoped LIMS update requires companyId
+  async updateOrderWithLimsJob(id: string, companyId: string, limsData: {
     jobId: string;
     jobStatus: string;
     sentToLabAt: Date;
@@ -1177,23 +1204,25 @@ export class DbStorage implements IStorage {
         jobErrorMessage: limsData.jobErrorMessage || null,
         status: "in_production",
       })
-      .where(eq(orders.id, id))
+      .where(and(eq(orders.id, id), eq(orders.companyId, companyId)))
       .returning();
-    
+
     return order;
   }
 
-  async updateOrder(id: string, updates: Partial<Order>): Promise<Order | undefined> {
+  // SECURITY: Tenant-scoped order update requires companyId
+  async updateOrder(id: string, companyId: string, updates: Partial<Order>): Promise<Order | undefined> {
     const [order] = await db
       .update(orders)
       .set(updates)
-      .where(eq(orders.id, id))
+      .where(and(eq(orders.id, id), eq(orders.companyId, companyId)))
       .returning();
-    
+
     return order;
   }
 
-  async markOrderAsShipped(id: string, trackingNumber: string): Promise<OrderWithDetails | undefined> {
+  // SECURITY: Tenant-scoped order shipping requires companyId
+  async markOrderAsShipped(id: string, companyId: string, trackingNumber: string): Promise<OrderWithDetails | undefined> {
     const [order] = await db
       .update(orders)
       .set({
@@ -1201,21 +1230,26 @@ export class DbStorage implements IStorage {
         trackingNumber,
         shippedAt: new Date(),
       })
-      .where(eq(orders.id, id))
+      .where(and(eq(orders.id, id), eq(orders.companyId, companyId)))
       .returning();
 
-    if (!order || !order.companyId) return undefined;
+    if (!order) return undefined;
 
-    return await this.getOrder(id, order.companyId);
+    return await this.getOrder(id, companyId);
   }
 
-  async getOrderStats(ecpId?: string): Promise<{
+  // SECURITY: Tenant-scoped order stats requires companyId
+  async getOrderStats(companyId: string, ecpId?: string): Promise<{
     total: number;
     pending: number;
     inProduction: number;
     completed: number;
   }> {
-    const whereClause = ecpId ? eq(orders.ecpId, ecpId) : undefined;
+    const conditions = [eq(orders.companyId, companyId)];
+    if (ecpId) {
+      conditions.push(eq(orders.ecpId, ecpId));
+    }
+    const whereClause = and(...conditions);
 
     const [stats] = await db
       .select({
@@ -1235,37 +1269,42 @@ export class DbStorage implements IStorage {
     return log;
   }
 
-  async getConsultLogs(orderId: string): Promise<ConsultLog[]> {
+  // SECURITY: Tenant-scoped consult log query requires companyId
+  async getConsultLogs(orderId: string, companyId: string): Promise<ConsultLog[]> {
     return await db
       .select()
       .from(consultLogs)
-      .where(eq(consultLogs.orderId, orderId))
+      .where(and(eq(consultLogs.orderId, orderId), eq(consultLogs.companyId, companyId)))
       .orderBy(desc(consultLogs.createdAt));
   }
 
-  async getAllConsultLogs(ecpId?: string): Promise<ConsultLog[]> {
-    const query = db.select().from(consultLogs);
-    
+  // SECURITY: Tenant-scoped consult log query requires companyId
+  async getAllConsultLogs(companyId: string, ecpId?: string): Promise<ConsultLog[]> {
+    const conditions = [eq(consultLogs.companyId, companyId)];
+
     if (ecpId) {
-      return await query
-        .where(eq(consultLogs.ecpId, ecpId))
-        .orderBy(desc(consultLogs.createdAt));
+      conditions.push(eq(consultLogs.ecpId, ecpId));
     }
-    
-    return await query.orderBy(desc(consultLogs.createdAt));
+
+    return await db
+      .select()
+      .from(consultLogs)
+      .where(and(...conditions))
+      .orderBy(desc(consultLogs.createdAt));
   }
 
-  async respondToConsultLog(id: string, response: string): Promise<ConsultLog | undefined> {
+  // SECURITY: Tenant-scoped consult log update requires companyId
+  async respondToConsultLog(id: string, companyId: string, response: string): Promise<ConsultLog | undefined> {
     const [log] = await db
       .update(consultLogs)
-      .set({ 
+      .set({
         labResponse: response,
         status: "resolved",
         respondedAt: new Date(),
       })
-      .where(eq(consultLogs.id, id))
+      .where(and(eq(consultLogs.id, id), eq(consultLogs.companyId, companyId)))
       .returning();
-    
+
     return log;
   }
 
@@ -1310,11 +1349,12 @@ export class DbStorage implements IStorage {
     };
   }
 
-  async getPurchaseOrder(id: string): Promise<PurchaseOrderWithDetails | undefined> {
+  // SECURITY: Tenant-scoped PO query requires companyId
+  async getPurchaseOrder(id: string, companyId: string): Promise<PurchaseOrderWithDetails | undefined> {
     const [po] = await db
       .select()
       .from(purchaseOrders)
-      .where(eq(purchaseOrders.id, id));
+      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.companyId, companyId)));
 
     if (!po) return undefined;
 
@@ -1323,8 +1363,8 @@ export class DbStorage implements IStorage {
       .from(poLineItems)
       .where(eq(poLineItems.purchaseOrderId, id));
 
-    const supplier = po.companyId ? await this.getUser(po.supplierId, po.companyId) : undefined;
-    const createdBy = po.companyId ? await this.getUser(po.createdById, po.companyId) : undefined;
+    const supplier = await this.getUser(po.supplierId, companyId);
+    const createdBy = await this.getUser(po.createdById, companyId);
 
     return {
       ...po,
@@ -1345,11 +1385,13 @@ export class DbStorage implements IStorage {
     };
   }
 
-  async getPurchaseOrderById(id: string): Promise<PurchaseOrderWithDetails | undefined> {
-    return await this.getPurchaseOrder(id);
+  // SECURITY: Tenant-scoped PO query requires companyId
+  async getPurchaseOrderById(id: string, companyId: string): Promise<PurchaseOrderWithDetails | undefined> {
+    return await this.getPurchaseOrder(id, companyId);
   }
 
-  async getPurchaseOrders(filters: {
+  // SECURITY: Tenant-scoped PO list requires companyId
+  async getPurchaseOrders(companyId: string, filters: {
     supplierId?: string;
     status?: string;
     limit?: number;
@@ -1357,17 +1399,17 @@ export class DbStorage implements IStorage {
   } = {}): Promise<PurchaseOrderWithDetails[]> {
     const { supplierId, status, limit = 50, offset = 0 } = filters;
 
-    const conditions = [];
-    
+    const conditions = [eq(purchaseOrders.companyId, companyId)];
+
     if (supplierId) {
       conditions.push(eq(purchaseOrders.supplierId, supplierId));
     }
-    
+
     if (status && status !== "all") {
       conditions.push(eq(purchaseOrders.status, status as PurchaseOrder["status"]));
     }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const whereClause = and(...conditions);
 
     const pos = await db
       .select()
@@ -1385,8 +1427,8 @@ export class DbStorage implements IStorage {
         .from(poLineItems)
         .where(eq(poLineItems.purchaseOrderId, po.id));
 
-      const supplier = po.companyId ? await this.getUser(po.supplierId, po.companyId) : undefined;
-      const createdBy = po.companyId ? await this.getUser(po.createdById, po.companyId) : undefined;
+      const supplier = await this.getUser(po.supplierId, companyId);
+      const createdBy = await this.getUser(po.createdById, companyId);
 
       results.push({
         ...po,
@@ -1410,8 +1452,9 @@ export class DbStorage implements IStorage {
     return results;
   }
 
-  async updatePOStatus(id: string, status: PurchaseOrder["status"], trackingNumber?: string, actualDeliveryDate?: Date): Promise<PurchaseOrder | undefined> {
-    const updateData: any = { 
+  // SECURITY: Tenant-scoped PO status update requires companyId
+  async updatePOStatus(id: string, companyId: string, status: PurchaseOrder["status"], trackingNumber?: string, actualDeliveryDate?: Date): Promise<PurchaseOrder | undefined> {
+    const updateData: any = {
       status,
       updatedAt: new Date(),
     };
@@ -1427,9 +1470,9 @@ export class DbStorage implements IStorage {
     const [po] = await db
       .update(purchaseOrders)
       .set(updateData)
-      .where(eq(purchaseOrders.id, id))
+      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.companyId, companyId)))
       .returning();
-    
+
     return po;
   }
 
