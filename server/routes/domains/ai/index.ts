@@ -9,6 +9,7 @@
  * - /api/ai/actions - Execute autonomous actions
  * - /api/ai/quick-actions - Get suggested actions
  * - /api/ai/feedback - Submit feedback on AI responses
+ * - /api/ai/clinical/* - Clinical decision support, ML, NLP & imaging
  *
  * SECURITY:
  * - All routes require authentication via secureRoute()
@@ -24,6 +25,9 @@ import { aiQueryLimiter } from '../../../middleware/rateLimiter';
 import { createLogger } from '../../../utils/logger';
 import { asyncHandler } from '../../../middleware/errorHandler';
 import { attachRepositories, AIRepository } from '../../../repositories';
+
+// Import clinical AI routes for sub-mounting
+import clinicalAIRoutes from '../../ai-ml';
 
 const router = Router();
 const logger = createLogger('AIRoutes');
@@ -350,6 +354,23 @@ router.post(
     });
   })
 );
+
+// ============================================
+// CLINICAL AI SUB-ROUTES
+// ============================================
+
+/**
+ * Mount clinical AI routes under /api/ai/clinical
+ *
+ * This provides access to:
+ * - Drug interactions & clinical decision support
+ * - Clinical guidelines & treatment recommendations
+ * - Diagnostic suggestions & lab interpretation
+ * - Predictive analytics (risk stratification, predictions)
+ * - NLP & image analysis
+ * - ML model management
+ */
+router.use('/clinical', ...secureRoute(), clinicalAIRoutes);
 
 // ============================================
 // EXPORT

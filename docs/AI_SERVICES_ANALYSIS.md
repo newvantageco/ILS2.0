@@ -384,4 +384,170 @@ Given the codebase uses `@anthropic-ai/sdk`, recommend:
 
 ---
 
+## 9. Migration Guide
+
+### Sunset Schedule
+
+All legacy AI routes are deprecated and will be removed after **March 1, 2025**.
+
+| Legacy Route | New Route | Sunset Date |
+|--------------|-----------|-------------|
+| `/api/master-ai/*` | `/api/ai/chat`, `/api/ai/conversations` | 2025-03-01 |
+| `/api/platform-ai/*` | `/api/ai/*` | 2025-03-01 |
+| `/api/ai-notifications/*` | `/api/ai/briefing` | 2025-03-01 |
+| `/api/ai-purchase-orders/*` | `/api/ai/actions` | 2025-03-01 |
+| `/api/demand-forecasting/*` | `/api/ai/predictions/demand` | 2025-03-01 |
+| `/api/ai-ml/*` | `/api/ai/clinical/*` | 2025-03-01 |
+| `/api/ophthalmic-ai/*` | `/api/ai/chat` | 2025-03-01 |
+
+### Deprecation Headers
+
+Legacy routes return these HTTP headers:
+- `Deprecation: true`
+- `Sunset: <ISO date>`
+- `Link: <new-route>; rel="successor-version"`
+- `Warning: 299 - "This AI endpoint is deprecated..."`
+
+### Migration Steps
+
+#### Step 1: Chat & Conversations
+
+**Before (master-ai):**
+```typescript
+// POST /api/master-ai/chat
+fetch('/api/master-ai/chat', {
+  method: 'POST',
+  body: JSON.stringify({ query: 'What are progressive lenses?' })
+});
+
+// GET /api/master-ai/conversations
+fetch('/api/master-ai/conversations');
+```
+
+**After (unified):**
+```typescript
+// POST /api/ai/chat
+fetch('/api/ai/chat', {
+  method: 'POST',
+  body: JSON.stringify({ message: 'What are progressive lenses?' })
+});
+
+// GET /api/ai/conversations
+fetch('/api/ai/conversations');
+```
+
+#### Step 2: Insights & Briefing
+
+**Before (ai-notifications):**
+```typescript
+// GET /api/ai-notifications
+fetch('/api/ai-notifications');
+```
+
+**After (unified):**
+```typescript
+// GET /api/ai/briefing
+fetch('/api/ai/briefing');
+```
+
+#### Step 3: Autonomous Actions
+
+**Before (ai-purchase-orders):**
+```typescript
+// GET /api/ai-purchase-orders
+fetch('/api/ai-purchase-orders');
+
+// POST /api/ai-purchase-orders/:id/approve
+fetch('/api/ai-purchase-orders/po-123/approve', { method: 'POST' });
+```
+
+**After (unified):**
+```typescript
+// POST /api/ai/actions
+fetch('/api/ai/actions', {
+  method: 'POST',
+  body: JSON.stringify({
+    type: 'create_purchase_order',
+    params: { ... }
+  })
+});
+```
+
+#### Step 4: Predictions
+
+**Before (demand-forecasting):**
+```typescript
+// POST /api/demand-forecasting/generate
+fetch('/api/demand-forecasting/generate', {
+  method: 'POST',
+  body: JSON.stringify({ productIds: [...] })
+});
+```
+
+**After (unified):**
+```typescript
+// GET /api/ai/predictions/demand
+fetch('/api/ai/predictions/demand');
+```
+
+#### Step 5: Clinical Decision Support
+
+**Before (ai-ml):**
+```typescript
+// GET /api/ai-ml/drugs?query=aspirin
+fetch('/api/ai-ml/drugs?query=aspirin');
+
+// POST /api/ai-ml/drugs/interactions
+fetch('/api/ai-ml/drugs/interactions', {
+  method: 'POST',
+  body: JSON.stringify({ drugIds: ['drug-1', 'drug-2'] })
+});
+```
+
+**After (unified):**
+```typescript
+// GET /api/ai/clinical/drugs?query=aspirin
+fetch('/api/ai/clinical/drugs?query=aspirin');
+
+// POST /api/ai/clinical/drugs/interactions
+fetch('/api/ai/clinical/drugs/interactions', {
+  method: 'POST',
+  body: JSON.stringify({ drugIds: ['drug-1', 'drug-2'] })
+});
+```
+
+### Response Format Changes
+
+The unified API uses a consistent response format:
+
+```typescript
+// Success response
+{
+  success: true,
+  data: { ... }
+}
+
+// Error response
+{
+  success: false,
+  error: "Error message",
+  details?: [...]
+}
+```
+
+### Rate Limiting
+
+All `/api/ai/*` routes are subject to rate limiting via `aiQueryLimiter`:
+- Default: 60 requests per minute per user
+- Burst: 10 requests per second
+
+### Authentication
+
+All `/api/ai/*` routes require authentication via the `secureRoute()` middleware chain:
+- Valid JWT token required
+- Tenant context automatically set
+- User context enriched after authentication
+
+---
+
 *This analysis provides the foundation for AI service consolidation in Phase 2.*

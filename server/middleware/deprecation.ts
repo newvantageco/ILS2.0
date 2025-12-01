@@ -109,19 +109,51 @@ export function deprecate(options: DeprecationOptions = {}): RequestHandler {
 }
 
 /**
+ * Fixed sunset dates for deprecated AI routes
+ * These dates are tracked for migration planning
+ */
+const AI_ROUTE_SUNSET_DATES: Record<string, string> = {
+  '/api/master-ai': '2025-03-01',
+  '/api/platform-ai': '2025-03-01',
+  '/api/ai-notifications': '2025-03-01',
+  '/api/ai-purchase-orders': '2025-03-01',
+  '/api/demand-forecasting': '2025-03-01',
+  '/api/ai-ml': '2025-03-01',
+  '/api/ophthalmic-ai': '2025-03-01',
+};
+
+/**
  * Create deprecation middleware for AI routes specifically
- * Uses standard 30-day sunset and logs to AI deprecation metrics
+ * Uses fixed sunset dates for migration tracking
  */
 export function deprecateAIRoute(
   oldPath: string,
   newPath: string
 ): RequestHandler {
-  return deprecate({
-    sunsetDays: 30,
-    replacement: newPath,
-    logUsage: true,
-    message: `This AI endpoint is deprecated. Please migrate to ${newPath}. Sunset date: ${getSunsetDate(30)}`,
-  });
+  const sunsetDate = AI_ROUTE_SUNSET_DATES[oldPath] || getSunsetDate(90);
+
+  return (req: Request, res: Response, next: NextFunction) => {
+    // Set deprecation headers with fixed sunset date
+    res.setHeader('Deprecation', 'true');
+    res.setHeader('Sunset', new Date(sunsetDate).toISOString());
+    res.setHeader('Link', `<${newPath}>; rel="successor-version"`);
+    res.setHeader('Warning', `299 - "This AI endpoint is deprecated. Please migrate to ${newPath}. Sunset: ${sunsetDate}"`);
+
+    // Log usage for migration tracking
+    logger.warn({
+      deprecated: true,
+      path: req.path,
+      fullPath: oldPath + req.path,
+      method: req.method,
+      replacement: newPath,
+      sunsetDate,
+      userId: (req as any).user?.id,
+      companyId: (req as any).user?.companyId || (req as any).tenantId,
+      userAgent: req.headers['user-agent'],
+    }, `Deprecated AI endpoint accessed: ${req.method} ${oldPath}${req.path} → ${newPath}`);
+
+    next();
+  };
 }
 
 /**
