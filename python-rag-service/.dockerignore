@@ -34,7 +34,8 @@ README.md
 
 # Models cache (will be downloaded at runtime)
 .cache/
-models/
+# Note: models/ directory contains Python code (schemas.py), not ML models
+# ML models are downloaded at runtime to .cache/
 
 # Logs
 *.log
