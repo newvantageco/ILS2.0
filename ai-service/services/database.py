@@ -167,7 +167,8 @@ class AIMessage(Base):
 
     usedExternalAi = Column(Boolean, default=True)
     confidence = Column(Integer, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    # Use 'message_metadata' in Python, but 'metadata' in database (SQLAlchemy reserves 'metadata')
+    message_metadata = Column('metadata', JSON, nullable=True)
 
     createdAt = Column(TIMESTAMP, default=datetime.utcnow)
 
