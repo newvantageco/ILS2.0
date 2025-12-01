@@ -6,36 +6,18 @@
  * - Sets app.current_tenant session variable for Row-Level Security (RLS)
  * - Sets app.current_user_role for platform admin bypass
  * - Ensures all database queries are scoped to the user's company at the database level
+ *
+ * Type declarations are centralized in server/types/express.d.ts
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../db';
 import { users, companies } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
-import { createLogger, type Logger } from '../utils/logger';
+import { createLogger } from '../utils/logger';
 
-// Extend Express Request to include tenant context
-declare global {
-  namespace Express {
-    interface Request {
-      tenantId?: string;
-      companyData?: any;
-      tenantContext?: TenantContext;
-    }
-  }
-}
-
-/**
- * Tenant context interface for AI and multi-tenant operations
- */
-export interface TenantContext {
-  tenantId: string;
-  tenantCode?: string;
-  subscriptionTier?: string;
-  aiQueriesLimit?: number;
-  aiQueriesUsed?: number;
-  features?: Record<string, boolean>;
-}
+// Re-export TenantContext from centralized types for convenience
+export type { TenantContext, Repositories } from '../types/express.d';
 
 /**
  * Middleware to set tenant context from authenticated user
@@ -87,9 +69,13 @@ export const setTenantContext = async (
     }
 
     // Set tenant context on request
-    req.tenantId = user.companyId || undefined;
+    // tenantId is required - use 'platform_admin' for platform admins without company
+    req.tenantId = user.companyId || (isPlatformAdmin ? 'platform_admin' : '');
     req.user.companyId = user.companyId || undefined;
     req.user.role = user.role;
+
+    // Initialize repos placeholder (will be populated by repository middleware)
+    req.repos = req.repos || {};
 
     // ============================================
     // LAYER 2: SET POSTGRESQL SESSION VARIABLES
