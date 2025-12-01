@@ -14,6 +14,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { storage } from '../storage';
+import { authRepository } from "../repositories/AuthRepository";
 import { db } from '../../db';
 import { companies, users } from '../../shared/schema';
 import { eq, and, ilike, sql } from 'drizzle-orm';
@@ -377,7 +378,7 @@ router.post('/complete', async (req: Request, res: Response) => {
     const { userId, companyId, companyName, companyType } = validation.data;
 
     // Get user
-    const user = await storage.getUserById_Internal(userId);
+    const user = await authRepository.getUserByIdWithTenantCheck(userId, { id: req.user.id, companyId: req.user.companyId || null, role: req.user.role }, { reason: "Route operation", ip: req.ip });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }

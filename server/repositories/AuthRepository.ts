@@ -307,6 +307,134 @@ export class AuthRepository {
 
     return user;
   }
+
+  /**
+   * Get user by ID with tenant isolation
+   *
+   * SECURITY: Validates that requesting user is in same tenant as target user.
+   * Platform admins can access any user with audit logging.
+   *
+   * USE CASE: Routes/controllers that need to fetch user data with tenant validation.
+   * REPLACES: storage.getUserById_Internal()
+   *
+   * @param targetUserId - The user ID to fetch
+   * @param requestingUser - The authenticated user making the request
+   * @param options - Optional settings
+   */
+  async getUserByIdWithTenantCheck(
+    targetUserId: string,
+    requestingUser: { id: string; companyId: string | null; role: string },
+    options?: { reason?: string; ip?: string }
+  ): Promise<User | undefined> {
+    // Fetch target user
+    const [targetUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, targetUserId));
+
+    if (!targetUser) {
+      await auditAuthAccess({
+        action: 'GET_USER_BY_ID_NOT_FOUND',
+        targetUserId,
+        requestingUserId: requestingUser.id,
+        requestingIp: options?.ip,
+        reason: options?.reason || 'User lookup with tenant check',
+        timestamp: new Date(),
+        success: false,
+      });
+      return undefined;
+    }
+
+    // Check if same tenant or platform admin
+    const isSameTenant = targetUser.companyId === requestingUser.companyId;
+    const isPlatformAdmin = requestingUser.role === 'platform_admin';
+
+    if (!isSameTenant && !isPlatformAdmin) {
+      // SECURITY VIOLATION: Cross-tenant access attempt
+      await auditAuthAccess({
+        action: 'CROSS_TENANT_ACCESS_DENIED',
+        targetUserId,
+        requestingUserId: requestingUser.id,
+        requestingIp: options?.ip,
+        reason: options?.reason || 'Unauthorized cross-tenant access attempt',
+        timestamp: new Date(),
+        success: false,
+        metadata: {
+          targetTenantId: targetUser.companyId,
+          requestingTenantId: requestingUser.companyId,
+          severity: 'HIGH',
+        },
+      });
+      throw new Error('Unauthorized: Cannot access users from different tenant');
+    }
+
+    // Log successful access
+    const action = isPlatformAdmin && !isSameTenant
+      ? 'PLATFORM_ADMIN_CROSS_TENANT_ACCESS'
+      : 'GET_USER_BY_ID_SUCCESS';
+
+    await auditAuthAccess({
+      action,
+      targetUserId,
+      requestingUserId: requestingUser.id,
+      requestingIp: options?.ip,
+      reason: options?.reason || 'User lookup with tenant check',
+      timestamp: new Date(),
+      success: true,
+      metadata: {
+        targetTenantId: targetUser.companyId,
+        requestingTenantId: requestingUser.companyId,
+        isPlatformAdmin,
+        isSameTenant,
+      },
+    });
+
+    return targetUser;
+  }
+
+  /**
+   * Get user with roles with tenant isolation
+   *
+   * SECURITY: Validates that requesting user is in same tenant as target user.
+   * Platform admins can access any user with audit logging.
+   *
+   * USE CASE: Routes/controllers that need user data with roles.
+   * REPLACES: storage.getUserWithRoles_Internal()
+   *
+   * @param targetUserId - The user ID to fetch
+   * @param requestingUser - The authenticated user making the request
+   * @param options - Optional settings
+   */
+  async getUserWithRolesWithTenantCheck(
+    targetUserId: string,
+    requestingUser: { id: string; companyId: string | null; role: string },
+    options?: { reason?: string; ip?: string }
+  ): Promise<UserWithRoles | undefined> {
+    // Use getUserByIdWithTenantCheck for validation
+    const user = await this.getUserByIdWithTenantCheck(
+      targetUserId,
+      requestingUser,
+      { ...options, reason: options?.reason || 'User with roles lookup' }
+    );
+
+    if (!user) return undefined;
+
+    // Get all available roles for this user
+    const roles = await db
+      .select()
+      .from(userRoles)
+      .where(eq(userRoles.userId, targetUserId));
+
+    const roleSet = new Set(roles.map(r => r.role));
+    if (user.role) {
+      roleSet.add(user.role);
+    }
+
+    return {
+      ...user,
+      availableRoles: Array.from(roleSet),
+    };
+  }
 }
 
 // Export singleton instance

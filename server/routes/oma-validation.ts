@@ -5,9 +5,12 @@
  * managing validation queue, and retrieving validation statistics
  */
 
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import { OMAValidationService } from "../services/OMAValidationService";
 import { storage } from "../storage";
+import { authRepository } from "../repositories/AuthRepository";
+import { isAuthenticated } from "../replitAuth";
+import type { AuthenticatedRequest } from "../middleware/auth";
 import { createLogger } from "../utils/logger";
 
 const router = Router();
@@ -17,13 +20,20 @@ const omaValidationService = new OMAValidationService();
 /**
  * POST /api/oma-validation/validate/:orderId
  * Validate a specific order
+ *
+ * Security: Requires authentication and tenant isolation (P0-2 fix)
  */
-router.post("/validate/:orderId", async (req, res) => {
+router.post("/validate/:orderId", isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { orderId } = req.params;
+    const user = req.user!;
 
-    // Validate order exists
-    const order = await storage.getOrderById_Internal(orderId);
+    if (!user.companyId) {
+      return res.status(403).json({ error: "Tenant context required" });
+    }
+
+    // Security: Use tenant-safe method instead of _Internal (P0-2 fix)
+    const order = await storage.getOrder(orderId, user.companyId);
     if (!order) {
       return res.status(404).json({
         error: "Order not found",
@@ -31,8 +41,8 @@ router.post("/validate/:orderId", async (req, res) => {
       });
     }
 
-    // Perform validation
-    const result = await omaValidationService.validateOrder(orderId);
+    // Perform validation with tenant context
+    const result = await omaValidationService.validateOrder(orderId, user.companyId);
 
     res.json({
       success: true,

@@ -3,6 +3,7 @@ import { isAuthenticated } from "../replitAuth";
 import { requireOwner, requirePermission } from "../middleware/permissions";
 import { PermissionService } from "../services/PermissionService";
 import { storage } from "../storage";
+import { authRepository } from "../repositories/AuthRepository";
 import { z } from "zod";
 import { createLogger } from "../utils/logger";
 
@@ -88,7 +89,7 @@ export function registerPermissionRoutes(app: Express) {
     try {
       const { companyId, role } = req.params;
       const currentUserId = req.user?.id || req.user?.claims?.sub;
-      const currentUser = await storage.getUserById_Internal(currentUserId);
+      const currentUser = await authRepository.getUserByIdWithTenantCheck(currentUserId, { id: req.user.id, companyId: req.user.companyId || null, role: req.user.role }, { reason: "Route operation", ip: req.ip });
 
       // Verify user belongs to the company
       if (currentUser?.companyId !== companyId) {
@@ -126,7 +127,7 @@ export function registerPermissionRoutes(app: Express) {
     try {
       const { companyId } = req.params;
       const currentUserId = req.user?.id || req.user?.claims?.sub;
-      const currentUser = await storage.getUserById_Internal(currentUserId);
+      const currentUser = await authRepository.getUserByIdWithTenantCheck(currentUserId, { id: req.user.id, companyId: req.user.companyId || null, role: req.user.role }, { reason: "Route operation", ip: req.ip });
 
       // Verify user belongs to the company
       if (currentUser?.companyId !== companyId) {

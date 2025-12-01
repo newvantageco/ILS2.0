@@ -13,6 +13,11 @@ export function registerOrderCreatedLimsWorker(limsClient: LimsClientInterface, 
       logger.info("Received order.submitted", { orderId, ecpId });
 
       // Idempotency: check if order already has a jobId
+      // NOTE: Using _Internal here is acceptable because:
+      // 1. This is a background worker processing internal events (not user request)
+      // 2. Event triggered by legitimate order creation
+      // 3. Worker operates on behalf of the system, not a specific user
+      // 4. Order was already validated during creation
       const order = await storage.getOrderById_Internal(orderId);
       if (!order) {
         logger.warn("Order not found for LIMS worker", { orderId });

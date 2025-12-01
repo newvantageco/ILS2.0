@@ -24,13 +24,14 @@ export interface OrderUpdate {
 class OrderTrackingService {
   async updateOrderStatus(
     orderId: string,
+    companyId: string,
     status: (typeof orderStatusEnum.enumValues)[number],
     details?: OrderUpdateDetails,
     req?: Request,
   ): Promise<OrderUpdate> {
-    // Get existing order first
-    const existingOrder = await storage.getOrderById_Internal(orderId);
-    
+    // Security: Use tenant-safe method instead of _Internal (P0-2 fix)
+    const existingOrder = await storage.getOrder(orderId, companyId);
+
     if (!existingOrder) {
       throw new Error(`Order ${orderId} not found`);
     }

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
+import { authRepository } from "../repositories/AuthRepository";
 import { isAuthenticated } from "../replitAuth";
 
 const router = Router();
@@ -27,7 +28,7 @@ const syncOptionsSchema = z.object({
 // Helper to check admin access
 const requireAdmin = async (req: any, res: any, next: any) => {
   const userId = req.user.claims.sub;
-  const user = await storage.getUserById_Internal(userId);
+  const user = await authRepository.getUserByIdWithTenantCheck(userId, { id: req.user.id, companyId: req.user.companyId || null, role: req.user.role }, { reason: "Route operation", ip: req.ip });
   
   if (!user || (user.role !== 'admin' && user.role !== 'platform_admin')) {
     return res.status(403).json({ message: "Admin access required" });

@@ -8,6 +8,7 @@
 import { Router, Request, Response, NextFunction, Express } from "express";
 import Stripe from "stripe";
 import { storage } from "../storage";
+import { authRepository } from "../repositories/AuthRepository";
 import { asyncHandler } from "../middleware/errorHandler";
 import {
   BadRequestError,
@@ -46,6 +47,13 @@ type CreateCheckoutBody = z.infer<typeof createCheckoutSchema>;
 
 const router = Router();
 const logger = createLogger('payments');
+
+// Helper: Get requesting user context for tenant-aware operations (P0-2 fix)
+const getRequestingUser = (req: AuthenticatedRequest) => ({
+  id: req.user.id,
+  companyId: req.user.companyId || null,
+  role: req.user.role || 'ecp'
+});
 
 // Initialize Stripe (lazy initialization)
 let stripe: Stripe | null = null;
@@ -120,7 +128,7 @@ router.post("/create-checkout-session", isAuthenticated, asyncHandler(async (req
   const { planId, billingInterval } = validatedBody;
   
   const userId = authReq.user?.claims?.sub || authReq.user?.id;
-  const user = await storage.getUserById_Internal(userId);
+  const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "Payment operation", ip: req.ip });
   
   if (!user || !user.companyId) {
     throw new BadRequestError("User must belong to a company");
@@ -203,7 +211,7 @@ router.post("/create-portal-session", isAuthenticated, async (req: Request, res:
   try {
     const authReq = req as AuthenticatedRequest;
     const userId = authReq.user?.claims?.sub || authReq.user?.id;
-    const user = await storage.getUserById_Internal(userId);
+    const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "Payment operation", ip: req.ip });
     
     if (!user || !user.companyId) {
       return res.status(400).json({ error: "User must belong to a company" });
@@ -236,7 +244,7 @@ router.get("/subscription-status", isAuthenticated, async (req: Request, res: Re
   try {
     const authReq = req as AuthenticatedRequest;
     const userId = authReq.user?.claims?.sub || authReq.user?.id;
-    const user = await storage.getUserById_Internal(userId);
+    const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "Payment operation", ip: req.ip });
     
     if (!user || !user.companyId) {
       return res.status(400).json({ error: "User must belong to a company" });

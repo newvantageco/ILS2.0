@@ -10,6 +10,7 @@ import type { AuthenticatedRequest } from "../middleware/auth";
 import { BaseController, ExtendedAuthenticatedRequest } from "./base.controller";
 import { OrderService } from "../services/order.service";
 import { storage } from "../storage";
+import { authRepository } from "../repositories/AuthRepository";
 import { 
   insertOrderSchema, 
   updateOrderStatusSchema,
@@ -26,12 +27,23 @@ export class OrderController extends BaseController {
   }
 
   /**
+   * Helper: Get requesting user context for tenant-aware operations (P0-2 fix)
+   */
+  private getRequestingUser(req: ExtendedAuthenticatedRequest) {
+    return {
+      id: req.user!.id,
+      companyId: req.user!.companyId || null,
+      role: req.user!.role
+    };
+  }
+
+  /**
    * GET /api/orders
    * Get all orders for the authenticated user
    */
   getOrders = this.asyncHandler(async (req: ExtendedAuthenticatedRequest, res: Response) => {
     const { userId } = this.getAuthenticatedUser(req);
-    const user = await storage.getUserById_Internal(userId);
+    const user = await authRepository.getUserByIdWithTenantCheck(userId, this.getRequestingUser(req), { reason: "Order operation", ip: req.ip });
 
     if (!user || !user.companyId) {
       return this.error(res, "User not found or not associated with a company", 404);
@@ -89,7 +101,7 @@ export class OrderController extends BaseController {
    */
   getOrderById = this.asyncHandler(async (req: ExtendedAuthenticatedRequest, res: Response) => {
     const { userId } = this.getAuthenticatedUser(req);
-    const user = await storage.getUserById_Internal(userId);
+    const user = await authRepository.getUserByIdWithTenantCheck(userId, this.getRequestingUser(req), { reason: "Order operation", ip: req.ip });
 
     if (!user || !user.companyId) {
       return this.error(res, "User not found or not associated with a company", 404);
@@ -113,7 +125,7 @@ export class OrderController extends BaseController {
    */
   createOrder = this.asyncHandler(async (req: ExtendedAuthenticatedRequest, res: Response) => {
     const { userId } = this.getAuthenticatedUser(req);
-    const user = await storage.getUserById_Internal(userId);
+    const user = await authRepository.getUserByIdWithTenantCheck(userId, this.getRequestingUser(req), { reason: "Order operation", ip: req.ip });
 
     if (!user || !user.companyId) {
       return this.error(res, "User not found or not associated with a company", 404);
@@ -147,7 +159,7 @@ export class OrderController extends BaseController {
    */
   updateOrderStatus = this.asyncHandler(async (req: ExtendedAuthenticatedRequest, res: Response) => {
     const { userId } = this.getAuthenticatedUser(req);
-    const user = await storage.getUserById_Internal(userId);
+    const user = await authRepository.getUserByIdWithTenantCheck(userId, this.getRequestingUser(req), { reason: "Order operation", ip: req.ip });
 
     if (!user || !user.companyId) {
       return this.error(res, "User not found or not associated with a company", 404);
@@ -191,7 +203,7 @@ export class OrderController extends BaseController {
    */
   deleteOrder = this.asyncHandler(async (req: ExtendedAuthenticatedRequest, res: Response) => {
     const { userId } = this.getAuthenticatedUser(req);
-    const user = await storage.getUserById_Internal(userId);
+    const user = await authRepository.getUserByIdWithTenantCheck(userId, this.getRequestingUser(req), { reason: "Order operation", ip: req.ip });
 
     if (!user || !user.companyId) {
       return this.error(res, "User not found or not associated with a company", 404);
@@ -220,7 +232,7 @@ export class OrderController extends BaseController {
    */
   getOrderStats = this.asyncHandler(async (req: ExtendedAuthenticatedRequest, res: Response) => {
     const { userId } = this.getAuthenticatedUser(req);
-    const user = await storage.getUserById_Internal(userId);
+    const user = await authRepository.getUserByIdWithTenantCheck(userId, this.getRequestingUser(req), { reason: "Order operation", ip: req.ip });
 
     if (!user || !user.companyId) {
       return this.error(res, "User not found or not associated with a company", 404);

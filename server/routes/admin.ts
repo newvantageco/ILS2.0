@@ -7,6 +7,7 @@
 
 import { Router, Request, Response } from "express";
 import { storage } from "../storage";
+import { authRepository } from "../repositories/AuthRepository";
 import { z } from "zod";
 import type { User } from "@shared/schema";
 import { createLogger } from "../utils/logger";
@@ -309,7 +310,7 @@ router.put("/users/:userId/subscription", isPlatformAdmin, async (req: any, res:
       return res.status(400).json({ error: "Invalid subscription plan. Must be 'free_ecp' or 'full'" });
     }
 
-    const user = await storage.getUserById_Internal(userId);
+    const user = await authRepository.getUserByIdWithTenantCheck(userId, getRequestingUser(req), { reason: "User operation", ip: req.ip });
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -696,5 +697,7 @@ router.post("/broadcast/health", isPlatformAdmin, async (req: Request, res: Resp
 });
 
 export function registerAdminRoutes(app: any) {
+  const getRequestingUser = (req: any) => ({ id: req.user?.id || req.user?.claims?.sub, companyId: req.user?.companyId || null, role: req.user?.role || "ecp" });
+
   app.use("/api/admin", router);
 }
