@@ -201,9 +201,59 @@ export function toApiError(error: any): ApiError {
 
   // Default to internal server error
   return new InternalServerError(
-    process.env.NODE_ENV === 'production' 
-      ? 'An unexpected error occurred' 
+    process.env.NODE_ENV === 'production'
+      ? 'An unexpected error occurred'
       : error.message,
     process.env.NODE_ENV !== 'production' ? { stack: error.stack } : undefined
   );
 }
+
+// ============================================
+// DOMAIN-SPECIFIC ERROR RE-EXPORTS
+// ============================================
+
+export {
+  ErrorCodes,
+  // Patient errors
+  PatientNotFoundError,
+  PatientDuplicateError,
+  PatientNHSNumberInvalidError,
+  PatientConsentRequiredError,
+  PatientGDPRDeletionError,
+  // Clinical errors
+  ExaminationNotFoundError,
+  PrescriptionExpiredError,
+  PrescriptionInvalidError,
+  ReferralRequiredError,
+  // Inventory errors
+  ProductNotFoundError,
+  ProductOutOfStockError,
+  InsufficientStockError,
+  ProductDiscontinuedError,
+  InventoryLockedError,
+  DuplicateBarcodeError,
+  // Order errors
+  OrderNotFoundError,
+  OrderCannotModifyError,
+  OrderCannotCancelError,
+  OrderDispensingError,
+  // Billing errors
+  InvoiceNotFoundError,
+  InvoiceAlreadyPaidError,
+  InvoiceVoidedError,
+  PaymentAmountInvalidError,
+  RefundExceedsPaidError,
+  // NHS errors
+  NHSNumberInvalidError,
+  NHSClaimInvalidError,
+  NHSVoucherExpiredError,
+  NHSExemptionInvalidError,
+  NHSPractitionerNotFoundError,
+  NHSPCSESubmissionError,
+  // Tenant isolation errors
+  CrossTenantAccessError,
+  TenantContextMissingError,
+  TenantMismatchError,
+  TenantQuotaExceededError,
+  TenantFeatureDisabledError,
+} from './DomainErrors';
