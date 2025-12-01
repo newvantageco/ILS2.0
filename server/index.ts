@@ -60,6 +60,7 @@ import { metricsHandler } from "./lib/metrics";
 import { swaggerRouter } from "./middleware/swagger";
 import { globalCacheControl } from "./middleware/cacheControl";
 import { metricsMiddleware, performHealthCheck } from "./lib/application-metrics";
+import { tracingMiddleware } from "./middleware/tracing";
 
 // Import Redis session store (Chunk 10)
 import RedisStore from "connect-redis";
@@ -343,6 +344,14 @@ app.use('/api', globalCacheControl());
 // Collect HTTP request metrics (latency, status codes, error rates)
 if (process.env.METRICS_ENABLED === 'true') {
   app.use(metricsMiddleware());
+}
+
+// ============== DISTRIBUTED TRACING ==============
+// Create trace spans for request flows with W3C Trace Context propagation
+// Enable with TRACING_ENABLED=true or OTEL_ENABLED=true
+if (process.env.TRACING_ENABLED === 'true' || process.env.OTEL_ENABLED === 'true') {
+  app.use(tracingMiddleware());
+  logger.info({}, '✅ Distributed tracing enabled');
 }
 
 // ============== REQUEST TIMEOUT (DDoS Protection) ==============
