@@ -355,8 +355,16 @@ if (process.env.TRACING_ENABLED === 'true' || process.env.OTEL_ENABLED === 'true
 }
 
 // ============== REQUEST TIMEOUT (DDoS Protection) ==============
-// Set timeout for all requests (30 seconds default)
-app.use(requestTimeout(30000));
+// Set timeout for all requests (10 seconds default, except for specific slow operations)
+// This prevents requests from hanging indefinitely
+app.use((req, res, next) => {
+  // Allow longer timeout for specific heavy operations
+  if (req.path.includes('/api/reports') || req.path.includes('/api/analytics')) {
+    return requestTimeout(30000)(req, res, next);
+  }
+  // Default fast timeout for normal operations
+  return requestTimeout(10000)(req, res, next);
+});
 
 // ============== DETAILED HEALTH CHECK ENDPOINT ==============
 // This provides more detailed health information for monitoring
