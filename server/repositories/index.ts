@@ -33,12 +33,16 @@ export { UserRepository, type UserWithRoles, type UserPreferences } from './User
 export { AIRepository, type ConversationWithMessages, type KnowledgeSearchResult, type LearningEntry } from './AIRepository';
 export { AuthRepository } from './AuthRepository';
 export { WorkerRepository } from './WorkerRepository';
+export { InvoiceRepository, type InvoiceWithLineItems, type InvoiceWithPayments, type InvoiceSearchOptions, type InvoiceStats } from './InvoiceRepository';
+export { ProductRepository, type ProductWithVariants, type ProductSearchOptions, type InventoryAdjustment, type ProductStats } from './ProductRepository';
 
 // Import classes for factory
 import { OrderRepository } from './OrderRepository';
 import { PatientRepository } from './PatientRepository';
 import { UserRepository } from './UserRepository';
 import { AIRepository } from './AIRepository';
+import { InvoiceRepository } from './InvoiceRepository';
+import { ProductRepository } from './ProductRepository';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('RepositoryFactory');
@@ -56,6 +60,8 @@ export interface TypedRepositories extends Repositories {
   patients: PatientRepository;
   users: UserRepository;
   ai: AIRepository;
+  invoices: InvoiceRepository;
+  products: ProductRepository;
 }
 
 // ============================================
@@ -84,6 +90,8 @@ export function createRepositories(tenantId: string): TypedRepositories {
     patients: new PatientRepository(tenantId),
     users: new UserRepository(tenantId),
     ai: new AIRepository(tenantId),
+    invoices: new InvoiceRepository(tenantId),
+    products: new ProductRepository(tenantId),
   };
 }
 

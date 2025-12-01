@@ -39,8 +39,8 @@ export interface Repositories {
   patients?: import('../repositories/PatientRepository').PatientRepository;
   users?: import('../repositories/UserRepository').UserRepository;
   ai?: import('../repositories/AIRepository').AIRepository;
-  invoices?: any; // TODO: Create InvoiceRepository
-  products?: any; // TODO: Create ProductRepository
+  invoices?: import('../repositories/InvoiceRepository').InvoiceRepository;
+  products?: import('../repositories/ProductRepository').ProductRepository;
 }
 
 declare global {
