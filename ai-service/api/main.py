@@ -214,10 +214,21 @@ def get_tenant_rag_engine(token_payload: TokenPayload = Depends(verify_jwt_token
 
 @app.get("/")
 async def root():
-    """Health check endpoint."""
+    """Root endpoint."""
     return {
         "service": "Integrated Lens System AI Service",
         "status": "operational",
+        "version": "1.0.0",
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Railway deployment."""
+    return {
+        "status": "healthy",
+        "service": "ai-service",
         "version": "1.0.0",
         "timestamp": datetime.utcnow().isoformat(),
     }
