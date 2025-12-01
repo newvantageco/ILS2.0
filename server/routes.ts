@@ -104,6 +104,8 @@ import { registerDemandForecastingRoutes } from "./routes/demand-forecasting";
 // NEW: Unified AI routes (consolidates all AI services)
 import unifiedAIRoutes from "./routes/domains/ai";
 import { deprecateAIRoute } from "./middleware/deprecation";
+// Domain routes registry for organized route management
+import { registerDomainRoutes, registerLegacyAIRoutes } from "./routes/domains";
 import { registerMarketplaceRoutes } from "./routes/marketplace";
 import { registerQueueRoutes } from "./routes/queue";
 import platformAdminRoutes from "./routes/platform-admin";
@@ -356,13 +358,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // =============================================================================
+  // DOMAIN ROUTE REGISTRY (NEW)
   // =============================================================================
-  // UNIFIED AI SYSTEM (NEW)
+  // This registers routes using the new domain-organized structure.
+  // Routes are organized by business domain for better maintainability.
+  // See docs/ROUTE_ORGANIZATION.md for details.
+  //
+  // NOTE: Individual route registrations below are being migrated to the
+  // domain registry. Once migration is complete, the calls below can be
+  // removed and only registerDomainRoutes will be needed.
+  // =============================================================================
+
+  registerDomainRoutes(app);
+
+  // Register legacy AI routes with deprecation warnings
+  registerLegacyAIRoutes(app);
+
+  // =============================================================================
+  // =============================================================================
+  // UNIFIED AI SYSTEM (Already registered via domain registry above)
   // =============================================================================
   // All AI endpoints are now consolidated under /api/ai/*
   // See docs/AI_SERVICES_ANALYSIS.md for migration guide
-
-  app.use('/api/ai', ...secureRoute(), unifiedAIRoutes);
+  // The line below is commented out as it's now handled by registerDomainRoutes
+  // app.use('/api/ai', ...secureRoute(), unifiedAIRoutes);
 
   // =============================================================================
   // DEPRECATED AI ROUTES - Will be removed after sunset date

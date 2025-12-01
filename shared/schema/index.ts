@@ -22,10 +22,16 @@ export * from './core/enums';
 // AI Domain - conversations, knowledge base, learning
 export * from './ai';
 
+// Clinical Domain - examinations, prescriptions, test rooms
+export * from './clinical';
+
+// Billing Domain - invoices, payments, subscriptions
+export * from './billing';
+
+// Inventory Domain - products, stock, frame characteristics
+export * from './inventory';
+
 // Future domains (uncomment as migration progresses):
-// export * from './clinical';
-// export * from './billing';
-// export * from './inventory';
 // export * from './analytics';
 // export * from './nhs';
 // export * from './communications';
