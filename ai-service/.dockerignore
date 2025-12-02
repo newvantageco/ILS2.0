@@ -1,0 +1,66 @@
+# Exclude training scripts (require torch/transformers - not needed in production)
+training/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.test.py
+
+# Development
+.env
+.env.local
+.venv/
+venv/
+ENV/
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Data files
+data/
+*.jsonl
+*.csv
+*.json
+!package.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+logs/
+
+# Test files
+test_*.py
+*_test.py
+tests/
+
+# Model files (if any local models)
+*.gguf
+*.bin
+*.safetensors
+models/
+
+# Misc
+.DS_Store
+Thumbs.db

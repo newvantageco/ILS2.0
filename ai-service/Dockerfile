@@ -36,8 +36,8 @@ RUN useradd --create-home --shell /bin/bash app && \
 USER app
 
 # Health check
-# Extended start-period (5min) for large ML models (torch, transformers, etc.)
-HEALTHCHECK --interval=30s --timeout=30s --start-period=300s --retries=3 \
+# Quick start-period since we use external APIs (no heavy ML models to load)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:${PORT}/health || exit 1
 
 # Expose port
