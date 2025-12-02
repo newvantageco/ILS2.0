@@ -368,10 +368,18 @@ Legend:
 - ✅ Patient consent management
 
 ### Authentication Methods
-- ✅ Email/Password (JWT)
-- ✅ Google OAuth 2.0
-- ✅ Two-Factor Authentication (2FA)
-- ❌ Replit SSO (removed)
+- ✅ **Email/Password with JWT tokens** (Primary method)
+  - JWT access tokens: 7-day expiration
+  - JWT refresh tokens: 30-day expiration
+  - Authorization header: `Bearer <token>`
+- ✅ **Google OAuth 2.0 with JWT tokens**
+  - OAuth flow issues JWT tokens
+  - Same token format as email/password
+- ✅ **Two-Factor Authentication (2FA)** - Optional enhancement
+- ❌ **Replit SSO** (removed December 1, 2025)
+- ❌ **Session-based authentication** (removed December 1, 2025)
+
+**Current Implementation:** All authentication uses JWT tokens exclusively. The `auth-hybrid.ts` middleware validates JWT tokens from the Authorization header. Session-based authentication has been completely removed in favor of stateless JWT authentication.
 
 ---
 

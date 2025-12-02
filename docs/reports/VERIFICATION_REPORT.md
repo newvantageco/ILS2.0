@@ -265,9 +265,11 @@ export const subscriptionPlanEnum = pgEnum("subscription_plan", ["full", "free_e
 
 | Claim | Status | Evidence |
 |-------|--------|----------|
-| Replit Auth (OIDC) | ✅ VERIFIED | `openid-client` package installed |
+| JWT Authentication | ✅ VERIFIED | `jsonwebtoken` package installed, auth-hybrid.ts implements JWT-only auth |
+| Google OAuth 2.0 | ✅ VERIFIED | `passport-google-oauth20` package, routes/google-auth.ts exists |
 | Local Email/Password | ✅ VERIFIED | `passport-local`, `bcryptjs` packages |
-| Session-based auth | ✅ VERIFIED | `express-session`, `sessions` table |
+| Replit Auth (OIDC) | ❌ REMOVED | Deleted December 1, 2025 - JWT replaced session auth |
+| Session-based auth | ❌ REMOVED | Migrated to JWT-only authentication December 1, 2025 |
 | Master user provisioning | ✅ VERIFIED | Environment variable support exists |
 
 ---

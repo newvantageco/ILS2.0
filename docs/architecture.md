@@ -216,17 +216,23 @@ Notify ECP of new order
 ### Authentication
 
 ```typescript
-// Multi-strategy authentication
-passport.use(new LocalStrategy(/* email/password */));
-passport.use(new ReplitAuthStrategy(/* Replit OAuth */));
+// JWT-based authentication with Google OAuth support
+// JWT tokens issued via /api/auth/login (email/password)
+// Google OAuth flow: GET /api/auth/google → /api/auth/google/callback
 
-// Session-based auth with secure cookies
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  secure: true, // HTTPS only
-  httpOnly: true, // No JavaScript access
-  sameSite: 'strict',
-}));
+// Authentication middleware (server/middleware/auth-hybrid.ts)
+export const authenticateHybrid = async (req, res, next) => {
+  // Validates JWT from Authorization: Bearer <token> header
+  // JWT payload includes: userId, companyId, email, role, permissions
+  // Token expiration: 7 days (access), 30 days (refresh)
+};
+
+// Secure JWT configuration
+const jwtConfig = {
+  secret: process.env.JWT_SECRET,
+  expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  algorithm: 'HS256'
+};
 ```
 
 ### Authorization

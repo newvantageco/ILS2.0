@@ -165,7 +165,7 @@ Check `storage.ts` methods — they all take `companyId` as first or second para
 
 ## Integration Points
 
-**Auth**: Replit OIDC + Passport + local email/password (`server/replitAuth.ts`, `server/localAuth.ts`). Check `req.user` (typed: `AuthenticatedUser`)  
+**Auth**: JWT tokens + Google OAuth + local email/password (`server/middleware/auth-hybrid.ts`, `server/localAuth.ts`). JWT authentication is the primary method; session-based auth has been removed. Check `req.user` (typed: `AuthenticatedRequest`)  
 **DB**: Neon Postgres (serverless). Connection via `db` singleton in `server/db.ts`. All queries through `storage` object  
 **Email**: Resend API (`server/emailService.ts`). Enqueue via `addEmailJob()`, workers auto-process  
 **PDF**: PDFKit (`server/pdfService.ts`). Enqueue via `addPDFJob()`  
