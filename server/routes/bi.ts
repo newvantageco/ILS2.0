@@ -10,7 +10,7 @@
  */
 
 import type { Express, Request, Response } from "express";
-import { isAuthenticated } from "../replitAuth";
+import { authenticateHybrid } from "../middleware/auth-hybrid";
 import { BiAnalyticsService } from "../services/BiAnalyticsService";
 import { db } from "../../db";
 import { z } from "zod";
@@ -38,7 +38,7 @@ export function registerBiRoutes(app: Express): void {
    * Query params:
    * ?startDate=2025-01-01&endDate=2025-01-31&companyId=xxx
    */
-  app.get("/api/bi/practice-pulse", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/bi/practice-pulse", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const { startDate, endDate, companyId } = req.query;
       
@@ -83,7 +83,7 @@ export function registerBiRoutes(app: Express): void {
    * Query params:
    * ?startDate=2025-01-01&endDate=2025-01-31&companyId=xxx
    */
-  app.get("/api/bi/financial", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/bi/financial", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const { startDate, endDate, companyId } = req.query;
       
@@ -128,7 +128,7 @@ export function registerBiRoutes(app: Express): void {
    * Query params:
    * ?startDate=2025-01-01&endDate=2025-01-31&companyId=xxx
    */
-  app.get("/api/bi/operational", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/bi/operational", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const { startDate, endDate, companyId } = req.query;
       
@@ -173,7 +173,7 @@ export function registerBiRoutes(app: Express): void {
    * Query params:
    * ?startDate=2025-01-01&endDate=2025-01-31&companyId=xxx
    */
-  app.get("/api/bi/patient", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/bi/patient", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const { startDate, endDate, companyId } = req.query;
       
@@ -219,7 +219,7 @@ export function registerBiRoutes(app: Express): void {
    * Query params:
    * ?startDate=2025-01-01&endDate=2025-01-31
    */
-  app.get("/api/bi/platform-comparison", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/bi/platform-comparison", authenticateHybrid, async (req: any, res: Response) => {
     try {
       // Check if user is platform admin
       const userRole = req.user.claims.role || req.user.role;
@@ -271,7 +271,7 @@ export function registerBiRoutes(app: Express): void {
    * Query params:
    * ?companyId=xxx
    */
-  app.get("/api/bi/alerts", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/bi/alerts", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const { companyId } = req.query;
       
@@ -300,7 +300,7 @@ export function registerBiRoutes(app: Express): void {
    * Query params:
    * ?startDate=2025-01-01&endDate=2025-01-31&companyId=xxx
    */
-  app.get("/api/bi/summary", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/bi/summary", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const { startDate, endDate, companyId } = req.query;
       
@@ -369,7 +369,7 @@ export function registerBiRoutes(app: Express): void {
    * 
    * Acknowledge a KPI alert
    */
-  app.post("/api/bi/alerts/:alertId/acknowledge", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/bi/alerts/:alertId/acknowledge", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const { alertId } = req.params;
       const userId = req.user.claims.sub || req.user.id;
@@ -398,7 +398,7 @@ export function registerBiRoutes(app: Express): void {
    * Query params:
    * ?startDate=2025-01-01&endDate=2025-01-31&companyId=xxx&format=csv|pdf
    */
-  app.get("/api/bi/export/:dashboardType", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/bi/export/:dashboardType", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const { dashboardType } = req.params;
       const { startDate, endDate, companyId, format } = req.query;

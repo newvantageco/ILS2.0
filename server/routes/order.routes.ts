@@ -7,7 +7,7 @@
 
 import { Router, Request, Response } from "express";
 import { OrderController } from "../controllers/order.controller";
-import { isAuthenticated } from "../replitAuth";
+import { authenticateHybrid } from "../middleware/auth-hybrid";
 
 const router = Router();
 const orderController = new OrderController();
@@ -22,21 +22,21 @@ const asHandler = (handler: (req: any, res: Response) => Promise<void>) => handl
  */
 
 // GET /api/orders - Get all orders with filtering and pagination
-router.get("/", isAuthenticated, asHandler(orderController.getOrders));
+router.get("/", authenticateHybrid, asHandler(orderController.getOrders));
 
 // GET /api/orders/stats - Get order statistics for dashboard
-router.get("/stats", isAuthenticated, asHandler(orderController.getOrderStats));
+router.get("/stats", authenticateHybrid, asHandler(orderController.getOrderStats));
 
 // GET /api/orders/:id - Get a specific order by ID
-router.get("/:id", isAuthenticated, asHandler(orderController.getOrderById));
+router.get("/:id", authenticateHybrid, asHandler(orderController.getOrderById));
 
 // POST /api/orders - Create a new order
-router.post("/", isAuthenticated, asHandler(orderController.createOrder));
+router.post("/", authenticateHybrid, asHandler(orderController.createOrder));
 
 // PUT /api/orders/:id/status - Update order status
-router.put("/:id/status", isAuthenticated, asHandler(orderController.updateOrderStatus));
+router.put("/:id/status", authenticateHybrid, asHandler(orderController.updateOrderStatus));
 
 // DELETE /api/orders/:id - Delete/cancel an order
-router.delete("/:id", isAuthenticated, asHandler(orderController.deleteOrder));
+router.delete("/:id", authenticateHybrid, asHandler(orderController.deleteOrder));
 
 export default router;

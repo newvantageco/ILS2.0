@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { isAuthenticated } from '../replitAuth';
+import { authenticateHybrid } from "../middleware/auth-hybrid";
 import NotificationService from '../services/NotificationService';
 import { createLogger } from '../utils/logger';
 import { getWebSocketService } from '../services/WebSocketService';
@@ -41,7 +41,7 @@ function sanitizeLimit(limit: unknown): number {
 // Get user notifications
 router.get(
   '/api/notifications',
-  isAuthenticated,
+  authenticateHybrid,
   async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthenticatedRequest;
@@ -60,7 +60,7 @@ router.get(
 // Mark notification as read
 router.post(
   '/api/notifications/:id/read',
-  isAuthenticated,
+  authenticateHybrid,
   async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
@@ -83,7 +83,7 @@ router.post(
 // Mark all notifications as read
 router.post(
   '/api/notifications/read-all',
-  isAuthenticated,
+  authenticateHybrid,
   async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthenticatedRequest;
@@ -103,7 +103,7 @@ router.post(
 // Delete notification
 router.delete(
   '/api/notifications/:id',
-  isAuthenticated,
+  authenticateHybrid,
   async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
@@ -126,7 +126,7 @@ router.delete(
 // Clear all notifications
 router.delete(
   '/api/notifications',
-  isAuthenticated,
+  authenticateHybrid,
   async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthenticatedRequest;
@@ -146,7 +146,7 @@ router.delete(
 // Get real-time notification stats
 router.get(
   '/api/notifications/stats',
-  isAuthenticated,
+  authenticateHybrid,
   async (_req: Request, res: Response) => {
     try {
       const webSocketService = getWebSocketService();
@@ -168,7 +168,7 @@ router.get(
 // Send test notification (admin only)
 router.post(
   '/api/notifications/test',
-  isAuthenticated,
+  authenticateHybrid,
   async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthenticatedRequest;

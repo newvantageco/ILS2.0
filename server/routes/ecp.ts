@@ -29,14 +29,14 @@ import {
   insertClinicalProtocolSchema,
 } from "@shared/schema";
 import { eq, and, desc, sql, between, gte, lte, isNull } from "drizzle-orm";
-import { isAuthenticated } from "../replitAuth";
+import { authenticateHybrid } from "../middleware/auth-hybrid";
 
 const router = Router();
 
 // ============== TEST ROOMS ==============
 
 // Get all test rooms for a company
-router.get('/test-rooms', isAuthenticated, async (req: any, res: Response) => {
+router.get('/test-rooms', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -74,7 +74,7 @@ router.get('/test-rooms', isAuthenticated, async (req: any, res: Response) => {
 });
 
 // Create a new test room
-router.post('/test-rooms', isAuthenticated, async (req: any, res: Response) => {
+router.post('/test-rooms', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -121,7 +121,7 @@ router.post('/test-rooms', isAuthenticated, async (req: any, res: Response) => {
 });
 
 // Update test room
-router.put('/test-rooms/:id', isAuthenticated, async (req: any, res: Response) => {
+router.put('/test-rooms/:id', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -171,7 +171,7 @@ router.put('/test-rooms/:id', isAuthenticated, async (req: any, res: Response) =
 });
 
 // Delete (deactivate) test room
-router.delete('/test-rooms/:id', isAuthenticated, async (req: any, res: Response) => {
+router.delete('/test-rooms/:id', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -223,7 +223,7 @@ router.delete('/test-rooms/:id', isAuthenticated, async (req: any, res: Response
 // ============== TEST ROOM BOOKINGS ==============
 
 // Get test room bookings
-router.get('/test-room-bookings', isAuthenticated, async (req: any, res: Response) => {
+router.get('/test-room-bookings', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -265,7 +265,7 @@ router.get('/test-room-bookings', isAuthenticated, async (req: any, res: Respons
 });
 
 // Get bookings for a specific date and room
-router.get('/test-room-bookings/date/:date/room/:roomId', isAuthenticated, async (req: any, res: Response) => {
+router.get('/test-room-bookings/date/:date/room/:roomId', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -301,7 +301,7 @@ router.get('/test-room-bookings/date/:date/room/:roomId', isAuthenticated, async
 });
 
 // Create test room booking
-router.post('/test-room-bookings', isAuthenticated, async (req: any, res: Response) => {
+router.post('/test-room-bookings', authenticateHybrid, async (req: any, res: Response) => {
   try {
     logger.info({ body: req.body }, "Booking creation request");
     
@@ -402,7 +402,7 @@ router.post('/test-room-bookings', isAuthenticated, async (req: any, res: Respon
 });
 
 // Update booking status
-router.patch('/test-room-bookings/:id/status', isAuthenticated, async (req: any, res: Response) => {
+router.patch('/test-room-bookings/:id/status', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -428,7 +428,7 @@ router.patch('/test-room-bookings/:id/status', isAuthenticated, async (req: any,
 });
 
 // Delete booking (soft delete - booking data preserved for audit)
-router.delete('/test-room-bookings/:id', isAuthenticated, async (req: any, res: Response) => {
+router.delete('/test-room-bookings/:id', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -454,7 +454,7 @@ router.delete('/test-room-bookings/:id', isAuthenticated, async (req: any, res: 
 // ============== EQUIPMENT & CALIBRATION ==============
 
 // Get equipment for company
-router.get('/equipment', isAuthenticated, async (req: any, res: Response) => {
+router.get('/equipment', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -489,7 +489,7 @@ router.get('/equipment', isAuthenticated, async (req: any, res: Response) => {
 });
 
 // Get calibration records
-router.get('/calibration-records', isAuthenticated, async (req: any, res: Response) => {
+router.get('/calibration-records', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -528,7 +528,7 @@ router.get('/calibration-records', isAuthenticated, async (req: any, res: Respon
 });
 
 // Record calibration
-router.post('/calibration-records', isAuthenticated, async (req: any, res: Response) => {
+router.post('/calibration-records', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -553,7 +553,7 @@ router.post('/calibration-records', isAuthenticated, async (req: any, res: Respo
 // ============== REMOTE ACCESS ==============
 
 // Get remote sessions
-router.get('/remote-sessions', isAuthenticated, async (req: any, res: Response) => {
+router.get('/remote-sessions', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -594,7 +594,7 @@ router.get('/remote-sessions', isAuthenticated, async (req: any, res: Response) 
 });
 
 // Create remote session
-router.post('/remote-sessions', isAuthenticated, async (req: any, res: Response) => {
+router.post('/remote-sessions', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -637,7 +637,7 @@ router.post('/remote-sessions', isAuthenticated, async (req: any, res: Response)
 });
 
 // Approve/revoke remote session
-router.patch('/remote-sessions/:id/status', isAuthenticated, async (req: any, res: Response) => {
+router.patch('/remote-sessions/:id/status', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -674,7 +674,7 @@ router.patch('/remote-sessions/:id/status', isAuthenticated, async (req: any, re
 // ============== GOC COMPLIANCE CHECKS ==============
 
 // Get GOC compliance checks for company
-router.get('/goc-compliance', isAuthenticated, async (req: any, res: Response) => {
+router.get('/goc-compliance', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -710,7 +710,7 @@ router.get('/goc-compliance', isAuthenticated, async (req: any, res: Response) =
 });
 
 // Create GOC compliance check
-router.post('/goc-compliance', isAuthenticated, async (req: any, res: Response) => {
+router.post('/goc-compliance', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -754,7 +754,7 @@ router.post('/goc-compliance', isAuthenticated, async (req: any, res: Response) 
 // ============== PRESCRIPTION TEMPLATES ==============
 
 // Get prescription templates
-router.get('/prescription-templates', isAuthenticated, async (req: any, res: Response) => {
+router.get('/prescription-templates', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -792,7 +792,7 @@ router.get('/prescription-templates', isAuthenticated, async (req: any, res: Res
 });
 
 // Create prescription template
-router.post('/prescription-templates', isAuthenticated, async (req: any, res: Response) => {
+router.post('/prescription-templates', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -840,7 +840,7 @@ router.post('/prescription-templates', isAuthenticated, async (req: any, res: Re
 });
 
 // Update prescription template
-router.put('/prescription-templates/:id', isAuthenticated, async (req: any, res: Response) => {
+router.put('/prescription-templates/:id', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -885,7 +885,7 @@ router.put('/prescription-templates/:id', isAuthenticated, async (req: any, res:
 });
 
 // Increment template usage count
-router.post('/prescription-templates/:id/use', isAuthenticated, async (req: any, res: Response) => {
+router.post('/prescription-templates/:id/use', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -931,7 +931,7 @@ router.post('/prescription-templates/:id/use', isAuthenticated, async (req: any,
 // ============== CLINICAL PROTOCOLS ==============
 
 // Get clinical protocols
-router.get('/clinical-protocols', isAuthenticated, async (req: any, res: Response) => {
+router.get('/clinical-protocols', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -966,7 +966,7 @@ router.get('/clinical-protocols', isAuthenticated, async (req: any, res: Respons
 });
 
 // Create clinical protocol
-router.post('/clinical-protocols', isAuthenticated, async (req: any, res: Response) => {
+router.post('/clinical-protocols', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -1014,7 +1014,7 @@ router.post('/clinical-protocols', isAuthenticated, async (req: any, res: Respon
 });
 
 // Update clinical protocol
-router.put('/clinical-protocols/:id', isAuthenticated, async (req: any, res: Response) => {
+router.put('/clinical-protocols/:id', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {
@@ -1066,7 +1066,7 @@ router.put('/clinical-protocols/:id', isAuthenticated, async (req: any, res: Res
 // ============== GOC PRACTITIONER STATUS ==============
 
 // Get GOC status for all practitioners in company
-router.get('/goc-status', isAuthenticated, async (req: any, res: Response) => {
+router.get('/goc-status', authenticateHybrid, async (req: any, res: Response) => {
   try {
     const userId = req.user?.claims?.sub;
     if (!userId) {

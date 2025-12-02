@@ -16,7 +16,7 @@
  */
 
 import type { Express, Request, Response } from "express";
-import { isAuthenticated } from "../replitAuth";
+import { authenticateHybrid } from "../middleware/auth-hybrid";
 import { MetricsDashboardService } from "../services/MetricsDashboardService";
 import { storage } from "../storage";
 import { createLogger } from "../utils/logger";
@@ -37,7 +37,7 @@ export function registerMetricsRoutes(app: Express): void {
    * ?timeRange=last7days|last30days|last90days|thisMonth
    * ?organizationId=org-id
    */
-  app.get("/api/metrics/dashboard", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/metrics/dashboard", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const timeRange = (req.query.timeRange as string) || "last30days";
       const organizationId = req.query.organizationId as string || req.user.claims.sub;
@@ -65,7 +65,7 @@ export function registerMetricsRoutes(app: Express): void {
    * 
    * Get production KPIs and efficiency metrics
    */
-  app.get("/api/metrics/production", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/metrics/production", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const kpis = await metricsDashboardService.getProductionKPIs();
 
@@ -87,7 +87,7 @@ export function registerMetricsRoutes(app: Express): void {
    * 
    * Get cost metrics and analysis
    */
-  app.get("/api/metrics/costs", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/metrics/costs", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const costs = await metricsDashboardService.getCostMetrics();
 
@@ -109,7 +109,7 @@ export function registerMetricsRoutes(app: Express): void {
    * 
    * Get revenue analytics and forecasts
    */
-  app.get("/api/metrics/revenue", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/metrics/revenue", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const revenue = await metricsDashboardService.getRevenueAnalytics();
 
@@ -131,7 +131,7 @@ export function registerMetricsRoutes(app: Express): void {
    * 
    * Get real-time snapshot of current metrics
    */
-  app.get("/api/metrics/realtime", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/metrics/realtime", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const snapshot = await metricsDashboardService.getRealtimeSnapshot();
 
@@ -153,7 +153,7 @@ export function registerMetricsRoutes(app: Express): void {
    * 
    * Get high-level overview metrics (lightweight endpoint for frequent polling)
    */
-  app.get("/api/metrics/overview", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/metrics/overview", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const organizationId = req.query.organizationId as string || req.user.claims.sub;
       

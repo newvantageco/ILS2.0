@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { ReturnsAndNonAdaptService } from '../services/ReturnsAndNonAdaptService';
-import { isAuthenticated } from '../replitAuth';
+import { authenticateHybrid } from "../middleware/auth-hybrid";
 import { z } from 'zod';
 import { fromZodError } from 'zod-validation-error';
 import type { User } from '../../shared/schema';
@@ -66,7 +66,7 @@ const authorizeRoles = (allowedRoles: string[]) => (
 
 // Return routes
 router.post('/returns', 
-  isAuthenticated,
+  authenticateHybrid,
   authorizeRoles(['ecp', 'lab_tech', 'admin']),
   async (req, res) => {
     try {
@@ -93,7 +93,7 @@ router.post('/returns',
 );
 
 router.get('/returns',
-  isAuthenticated,
+  authenticateHybrid,
   authorizeRoles(['ecp', 'lab_tech', 'admin']),
   async (_req, res) => {
     try {
@@ -108,7 +108,7 @@ router.get('/returns',
 );
 
 router.get('/returns/:id',
-  isAuthenticated,
+  authenticateHybrid,
   authorizeRoles(['ecp', 'lab_tech', 'admin']),
   async (req, res) => {
     try {
@@ -128,7 +128,7 @@ router.get('/returns/:id',
 );
 
 router.patch('/returns/:id/status',
-  isAuthenticated,
+  authenticateHybrid,
   authorizeRoles(['lab_tech', 'admin']),
   async (req, res) => {
     try {
@@ -166,7 +166,7 @@ router.patch('/returns/:id/status',
 
 // Non-Adapt routes
 router.post('/non-adapts',
-  isAuthenticated,
+  authenticateHybrid,
   authorizeRoles(['ecp', 'lab_tech', 'admin']),
   async (req, res) => {
     try {
@@ -197,7 +197,7 @@ router.post('/non-adapts',
 );
 
 router.get('/non-adapts',
-  isAuthenticated,
+  authenticateHybrid,
   authorizeRoles(['ecp', 'lab_tech', 'admin']),
   async (_req, res) => {
     try {
@@ -212,7 +212,7 @@ router.get('/non-adapts',
 );
 
 router.get('/non-adapts/:id',
-  isAuthenticated,
+  authenticateHybrid,
   authorizeRoles(['ecp', 'lab_tech', 'admin']),
   async (req, res) => {
     try {
@@ -232,7 +232,7 @@ router.get('/non-adapts/:id',
 );
 
 router.patch('/non-adapts/:id/resolution',
-  isAuthenticated,
+  authenticateHybrid,
   authorizeRoles(['lab_tech', 'admin']),
   async (req, res) => {
     try {
@@ -257,7 +257,7 @@ router.patch('/non-adapts/:id/resolution',
 
 // Statistics routes
 router.get('/stats/returns',
-  isAuthenticated,
+  authenticateHybrid,
   authorizeRoles(['lab_tech', 'admin']),
   async (_req, res) => {
     try {
@@ -270,7 +270,7 @@ router.get('/stats/returns',
 );
 
 router.get('/stats/non-adapts',
-  isAuthenticated,
+  authenticateHybrid,
   authorizeRoles(['lab_tech', 'admin']),
   async (_req, res) => {
     try {

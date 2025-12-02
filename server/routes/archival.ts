@@ -13,14 +13,14 @@ import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { archivalService } from "../services/ArchivalService";
 import { softDeleteService } from "../services/SoftDeleteService";
-import { isAuthenticated } from "../replitAuth";
+import { authenticateHybrid } from "../middleware/auth-hybrid";
 import { createLogger } from "../utils/logger";
 
 const router = Router();
 const logger = createLogger('archival');
 
 // Apply authentication to all routes
-router.use(isAuthenticated);
+router.use(authenticateHybrid);
 
 /**
  * ==================================================

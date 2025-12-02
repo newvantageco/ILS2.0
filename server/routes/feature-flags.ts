@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
-import { isAuthenticated } from "../replitAuth";
+import { authenticateHybrid } from "../middleware/auth-hybrid";
 import { createLogger } from "../utils/logger";
 
 const router = Router();
@@ -48,7 +48,7 @@ const requireAdmin = async (req: any, res: any, next: any) => {
 };
 
 // Apply auth middleware to all routes
-router.use(isAuthenticated, requireAdmin);
+router.use(authenticateHybrid, requireAdmin);
 
 /**
  * GET /api/feature-flags

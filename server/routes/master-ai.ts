@@ -11,7 +11,7 @@
  */
 
 import type { Express, Request, Response } from "express";
-import { isAuthenticated } from "../replitAuth";
+import { authenticateHybrid } from "../middleware/auth-hybrid";
 import { MasterAIService, type MasterAIQuery } from "../services/MasterAIService";
 import { db } from "../../db";
 import type { IStorage } from "../storage";
@@ -105,7 +105,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
    *       500:
    *         description: Server error
    */
-  app.post("/api/master-ai/chat", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/master-ai/chat", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const { 
         query, 
@@ -199,7 +199,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
    *       500:
    *         description: Server error
    */
-  app.get("/api/master-ai/conversations", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/master-ai/conversations", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const companyId = req.user.claims.companyId || req.user.claims.sub;
       if (!companyId) {
@@ -274,7 +274,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
    *       500:
    *         description: Server error
    */
-  app.get("/api/master-ai/conversations/:id", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/master-ai/conversations/:id", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const { id } = req.params;
       const companyId = req.user.claims.companyId || req.user.claims.sub;
@@ -360,7 +360,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
    *       500:
    *         description: Server error
    */
-  app.post("/api/master-ai/documents", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/master-ai/documents", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const { fileName, content, metadata } = req.body;
       const companyId = req.user.claims.companyId || req.user.claims.sub;
@@ -439,7 +439,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
    *       500:
    *         description: Server error
    */
-  app.get("/api/master-ai/knowledge-base", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/master-ai/knowledge-base", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const companyId = req.user.claims.companyId || req.user.claims.sub;
       const limit = parseInt(req.query.limit as string) || 100;
@@ -504,7 +504,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
    *       500:
    *         description: Server error
    */
-  app.get("/api/master-ai/stats", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/master-ai/stats", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const companyId = req.user.claims.companyId || req.user.claims.sub;
       const { startDate, endDate } = req.query;
@@ -577,7 +577,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
    *       500:
    *         description: Server error
    */
-  app.post("/api/master-ai/feedback", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/master-ai/feedback", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const { messageId, rating, feedback } = req.body;
       const companyId = req.user.claims.companyId || req.user.claims.sub;
@@ -622,7 +622,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
    * GET /api/master-ai/company-stats
    * Get company-level AI statistics for model management
    */
-  app.get("/api/master-ai/company-stats", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/master-ai/company-stats", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const companyId = req.user?.companyId || req.user?.claims?.companyId;
       
@@ -651,7 +651,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
    * GET /api/master-ai/versions
    * Get AI model versions
    */
-  app.get("/api/master-ai/versions", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/master-ai/versions", authenticateHybrid, async (req: any, res: Response) => {
     try {
       // Placeholder - would query actual model versions
       const versions = [
@@ -680,7 +680,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
    * POST /api/master-ai/versions
    * Create a new model version
    */
-  app.post("/api/master-ai/versions", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/master-ai/versions", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const { versionNumber, description, modelName } = req.body;
       
@@ -713,7 +713,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
    * PUT /api/master-ai/versions/:id/approve
    * Approve a model version
    */
-  app.put("/api/master-ai/versions/:id/approve", isAuthenticated, async (req: any, res: Response) => {
+  app.put("/api/master-ai/versions/:id/approve", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const { id } = req.params;
       
@@ -735,7 +735,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
    * GET /api/master-ai/deployments
    * Get AI model deployments
    */
-  app.get("/api/master-ai/deployments", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/master-ai/deployments", authenticateHybrid, async (req: any, res: Response) => {
     try {
       // Placeholder - would query actual deployments
       const deployments = [
@@ -762,7 +762,7 @@ export function registerMasterAIRoutes(app: Express, storage: IStorage): void {
    * POST /api/master-ai/deployments
    * Deploy a model version
    */
-  app.post("/api/master-ai/deployments", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/master-ai/deployments", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const { versionId } = req.body;
       

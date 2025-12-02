@@ -11,7 +11,7 @@
 
 import express from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
-import { isAuthenticated } from '../replitAuth';
+import { authenticateHybrid } from "../middleware/auth-hybrid";
 import { CustomerHealthService } from '../services/SaaS/CustomerHealthService';
 import { ChurnPredictionService } from '../services/SaaS/ChurnPredictionService';
 import { FeatureUsageService } from '../services/SaaS/FeatureUsageService';
@@ -25,7 +25,7 @@ const router = express.Router();
  * GET /api/saas/health/:companyId
  * Get customer health score for a company
  */
-router.get('/health/:companyId', isAuthenticated, asyncHandler(async (req, res) => {
+router.get('/health/:companyId', authenticateHybrid, asyncHandler(async (req, res) => {
   const { companyId } = req.params;
   
   logger.info(`[SaaS] Getting health score for company: ${companyId}`);
@@ -42,7 +42,7 @@ router.get('/health/:companyId', isAuthenticated, asyncHandler(async (req, res) 
  * GET /api/saas/health/segmentation
  * Get customer segmentation by health status
  */
-router.get('/health/segmentation', isAuthenticated, asyncHandler(async (req, res) => {
+router.get('/health/segmentation', authenticateHybrid, asyncHandler(async (req, res) => {
   logger.info('[SaaS] Getting health segmentation');
   
   const segmentation = await CustomerHealthService.getHealthSegmentation();
@@ -57,7 +57,7 @@ router.get('/health/segmentation', isAuthenticated, asyncHandler(async (req, res
  * GET /api/saas/churn/:companyId
  * Get churn prediction for a company
  */
-router.get('/churn/:companyId', isAuthenticated, asyncHandler(async (req, res) => {
+router.get('/churn/:companyId', authenticateHybrid, asyncHandler(async (req, res) => {
   const { companyId } = req.params;
   
   logger.info(`[SaaS] Getting churn prediction for company: ${companyId}`);
@@ -74,7 +74,7 @@ router.get('/churn/:companyId', isAuthenticated, asyncHandler(async (req, res) =
  * GET /api/saas/churn/report
  * Get overall churn report across all companies
  */
-router.get('/churn/report', isAuthenticated, asyncHandler(async (req, res) => {
+router.get('/churn/report', authenticateHybrid, asyncHandler(async (req, res) => {
   logger.info('[SaaS] Generating churn report');
   
   const report = await ChurnPredictionService.generateChurnReport();
@@ -89,7 +89,7 @@ router.get('/churn/report', isAuthenticated, asyncHandler(async (req, res) => {
  * GET /api/saas/features/:companyId
  * Get feature usage for a company
  */
-router.get('/features/:companyId', isAuthenticated, asyncHandler(async (req, res) => {
+router.get('/features/:companyId', authenticateHybrid, asyncHandler(async (req, res) => {
   const { companyId } = req.params;
   
   logger.info(`[SaaS] Getting feature usage for company: ${companyId}`);
@@ -106,7 +106,7 @@ router.get('/features/:companyId', isAuthenticated, asyncHandler(async (req, res
  * POST /api/saas/features/track
  * Track a feature usage event
  */
-router.post('/features/track', isAuthenticated, asyncHandler(async (req, res) => {
+router.post('/features/track', authenticateHybrid, asyncHandler(async (req, res) => {
   const { companyId, userId, featureName, metadata } = req.body;
   
   if (!companyId || !userId || !featureName) {
@@ -128,7 +128,7 @@ router.post('/features/track', isAuthenticated, asyncHandler(async (req, res) =>
  * GET /api/saas/features/adoption/report
  * Generate feature adoption report
  */
-router.get('/features/adoption/report', isAuthenticated, asyncHandler(async (req, res) => {
+router.get('/features/adoption/report', authenticateHybrid, asyncHandler(async (req, res) => {
   logger.info('[SaaS] Generating feature adoption report');
   
   const report = await FeatureUsageService.generateAdoptionReport();
@@ -143,7 +143,7 @@ router.get('/features/adoption/report', isAuthenticated, asyncHandler(async (req
  * GET /api/saas/billing/mrr/:companyId
  * Get MRR for a company
  */
-router.get('/billing/mrr/:companyId', isAuthenticated, asyncHandler(async (req, res) => {
+router.get('/billing/mrr/:companyId', authenticateHybrid, asyncHandler(async (req, res) => {
   const { companyId } = req.params;
   const { month } = req.query;
   
@@ -161,7 +161,7 @@ router.get('/billing/mrr/:companyId', isAuthenticated, asyncHandler(async (req, 
  * GET /api/saas/billing/report/:month
  * Generate billing report for a month
  */
-router.get('/billing/report/:month', isAuthenticated, asyncHandler(async (req, res) => {
+router.get('/billing/report/:month', authenticateHybrid, asyncHandler(async (req, res) => {
   const { month } = req.params;
   
   logger.info(`[SaaS] Generating billing report for month: ${month}`);
@@ -178,7 +178,7 @@ router.get('/billing/report/:month', isAuthenticated, asyncHandler(async (req, r
  * POST /api/saas/billing/invoice
  * Generate invoice for a subscription
  */
-router.post('/billing/invoice', isAuthenticated, asyncHandler(async (req, res) => {
+router.post('/billing/invoice', authenticateHybrid, asyncHandler(async (req, res) => {
   const { companyId, subscriptionId, amount, taxRate } = req.body;
   
   if (!companyId || !subscriptionId || !amount) {
@@ -200,7 +200,7 @@ router.post('/billing/invoice', isAuthenticated, asyncHandler(async (req, res) =
  * POST /api/saas/billing/proration
  * Calculate proration for plan change
  */
-router.post('/billing/proration', isAuthenticated, asyncHandler(async (req, res) => {
+router.post('/billing/proration', authenticateHybrid, asyncHandler(async (req, res) => {
   const { currentPlan, newPlan, daysRemaining, totalDays } = req.body;
   
   if (!currentPlan || !newPlan || daysRemaining === undefined || !totalDays) {
@@ -227,7 +227,7 @@ router.post('/billing/proration', isAuthenticated, asyncHandler(async (req, res)
  * GET /api/saas/cohorts/dashboard/:companyId
  * Get cohort analysis dashboard
  */
-router.get('/cohorts/dashboard/:companyId', isAuthenticated, asyncHandler(async (req, res) => {
+router.get('/cohorts/dashboard/:companyId', authenticateHybrid, asyncHandler(async (req, res) => {
   const { companyId } = req.params;
   
   logger.info(`[SaaS] Getting cohort dashboard for company: ${companyId}`);
@@ -244,7 +244,7 @@ router.get('/cohorts/dashboard/:companyId', isAuthenticated, asyncHandler(async 
  * GET /api/saas/cohorts/retention/report
  * Generate retention report
  */
-router.get('/cohorts/retention/report', isAuthenticated, asyncHandler(async (req, res) => {
+router.get('/cohorts/retention/report', authenticateHybrid, asyncHandler(async (req, res) => {
   logger.info('[SaaS] Generating retention report');
   
   const report = await CohortAnalysisService.generateRetentionReport();
@@ -259,7 +259,7 @@ router.get('/cohorts/retention/report', isAuthenticated, asyncHandler(async (req
  * GET /api/saas/dashboard/:companyId
  * Get complete SaaS dashboard data for a company
  */
-router.get('/dashboard/:companyId', isAuthenticated, asyncHandler(async (req, res) => {
+router.get('/dashboard/:companyId', authenticateHybrid, asyncHandler(async (req, res) => {
   const { companyId } = req.params;
   
   logger.info(`[SaaS] Getting complete dashboard for company: ${companyId}`);

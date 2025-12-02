@@ -1,5 +1,5 @@
 import type { Express, Response } from "express";
-import { isAuthenticated } from "../replitAuth";
+import { authenticateHybrid } from "../middleware/auth-hybrid";
 import { requireOwner, requirePermission } from "../middleware/permissions";
 import { PermissionService } from "../services/PermissionService";
 import { storage } from "../storage";
@@ -28,7 +28,7 @@ export function registerPermissionRoutes(app: Express) {
    * GET /api/permissions
    * Get all permissions grouped by category
    */
-  app.get("/api/permissions", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/permissions", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const permissions = await PermissionService.getAllPermissionsByCategory();
 
@@ -49,7 +49,7 @@ export function registerPermissionRoutes(app: Express) {
    * GET /api/permissions/user/:userId
    * Get all permissions for a specific user
    */
-  app.get("/api/permissions/user/:userId", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/permissions/user/:userId", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const { userId } = req.params;
       const currentUserId = req.user?.id || req.user?.claims?.sub;
@@ -84,7 +84,7 @@ export function registerPermissionRoutes(app: Express) {
    * GET /api/permissions/role/:companyId/:role
    * Get permissions for a specific role in a company
    */
-  app.get("/api/permissions/role/:companyId/:role", isAuthenticated, requireOwner(), async (req: any, res: Response) => {
+  app.get("/api/permissions/role/:companyId/:role", authenticateHybrid, requireOwner(), async (req: any, res: Response) => {
     try {
       const { companyId, role } = req.params;
       const currentUserId = req.user?.id || req.user?.claims?.sub;
@@ -122,7 +122,7 @@ export function registerPermissionRoutes(app: Express) {
    *   permissionKeys: string[]
    * }
    */
-  app.put("/api/permissions/role/:companyId", isAuthenticated, requireOwner(), async (req: any, res: Response) => {
+  app.put("/api/permissions/role/:companyId", authenticateHybrid, requireOwner(), async (req: any, res: Response) => {
     try {
       const { companyId } = req.params;
       const currentUserId = req.user?.id || req.user?.claims?.sub;
@@ -180,7 +180,7 @@ export function registerPermissionRoutes(app: Express) {
    *   permissionKey: string
    * }
    */
-  app.post("/api/permissions/grant", isAuthenticated, requireOwner(), async (req: any, res: Response) => {
+  app.post("/api/permissions/grant", authenticateHybrid, requireOwner(), async (req: any, res: Response) => {
     try {
       const currentUserId = req.user?.id || req.user?.claims?.sub;
 
@@ -228,7 +228,7 @@ export function registerPermissionRoutes(app: Express) {
    *   permissionKey: string
    * }
    */
-  app.post("/api/permissions/revoke", isAuthenticated, requireOwner(), async (req: any, res: Response) => {
+  app.post("/api/permissions/revoke", authenticateHybrid, requireOwner(), async (req: any, res: Response) => {
     try {
       const currentUserId = req.user?.id || req.user?.claims?.sub;
 
@@ -271,7 +271,7 @@ export function registerPermissionRoutes(app: Express) {
    * GET /api/permissions/me
    * Get current user's permissions
    */
-  app.get("/api/permissions/me", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/permissions/me", authenticateHybrid, async (req: any, res: Response) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const permissions = await PermissionService.getUserPermissions(userId);
