@@ -88,3 +88,8 @@ Thumbs.db
 seed_knowledge.py
 test_model_availability.py
 test_ai_service.py
+
+# Alternative requirements files (use requirements.txt only)
+requirements-lite.txt
+requirements-railway.txt
+requirements.old.txt
