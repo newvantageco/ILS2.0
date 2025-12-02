@@ -8,6 +8,8 @@
       "client/**",
       "shared/**",
       "Dockerfile",
+      ".dockerignore",
+      "docker-start.sh",
       "package.json",
       "vite.config.ts",
       "tsconfig.json"
