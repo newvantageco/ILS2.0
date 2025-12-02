@@ -3,7 +3,7 @@
   "build": {
     "builder": "DOCKERFILE",
     "dockerfilePath": "Dockerfile",
-    "rootDirectory": "ai-service"
+    "dockerContext": "ai-service"
   },
   "deploy": {
     "startCommand": "sh -c 'uvicorn app:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1'",
