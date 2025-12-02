@@ -3,6 +3,7 @@
   "build": {
     "builder": "DOCKERFILE",
     "dockerfilePath": "Dockerfile",
+    "rootDirectory": "python-rag-service",
     "watchPatterns": ["**"]
   },
   "deploy": {
