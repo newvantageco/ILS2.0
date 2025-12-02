@@ -64,3 +64,4 @@ echo "[startup] Files in dist/: $(ls -la dist/ 2>/dev/null | head -5 || echo 'di
 
 # Use exec to replace shell with node process for proper signal handling
 exec node dist/index.js
+
