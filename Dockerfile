@@ -25,14 +25,12 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /app
 
-# Copy package files explicitly (avoiding glob pattern issues in monorepo)
-COPY package.json package-lock.json ./
+# WORKAROUND: Copy everything first (Railway build context issue)
+# This ensures package.json is available even if Railway's context is misconfigured
+COPY . .
 
 # Install ALL dependencies (including devDependencies for build)
 RUN npm install
-
-# Copy source code
-COPY . .
 
 # Build the application with increased memory for large TypeScript project
 ENV NODE_OPTIONS="--max-old-space-size=4096"
