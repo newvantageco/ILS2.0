@@ -84,8 +84,8 @@ COPY --from=builder --chown=nodejs:nodejs /app/public ./public
 # Copy native Rust module (if built successfully)
 COPY --from=builder --chown=nodejs:nodejs /app/native/ils-core ./native/ils-core
 
-# Copy startup script
-COPY --chown=nodejs:nodejs docker-start.sh ./docker-start.sh
+# Copy startup script from builder stage
+COPY --from=builder --chown=nodejs:nodejs /app/docker-start.sh ./docker-start.sh
 RUN chmod +x ./docker-start.sh
 
 # Create uploads directory with correct permissions
