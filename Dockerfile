@@ -25,8 +25,8 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files explicitly (avoiding glob pattern issues in monorepo)
+COPY package.json package-lock.json ./
 
 # Install ALL dependencies (including devDependencies for build)
 RUN npm install
