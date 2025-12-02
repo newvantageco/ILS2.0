@@ -62,7 +62,7 @@ RUN groupadd -g 1001 nodejs && \
 WORKDIR /app
 
 # Copy package files and node_modules from builder
-COPY --chown=nodejs:nodejs package*.json ./
+COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 
 # Install tsx globally for drizzle-kit TypeScript config support
