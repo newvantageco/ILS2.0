@@ -18,10 +18,11 @@ openai>=1.50.0
 anthropic>=0.39.0
 
 # ================================
-# Embeddings - Lightweight
+# Embeddings - External API Only (Railway Optimized)
 # ================================
-sentence-transformers>=3.0.0
-# Note: sentence-transformers is much lighter than full torch stack
+# sentence-transformers REMOVED - uses ~1.5GB with torch dependencies
+# We use OpenAI's embedding API instead: llm_service.generate_embeddings()
+# This keeps the service lightweight (~200MB) and Railway-compatible
 
 # ================================
 # Database & Vector Store
