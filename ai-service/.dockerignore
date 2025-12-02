@@ -93,3 +93,8 @@ test_ai_service.py
 requirements-lite.txt
 requirements-railway.txt
 requirements.old.txt
+
+# Railway config files (railway.json in ai-service/ is the authoritative config)
+# Exclude redundant configs to avoid confusion
+nixpacks.toml
+railway.toml.old
