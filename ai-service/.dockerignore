@@ -1,5 +1,27 @@
-# Exclude training scripts (require torch/transformers - not needed in production)
+# ==============================================================================
+# CRITICAL: Exclude Heavy ML Dependencies (Railway Optimization)
+# ==============================================================================
+# These files use llama-index, sentence-transformers, torch, transformers
+# which add ~1.5GB to the image. Production uses OpenAI/Anthropic APIs instead.
+
+# Training scripts (torch, transformers, peft, trl)
 training/
+
+# RAG engine with local models (llama-index, llama-cpp-python, sentence-transformers)
+rag/
+
+# Alternative API with heavy dependencies
+api/main.py
+api/ocr.py
+api/ml_models.py
+api/tenant_router.py
+
+# ==============================================================================
+# Development & Data Files
+# ==============================================================================
+
+# Data processing utilities
+data/
 
 # Python
 __pycache__/
@@ -16,6 +38,9 @@ build/
 .coverage
 htmlcov/
 *.test.py
+test_*.py
+*_test.py
+tests/
 
 # Development
 .env
@@ -30,7 +55,6 @@ ENV/
 docs/
 
 # Data files
-data/
 *.jsonl
 *.csv
 *.json
@@ -50,12 +74,7 @@ data/
 *.log
 logs/
 
-# Test files
-test_*.py
-*_test.py
-tests/
-
-# Model files (if any local models)
+# Model files (local models not used in production)
 *.gguf
 *.bin
 *.safetensors
@@ -64,3 +83,8 @@ models/
 # Misc
 .DS_Store
 Thumbs.db
+
+# Seed scripts (development only)
+seed_knowledge.py
+test_model_availability.py
+test_ai_service.py
