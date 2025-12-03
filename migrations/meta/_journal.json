@@ -43,6 +43,13 @@
       "when": 1764748092307,
       "tag": "0005_groovy_squadron_supreme",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1764748320345,
+      "tag": "0006_chilly_clint_barton",
+      "breakpoints": true
     }
   ]
 }

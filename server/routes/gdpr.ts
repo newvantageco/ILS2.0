@@ -6,6 +6,8 @@
 import { Router, Response, RequestHandler } from 'express';
 import { isAuthenticated, AuthenticatedRequest } from '../middleware/auth';
 import { gdprService } from '../services/GDPRService';
+import GDPRDeletionService from '../services/GDPRDeletionService';
+import { requireCompanyContext } from '../middleware/requireCompanyContext';
 import { z } from 'zod';
 import { createLogger } from '../utils/logger';
 
@@ -197,5 +199,168 @@ router.get('/privacy-policy', async (req, res: Response) => {
     lastUpdated: '2024-11-08',
   });
 });
+
+// ========== GDPR Deletion Request Management ==========
+
+/**
+ * POST /api/gdpr/deletion-requests
+ * Create a formal GDPR deletion request (Article 17)
+ * Requires approval workflow for compliance tracking
+ */
+router.post('/deletion-requests', isAuthenticated, (async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const companyId = req.user!.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ error: 'Company context required' });
+    }
+
+    const { dataSubjectId, dataSubjectType, dataSubjectEmail, dataSubjectName, deletionType, reason } = req.body;
+
+    const request = await GDPRDeletionService.createDeletionRequest({
+      companyId,
+      dataSubjectId: dataSubjectId || userId, // Default to current user
+      dataSubjectType: dataSubjectType || 'user',
+      dataSubjectEmail,
+      dataSubjectName,
+      requestedBy: userId,
+      deletionType: deletionType || 'anonymization',
+      reason,
+      legalBasis: 'GDPR Article 17 - Right to Erasure'
+    });
+
+    res.status(201).json({
+      success: true,
+      request,
+      message: 'Deletion request created and pending approval'
+    });
+  } catch (error) {
+    logger.error({ error, userId: req.user!.id }, 'Failed to create deletion request');
+    res.status(500).json({ error: 'Failed to create deletion request' });
+  }
+}) as RequestHandler);
+
+/**
+ * GET /api/gdpr/deletion-requests
+ * List deletion requests for the company
+ */
+router.get('/deletion-requests', isAuthenticated, requireCompanyContext, (async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const companyId = req.user!.companyId!;
+    const requests = await GDPRDeletionService.listDeletionRequests(companyId);
+
+    res.json({
+      success: true,
+      requests
+    });
+  } catch (error) {
+    logger.error({ error }, 'Failed to list deletion requests');
+    res.status(500).json({ error: 'Failed to list deletion requests' });
+  }
+}) as RequestHandler);
+
+/**
+ * GET /api/gdpr/deletion-requests/:requestId
+ * Get specific deletion request details
+ */
+router.get('/deletion-requests/:requestId', isAuthenticated, requireCompanyContext, (async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const companyId = req.user!.companyId!;
+    const { requestId } = req.params;
+
+    const request = await GDPRDeletionService.getDeletionRequest(requestId, companyId);
+
+    if (!request) {
+      return res.status(404).json({ error: 'Deletion request not found' });
+    }
+
+    res.json({
+      success: true,
+      request
+    });
+  } catch (error) {
+    logger.error({ error, requestId: req.params.requestId }, 'Failed to get deletion request');
+    res.status(500).json({ error: 'Failed to get deletion request' });
+  }
+}) as RequestHandler);
+
+/**
+ * POST /api/gdpr/deletion-requests/:requestId/approve
+ * Approve deletion request (Admin only)
+ */
+router.post('/deletion-requests/:requestId/approve', isAuthenticated, requireCompanyContext, (async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userRole = req.user!.role;
+    if (userRole !== 'admin' && userRole !== 'platform_admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { requestId } = req.params;
+    await GDPRDeletionService.approveDeletionRequest(requestId, req.user!.id);
+
+    res.json({
+      success: true,
+      message: 'Deletion request approved'
+    });
+  } catch (error) {
+    logger.error({ error, requestId: req.params.requestId }, 'Failed to approve deletion request');
+    res.status(500).json({ error: 'Failed to approve deletion request' });
+  }
+}) as RequestHandler);
+
+/**
+ * POST /api/gdpr/deletion-requests/:requestId/reject
+ * Reject deletion request (Admin only)
+ */
+router.post('/deletion-requests/:requestId/reject', isAuthenticated, requireCompanyContext, (async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userRole = req.user!.role;
+    if (userRole !== 'admin' && userRole !== 'platform_admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { requestId } = req.params;
+    const { rejectionReason } = req.body;
+
+    if (!rejectionReason) {
+      return res.status(400).json({ error: 'Rejection reason required' });
+    }
+
+    await GDPRDeletionService.rejectDeletionRequest(requestId, req.user!.id, rejectionReason);
+
+    res.json({
+      success: true,
+      message: 'Deletion request rejected'
+    });
+  } catch (error) {
+    logger.error({ error, requestId: req.params.requestId }, 'Failed to reject deletion request');
+    res.status(500).json({ error: 'Failed to reject deletion request' });
+  }
+}) as RequestHandler);
+
+/**
+ * POST /api/gdpr/deletion-requests/:requestId/process
+ * Process approved deletion request (Admin only)
+ */
+router.post('/deletion-requests/:requestId/process', isAuthenticated, requireCompanyContext, (async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userRole = req.user!.role;
+    if (userRole !== 'admin' && userRole !== 'platform_admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { requestId } = req.params;
+    const progress = await GDPRDeletionService.processDeletionRequest(requestId);
+
+    res.json({
+      success: true,
+      progress
+    });
+  } catch (error) {
+    logger.error({ error, requestId: req.params.requestId }, 'Failed to process deletion request');
+    res.status(500).json({ error: 'Failed to process deletion request' });
+  }
+}) as RequestHandler);
 
 export default router;

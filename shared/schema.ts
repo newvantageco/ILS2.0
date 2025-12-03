@@ -6649,6 +6649,115 @@ export type InsertSmsMessageEvent = typeof smsMessageEvents.$inferInsert;
 
 // ========== End Communications Tables ==========
 
+// ========== GDPR & Data Privacy Tables ==========
+
+/**
+ * GDPR Deletion Request Status
+ */
+export const gdprDeletionStatusEnum = pgEnum("gdpr_deletion_status", [
+  "pending",
+  "approved",
+  "rejected",
+  "processing",
+  "completed",
+  "failed"
+]);
+
+/**
+ * GDPR Deletion Request Type
+ */
+export const gdprDeletionTypeEnum = pgEnum("gdpr_deletion_type", [
+  "anonymization", // Anonymize PII but keep records for analytics
+  "hard_delete"     // Complete removal from database
+]);
+
+/**
+ * GDPR Data Subject Type
+ */
+export const gdprDataSubjectTypeEnum = pgEnum("gdpr_data_subject_type", [
+  "patient",
+  "user",
+  "employee",
+  "customer"
+]);
+
+/**
+ * GDPR Deletion Requests Table
+ * Tracks right-to-deletion requests under GDPR and UK GDPR compliance
+ */
+export const gdprDeletionRequests = pgTable(
+  "gdpr_deletion_requests",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+
+    // Subject information
+    dataSubjectId: text("data_subject_id").notNull(), // Patient/User ID to be deleted
+    dataSubjectType: gdprDataSubjectTypeEnum("data_subject_type").notNull(),
+    dataSubjectEmail: text("data_subject_email"), // For verification
+    dataSubjectName: text("data_subject_name"), // Before anonymization
+
+    // Request details
+    requestedBy: text("requested_by").notNull().references(() => users.id), // User who submitted request
+    deletionType: gdprDeletionTypeEnum("deletion_type").notNull().default("anonymization"),
+    reason: text("reason"), // Optional reason for deletion
+    legalBasis: text("legal_basis"), // GDPR Article 17, UK GDPR, etc.
+
+    // Status tracking
+    status: gdprDeletionStatusEnum("status").notNull().default("pending"),
+    approvedBy: text("approved_by").references(() => users.id), // Admin who approved
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    rejectedBy: text("rejected_by").references(() => users.id),
+    rejectedAt: timestamp("rejected_at", { withTimezone: true }),
+    rejectionReason: text("rejection_reason"),
+
+    // Processing details
+    processingStartedAt: timestamp("processing_started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    failedAt: timestamp("failed_at", { withTimezone: true }),
+    errorMessage: text("error_message"),
+
+    // Retention compliance
+    retentionExpiresAt: timestamp("retention_expires_at", { withTimezone: true }), // Legal hold period
+
+    // Deletion audit trail
+    tablesProcessed: jsonb("tables_processed").$type<string[]>(), // List of tables where data was deleted
+    recordsDeleted: integer("records_deleted").default(0), // Count of records deleted
+    recordsAnonymized: integer("records_anonymized").default(0), // Count of records anonymized
+    deletionLog: jsonb("deletion_log").$type<Array<{
+      table: string;
+      action: 'deleted' | 'anonymized';
+      recordCount: number;
+      timestamp: string;
+    }>>(), // Detailed audit log
+
+    // Verification
+    verificationToken: text("verification_token"), // For email verification
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+
+    // Metadata
+    metadata: jsonb("metadata").$type<Record<string, any>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("gdpr_deletion_company_idx").on(table.companyId),
+    dataSubjectIdx: index("gdpr_deletion_data_subject_idx").on(table.dataSubjectId),
+    statusIdx: index("gdpr_deletion_status_idx").on(table.status),
+    requestedByIdx: index("gdpr_deletion_requested_by_idx").on(table.requestedBy),
+    createdAtIdx: index("gdpr_deletion_created_at_idx").on(table.createdAt),
+  })
+);
+
+// Zod validation schemas
+export const insertGdprDeletionRequestSchema = createInsertSchema(gdprDeletionRequests);
+
+// TypeScript types
+export type GdprDeletionRequest = typeof gdprDeletionRequests.$inferSelect;
+export type InsertGdprDeletionRequest = typeof gdprDeletionRequests.$inferInsert;
+
+// ========== End GDPR & Data Privacy Tables ==========
+
 // ========== Campaign Management Enums ==========
 
 /**
