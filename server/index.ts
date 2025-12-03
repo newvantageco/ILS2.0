@@ -32,6 +32,7 @@ import { startInventoryMonitoringCron } from "./jobs/inventoryMonitoringCron";
 import { startClinicalAnomalyDetectionCron } from "./jobs/clinicalAnomalyDetectionCron";
 import { startUsageReportingCron } from "./jobs/usageReportingCron";
 import { startStorageCalculationCron } from "./jobs/storageCalculationCron";
+import { startNhsRetryJob } from "./jobs/nhsRetryJob";
 import { setupWebSocket } from "./websocket/index";
 import { initializeWebSocket } from "./services/WebSocketService";
 
@@ -714,6 +715,10 @@ app.get('/api/diagnostic/filesystem', (req: Request, res: Response) => {
       // Start storage calculation cron job
       startStorageCalculationCron();
       log(`Storage calculation cron job started (3:00 AM daily)`);
+
+      // Start NHS claims retry job (automatic retry for failed PCSE submissions)
+      startNhsRetryJob();
+      log(`NHS claims retry job started (every 5 minutes)`);
 
       // Start performance metrics cleanup (runs every 6 hours)
       setInterval(() => {

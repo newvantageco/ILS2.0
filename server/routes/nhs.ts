@@ -57,7 +57,9 @@
  */
 
 import express, { Request, Response } from "express";
+import crypto from "crypto";
 import { requireAuth } from "../middleware/auth.js";
+import { nhsRateLimit } from "../middleware/nhsRateLimit.js";
 import { NhsClaimsService } from "../services/NhsClaimsService.js";
 import { NhsVoucherService } from "../services/NhsVoucherService.js";
 import { NhsExemptionService } from "../services/NhsExemptionService.js";
@@ -67,8 +69,19 @@ import { nhsEReferralService, OPHTHALMOLOGY_SPECIALTIES, EYE_REFERRAL_REASONS } 
 import {
   createNhsClaimSchema,
   createNhsVoucherSchema,
+  nhsClaims,
+  nhsPractitioners,
+  patients,
+  users,
 } from "../../shared/schema.js";
 import { createLogger } from "../utils/logger.js";
+import {
+  sendNhsClaimAcceptedEmail,
+  sendNhsClaimRejectedEmail,
+  sendNhsClaimPaidEmail
+} from "../emailService.js";
+import { db } from "../db.js";
+import { eq } from "drizzle-orm";
 
 // Type definitions for authenticated requests
 interface AuthenticatedUser {
@@ -117,7 +130,7 @@ router.post("/claims/create", requireAuth, async (req: Request, res: Response) =
  * POST /api/nhs/claims/:id/submit
  * Submit claim to PCSE
  */
-router.post("/claims/:id/submit", requireAuth, async (req: Request, res: Response) => {
+router.post("/claims/:id/submit", requireAuth, nhsRateLimit, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const user = (req as AuthenticatedRequest).user;
@@ -239,7 +252,7 @@ router.get("/claims/summary", requireAuth, async (req: Request, res: Response) =
  * POST /api/nhs/claims/batch-submit
  * Submit multiple claims at once
  */
-router.post("/claims/batch-submit", requireAuth, async (req: Request, res: Response) => {
+router.post("/claims/batch-submit", requireAuth, nhsRateLimit, async (req: Request, res: Response) => {
   try {
     const user = (req as AuthenticatedRequest).user;
     const companyId = user.companyId;
@@ -1197,9 +1210,175 @@ router.get("/referrals/health", requireAuth, async (req: Request, res: Response)
     res.json(health);
   } catch (error) {
     res.status(500).json({ 
-      available: false, 
-      message: "Health check failed" 
+      available: false,
+      message: "Health check failed"
     });
+  }
+});
+
+// ============== PCSE WEBHOOK ROUTES ==============
+
+/**
+ * POST /api/nhs/webhooks/pcse/claims
+ * Receive status updates from PCSE API for submitted claims
+ *
+ * Security: Validates HMAC signature to ensure authenticity
+ * Handles: accepted, rejected, paid, queried status updates
+ *
+ * Expected payload from PCSE:
+ * {
+ *   claimId: string,
+ *   pcseReference: string,
+ *   status: 'accepted' | 'rejected' | 'paid' | 'queried',
+ *   paidAmount?: string,
+ *   rejectionReason?: string,
+ *   pcseResponse?: object
+ * }
+ */
+router.post("/webhooks/pcse/claims", async (req: Request, res: Response) => {
+  try {
+    // 1. Validate webhook signature
+    const signature = req.headers['x-pcse-signature'] as string;
+    const webhookSecret = process.env.PCSE_WEBHOOK_SECRET;
+
+    if (!webhookSecret) {
+      logger.error('PCSE webhook secret not configured');
+      return res.status(500).json({ error: 'Webhook not configured' });
+    }
+
+    if (!signature) {
+      logger.warn('PCSE webhook received without signature');
+      return res.status(401).json({ error: 'Missing signature' });
+    }
+
+    // 2. Verify HMAC signature
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(JSON.stringify(req.body))
+      .digest('hex');
+
+    if (signature !== expectedSignature) {
+      logger.warn({
+        receivedSignature: signature.substring(0, 10) + '...',
+        expectedSignature: expectedSignature.substring(0, 10) + '...'
+      }, 'Invalid PCSE webhook signature');
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+
+    // 3. Parse webhook payload
+    const { claimId, pcseReference, status, paidAmount, rejectionReason, pcseResponse } = req.body;
+
+    if (!claimId || !status) {
+      logger.warn({ body: req.body }, 'PCSE webhook missing required fields');
+      return res.status(400).json({ error: 'Missing required fields: claimId, status' });
+    }
+
+    // 4. Update claim status
+    logger.info({ claimId, status, pcseReference }, 'Processing PCSE webhook');
+
+    await NhsClaimsService.updateClaimStatus(claimId, status, {
+      pcseStatus: status,
+      pcseResponse,
+      rejectionReason,
+      paidAmount: paidAmount ? parseFloat(paidAmount) : undefined,
+      paidAt: status === 'paid' ? new Date() : undefined,
+    });
+
+    logger.info({ claimId, status, pcseReference }, 'PCSE webhook processed successfully');
+
+    // 5. Send email notification based on status
+    try {
+      // Fetch claim details for email
+      const [claim] = await db
+        .select()
+        .from(nhsClaims)
+        .where(eq(nhsClaims.id, claimId))
+        .limit(1);
+
+      if (claim) {
+        // Fetch practitioner details
+        const [practitioner] = await db
+          .select()
+          .from(nhsPractitioners)
+          .where(eq(nhsPractitioners.id, claim.practitionerId))
+          .limit(1);
+
+        // Fetch user email via practitioner userId
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, practitioner?.userId || ''))
+          .limit(1);
+
+        // Fetch patient details
+        const [patient] = await db
+          .select()
+          .from(patients)
+          .where(eq(patients.id, claim.patientId))
+          .limit(1);
+
+        if (practitioner && user && patient) {
+          const practitionerEmail = user.email;
+          const practitionerName = practitioner.name || user.fullName || 'Practitioner';
+          const patientName = `${patient.firstName} ${patient.lastName}`;
+          const claimAmount = claim.claimAmount?.toString() || '0.00';
+
+          // Send appropriate email based on status
+          if (status === 'accepted') {
+            await sendNhsClaimAcceptedEmail(
+              practitionerEmail,
+              practitionerName,
+              claim.claimNumber,
+              claim.claimType,
+              claimAmount,
+              patientName,
+              pcseReference || claim.pcseReference || ''
+            );
+            logger.info({ claimId, practitionerEmail }, 'Claim accepted email sent');
+          } else if (status === 'rejected') {
+            await sendNhsClaimRejectedEmail(
+              practitionerEmail,
+              practitionerName,
+              claim.claimNumber,
+              claim.claimType,
+              patientName,
+              rejectionReason || 'No reason provided'
+            );
+            logger.info({ claimId, practitionerEmail }, 'Claim rejected email sent');
+          } else if (status === 'paid') {
+            const paymentDate = new Date().toLocaleDateString('en-GB');
+            await sendNhsClaimPaidEmail(
+              practitionerEmail,
+              practitionerName,
+              claim.claimNumber,
+              claim.claimType,
+              claimAmount,
+              patientName,
+              pcseReference || claim.pcseReference || '',
+              paidAmount || claimAmount,
+              paymentDate
+            );
+            logger.info({ claimId, practitionerEmail }, 'Claim paid email sent');
+          }
+        }
+      }
+    } catch (emailError) {
+      // Log email error but don't fail the webhook
+      const emailErrorMsg = emailError instanceof Error ? emailError.message : 'Unknown error';
+      logger.error({ error: emailErrorMsg, claimId }, 'Failed to send email notification');
+    }
+
+    // 5. Return success response
+    res.json({
+      received: true,
+      claimId,
+      status,
+      processedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error({ error: errorMessage, stack: error instanceof Error ? error.stack : undefined }, 'PCSE webhook processing error');
+    res.status(500).json({ error: 'Webhook processing failed', message: errorMessage });
   }
 });
 

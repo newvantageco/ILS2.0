@@ -20,11 +20,12 @@
  */
 
 import { db } from "../../db/index.js";
-import { nhsClaims, nhsPractitioners, nhsPatientExemptions, nhsPayments } from "../../shared/schema.js";
+import { nhsClaims, nhsPractitioners, nhsPatientExemptions, nhsPayments, patients, companies, prescriptions } from "../../shared/schema.js";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
 import crypto from "crypto";
 import fs from "fs/promises";
 import logger from '../utils/logger';
+import { NhsClaimsRetryService } from './NhsClaimsRetryService.js';
 
 
 // GOS claim amounts (as of 2024)
@@ -199,7 +200,7 @@ export class NhsClaimsService {
       // Log the error and update claim status
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error({ claimId, error: errorMessage }, 'PCSE submission failed');
-      
+
       await db
         .update(nhsClaims)
         .set({
@@ -208,13 +209,32 @@ export class NhsClaimsService {
           updatedAt: new Date(),
         })
         .where(eq(nhsClaims.id, claimId));
-      
+
+      // Add to retry queue if auto-retry is enabled
+      const autoRetryEnabled = process.env.NHS_CLAIMS_AUTO_RETRY === 'true';
+      if (autoRetryEnabled) {
+        try {
+          await NhsClaimsRetryService.addToRetryQueue(
+            claimId,
+            claim.companyId,
+            errorMessage,
+            undefined, // errorCode
+            undefined  // pcseResponse
+          );
+          logger.info({ claimId }, 'Claim added to retry queue');
+        } catch (retryError) {
+          const retryErrorMsg = retryError instanceof Error ? retryError.message : 'Unknown error';
+          logger.error({ claimId, error: retryErrorMsg }, 'Failed to add claim to retry queue');
+        }
+      }
+
       throw new Error(`PCSE submission failed: ${errorMessage}`);
     }
   }
 
   /**
    * Build PCSE claim data from database claim record
+   * Enhanced to fetch all related data from patients, prescriptions, and company tables
    */
   private static async buildPCSEClaimData(claim: typeof nhsClaims.$inferSelect) {
     // Get practitioner details
@@ -224,32 +244,108 @@ export class NhsClaimsService {
       .where(eq(nhsPractitioners.id, claim.practitionerId))
       .limit(1);
 
+    // Get patient details
+    const [patient] = await db
+      .select()
+      .from(patients)
+      .where(eq(patients.id, claim.patientId))
+      .limit(1);
+
+    if (!patient) {
+      throw new Error(`Patient not found for claim ${claim.id}`);
+    }
+
+    // Get company/organization details
+    const [company] = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, claim.companyId))
+      .limit(1);
+
+    if (!company) {
+      throw new Error(`Company not found for claim ${claim.id}`);
+    }
+
+    // Get prescription data if examination is linked
+    let prescription = null;
+    if (claim.examinationId) {
+      [prescription] = await db
+        .select()
+        .from(prescriptions)
+        .where(eq(prescriptions.examinationId, claim.examinationId))
+        .limit(1);
+    }
+
+    // If no prescription via examination, try to find latest prescription for patient
+    if (!prescription) {
+      [prescription] = await db
+        .select()
+        .from(prescriptions)
+        .where(eq(prescriptions.patientId, claim.patientId))
+        .orderBy(desc(prescriptions.issueDate))
+        .limit(1);
+    }
+
+    // Format patient address for PCSE
+    const patientAddress = {
+      line1: patient.address || '',
+      line2: '',
+      city: patient.city || '',
+      postcode: patient.postalCode || '',
+      country: patient.country || 'United Kingdom',
+    };
+
+    // Get ODS code from company settings or environment variable
+    const companySettings = company.settings as any;
+    const odsCode = companySettings?.nhsOdsCode || process.env.NHS_ODS_CODE || '';
+    const organisationName = companySettings?.nhsOrganizationName || company.name || '';
+
+    // Format visual acuity (use binocular if available, otherwise combine OD/OS)
+    let visualAcuity = '';
+    if (prescription) {
+      if (prescription.binocularVisualAcuity) {
+        visualAcuity = prescription.binocularVisualAcuity;
+      } else if (prescription.odVisualAcuityAided && prescription.osVisualAcuityAided) {
+        visualAcuity = `OD: ${prescription.odVisualAcuityAided}, OS: ${prescription.osVisualAcuityAided}`;
+      }
+    }
+
     return {
       claimType: claim.claimType,
       practitionerGocNumber: practitioner?.gocNumber || '',
       practitionerName: practitioner?.name || '',
       practitionerPhone: practitioner?.phone || '',
-      patientNhsNumber: claim.patientNhsNumber,
-      patientFirstName: '', // Would be joined from patients table
-      patientLastName: '',
-      patientDateOfBirth: '',
-      patientAddress: {},
+
+      // Patient data (now populated from database)
+      patientNhsNumber: claim.patientNhsNumber || patient.nhsNumber,
+      patientFirstName: patient.firstName,
+      patientLastName: patient.lastName,
+      patientDateOfBirth: patient.dateOfBirth,
+      patientAddress,
+
+      // Examination and clinical data
       testDate: claim.testDate,
-      examinationFindings: claim.clinicalNotes,
-      visualAcuity: '',
-      odSphere: null,
-      odCylinder: null,
-      odAxis: null,
-      odAdd: null,
-      osSphere: null,
-      osCylinder: null,
-      osAxis: null,
-      osAdd: null,
-      nhsVoucherCode: '',
+      examinationFindings: claim.clinicalNotes || '',
+      visualAcuity,
+
+      // Prescription data (from prescriptions table if available)
+      odSphere: prescription?.odSphere || null,
+      odCylinder: prescription?.odCylinder || null,
+      odAxis: prescription?.odAxis || null,
+      odAdd: prescription?.odAdd || null,
+      osSphere: prescription?.osSphere || null,
+      osCylinder: prescription?.osCylinder || null,
+      osAxis: prescription?.osAxis || null,
+      osAdd: prescription?.osAdd || null,
+
+      // NHS voucher and exemption
+      nhsVoucherCode: claim.nhsVoucherCode || '',
       patientExemptionReason: claim.patientExemptionReason,
       patientExemptionEvidence: claim.patientExemptionEvidence,
-      organisationOdsCode: '', // Would come from company settings
-      organisationName: '',
+
+      // Organization data (now populated from company)
+      organisationOdsCode: odsCode,
+      organisationName,
     };
   }
 

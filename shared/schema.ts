@@ -4430,6 +4430,12 @@ export const nhsClaims = pgTable("nhs_claims", {
   referralUrgency: varchar("referral_urgency", { length: 50 }), // "routine", "urgent", "emergency"
   clinicalNotes: text("clinical_notes"),
 
+  // GOS4 Domiciliary Claims (home visits)
+  domiciliaryJustification: text("domiciliary_justification"), // Required for GOS4 claims
+
+  // NHS Voucher (for optical vouchers)
+  nhsVoucherCode: varchar("nhs_voucher_code", { length: 20 }),
+
   // Claim Submission
   status: nhsClaimStatusEnum("status").notNull().default("draft"),
   submittedAt: timestamp("submitted_at"),
@@ -4439,6 +4445,7 @@ export const nhsClaims = pgTable("nhs_claims", {
   pcseReference: varchar("pcse_reference", { length: 100 }),
   pcseStatus: varchar("pcse_status", { length: 50 }),
   pcseResponse: jsonb("pcse_response"),
+  pcseError: text("pcse_error"), // PCSE API error messages
   rejectionReason: text("rejection_reason"),
 
   // Payment
@@ -4612,6 +4619,52 @@ export const nhsPayments = pgTable("nhs_payments", {
   index("idx_nhs_payments_company").on(table.companyId),
   index("idx_nhs_payments_date").on(table.paymentDate),
   index("idx_nhs_payments_reconciled").on(table.isReconciled),
+]);
+
+/**
+ * NHS Claims Retry Queue
+ *
+ * Manages automatic retry of failed PCSE claim submissions.
+ * Implements exponential backoff strategy:
+ * - 1st retry: 1 hour after failure
+ * - 2nd retry: 4 hours after 1st retry
+ * - 3rd retry: 24 hours after 2nd retry
+ * - After 3 retries: Manual intervention required
+ */
+export const nhsClaimsRetryQueue = pgTable("nhs_claims_retry_queue", {
+  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // References
+  claimId: varchar("claim_id", { length: 255 }).notNull().references(() => nhsClaims.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+
+  // Retry Tracking
+  retryCount: integer("retry_count").notNull().default(0),
+  maxRetries: integer("max_retries").notNull().default(3),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  nextRetryAt: timestamp("next_retry_at").notNull(),
+
+  // Error Information
+  errorMessage: text("error_message"),
+  errorCode: varchar("error_code", { length: 50 }),
+  pcseResponse: jsonb("pcse_response"),
+
+  // Status
+  status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, retrying, completed, failed
+  completedAt: timestamp("completed_at"),
+  failedAt: timestamp("failed_at"),
+
+  // Metadata
+  metadata: jsonb("metadata"),
+
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_retry_queue_next_retry").on(table.nextRetryAt),
+  index("idx_retry_queue_claim").on(table.claimId),
+  index("idx_retry_queue_company").on(table.companyId),
+  index("idx_retry_queue_status").on(table.status),
 ]);
 
 // Zod schemas for NHS
