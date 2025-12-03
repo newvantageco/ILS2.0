@@ -12,6 +12,7 @@
 
 import { Router } from 'express';
 import { authenticateUser } from '../middleware/auth';
+import { requireCompanyContext } from '../middleware/requireCompanyContext';
 import { asyncHandler } from '../middleware/errorHandler';
 import SaaSMetricsService from '../services/SaaS/SaaSMetricsService';
 import ChurnPredictionService from '../services/SaaS/ChurnPredictionService';
@@ -22,6 +23,10 @@ import BillingService from '../services/SaaS/BillingService';
 
 const router = Router();
 
+// SECURITY: Apply tenant isolation to all routes in this file
+router.use(authenticateUser);
+router.use(requireCompanyContext);
+
 // ============ SaaS Metrics ==============
 
 /**
@@ -30,7 +35,6 @@ const router = Router();
  */
 router.get(
   '/metrics/summary',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     const companyId = req.user.companyId;
 
@@ -53,7 +57,6 @@ router.get(
  */
 router.get(
   '/metrics/mrr',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     const companyId = req.user.companyId;
     const month = req.query.month as string | undefined;
@@ -73,7 +76,6 @@ router.get(
  */
 router.get(
   '/metrics/cac',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     const companyId = req.user.companyId;
     const period = (req.query.period as 'month' | 'quarter' | 'year') || 'month';
@@ -93,7 +95,6 @@ router.get(
  */
 router.get(
   '/metrics/clv',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     const companyId = req.user.companyId;
 
@@ -112,7 +113,6 @@ router.get(
  */
 router.get(
   '/metrics/churn',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     const companyId = req.user.companyId;
 
@@ -131,7 +131,6 @@ router.get(
  */
 router.get(
   '/metrics/nrr',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     const companyId = req.user.companyId;
 
@@ -149,13 +148,25 @@ router.get(
 /**
  * GET /api/saas/health/score/:companyId
  * Get customer health score
+ * SECURITY: Platform admins can view any company, regular users only their own
  */
 router.get(
   '/health/score/:companyId',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     const targetCompanyId = req.params.companyId;
-    // TODO: Verify user has permission to view this company's data
+    const userCompanyId = req.user.companyId;
+    const userRole = req.user.role;
+
+    // SECURITY: Verify user has permission to view this company's data
+    const isPlatformAdmin = userRole === 'platform_admin' || userRole === 'system_admin';
+
+    if (!isPlatformAdmin && targetCompanyId !== userCompanyId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        message: 'You can only view your own company\'s health score'
+      });
+    }
 
     const healthScore = await CustomerHealthService.calculateHealthScore(targetCompanyId);
 
@@ -172,7 +183,6 @@ router.get(
  */
 router.get(
   '/health/segmentation',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     const segmentation = await CustomerHealthService.getHealthSegmentation();
 
@@ -191,7 +201,6 @@ router.get(
  */
 router.get(
   '/churn/risk',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     const companyId = req.user.companyId;
 
@@ -210,7 +219,6 @@ router.get(
  */
 router.get(
   '/churn/report',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     // TODO: Verify admin role
     const report = await ChurnPredictionService.generateChurnReport();
@@ -230,7 +238,6 @@ router.get(
  */
 router.post(
   '/features/track',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     const { featureName, metadata } = req.body;
     const companyId = req.user.companyId;
@@ -251,7 +258,6 @@ router.post(
  */
 router.get(
   '/features/usage',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     const companyId = req.user.companyId;
 
@@ -270,7 +276,6 @@ router.get(
  */
 router.get(
   '/features/adoption-report',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     // TODO: Verify admin role
     const report = await FeatureUsageService.generateAdoptionReport();
@@ -290,7 +295,6 @@ router.get(
  */
 router.get(
   '/cohorts/dashboard',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     const companyId = req.user.companyId;
 
@@ -309,7 +313,6 @@ router.get(
  */
 router.get(
   '/cohorts/retention-by-tier',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     const companyId = req.user.companyId;
 
@@ -328,7 +331,6 @@ router.get(
  */
 router.get(
   '/cohorts/retention-by-source',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     const companyId = req.user.companyId;
     const source = (req.query.source as string) || 'all';
@@ -353,7 +355,6 @@ router.get(
  */
 router.get(
   '/billing/mrr',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     const companyId = req.user.companyId;
     const month = (req.query.month as string) || new Date().toISOString().substring(0, 7);
@@ -373,7 +374,6 @@ router.get(
  */
 router.get(
   '/billing/report',
-  authenticateUser,
   asyncHandler(async (req, res) => {
     const month = (req.query.month as string) || new Date().toISOString().substring(0, 7);
 

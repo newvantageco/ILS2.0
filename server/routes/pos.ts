@@ -16,10 +16,14 @@ import {
 } from '@shared/schema';
 import { eq, and, desc, gte, lte, sql, between } from 'drizzle-orm';
 import { validateBody, validateQuery, validateParams } from '../middleware/zodValidation';
+import { requireCompanyContext } from '../middleware/requireCompanyContext';
 import { createLogger } from '../utils/logger';
 
 const router = Router();
 const logger = createLogger('pos');
+
+// SECURITY: Apply tenant isolation to all POS routes
+router.use(requireCompanyContext);
 
 // ============================================
 // Product Management for POS

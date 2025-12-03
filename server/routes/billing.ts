@@ -6,11 +6,15 @@
 
 import { Router } from "express";
 import { MeteredBillingService, PRICING } from "../services/MeteredBillingService";
+import { requireCompanyContext } from "../middleware/requireCompanyContext";
 import { createLogger } from "../utils/logger";
 
 const router = Router();
 const logger = createLogger('billing');
 const billingService = new MeteredBillingService();
+
+// SECURITY: Apply tenant isolation to all billing routes
+router.use(requireCompanyContext);
 
 /**
  * GET /api/billing/usage/current
