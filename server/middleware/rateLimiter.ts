@@ -378,4 +378,92 @@ export function setupRateLimiting(app: any) {
   logger.info('Rate limiting configured for all endpoints');
 }
 
+/**
+ * ============================================
+ * TENANT-BASED RATE LIMITING
+ * Company/Subscription Tier Rate Limits
+ * ============================================
+ */
+
+/**
+ * Rate limit tiers by subscription plan
+ */
+export const RateLimitTiers = {
+  FREE: {
+    windowMs: 15 * 60 * 1000,  // 15 minutes
+    maxRequests: 500,           // 500 requests per 15 minutes
+  },
+  BASIC: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 2000,
+  },
+  PROFESSIONAL: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 5000,
+  },
+  ENTERPRISE: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 20000,
+  },
+  PLATFORM_ADMIN: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 50000,
+  },
+} as const;
+
+/**
+ * Company/tenant-based rate limiter (adjusts by subscription tier)
+ */
+export const tenantRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: (req: Request) => {
+    const user = (req as any).user;
+    const companyData = (req as any).companyData;
+
+    // Platform admins get highest limits
+    if (user?.role === 'platform_admin') {
+      return RateLimitTiers.PLATFORM_ADMIN.maxRequests;
+    }
+
+    // Check company subscription plan
+    if (companyData?.subscriptionPlan) {
+      const plan = companyData.subscriptionPlan.toUpperCase();
+      const tier = RateLimitTiers[plan as keyof typeof RateLimitTiers];
+      return tier ? tier.maxRequests : RateLimitTiers.FREE.maxRequests;
+    }
+
+    // Default to FREE tier
+    return RateLimitTiers.FREE.maxRequests;
+  },
+  keyGenerator: (req: Request) => {
+    // Use companyId for tenant-based limiting
+    const companyId = (req as any).user?.companyId;
+    return companyId ? `tenant-${companyId}` : ipKeyGenerator(req.ip || '');
+  },
+  message: {
+    error: 'Company rate limit exceeded',
+    message: 'Your organization has exceeded its API rate limit. Please upgrade your plan or try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/**
+ * Upload rate limiter (tenant-based)
+ */
+export const uploadRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 100, // 100 uploads per hour per tenant
+  keyGenerator: (req: Request) => {
+    const companyId = (req as any).user?.companyId;
+    return companyId ? `upload-${companyId}` : ipKeyGenerator(req.ip || '');
+  },
+  message: {
+    error: 'Upload limit exceeded',
+    message: 'Your organization has reached the upload limit. Please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 export default publicApiLimiter;
