@@ -21,7 +21,10 @@ import { sql } from "drizzle-orm";
 
 export const invoiceStatusEnum = pgEnum("invoice_status", [
   "draft",
+  "sent",
   "paid",
+  "failed",
+  "refunded",
   "void"
 ]);
 
@@ -191,6 +194,58 @@ export const billingCodes = pgTable("billing_codes", {
 ]);
 
 // ============================================
+// COUPONS & DISCOUNTS
+// ============================================
+
+export const coupons = pgTable("coupons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id"),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  discountType: varchar("discount_type", { length: 20 }).notNull(), // percentage, fixed
+  discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
+  minPurchaseAmount: decimal("min_purchase_amount", { precision: 10, scale: 2 }),
+  maxDiscountAmount: decimal("max_discount_amount", { precision: 10, scale: 2 }),
+  applicablePlans: jsonb("applicable_plans"), // Array of plan IDs, null = all plans
+  applicableToRenewal: boolean("applicable_to_renewal").default(false),
+  usageLimit: integer("usage_limit"), // null = unlimited
+  usageCount: integer("usage_count").default(0).notNull(),
+  expiryDate: timestamp("expiry_date"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_coupons_code").on(table.code),
+  index("idx_coupons_company").on(table.companyId),
+  index("idx_coupons_active").on(table.isActive),
+  index("idx_coupons_expiry").on(table.expiryDate),
+]);
+
+// ============================================
+// REVENUE RECOGNITION
+// ============================================
+
+export const revenueRecognitionEvents = pgTable("revenue_recognition_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceId: varchar("invoice_id").notNull(),
+  companyId: varchar("company_id").notNull(),
+  recognitionDate: timestamp("recognition_date").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // Amount in GBP
+  revenueType: varchar("revenue_type", { length: 20 }).notNull(), // subscription, overage, one_time, refund
+  accountingPeriod: varchar("accounting_period", { length: 7 }).notNull(), // YYYY-MM
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, recognized, reversed
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_revenue_recognition_invoice").on(table.invoiceId),
+  index("idx_revenue_recognition_company").on(table.companyId),
+  index("idx_revenue_recognition_period").on(table.accountingPeriod),
+  index("idx_revenue_recognition_type").on(table.revenueType),
+  index("idx_revenue_recognition_status").on(table.status),
+]);
+
+// ============================================
 // ZOD SCHEMAS
 // ============================================
 
@@ -201,6 +256,8 @@ export const insertInvoiceSchema = createInsertSchema(invoices);
 export const insertInvoiceLineItemSchema = createInsertSchema(invoiceLineItems);
 export const insertPaymentSchema = createInsertSchema(payments);
 export const insertBillingCodeSchema = createInsertSchema(billingCodes);
+export const insertCouponSchema = createInsertSchema(coupons);
+export const insertRevenueRecognitionEventSchema = createInsertSchema(revenueRecognitionEvents);
 
 // ============================================
 // TYPES
@@ -220,3 +277,7 @@ export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
 export type BillingCode = typeof billingCodes.$inferSelect;
 export type InsertBillingCode = typeof billingCodes.$inferInsert;
+export type Coupon = typeof coupons.$inferSelect;
+export type InsertCoupon = typeof coupons.$inferInsert;
+export type RevenueRecognitionEvent = typeof revenueRecognitionEvents.$inferSelect;
+export type InsertRevenueRecognitionEvent = typeof revenueRecognitionEvents.$inferInsert;

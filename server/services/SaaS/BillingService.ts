@@ -1,6 +1,6 @@
 /**
  * Billing Service
- * 
+ *
  * Handles all subscription billing operations:
  * - Invoice generation and tracking
  * - Revenue recognition (GAAP/IFRS compliant)
@@ -11,6 +11,22 @@
  */
 
 import logger from '../../utils/logger';
+import { db } from '../../../db';
+import {
+  invoices,
+  coupons,
+  revenueRecognitionEvents,
+  emailLogs,
+  type Coupon,
+  type InsertRevenueRecognitionEvent,
+  type InsertEmailLog,
+} from '@shared/schema';
+import { eq, and, lte, gte, isNull } from 'drizzle-orm';
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2024-11-20.acacia',
+});
 
 export interface Invoice {
   id: string;
@@ -183,16 +199,80 @@ export class BillingService {
   }> {
     logger.info(`[Billing] Applying discount: ${discountCode} to company: ${companyId}`);
 
-    // TODO: Look up coupon from database
-    // Validate expiry, usage limits, applicable plans
-    // Apply to next invoice or current subscription
+    // Look up coupon from database
+    const [coupon] = await db
+      .select()
+      .from(coupons)
+      .where(
+        and(
+          eq(coupons.code, discountCode),
+          eq(coupons.isActive, true),
+          isNull(coupons.companyId) // Global coupons have null companyId
+        )
+      )
+      .limit(1);
+
+    if (!coupon) {
+      logger.warn(`[Billing] Coupon not found or inactive: ${discountCode}`);
+      throw new Error(`Invalid or expired coupon code: ${discountCode}`);
+    }
+
+    // Validate expiry date
+    if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) {
+      logger.warn(`[Billing] Coupon expired: ${discountCode}`);
+      throw new Error(`Coupon code has expired: ${discountCode}`);
+    }
+
+    // Validate usage limits
+    if (coupon.usageLimit !== null && coupon.usageCount >= coupon.usageLimit) {
+      logger.warn(`[Billing] Coupon usage limit reached: ${discountCode}`);
+      throw new Error(`Coupon code has reached its usage limit: ${discountCode}`);
+    }
+
+    // Validate minimum purchase amount
+    const amountInGbp = amount / 100;
+    if (coupon.minPurchaseAmount && amountInGbp < parseFloat(coupon.minPurchaseAmount)) {
+      logger.warn(`[Billing] Minimum purchase amount not met for coupon: ${discountCode}`);
+      throw new Error(
+        `Minimum purchase amount of £${coupon.minPurchaseAmount} required for this coupon`
+      );
+    }
+
+    // Calculate discount amount
+    let discountAmount = 0;
+    const discountValue = parseFloat(coupon.discountValue);
+
+    if (coupon.discountType === 'percentage') {
+      discountAmount = Math.round((amount * discountValue) / 100);
+    } else if (coupon.discountType === 'fixed') {
+      discountAmount = Math.round(discountValue * 100); // Convert to cents
+    }
+
+    // Apply max discount amount if specified
+    if (coupon.maxDiscountAmount) {
+      const maxDiscountInCents = Math.round(parseFloat(coupon.maxDiscountAmount) * 100);
+      discountAmount = Math.min(discountAmount, maxDiscountInCents);
+    }
+
+    // Increment usage count
+    await db
+      .update(coupons)
+      .set({
+        usageCount: coupon.usageCount + 1,
+        updatedAt: new Date(),
+      })
+      .where(eq(coupons.id, coupon.id));
+
+    logger.info(
+      `[Billing] Discount applied: ${discountCode}, type: ${coupon.discountType}, value: ${discountValue}, amount: £${(discountAmount / 100).toFixed(2)}`
+    );
 
     return {
-      discountType: 'percentage',
-      discountValue: 0,
-      discountAmount: 0,
-      expiryDate: null,
-      applicableToRenewal: false,
+      discountType: coupon.discountType as 'percentage' | 'fixed',
+      discountValue,
+      discountAmount,
+      expiryDate: coupon.expiryDate ? new Date(coupon.expiryDate) : null,
+      applicableToRenewal: coupon.applicableToRenewal,
     };
   }
 
@@ -213,20 +293,117 @@ export class BillingService {
   }> {
     logger.info(`[Billing] Processing refund for company: ${companyId}, invoice: ${invoiceId}`);
 
-    // TODO: Connect to Stripe to process refund
-    // Update invoice status to 'refunded'
-    // Create revenue reversal event
-    // Send refund confirmation email
+    let refundStatus: 'pending' | 'completed' | 'failed' = 'pending';
+    let refundId = `ref_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    const refundId = `ref_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    try {
+      // Get invoice to find payment intent
+      const [invoice] = await db
+        .select()
+        .from(invoices)
+        .where(eq(invoices.id, invoiceId))
+        .limit(1);
 
-    return {
-      refundId,
-      status: 'completed',
-      amount,
-      processedAt: new Date(),
-      reason,
-    };
+      if (!invoice) {
+        throw new Error(`Invoice not found: ${invoiceId}`);
+      }
+
+      // Process refund through Stripe if payment intent exists
+      if (invoice.metadata && typeof invoice.metadata === 'object' && 'paymentIntentId' in invoice.metadata) {
+        const paymentIntentId = (invoice.metadata as any).paymentIntentId;
+        const refund = await stripe.refunds.create({
+          payment_intent: paymentIntentId,
+          amount: amount, // Amount in pence
+          reason: reason === 'duplicate' ? 'duplicate' : 'requested_by_customer',
+          metadata: {
+            companyId,
+            invoiceId,
+            refundReason: reason,
+          },
+        });
+
+        refundId = refund.id;
+        refundStatus = refund.status === 'succeeded' ? 'completed' : 'pending';
+
+        logger.info(`[Billing] Stripe refund created: ${refundId}, status: ${refund.status}`);
+      } else {
+        // Manual refund (no Stripe payment intent)
+        refundStatus = 'completed';
+        logger.info(`[Billing] Manual refund processed: ${refundId}`);
+      }
+
+      // Update invoice status to 'refunded'
+      await db
+        .update(invoices)
+        .set({
+          status: 'refunded',
+          updatedAt: new Date(),
+        })
+        .where(eq(invoices.id, invoiceId));
+
+      // Create revenue reversal event
+      const accountingPeriod = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+      await db.insert(revenueRecognitionEvents).values({
+        invoiceId,
+        companyId,
+        recognitionDate: new Date(),
+        amount: (-amount / 100).toFixed(2), // Negative amount for reversal, convert to GBP
+        revenueType: 'refund',
+        accountingPeriod,
+        status: 'recognized',
+        metadata: {
+          refundId,
+          reason,
+          originalAmount: amount,
+        },
+      });
+
+      // Send refund confirmation email
+      const emailSubject = `Refund Confirmation - ${refundId}`;
+      const emailHtml = `
+        <h2>Refund Processed</h2>
+        <p>We have processed a refund for your invoice.</p>
+        <p><strong>Refund ID:</strong> ${refundId}</p>
+        <p><strong>Amount:</strong> £${(amount / 100).toFixed(2)}</p>
+        <p><strong>Reason:</strong> ${reason}</p>
+        <p><strong>Status:</strong> ${refundStatus}</p>
+        <p>The refund will appear on your original payment method within 5-10 business days.</p>
+        <p>If you have any questions, please contact our support team.</p>
+      `;
+
+      await db.insert(emailLogs).values({
+        companyId,
+        recipientEmail: '', // Would be populated from company/user record
+        recipientName: '',
+        emailType: 'invoice',
+        subject: emailSubject,
+        htmlContent: emailHtml,
+        textContent: `Refund Processed\n\nRefund ID: ${refundId}\nAmount: £${(amount / 100).toFixed(2)}\nReason: ${reason}\nStatus: ${refundStatus}`,
+        status: 'queued',
+        relatedEntityType: 'invoice',
+        relatedEntityId: invoiceId,
+        sentBy: 'system',
+      });
+
+      logger.info(`[Billing] Refund completed: ${refundId}, invoice: ${invoiceId}, amount: £${(amount / 100).toFixed(2)}`);
+
+      return {
+        refundId,
+        status: refundStatus,
+        amount,
+        processedAt: new Date(),
+        reason,
+      };
+    } catch (error: any) {
+      logger.error(`[Billing] Refund failed: ${error.message}`);
+      return {
+        refundId,
+        status: 'failed',
+        amount,
+        processedAt: new Date(),
+        reason: `Failed: ${error.message}`,
+      };
+    }
   }
 
   /**
@@ -244,22 +421,39 @@ export class BillingService {
     const now = new Date();
     const accountingPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-    const event: RevenueRecognitionEvent = {
-      id: `rev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      invoiceId,
-      companyId,
-      recognitionDate: now,
-      amount,
-      revenueType,
-      accountingPeriod,
-      status: 'recognized',
+    // Store in database
+    const [event] = await db
+      .insert(revenueRecognitionEvents)
+      .values({
+        invoiceId,
+        companyId,
+        recognitionDate: now,
+        amount: (amount / 100).toFixed(2), // Convert from cents to GBP
+        revenueType,
+        accountingPeriod,
+        status: 'recognized',
+        metadata: {
+          recordedAt: now.toISOString(),
+          source: 'BillingService',
+        },
+      })
+      .returning();
+
+    logger.info(`[Billing] Revenue recognized: ${event.id}, period: ${accountingPeriod}`);
+
+    // TODO: Replicate to accounting system if configured (e.g., QuickBooks, Xero)
+    // This would be done via webhook or API integration based on company settings
+
+    return {
+      id: event.id,
+      invoiceId: event.invoiceId,
+      companyId: event.companyId,
+      recognitionDate: new Date(event.recognitionDate),
+      amount: parseFloat(event.amount) * 100, // Convert back to cents for interface
+      revenueType: event.revenueType as 'subscription' | 'overage' | 'one_time' | 'refund',
+      accountingPeriod: event.accountingPeriod,
+      status: event.status as 'pending' | 'recognized' | 'reversed',
     };
-
-    // TODO: Store in database
-    // Replicate to accounting system if configured
-
-    logger.info(`[Billing] Revenue recognized: ${event.id}`);
-    return event;
   }
 
   /**
@@ -321,19 +515,125 @@ export class BillingService {
   ): Promise<void> {
     logger.warn(`[Billing] Payment failed for company: ${companyId}, invoice: ${invoiceId}, error: ${error}`);
 
-    // TODO: Update invoice status to 'failed'
-    // TODO: Trigger retry schedule (3 retries over 7 days typical)
-    // TODO: Send notification to customer
-    // TODO: Mark subscription as 'past_due' if multiple failures
+    // Get current invoice to check retry count
+    const [invoice] = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.id, invoiceId))
+      .limit(1);
 
-    // First attempt: Notify customer
-    logger.info(`[Billing] Sending payment failure notification to company: ${companyId}`);
+    if (!invoice) {
+      logger.error(`[Billing] Invoice not found: ${invoiceId}`);
+      return;
+    }
 
-    // Retry schedule
-    // Day 1: Immediate retry
+    const metadata = (invoice.metadata || {}) as any;
+    const retryCount = metadata.paymentRetryCount || 0;
+    const failureHistory = metadata.paymentFailures || [];
+
+    // Record this failure
+    failureHistory.push({
+      attemptNumber: retryCount + 1,
+      failedAt: new Date().toISOString(),
+      error,
+    });
+
+    // Update invoice status to 'failed' and increment retry count
+    await db
+      .update(invoices)
+      .set({
+        status: 'failed',
+        updatedAt: new Date(),
+        metadata: {
+          ...metadata,
+          paymentRetryCount: retryCount + 1,
+          paymentFailures: failureHistory,
+          lastPaymentError: error,
+          lastPaymentAttempt: new Date().toISOString(),
+        },
+      })
+      .where(eq(invoices.id, invoiceId));
+
+    logger.info(`[Billing] Invoice ${invoiceId} marked as failed (attempt ${retryCount + 1})`);
+
+    // Determine retry schedule
+    // Day 1: Immediate retry (handled by payment processor)
     // Day 3: Second attempt
     // Day 7: Third attempt
     // After day 7: Suspend subscription if not recovered
+    const maxRetries = 3;
+    const retrySchedule = [0, 3, 7]; // Days
+    const shouldRetry = retryCount < maxRetries;
+    const nextRetryDate = shouldRetry
+      ? new Date(Date.now() + retrySchedule[retryCount] * 24 * 60 * 60 * 1000)
+      : null;
+
+    // Send notification to customer
+    const emailSubject =
+      retryCount === 0
+        ? 'Payment Failed - Action Required'
+        : retryCount < maxRetries
+        ? `Payment Failed - Retry ${retryCount + 1} of ${maxRetries}`
+        : 'Payment Failed - Subscription Suspended';
+
+    const emailHtml = `
+      <h2>Payment Failed</h2>
+      <p>We were unable to process your payment for invoice <strong>${invoice.invoiceNumber}</strong>.</p>
+      <p><strong>Amount:</strong> £${parseFloat(invoice.totalAmount).toFixed(2)}</p>
+      <p><strong>Error:</strong> ${error}</p>
+      ${
+        shouldRetry
+          ? `
+      <p><strong>Next Retry:</strong> ${nextRetryDate?.toLocaleDateString()}</p>
+      <p>We will automatically retry this payment on the date shown above. Please ensure your payment method is up to date.</p>
+      `
+          : `
+      <p><strong>Action Required:</strong> Your subscription has been suspended due to multiple failed payment attempts.</p>
+      <p>Please update your payment method and contact our support team to reactivate your subscription.</p>
+      `
+      }
+      <p>To update your payment method, please log in to your account or contact our support team.</p>
+      <p><strong>Need help?</strong> Contact us at support@ils.com</p>
+    `;
+
+    await db.insert(emailLogs).values({
+      companyId,
+      recipientEmail: '', // Would be populated from company record
+      recipientName: '',
+      emailType: 'invoice',
+      subject: emailSubject,
+      htmlContent: emailHtml,
+      textContent: `Payment Failed\n\nInvoice: ${invoice.invoiceNumber}\nAmount: £${parseFloat(invoice.totalAmount).toFixed(2)}\nError: ${error}\n\n${shouldRetry ? `Next retry: ${nextRetryDate?.toLocaleDateString()}` : 'Subscription suspended - please contact support'}`,
+      status: 'queued',
+      relatedEntityType: 'invoice',
+      relatedEntityId: invoiceId,
+      sentBy: 'system',
+      metadata: {
+        paymentFailure: true,
+        retryCount,
+        maxRetries,
+      },
+    });
+
+    logger.info(`[Billing] Payment failure notification queued for company: ${companyId}`);
+
+    // Mark subscription as 'past_due' if multiple failures
+    // NOTE: This requires a subscriptions table to be implemented
+    // For now, we track the status in the invoice metadata
+    if (retryCount >= maxRetries) {
+      logger.warn(
+        `[Billing] Maximum retries exceeded for invoice ${invoiceId}. Subscription should be marked as past_due.`
+      );
+      // TODO: Update subscription status to 'past_due' when subscriptions table is available
+      // await db
+      //   .update(subscriptions)
+      //   .set({ status: 'past_due', updatedAt: new Date() })
+      //   .where(eq(subscriptions.companyId, companyId));
+    }
+
+    logger.info(
+      `[Billing] Failed payment handled: invoice ${invoiceId}, retries: ${retryCount + 1}/${maxRetries}, next retry: ${nextRetryDate?.toISOString() || 'none'}`
+    );
   }
 
   /**
