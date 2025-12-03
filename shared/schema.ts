@@ -1960,6 +1960,40 @@ export const invoiceLineItems = pgTable("invoice_line_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Coupons table for discount codes
+export const coupons = pgTable("coupons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  description: text("description"),
+  discountType: varchar("discount_type", { length: 20 }).notNull(), // "percentage" or "fixed"
+  discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+  expiresAt: timestamp("expires_at"),
+  maxUses: integer("max_uses"),
+  usedCount: integer("used_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Revenue Recognition Events for GAAP/IFRS compliance
+export const revenueRecognitionEvents = pgTable("revenue_recognition_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: 'cascade' }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  recognitionDate: timestamp("recognition_date").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  recognitionType: varchar("recognition_type", { length: 50 }).notNull(), // "full", "deferred", "partial"
+  status: varchar("status", { length: 20 }).default("pending").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_revenue_recognition_invoice").on(table.invoiceId),
+  index("idx_revenue_recognition_company").on(table.companyId),
+  index("idx_revenue_recognition_date").on(table.recognitionDate),
+]);
+
 // Enums for new features
 export const adaptAlertSeverityEnum = pgEnum("adapt_alert_severity", [
   "info",
@@ -2336,6 +2370,12 @@ export type Invoice = typeof invoices.$inferSelect;
 
 export type InsertInvoiceLineItem = z.infer<typeof insertInvoiceLineItemSchema>;
 export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
+
+export type Coupon = typeof coupons.$inferSelect;
+export type InsertCoupon = typeof coupons.$inferInsert;
+
+export type RevenueRecognitionEvent = typeof revenueRecognitionEvents.$inferSelect;
+export type InsertRevenueRecognitionEvent = typeof revenueRecognitionEvents.$inferInsert;
 
 export type InvoiceWithDetails = Invoice & {
   patient?: Patient;
