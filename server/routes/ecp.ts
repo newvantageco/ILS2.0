@@ -409,11 +409,28 @@ router.patch('/test-room-bookings/:id/status', authenticateHybrid, async (req: a
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    // SECURITY: Get user's companyId for tenant isolation
+    const user = await db
+      .select({ companyId: users.companyId })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user.length || !user[0].companyId) {
+      return res.status(403).json({ message: "User must belong to a company" });
+    }
+
+    const companyId = user[0].companyId;
     const { status } = req.body;
+
+    // SECURITY: Update only if booking belongs to user's company
     const [booking] = await db
       .update(testRoomBookings)
       .set({ status, updatedAt: new Date() })
-      .where(eq(testRoomBookings.id, req.params.id))
+      .where(and(
+        eq(testRoomBookings.id, req.params.id),
+        eq(testRoomBookings.companyId, companyId)
+      ))
       .returning();
 
     if (!booking) {
@@ -435,14 +452,35 @@ router.delete('/test-room-bookings/:id', authenticateHybrid, async (req: any, re
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    // Soft delete - set deletedAt timestamp instead of hard delete
-    await db
+    // SECURITY: Get user's companyId for tenant isolation
+    const user = await db
+      .select({ companyId: users.companyId })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user.length || !user[0].companyId) {
+      return res.status(403).json({ message: "User must belong to a company" });
+    }
+
+    const companyId = user[0].companyId;
+
+    // SECURITY: Soft delete only if booking belongs to user's company
+    const result = await db
       .update(testRoomBookings)
       .set({
         deletedAt: new Date(),
         deletedBy: userId,
       } as any)
-      .where(eq(testRoomBookings.id, req.params.id));
+      .where(and(
+        eq(testRoomBookings.id, req.params.id),
+        eq(testRoomBookings.companyId, companyId)
+      ))
+      .returning();
+
+    if (!result.length) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
 
     res.json({ message: "Booking deleted successfully" });
   } catch (error) {
@@ -644,6 +682,18 @@ router.patch('/remote-sessions/:id/status', authenticateHybrid, async (req: any,
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    // SECURITY: Get user's companyId for tenant isolation
+    const user = await db
+      .select({ companyId: users.companyId })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user.length || !user[0].companyId) {
+      return res.status(403).json({ message: "User must belong to a company" });
+    }
+
+    const companyId = user[0].companyId;
     const { status } = req.body;
     const updates: any = { status, updatedAt: new Date() };
 
@@ -654,10 +704,14 @@ router.patch('/remote-sessions/:id/status', authenticateHybrid, async (req: any,
       updates.revokedAt = new Date();
     }
 
+    // SECURITY: Update only if session belongs to user's company
     const [session] = await db
       .update(remoteSessions)
       .set(updates)
-      .where(eq(remoteSessions.id, req.params.id))
+      .where(and(
+        eq(remoteSessions.id, req.params.id),
+        eq(remoteSessions.companyId, companyId)
+      ))
       .returning();
 
     if (!session) {
