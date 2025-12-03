@@ -19,7 +19,10 @@
 import { loggers } from '../../utils/logger.js';
 import crypto from 'crypto';
 import { storage, type IStorage } from '../../storage';
-import type { MessageTemplate, Message } from '../../../shared/schema';
+import type { MessageTemplate, Message, WhatsappMessageEvent, SmsMessageEvent } from '../../../shared/schema';
+import { db } from '../../db/index.js';
+import { whatsappMessageEvents, smsMessageEvents } from '../../../shared/schema.js';
+import { eq } from 'drizzle-orm';
 
 const logger = loggers.api;
 
@@ -517,19 +520,26 @@ Need to reschedule? Reply or call {{clinicPhone}}.
         await this.deliverWhatsAppMessage(message);
       }
 
-      // Simulate delivery for other channels - update status in database
-      await this.db.updateMessage(message.id, companyId, {
-        status: 'sent',
-        sentAt: new Date(),
-      });
+      // Handle SMS delivery via Twilio
+      if (message.channel === 'sms') {
+        await this.deliverSmsMessage(message);
+      }
 
-      // Simulate delivery confirmation after 1 second
-      setTimeout(async () => {
+      // For other channels (email, push, in_app), update status in database
+      if (message.channel !== 'whatsapp' && message.channel !== 'sms') {
         await this.db.updateMessage(message.id, companyId, {
-          status: 'delivered',
-          deliveredAt: new Date(),
+          status: 'sent',
+          sentAt: new Date(),
         });
-      }, 1000);
+
+        // Simulate delivery confirmation after 1 second
+        setTimeout(async () => {
+          await this.db.updateMessage(message.id, companyId, {
+            status: 'delivered',
+            deliveredAt: new Date(),
+          });
+        }, 1000);
+      }
 
       logger.info({ messageId: message.id, channel: message.channel }, 'Message delivered');
     } catch (error) {
@@ -556,6 +566,108 @@ Need to reschedule? Reply or call {{clinicPhone}}.
   }
 
   /**
+   * Deliver SMS message via Twilio
+   * Requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER env vars
+   */
+  private static async deliverSmsMessage(message: Message): Promise<void> {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const smsNumber = process.env.TWILIO_PHONE_NUMBER;
+
+    // Validate Twilio configuration
+    if (!accountSid || !authToken || !smsNumber) {
+      logger.warn(
+        { messageId: message.id },
+        'SMS not configured: Missing TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, or TWILIO_PHONE_NUMBER'
+      );
+      // In development, log the message but don't fail
+      if (process.env.NODE_ENV === 'development') {
+        logger.info(
+          {
+            messageId: message.id,
+            to: message.to,
+            body: message.body?.substring(0, 100)
+          },
+          '[DEV] SMS message would be sent'
+        );
+        return;
+      }
+      throw new Error('SMS configuration missing');
+    }
+
+    const eventId = crypto.randomUUID();
+    const now = new Date();
+
+    try {
+      // Dynamically import Twilio to avoid runtime errors if not installed
+      const twilio = await import('twilio');
+      const client = twilio.default(accountSid, authToken);
+
+      // Create initial SMS event record (queued)
+      await db.insert(smsMessageEvents).values({
+        id: eventId,
+        companyId: message.companyId,
+        messageId: message.id,
+        from: smsNumber,
+        to: message.to,
+        body: message.body,
+        status: 'queued',
+        queuedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const twilioMessage = await client.messages.create({
+        from: smsNumber,
+        to: message.to,
+        body: message.body,
+      });
+
+      // Update SMS event with Twilio response
+      await db.update(smsMessageEvents)
+        .set({
+          twilioMessageSid: twilioMessage.sid,
+          twilioAccountSid: twilioMessage.accountSid,
+          twilioStatus: twilioMessage.status as any,
+          status: twilioMessage.status as any,
+          numSegments: twilioMessage.numSegments ? parseInt(twilioMessage.numSegments) : undefined,
+          numMedia: twilioMessage.numMedia ? parseInt(twilioMessage.numMedia) : 0,
+          price: twilioMessage.price ? parseFloat(twilioMessage.price) : undefined,
+          priceUnit: twilioMessage.priceUnit || 'USD',
+          sentAt: now,
+          updatedAt: now,
+        })
+        .where(eq(smsMessageEvents.id, eventId));
+
+      logger.info(
+        {
+          messageId: message.id,
+          twilioSid: twilioMessage.sid,
+          status: twilioMessage.status,
+          eventId
+        },
+        'SMS message sent via Twilio'
+      );
+    } catch (error) {
+      // Update SMS event with failure
+      await db.update(smsMessageEvents)
+        .set({
+          status: 'failed',
+          errorMessage: (error as Error).message,
+          failedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(smsMessageEvents.id, eventId));
+
+      logger.error(
+        { error, messageId: message.id, to: message.to, eventId },
+        'Failed to send SMS message via Twilio'
+      );
+      throw error;
+    }
+  }
+
+  /**
    * Deliver WhatsApp message via Twilio Business API
    * Requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_WHATSAPP_NUMBER env vars
    */
@@ -573,10 +685,10 @@ Need to reschedule? Reply or call {{clinicPhone}}.
       // In development, log the message but don't fail
       if (process.env.NODE_ENV === 'development') {
         logger.info(
-          { 
-            messageId: message.id, 
-            to: message.to, 
-            body: message.body?.substring(0, 100) 
+          {
+            messageId: message.id,
+            to: message.to,
+            body: message.body?.substring(0, 100)
           },
           '[DEV] WhatsApp message would be sent'
         );
@@ -586,17 +698,33 @@ Need to reschedule? Reply or call {{clinicPhone}}.
     }
 
     // Format phone numbers for WhatsApp (must include 'whatsapp:' prefix)
-    const fromNumber = whatsappNumber.startsWith('whatsapp:') 
-      ? whatsappNumber 
+    const fromNumber = whatsappNumber.startsWith('whatsapp:')
+      ? whatsappNumber
       : `whatsapp:${whatsappNumber}`;
-    const toNumber = message.to.startsWith('whatsapp:') 
-      ? message.to 
+    const toNumber = message.to.startsWith('whatsapp:')
+      ? message.to
       : `whatsapp:${message.to}`;
+
+    const eventId = crypto.randomUUID();
+    const now = new Date();
 
     try {
       // Dynamically import Twilio to avoid runtime errors if not installed
       const twilio = await import('twilio');
       const client = twilio.default(accountSid, authToken);
+
+      // Create initial WhatsApp event record (queued)
+      await db.insert(whatsappMessageEvents).values({
+        id: eventId,
+        companyId: message.companyId,
+        messageId: message.id,
+        from: fromNumber,
+        to: toNumber,
+        status: 'queued',
+        queuedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
 
       const twilioMessage = await client.messages.create({
         from: fromNumber,
@@ -604,17 +732,44 @@ Need to reschedule? Reply or call {{clinicPhone}}.
         body: message.body,
       });
 
+      // Update WhatsApp event with Twilio response
+      await db.update(whatsappMessageEvents)
+        .set({
+          twilioMessageSid: twilioMessage.sid,
+          twilioAccountSid: twilioMessage.accountSid,
+          twilioStatus: twilioMessage.status as any,
+          status: twilioMessage.status as any,
+          numSegments: twilioMessage.numSegments ? parseInt(twilioMessage.numSegments) : undefined,
+          numMedia: twilioMessage.numMedia ? parseInt(twilioMessage.numMedia) : 0,
+          price: twilioMessage.price ? parseFloat(twilioMessage.price) : undefined,
+          priceUnit: twilioMessage.priceUnit || 'USD',
+          sentAt: now,
+          updatedAt: now,
+        })
+        .where(eq(whatsappMessageEvents.id, eventId));
+
       logger.info(
-        { 
-          messageId: message.id, 
+        {
+          messageId: message.id,
           twilioSid: twilioMessage.sid,
-          status: twilioMessage.status 
+          status: twilioMessage.status,
+          eventId
         },
         'WhatsApp message sent via Twilio'
       );
     } catch (error) {
+      // Update WhatsApp event with failure
+      await db.update(whatsappMessageEvents)
+        .set({
+          status: 'failed',
+          errorMessage: (error as Error).message,
+          failedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(whatsappMessageEvents.id, eventId));
+
       logger.error(
-        { error, messageId: message.id, to: toNumber },
+        { error, messageId: message.id, to: toNumber, eventId },
         'Failed to send WhatsApp message via Twilio'
       );
       throw error;
