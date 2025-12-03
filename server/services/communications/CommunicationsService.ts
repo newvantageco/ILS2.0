@@ -20,7 +20,7 @@ import { loggers } from '../../utils/logger.js';
 import crypto from 'crypto';
 import { storage, type IStorage } from '../../storage';
 import type { MessageTemplate, Message, WhatsappMessageEvent, SmsMessageEvent } from '../../../shared/schema';
-import { db } from '../../db/index.js';
+import { db } from '../../db';
 import { whatsappMessageEvents, smsMessageEvents } from '../../../shared/schema.js';
 import { eq } from 'drizzle-orm';
 
