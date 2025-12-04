@@ -6,7 +6,31 @@ import type { User } from "@shared/schema";
 export function useAuth() {
   const { data: user, isLoading } = useQuery<User | null>({
     queryKey: ["/api/auth/jwt/me"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
+    queryFn: async () => {
+      const headers: Record<string, string> = {};
+      const accessToken = localStorage.getItem('ils_access_token');
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const res = await fetch("/api/auth/jwt/me", {
+        credentials: "include",
+        headers,
+      });
+
+      // Return null on 401 instead of throwing
+      if (res.status === 401) {
+        return null;
+      }
+
+      if (!res.ok) {
+        throw new Error(`${res.status}: ${await res.text()}`);
+      }
+
+      const data = await res.json();
+      // Unwrap the { success: true, user: {...} } response
+      return data.user || null;
+    },
     retry: false,
   });
 

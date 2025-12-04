@@ -295,6 +295,7 @@ const csrfEnabled = process.env.CSRF_ENABLED !== 'false';
 // CSRF token flow implemented: frontend fetches token from /api/csrf-token and sends in X-CSRF-Token header
 const csrfExemptPaths = [
   '/api/csrf-token', // CSRF token endpoint must be exempt (it generates the token)
+  '/api/admin-init', // Admin initialization endpoint (one-time use)
   '/api/auth/jwt/login',
   '/api/auth/login',
   '/api/auth/login-email',
@@ -486,6 +487,11 @@ app.get('/api/diagnostic/filesystem', (req: Request, res: Response) => {
     app.use('/api/docs', swaggerRouter);
     logger.info({}, '✅ API documentation available at /api/docs');
 
+    // Admin initialization endpoint (for creating default admin user)
+    const adminInitRouter = (await import('./routes/admin-init.js')).default;
+    app.use('/api', adminInitRouter);
+    logger.info({}, '✅ Admin initialization endpoint registered');
+
     // Routes will be registered, then static files served at the end
     // Don't intercept root route - let it fall through to static file server
 
@@ -548,6 +554,15 @@ app.get('/api/diagnostic/filesystem', (req: Request, res: Response) => {
     
     // Initialize event-driven architecture (Chunk 9)
     initializeEventSystem();
+
+    // Initialize default admin user in database
+    try {
+      const { AdminOperationsService } = await import('./services/admin/AdminOperationsService.js');
+      await AdminOperationsService.initializeDefaultAdmin();
+      log('✅ Default admin user initialized');
+    } catch (error) {
+      logger.error({ error }, '❌ Failed to initialize default admin user');
+    }
 
     // === Register opt-in background workers (Order-related) ===
     // Controlled by WORKERS_ENABLED (defaults to 'true' when Redis is connected)

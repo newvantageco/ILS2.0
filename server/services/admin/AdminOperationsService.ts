@@ -219,32 +219,37 @@ export class AdminOperationsService {
     user: ['patients.read'],
   };
 
-  /**
-   * Initialize default users
-   */
-  static {
-    this.initializeDefaultUsers();
-  }
-
   // ========== User Management ==========
 
   /**
-   * Initialize default users
+   * Initialize default admin user in database
    */
-  private static initializeDefaultUsers(): void {
-    // Create default super admin
-    this.createUser(
-      {
-        email: 'admin@ils2.com',
-        firstName: 'System',
-        lastName: 'Administrator',
-        role: 'super_admin',
-        password: 'Admin@123',
-      },
-      'system'
-    );
+  public static async initializeDefaultAdmin(): Promise<void> {
+    // Import storage dynamically to avoid circular dependency
+    const { storage } = await import('../../storage.js');
+    const bcrypt = await import('bcryptjs');
 
-    logger.info('Default admin user created');
+    // Hash the admin password
+    const passwordHash = await bcrypt.hash('Admin@123456', this.PASSWORD_SALT_ROUNDS);
+
+    // Upsert admin user to database (insert or update if exists)
+    await storage.upsertUser({
+      id: crypto.randomUUID(),
+      username: 'admin',
+      email: 'admin@ils2.com',
+      password: passwordHash,
+      firstName: 'System',
+      lastName: 'Administrator',
+      role: 'platform_admin',
+      accountStatus: 'active',
+      isEmailVerified: true,
+      isPhoneVerified: false,
+      mustChangePassword: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    logger.info('Default admin user initialized in database');
   }
 
   /**
