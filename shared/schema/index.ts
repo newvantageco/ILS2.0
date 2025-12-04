@@ -77,6 +77,9 @@ export * from './quality';
 // Population Health Domain - risk stratification, predictive analytics, SDOH
 export * from './populationhealth';
 
+// Campaigns Domain - marketing campaigns, audience segments, campaign tracking
+export * from './campaigns';
+
 // ============================================
 // BACKWARD COMPATIBILITY REMOVED
 // ============================================
