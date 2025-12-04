@@ -882,6 +882,28 @@ function AuthenticatedApp() {
             <Route path="/ecp/prescription-templates" component={PrescriptionTemplatesPage} />
             <Route path="/ecp/clinical-protocols" component={ClinicalProtocolsPage} />
             <Route path="/order/:id" component={OrderDetailsPage} />
+
+            {/* Lab Routes - Full Access */}
+            <Route path="/lab/dashboard" component={LabDashboard} />
+            <Route path="/lab/production" component={ProductionTrackingPage} />
+            <Route path="/lab/quality" component={QualityControlPage} />
+            <Route path="/lab/equipment" component={EquipmentPage} />
+            <Route path="/lab/engineering" component={EngineeringDashboardPage} />
+            <Route path="/lab/returns" component={ReturnsManagementPage} />
+            <Route path="/lab/non-adapts" component={NonAdaptsPage} />
+
+            {/* Supplier Routes - Full Access */}
+            <Route path="/supplier/dashboard" component={SupplierDashboard} />
+            <Route path="/supplier/library" component={SupplierLibraryPage} />
+
+            {/* Platform Admin Routes - Full Access */}
+            <Route path="/platform-admin/dashboard" component={PlatformAdminPage} />
+            <Route path="/platform-admin/users" component={PlatformAdminPage} />
+            <Route path="/platform-admin/companies" component={PlatformAdminPage} />
+            <Route path="/platform-admin/company-approvals" component={CompanyApprovalDashboard} />
+            <Route path="/platform-admin/system-health" component={SystemHealthDashboard} />
+            <Route path="/platform-admin/system-config" component={SystemConfigPage} />
+            <Route path="/platform-admin/api-keys" component={APIKeysManagementPage} />
           </>
         )}
 

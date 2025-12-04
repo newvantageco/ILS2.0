@@ -27,6 +27,7 @@ import healthcareRoutes from './healthcare';
 import integrationsRoutes, { shopifyWebhookRoutes } from './integrations';
 import systemRoutes from './system';
 import onboardingRoutes from '../onboarding';
+import companyAdminRoutes from '../company-admin';
 
 // Middleware imports
 import { secureRoute } from '../../middleware/secureRoute';
@@ -98,6 +99,11 @@ const domainRoutes: DomainConfig[] = [
     path: '/api/system',
     router: systemRoutes,
     description: 'System administration',
+  },
+  {
+    path: '/api/company-admin',
+    router: companyAdminRoutes,
+    description: 'Company admin management (create companies without subscription)',
   },
 ];
 
