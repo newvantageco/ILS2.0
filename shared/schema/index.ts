@@ -83,6 +83,9 @@ export * from './campaigns';
 // CDS Domain - clinical decision support, drug interactions, guidelines, alerts
 export * from './cds';
 
+// Workflows Domain - automated patient engagement, workflow automation
+export * from './workflows';
+
 // ============================================
 // BACKWARD COMPATIBILITY REMOVED
 // ============================================
