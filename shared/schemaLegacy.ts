@@ -9978,212 +9978,217 @@ export const immunizations = pgTable(
   ],
 );
 
+/* DUPLICATE - labResults table moved to lab domain */
 // Lab Results
-export const labResults = pgTable(
-  "lab_results",
-  {
-    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-    patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
-    practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
-    
+// export const labResults = pgTable(
+//   "lab_results",
+//   {
+//     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//     companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+//     patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
+//     practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
+//
     // Test details
-    testName: varchar("test_name", { length: 255 }).notNull(),
-    testCategory: varchar("test_category", { length: 100 }),
-    loincCode: varchar("loinc_code", { length: 20 }), // LOINC code for standardization
-    
+//     testName: varchar("test_name", { length: 255 }).notNull(),
+//     testCategory: varchar("test_category", { length: 100 }),
+//     loincCode: varchar("loinc_code", { length: 20 }), // LOINC code for standardization
+//
     // Results
-    resultValue: varchar("result_value", { length: 255 }),
-    resultUnit: varchar("result_unit", { length: 50 }),
-    referenceRange: text("reference_range"),
-    abnormalFlag: varchar("abnormal_flag", { length: 10 }), // H, L, HH, LL, etc.
-    interpretation: text("interpretation"),
-    
+//     resultValue: varchar("result_value", { length: 255 }),
+//     resultUnit: varchar("result_unit", { length: 50 }),
+//     referenceRange: text("reference_range"),
+//     abnormalFlag: varchar("abnormal_flag", { length: 10 }), // H, L, HH, LL, etc.
+//     interpretation: text("interpretation"),
+//
     // Dates and status
-    specimenDate: timestamp("specimen_date", { withTimezone: true }),
-    resultDate: timestamp("result_date", { withTimezone: true }).notNull(),
-    status: varchar("status", { length: 50 }).default("final"),
-    
+//     specimenDate: timestamp("specimen_date", { withTimezone: true }),
+//     resultDate: timestamp("result_date", { withTimezone: true }).notNull(),
+//     status: varchar("status", { length: 50 }).default("final"),
+//
     // Laboratory information
-    performingLab: varchar("performing_lab", { length: 255 }),
-    orderingProvider: varchar("ordering_provider", { length: 255 }),
-    
+//     performingLab: varchar("performing_lab", { length: 255 }),
+//     orderingProvider: varchar("ordering_provider", { length: 255 }),
+//
     // Clinical notes
-    clinicalNotes: text("clinical_notes"),
-    
+//     clinicalNotes: text("clinical_notes"),
+//
     // Metadata
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-    
+//     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+//     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+//
     // External identifiers
-    accessionNumber: varchar("accession_number", { length: 100 }),
-  },
-  (table) => [
-    index("idx_lab_results_company").on(table.companyId),
-    index("idx_lab_results_patient").on(table.patientId),
-    index("idx_lab_results_test").on(table.testName),
-    index("idx_lab_results_date").on(table.resultDate),
-    index("idx_lab_results_status").on(table.status),
-  ],
-);
+//     accessionNumber: varchar("accession_number", { length: 100 }),
+//   },
+//   (table) => [
+//     index("idx_lab_results_company").on(table.companyId),
+//     index("idx_lab_results_patient").on(table.patientId),
+//     index("idx_lab_results_test").on(table.testName),
+//     index("idx_lab_results_date").on(table.resultDate),
+//     index("idx_lab_results_status").on(table.status),
+//   ],
+// );
 
+/* DUPLICATE - labOrders table moved to lab domain */
 // Lab Orders - for tracking laboratory test orders
-export const labOrders = pgTable(
-  "lab_orders",
-  {
-    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-    patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
-    practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
-    
+// export const labOrders = pgTable(
+//   "lab_orders",
+//   {
+//     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//     companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+//     patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
+//     practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
+//
     // Order details
-    orderNumber: varchar("order_number", { length: 100 }).notNull(),
-    orderType: varchar("order_type", { length: 50 }),
-    priority: varchar("priority", { length: 20 }).default("routine"),
-    
+//     orderNumber: varchar("order_number", { length: 100 }).notNull(),
+//     orderType: varchar("order_type", { length: 50 }),
+//     priority: varchar("priority", { length: 20 }).default("routine"),
+//
     // Dates
-    orderedDate: timestamp("ordered_date", { withTimezone: true }).notNull().defaultNow(),
-    scheduledDate: timestamp("scheduled_date", { withTimezone: true }),
-    completedDate: timestamp("completed_date", { withTimezone: true }),
-    
+//     orderedDate: timestamp("ordered_date", { withTimezone: true }).notNull().defaultNow(),
+//     scheduledDate: timestamp("scheduled_date", { withTimezone: true }),
+//     completedDate: timestamp("completed_date", { withTimezone: true }),
+//
     // Status
-    status: varchar("status", { length: 50 }).default("pending"),
-    
+//     status: varchar("status", { length: 50 }).default("pending"),
+//
     // Laboratory information
-    performingLab: varchar("performing_lab", { length: 255 }),
-    
+//     performingLab: varchar("performing_lab", { length: 255 }),
+//
     // Clinical information
-    diagnosis: text("diagnosis"),
-    clinicalNotes: text("clinical_notes"),
-    specialInstructions: text("special_instructions"),
-    
+//     diagnosis: text("diagnosis"),
+//     clinicalNotes: text("clinical_notes"),
+//     specialInstructions: text("special_instructions"),
+//
     // Metadata
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-  },
-  (table) => [
-    index("idx_lab_orders_company").on(table.companyId),
-    index("idx_lab_orders_patient").on(table.patientId),
-    index("idx_lab_orders_practitioner").on(table.practitionerId),
-    index("idx_lab_orders_order_number").on(table.orderNumber),
-    index("idx_lab_orders_status").on(table.status),
-    index("idx_lab_orders_ordered_date").on(table.orderedDate),
-  ],
-);
+//     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+//     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+//   },
+//   (table) => [
+//     index("idx_lab_orders_company").on(table.companyId),
+//     index("idx_lab_orders_patient").on(table.patientId),
+//     index("idx_lab_orders_practitioner").on(table.practitionerId),
+//     index("idx_lab_orders_order_number").on(table.orderNumber),
+//     index("idx_lab_orders_status").on(table.status),
+//     index("idx_lab_orders_ordered_date").on(table.orderedDate),
+//   ],
+// );
 
+/* DUPLICATE - labTestCatalog table moved to lab domain */
 // Lab Test Catalog - master list of available laboratory tests
-export const labTestCatalog = pgTable(
-  "lab_test_catalog",
-  {
-    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }), // null for system-wide tests
-
+// export const labTestCatalog = pgTable(
+//   "lab_test_catalog",
+//   {
+//     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//     companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }), // null for system-wide tests
+//
     // Test identification
-    testCode: varchar("test_code", { length: 50 }).notNull(),
-    testName: varchar("test_name", { length: 255 }).notNull(),
-    category: varchar("category", { length: 100 }),
-    description: text("description"),
-
+//     testCode: varchar("test_code", { length: 50 }).notNull(),
+//     testName: varchar("test_name", { length: 255 }).notNull(),
+//     category: varchar("category", { length: 100 }),
+//     description: text("description"),
+//
     // Specimen and logistics
-    specimenType: varchar("specimen_type", { length: 100 }),
-    specimenVolume: varchar("specimen_volume", { length: 50 }),
-    containerType: varchar("container_type", { length: 100 }),
-    turnaroundTime: varchar("turnaround_time", { length: 100 }),
-
+//     specimenType: varchar("specimen_type", { length: 100 }),
+//     specimenVolume: varchar("specimen_volume", { length: 50 }),
+//     containerType: varchar("container_type", { length: 100 }),
+//     turnaroundTime: varchar("turnaround_time", { length: 100 }),
+//
     // Standardization
-    loincCode: varchar("loinc_code", { length: 20 }),
-    cptCode: varchar("cpt_code", { length: 20 }),
-
+//     loincCode: varchar("loinc_code", { length: 20 }),
+//     cptCode: varchar("cpt_code", { length: 20 }),
+//
     // Pricing and availability
-    cost: numeric("cost", { precision: 10, scale: 2 }),
-    isActive: boolean("is_active").default(true),
-    requiresApproval: boolean("requires_approval").default(false),
-
+//     cost: numeric("cost", { precision: 10, scale: 2 }),
+//     isActive: boolean("is_active").default(true),
+//     requiresApproval: boolean("requires_approval").default(false),
+//
     // Metadata
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-  },
-  (table) => [
-    index("idx_lab_test_catalog_company").on(table.companyId),
-    index("idx_lab_test_catalog_code").on(table.testCode),
-    index("idx_lab_test_catalog_category").on(table.category),
-    index("idx_lab_test_catalog_active").on(table.isActive),
-  ],
-);
+//     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+//     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+//   },
+//   (table) => [
+//     index("idx_lab_test_catalog_company").on(table.companyId),
+//     index("idx_lab_test_catalog_code").on(table.testCode),
+//     index("idx_lab_test_catalog_category").on(table.category),
+//     index("idx_lab_test_catalog_active").on(table.isActive),
+//   ],
+// );
 
+/* DUPLICATE - labQualityControl table moved to lab domain */
 // Lab Quality Control Tests - for tracking lab QC results
-export const labQualityControl = pgTable(
-  "lab_quality_control",
-  {
-    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-    technicianId: varchar("technician_id").references(() => users.id, { onDelete: 'set null' }),
-
+// export const labQualityControl = pgTable(
+//   "lab_quality_control",
+//   {
+//     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//     companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+//     technicianId: varchar("technician_id").references(() => users.id, { onDelete: 'set null' }),
+//
     // Test identification
-    testCode: varchar("test_code", { length: 50 }).notNull(),
-    testName: varchar("test_name", { length: 255 }),
-
+//     testCode: varchar("test_code", { length: 50 }).notNull(),
+//     testName: varchar("test_name", { length: 255 }),
+//
     // Control information
-    controlLot: varchar("control_lot", { length: 100 }).notNull(),
-    controlLevel: varchar("control_level", { length: 50 }),
-    expirationDate: timestamp("expiration_date", { withTimezone: true }),
-
+//     controlLot: varchar("control_lot", { length: 100 }).notNull(),
+//     controlLevel: varchar("control_level", { length: 50 }),
+//     expirationDate: timestamp("expiration_date", { withTimezone: true }),
+//
     // Results
-    expectedValue: numeric("expected_value", { precision: 10, scale: 2 }).notNull(),
-    actualValue: numeric("actual_value", { precision: 10, scale: 2 }).notNull(),
-    unit: varchar("unit", { length: 50 }),
-    acceptableRangeMin: numeric("acceptable_range_min", { precision: 10, scale: 2 }),
-    acceptableRangeMax: numeric("acceptable_range_max", { precision: 10, scale: 2 }),
-    isWithinRange: boolean("is_within_range").notNull(),
-    deviation: numeric("deviation", { precision: 10, scale: 2 }),
-    percentDeviation: numeric("percent_deviation", { precision: 10, scale: 2 }),
-
+//     expectedValue: numeric("expected_value", { precision: 10, scale: 2 }).notNull(),
+//     actualValue: numeric("actual_value", { precision: 10, scale: 2 }).notNull(),
+//     unit: varchar("unit", { length: 50 }),
+//     acceptableRangeMin: numeric("acceptable_range_min", { precision: 10, scale: 2 }),
+//     acceptableRangeMax: numeric("acceptable_range_max", { precision: 10, scale: 2 }),
+//     isWithinRange: boolean("is_within_range").notNull(),
+//     deviation: numeric("deviation", { precision: 10, scale: 2 }),
+//     percentDeviation: numeric("percent_deviation", { precision: 10, scale: 2 }),
+//
     // Equipment and reagents
-    instrumentId: varchar("instrument_id", { length: 100 }),
-    instrumentName: varchar("instrument_name", { length: 255 }),
-    reagentLot: varchar("reagent_lot", { length: 100 }),
-
+//     instrumentId: varchar("instrument_id", { length: 100 }),
+//     instrumentName: varchar("instrument_name", { length: 255 }),
+//     reagentLot: varchar("reagent_lot", { length: 100 }),
+//
     // Test metadata
-    testDate: timestamp("test_date", { withTimezone: true }).notNull(),
-    performedBy: varchar("performed_by", { length: 255 }),
-    reviewedBy: varchar("reviewed_by", { length: 255 }),
-    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
-
+//     testDate: timestamp("test_date", { withTimezone: true }).notNull(),
+//     performedBy: varchar("performed_by", { length: 255 }),
+//     reviewedBy: varchar("reviewed_by", { length: 255 }),
+//     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+//
     // Actions and notes
-    actionTaken: text("action_taken"),
-    notes: text("notes"),
-
+//     actionTaken: text("action_taken"),
+//     notes: text("notes"),
+//
     // Metadata
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-  },
-  (table) => [
-    index("idx_lab_qc_company").on(table.companyId),
-    index("idx_lab_qc_test_code").on(table.testCode),
-    index("idx_lab_qc_test_date").on(table.testDate),
-    index("idx_lab_qc_instrument").on(table.instrumentId),
-    index("idx_lab_qc_within_range").on(table.isWithinRange),
-  ],
-);
+//     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+//     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+//   },
+//   (table) => [
+//     index("idx_lab_qc_company").on(table.companyId),
+//     index("idx_lab_qc_test_code").on(table.testCode),
+//     index("idx_lab_qc_test_date").on(table.testDate),
+//     index("idx_lab_qc_instrument").on(table.instrumentId),
+//     index("idx_lab_qc_within_range").on(table.isWithinRange),
+//   ],
+// );
 
+/* DUPLICATE - Lab Zod schemas and types moved to lab domain */
 // Zod schemas for validation
-export const insertLabOrderSchema = createInsertSchema(labOrders).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true
-});
-
-export const insertLabTestCatalogSchema = createInsertSchema(labTestCatalog).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true
-});
-
-export const insertLabQualityControlSchema = createInsertSchema(labQualityControl).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true
-});
+// export const insertLabOrderSchema = createInsertSchema(labOrders).omit({
+//   id: true,
+//   createdAt: true,
+//   updatedAt: true
+// });
+//
+// export const insertLabTestCatalogSchema = createInsertSchema(labTestCatalog).omit({
+//   id: true,
+//   createdAt: true,
+//   updatedAt: true
+// });
+//
+// export const insertLabQualityControlSchema = createInsertSchema(labQualityControl).omit({
+//   id: true,
+//   createdAt: true,
+//   updatedAt: true
+// });
 
 export const insertMedicationSchema = createInsertSchema(medications).omit({
   id: true,
@@ -10215,11 +10220,11 @@ export const insertImmunizationSchema = createInsertSchema(immunizations).omit({
   updatedAt: true
 });
 
-export const insertLabResultSchema = createInsertSchema(labResults).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true
-});
+// export const insertLabResultSchema = createInsertSchema(labResults).omit({
+//   id: true,
+//   createdAt: true,
+//   updatedAt: true
+// });
 
 // TypeScript types
 export type Medication = typeof medications.$inferSelect;
@@ -10232,14 +10237,14 @@ export type VitalSign = typeof vitalSigns.$inferSelect;
 export type InsertVitalSign = typeof vitalSigns.$inferInsert;
 export type Immunization = typeof immunizations.$inferSelect;
 export type InsertImmunization = typeof immunizations.$inferInsert;
-export type LabResult = typeof labResults.$inferSelect;
-export type InsertLabResult = typeof labResults.$inferInsert;
-export type LabOrder = typeof labOrders.$inferSelect;
-export type InsertLabOrder = typeof labOrders.$inferInsert;
-export type LabTestCatalog = typeof labTestCatalog.$inferSelect;
-export type InsertLabTestCatalog = typeof labTestCatalog.$inferInsert;
-export type LabQualityControl = typeof labQualityControl.$inferSelect;
-export type InsertLabQualityControl = typeof labQualityControl.$inferInsert;
+// export type LabResult = typeof labResults.$inferSelect;
+// export type InsertLabResult = typeof labResults.$inferInsert;
+// export type LabOrder = typeof labOrders.$inferSelect;
+// export type InsertLabOrder = typeof labOrders.$inferInsert;
+// export type LabTestCatalog = typeof labTestCatalog.$inferSelect;
+// export type InsertLabTestCatalog = typeof labTestCatalog.$inferInsert;
+// export type LabQualityControl = typeof labQualityControl.$inferSelect;
+// export type InsertLabQualityControl = typeof labQualityControl.$inferInsert;
 
 // ========== End EHR System Tables ==========
 

@@ -62,6 +62,9 @@ export * from './contactlens';
 // Patient Portal Domain - self-service portal, messaging, documents
 export * from './patientportal';
 
+// Lab Domain - laboratory tests, results, quality control
+export * from './lab';
+
 // ============================================
 // BACKWARD COMPATIBILITY REMOVED
 // ============================================
