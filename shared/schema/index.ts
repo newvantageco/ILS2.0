@@ -59,6 +59,9 @@ export * from './appointments';
 // Contact Lens Domain - assessments, fittings, prescriptions, aftercare
 export * from './contactlens';
 
+// Patient Portal Domain - self-service portal, messaging, documents
+export * from './patientportal';
+
 // ============================================
 // BACKWARD COMPATIBILITY REMOVED
 // ============================================
