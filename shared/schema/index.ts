@@ -92,6 +92,9 @@ export * from './predictive';
 // Care Coordination Domain - care teams, care gaps, transitions of care, patient outreach
 export * from './carecoordination';
 
+// Chronic Disease Management Domain - disease registries, programs, metrics, outcomes
+export * from './chronicdisease';
+
 // ============================================
 // BACKWARD COMPATIBILITY REMOVED
 // ============================================
