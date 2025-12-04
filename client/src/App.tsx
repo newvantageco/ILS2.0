@@ -665,7 +665,7 @@ function AuthenticatedApp() {
           </>
         )}
 
-        {userRole === "admin" && (
+        {(userRole === "admin" || userRole === "platform_admin") && (
           <>
             <Route path="/admin/dashboard" component={AdminDashboard} />
             <Route path="/admin/users" component={AdminDashboard} />
