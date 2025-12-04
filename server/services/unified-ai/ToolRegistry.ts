@@ -23,11 +23,11 @@ import {
   users,
   products,  // Moved to inventory domain
   invoices,  // Moved to billing domain
+  appointments,  // Moved to appointments domain
 } from '@shared/schema';
 
 // Import tables not yet extracted to modular domains
 import {
-  appointments,
   purchaseOrders,
 } from '@shared/schemaLegacy';
 import { eq, and, desc, gte, sql, count } from 'drizzle-orm';

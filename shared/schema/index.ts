@@ -53,6 +53,9 @@ export * from './communications';
 // Healthcare Domain - care plans, PDSA cycles, risk scores
 export * from './healthcare';
 
+// Appointments Domain - scheduling, bookings, calendar management
+export * from './appointments';
+
 // ============================================
 // BACKWARD COMPATIBILITY REMOVED
 // ============================================
