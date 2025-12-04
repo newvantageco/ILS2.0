@@ -117,7 +117,13 @@ export async function apiRequest(
   if (data) {
     headers["Content-Type"] = "application/json";
   }
-  
+
+  // Add JWT token to Authorization header
+  const accessToken = localStorage.getItem('ils_access_token');
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+
   // Add CSRF token for non-GET requests
   const methodUpper = method.toUpperCase();
   if (methodUpper !== "GET" && methodUpper !== "HEAD" && methodUpper !== "OPTIONS") {
@@ -126,7 +132,7 @@ export async function apiRequest(
       headers["X-CSRF-Token"] = csrfToken;
     }
   }
-  
+
   const res = await fetch(url, {
     method,
     headers,
@@ -156,9 +162,17 @@ export const getQueryFn: <T>(options: {
     // Only use string parts of queryKey for the URL, skip objects (used for cache keys)
     const urlParts = queryKey.filter((part): part is string => typeof part === 'string');
     const url = urlParts.join("/");
-    
+
+    // Build headers with JWT token
+    const headers: Record<string, string> = {};
+    const accessToken = localStorage.getItem('ils_access_token');
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
     const res = await fetch(url, {
       credentials: "include",
+      headers,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
