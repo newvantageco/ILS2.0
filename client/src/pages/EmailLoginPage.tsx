@@ -24,9 +24,10 @@ export default function EmailLoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await apiRequest("POST", "/api/auth/login-email", { email, password });
+      const response = await apiRequest("POST", "/api/auth/jwt/login", { email, password });
       const data = await response.json() as {
-        message: string;
+        success: boolean;
+        message?: string;
         user: any;
         accessToken?: string;
         refreshToken?: string;
@@ -45,35 +46,27 @@ export default function EmailLoginPage() {
         description: "Welcome back to ILS",
       });
 
-      // Redirect based on account status and role
+      // Redirect based on role (account status is validated on backend)
       const user = data.user;
-      
-      if (user.accountStatus === 'pending') {
-        setLocation('/pending-approval');
-      } else if (user.accountStatus === 'suspended') {
-        setLocation('/account-suspended');
-      } else {
-        // Active user - redirect to appropriate dashboard
-        switch (user.role) {
-          case 'ecp':
-            setLocation('/ecp/dashboard');
-            break;
-          case 'lab_tech':
-          case 'engineer':
-            setLocation('/lab/dashboard');
-            break;
-          case 'supplier':
-            setLocation('/supplier/dashboard');
-            break;
-          case 'platform_admin':
-            setLocation('/platform-admin/dashboard');
-            break;
-          case 'admin':
-            setLocation('/admin/dashboard');
-            break;
-          default:
-            setLocation('/');
-        }
+      switch (user.role) {
+        case 'ecp':
+          setLocation('/ecp/dashboard');
+          break;
+        case 'lab_tech':
+        case 'engineer':
+          setLocation('/lab/dashboard');
+          break;
+        case 'supplier':
+          setLocation('/supplier/dashboard');
+          break;
+        case 'platform_admin':
+          setLocation('/platform-admin/dashboard');
+          break;
+        case 'admin':
+          setLocation('/admin/dashboard');
+          break;
+        default:
+          setLocation('/');
       }
     } catch (error: any) {
       toast({
