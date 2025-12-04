@@ -13,7 +13,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { jwtService } from '../services/JWTService.js';
 import { authenticateJWT, type AuthenticatedRequest } from '../middleware/auth-jwt.js';
-import { storage } from '../storage.js';
+import { pool } from '../db.js';
 import { createLogger } from '../utils/logger.js';
 
 const router = Router();
@@ -165,8 +165,12 @@ router.post('/login', async (req: Request, res: Response) => {
       });
     }
 
-    // Get user from database
-    const user = await storage.getUserByEmail(email.toLowerCase());
+    // Get user from database using raw SQL (bypassing broken schema)
+    const userResult = await pool.query(
+      'SELECT id, email, password, first_name, last_name, role, company_id, is_active, is_verified, last_login_at FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+    const user = userResult.rows[0];
 
     if (!user) {
       // Record failed attempt even for non-existent users (prevents user enumeration timing attacks)
@@ -180,7 +184,7 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
       const result = recordFailedAttempt(email);
@@ -203,7 +207,7 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     // Check if user is active
-    if (!user.isActive) {
+    if (!user.is_active) {
       logger.warn(`Login failed: User inactive - ${email}`);
       return res.status(401).json({
         success: false,
@@ -215,9 +219,9 @@ router.post('/login', async (req: Request, res: Response) => {
     // Platform admins may be created via CLI/scripts without email verification
     // Google OAuth users have verified emails through Google
     const isPlatformAdmin = user.role === 'platform_admin';
-    const isGoogleOAuthUser = !user.passwordHash; // Google OAuth users don't have passwords
+    const isGoogleOAuthUser = !user.password; // Google OAuth users don't have passwords
 
-    if (!user.isEmailVerified && !isPlatformAdmin && !isGoogleOAuthUser) {
+    if (!user.is_verified && !isPlatformAdmin && !isGoogleOAuthUser) {
       logger.warn(`Login failed: Email not verified - ${email}`);
       return res.status(403).json({
         success: false,
@@ -235,7 +239,7 @@ router.post('/login', async (req: Request, res: Response) => {
     // Generate JWT tokens
     const tokens = jwtService.generateTokenPair({
       userId: user.id,
-      companyId: user.companyId,
+      companyId: user.company_id,
       email: user.email,
       role: user.role,
       permissions
@@ -249,7 +253,7 @@ router.post('/login', async (req: Request, res: Response) => {
     // Log successful login
     await storage.createAuditLog({
       userId: user.id,
-      companyId: user.companyId,
+      companyId: user.company_id,
       eventType: 'login',
       eventCategory: 'authentication',
       description: 'User logged in with JWT',
@@ -272,10 +276,10 @@ router.post('/login', async (req: Request, res: Response) => {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: user.first_name,
+        lastName: user.last_name,
         role: user.role,
-        companyId: user.companyId,
+        companyId: user.company_id,
         permissions
       }
     });
@@ -386,7 +390,7 @@ router.post('/logout', authenticateJWT, async (req: Request, res: Response) => {
       // Log logout event with revocation info
       await storage.createAuditLog({
         userId: user.id,
-        companyId: user.companyId,
+        companyId: user.company_id,
         eventType: 'logout',
         eventCategory: 'authentication',
         description: 'User logged out - tokens revoked',
@@ -441,7 +445,7 @@ router.get('/verify', authenticateJWT, async (req: Request, res: Response) => {
         id: user.id,
         email: user.email,
         role: user.role,
-        companyId: user.companyId,
+        companyId: user.company_id,
         permissions: user.permissions
       }
     });
@@ -486,12 +490,12 @@ router.get('/me', authenticateJWT, async (req: Request, res: Response) => {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: user.first_name,
+        lastName: user.last_name,
         role: user.role,
-        companyId: user.companyId,
-        isActive: user.isActive,
-        lastLoginAt: user.lastLoginAt,
+        companyId: user.company_id,
+        isActive: user.is_active,
+        lastLoginAt: user.last_login_at,
         permissions: authUser.permissions
       }
     });
@@ -620,7 +624,7 @@ router.post('/validate-setup-token', async (req: Request, res: Response) => {
       res.json({
         valid: true,
         email: user.email,
-        name: `${user.firstName || ''} ${user.lastName || ''}`.trim()
+        name: `${user.first_name || ''} ${user.last_name || ''}`.trim()
       });
 
     } catch (tokenError) {
@@ -706,7 +710,7 @@ router.post('/setup-password', async (req: Request, res: Response) => {
     // Create audit log
     await storage.createAuditLog({
       userId: user.id,
-      companyId: user.companyId,
+      companyId: user.company_id,
       eventType: 'password_setup',
       eventCategory: 'authentication',
       description: 'User completed initial password setup',
