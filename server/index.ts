@@ -296,6 +296,11 @@ const csrfEnabled = process.env.CSRF_ENABLED !== 'false';
 const csrfExemptPaths = [
   '/api/csrf-token', // CSRF token endpoint must be exempt (it generates the token)
   '/api/auth/jwt/login',
+  '/api/auth/login',
+  '/api/auth/login-email',
+  '/api/auth/signup',
+  '/api/auth/signup-email',
+  '/api/auth/complete-signup', // OAuth signup completion
   '/api/auth/forgot-password',
   '/api/auth/reset-password',
   '/api/auth/verify',
