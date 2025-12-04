@@ -253,7 +253,7 @@ const sessionConfig = {
   cookie: {
     httpOnly: true, // XSS protection
     secure: process.env.NODE_ENV === 'production' && !process.env.DISABLE_HTTPS, // HTTPS in production (unless disabled for local testing)
-    sameSite: 'strict' as const, // CSRF protection
+    sameSite: 'lax' as const, // CSRF protection while allowing same-site navigations
     // SECURITY: Reduced from 30 days to 24 hours for healthcare compliance
     // Users should re-authenticate daily for PHI access
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
