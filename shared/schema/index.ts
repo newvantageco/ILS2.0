@@ -25,6 +25,9 @@ export * from './patients';
 // Orders Domain - order management, timeline, consultation logs
 export * from './orders';
 
+// System Domain - permissions, roles, RBAC, audit logs (HIPAA/GOC compliance)
+export * from './system';
+
 // AI Domain - conversations, knowledge base, learning
 export * from './ai';
 

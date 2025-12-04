@@ -299,3 +299,21 @@ export const patientActivityTypeEnum = pgEnum("patient_activity_type", [
   "referral_made",
   "communication_sent"
 ]);
+
+// ============================================
+// AUDIT & COMPLIANCE ENUMS
+// ============================================
+
+export const auditEventTypeEnum = pgEnum("audit_event_type", [
+  "access",
+  "create",
+  "read",
+  "update",
+  "delete",
+  "login",
+  "logout",
+  "auth_attempt",
+  "permission_change",
+  "export",
+  "print"
+]);
