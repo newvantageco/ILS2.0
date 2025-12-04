@@ -66,6 +66,7 @@ export default function EmailLoginPage() {
             setLocation('/supplier/dashboard');
             break;
           case 'admin':
+          case 'platform_admin':
             setLocation('/admin/dashboard');
             break;
           default:
