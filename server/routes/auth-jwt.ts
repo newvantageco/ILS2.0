@@ -274,7 +274,9 @@ router.post('/login', async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    logger.error('Login error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : '';
+    logger.error(`Login error: ${errorMessage}`, { stack: errorStack });
     res.status(500).json({
       success: false,
       error: 'Login failed. Please try again.'
