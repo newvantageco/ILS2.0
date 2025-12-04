@@ -18,6 +18,7 @@ import EquipmentDetailPage from '@/pages/EquipmentDetailPage';
 import PrescriptionTemplatesPage from '@/pages/PrescriptionTemplatesPage';
 import SettingsPage from '@/pages/SettingsPage';
 import InventoryPage from '@/pages/InventoryPage';
+import EmailLoginPage from '@/pages/EmailLoginPage';
 
 // Placeholder components for missing pages
 const SupplierDashboard = () => React.createElement('div', null, 'Supplier Dashboard - Coming Soon');
@@ -42,6 +43,13 @@ export const appRoutes: RouteConfig[] = [
   {
     path: '/login',
     component: () => null, // Handled by auth system
+    roles: [], // Public
+    exact: true,
+  },
+
+  {
+    path: '/email-login',
+    component: EmailLoginPage,
     roles: [], // Public
     exact: true,
   },
