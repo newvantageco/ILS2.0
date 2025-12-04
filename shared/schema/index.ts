@@ -71,6 +71,9 @@ export * from './ehr';
 // Insurance Domain - claims, payers, eligibility, preauthorizations
 export * from './insurance';
 
+// Quality Domain - quality measures, star ratings, gap analyses, dashboards
+export * from './quality';
+
 // ============================================
 // BACKWARD COMPATIBILITY REMOVED
 // ============================================
