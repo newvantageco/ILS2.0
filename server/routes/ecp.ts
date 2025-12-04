@@ -6,28 +6,17 @@
 import { Router, type Request, type Response } from "express";
 import { db } from "../../db";
 import logger from "../utils/logger";
-import { 
-  testRooms, 
-  testRoomBookings,
-  equipment,
-  calibrationRecords,
-  remoteSessions,
-  gocComplianceChecks, 
-  prescriptionTemplates, 
-  clinicalProtocols,
-  prescriptions,
-  users,
-  companies,
-  patients,
-  type InsertTestRoom,
-  type InsertGocComplianceCheck,
-  type InsertPrescriptionTemplate,
-  type InsertClinicalProtocol,
-  insertTestRoomSchema,
-  insertGocComplianceCheckSchema,
-  insertPrescriptionTemplateSchema,
-  insertClinicalProtocolSchema,
-} from "@shared/schema";
+import {
+  
+  users, companies, patients, testRoomBookings, calibrationRecords, remoteSessions, gocComplianceChecks, prescriptionTemplates, clinicalProtocols, type InsertTestRoom, type InsertGocComplianceCheck, type InsertPrescriptionTemplate, type InsertClinicalProtocol, insertTestRoomSchema, insertGocComplianceCheckSchema, insertPrescriptionTemplateSchema, insertClinicalProtocolSchema,
+  testRooms,
+  prescriptions
+} from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
+import {
+  equipment
+} from '@shared/schemaLegacy';;
 import { eq, and, desc, sql, between, gte, lte, isNull } from "drizzle-orm";
 import { authenticateHybrid } from "../middleware/auth-hybrid";
 

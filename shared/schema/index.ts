@@ -29,7 +29,8 @@ export * from './orders';
 export * from './system';
 
 // AI Domain - conversations, knowledge base, learning
-export * from './ai';
+export * from './ai/index';
+export * from './ai';  // Additional AI tables (risk scores, recommendations, PDSA cycles)
 
 // Clinical Domain - examinations, prescriptions, test rooms
 export * from './clinical';
@@ -48,6 +49,9 @@ export * from './nhs';
 
 // Communications Domain - email templates, logs, tracking
 export * from './communications';
+
+// Healthcare Domain - care plans, PDSA cycles, risk scores
+export * from './healthcare';
 
 // ============================================
 // BACKWARD COMPATIBILITY REMOVED

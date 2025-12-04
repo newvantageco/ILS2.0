@@ -1,7 +1,13 @@
 import { Worker, Job } from 'bullmq';
 import { getRedisConnection } from '../queue/config';
 import { db } from '../../db';
-import { users, companies, aiNotifications, aiMessages } from '@shared/schema';
+import {
+  
+  users, companies, aiNotifications,
+  aiMessages
+} from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
 import { eq } from 'drizzle-orm';
 import { storage } from '../storage';
 import { EventBus } from '../events/EventBus';

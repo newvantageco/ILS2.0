@@ -6,7 +6,13 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../db';
-import { products, insertProductSchema, inventoryMovements } from '@shared/schema';
+import {
+  
+  insertProductSchema, inventoryMovements,
+  products
+} from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
 import { eq, and, sql } from 'drizzle-orm';
 import { validateBody, validateQuery, validateParams } from '../middleware/zodValidation';
 import { createLogger } from '../utils/logger';

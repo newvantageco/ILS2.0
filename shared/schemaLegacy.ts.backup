@@ -5,12 +5,10 @@ import { z } from "zod";
 import { vector } from "./schema-pgvector";
 
 // Enums
-/* DUPLICATE - Moved to core domain */
-// export const roleEnum = pgEnum("role", ["ecp", "admin", "lab_tech", "engineer", "supplier", "platform_admin", "company_admin", "dispenser", "store_manager"]);
+export const roleEnum = pgEnum("role", ["ecp", "admin", "lab_tech", "engineer", "supplier", "platform_admin", "company_admin", "dispenser", "store_manager"]);
 export const subscriptionPlanEnum = pgEnum("subscription_plan", ["free", "pro", "premium", "enterprise", "full", "free_ecp"]); // Legacy: full, free_ecp
 
 // Session storage table for Replit Auth
-/* DUPLICATE - Moved to modular schema
 export const sessions = pgTable(
   "sessions",
   {
@@ -23,7 +21,7 @@ export const sessions = pgTable(
     index("IDX_session_expire").on(table.expire),
     index("IDX_session_user").on(table.userId),
   ],
-); */
+);
 
 export const accountStatusEnum = pgEnum("account_status", ["pending", "active", "suspended"]);
 export const orderStatusEnum = pgEnum("order_status", [
@@ -245,7 +243,6 @@ export const measureDomainEnum = pgEnum("measure_domain", [
 
 // ========== End Quality Measures Enums ==========
 
-/* DUPLICATE - Moved to modular schema
 export const analyticsEvents = pgTable("analytics_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   eventType: analyticsEventTypeEnum("event_type").notNull(),
@@ -255,9 +252,8 @@ export const analyticsEvents = pgTable("analytics_events", {
   data: jsonb("data").notNull(),
   metadata: jsonb("metadata"),
   organizationId: varchar("organization_id").notNull(),
-}); */
+});
 
-/* DUPLICATE - Moved to modular schema
 export const qualityIssues = pgTable("quality_issues", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   issueType: qualityIssueTypeEnum("issue_type").notNull(),
@@ -277,9 +273,8 @@ export const qualityIssues = pgTable("quality_issues", {
   rootCause: text("root_cause"),
   preventiveActions: text("preventive_actions"),
   metadata: jsonb("metadata"),
-}); */
+});
 
-/* DUPLICATE - Moved to modular schema
 export const returns = pgTable("returns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderId: varchar("order_id")
@@ -297,7 +292,7 @@ export const returns = pgTable("returns", {
   replacementOrderId: varchar("replacement_order_id").references(() => orders.id),
   qualityIssueId: varchar("quality_issue_id").references(() => qualityIssues.id),
   metadata: jsonb("metadata"),
-}); */
+});
 
 export const createReturnSchema = z.object({
   orderId: z.string().min(1, "Order ID is required"),
@@ -424,7 +419,6 @@ export const equipment = pgTable("equipment", {
 
 // Notification system table is defined below with proper types
 
-/* DUPLICATE - Moved to modular schema
 export const orderTimeline = pgTable("order_timeline", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderId: varchar("order_id").references(() => orders.id).notNull(),
@@ -433,7 +427,7 @@ export const orderTimeline = pgTable("order_timeline", {
   timestamp: timestamp("timestamp").defaultNow().notNull(),
   userId: varchar("user_id").references(() => users.id).notNull(),
   metadata: jsonb("metadata"),
-}); */
+});
 
 // DICOM tables
 export const dicomReadings = pgTable(
@@ -498,7 +492,6 @@ export const notificationTargetTypeEnum = pgEnum("notification_target_type", [
 ]);
 
 // Notification Table
-/* DUPLICATE - Moved to modular schema
 export const notifications = pgTable(
   "notifications",
   {
@@ -513,7 +506,7 @@ export const notifications = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [index("idx_notifications_created_at").on(table.createdAt)],
-); */
+);
 
 // ============== MULTI-TENANT COMPANY SYSTEM ==============
 
@@ -532,8 +525,6 @@ export const companyStatusEnum = pgEnum("company_status", [
 ]);
 
 // Companies/Organizations table for multi-tenancy
-/* DUPLICATE - Moved to modular schema (core domain)
-/* DUPLICATE - Moved to modular schema
 export const companies = pgTable("companies", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -623,10 +614,9 @@ export const companies = pgTable("companies", {
   index("idx_companies_type").on(table.type),
   index("idx_companies_stripe_customer").on(table.stripeCustomerId),
   index("idx_companies_stripe_subscription").on(table.stripeSubscriptionId),
-]); */
+]);
 
 // Subscription Plans table
-/* DUPLICATE - Moved to modular schema
 export const subscriptionPlans = pgTable("subscription_plans", {
   id: varchar("id").primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
@@ -642,10 +632,9 @@ export const subscriptionPlans = pgTable("subscription_plans", {
   aiEnabled: boolean("ai_enabled").default(false),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-}); */
+});
 
 // Stripe Payment Intents table
-/* DUPLICATE - Moved to modular schema
 export const stripePaymentIntents = pgTable("stripe_payment_intents", {
   id: varchar("id", { length: 255 }).primaryKey(),
   companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -660,10 +649,9 @@ export const stripePaymentIntents = pgTable("stripe_payment_intents", {
 }, (table) => [
   index("idx_payment_intents_company").on(table.companyId),
   index("idx_payment_intents_subscription").on(table.subscriptionId),
-]); */
+]);
 
 // Subscription History table
-/* DUPLICATE - Moved to modular schema
 export const subscriptionHistory = pgTable("subscription_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -677,7 +665,7 @@ export const subscriptionHistory = pgTable("subscription_history", {
 }, (table) => [
   index("idx_subscription_history_company").on(table.companyId),
   index("idx_subscription_history_event").on(table.eventType),
-]); */
+]);
 
 // Dispense Records table (audit trail)
 export const dispenseRecords = pgTable("dispense_records", {
@@ -739,7 +727,6 @@ export const aiMessageRoleEnum = pgEnum("ai_message_role", [
 ]);
 
 // AI Conversations - chat sessions with the AI assistant
-/* DUPLICATE - Moved to modular schema
 export const aiConversations = pgTable("ai_conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -752,10 +739,9 @@ export const aiConversations = pgTable("ai_conversations", {
 }, (table) => [
   index("idx_ai_conversations_company").on(table.companyId),
   index("idx_ai_conversations_user").on(table.userId),
-]); */
+]);
 
 // AI Messages - individual messages in conversations
-/* DUPLICATE - Moved to modular schema
 export const aiMessages = pgTable("ai_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   conversationId: varchar("conversation_id").notNull().references(() => aiConversations.id, { onDelete: 'cascade' }),
@@ -767,10 +753,9 @@ export const aiMessages = pgTable("ai_messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_ai_messages_conversation").on(table.conversationId),
-]); */
+]);
 
 // AI Knowledge Base - documents and data uploaded by companies
-/* DUPLICATE - Moved to modular schema
 export const aiKnowledgeBase = pgTable("ai_knowledge_base", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -801,10 +786,9 @@ export const aiKnowledgeBase = pgTable("ai_knowledge_base", {
 }, (table) => [
   index("idx_ai_knowledge_company").on(table.companyId),
   index("idx_ai_knowledge_category").on(table.category),
-]); */
+]);
 
 // AI Learning Data - track what the AI learns over time
-/* DUPLICATE - Moved to modular schema
 export const aiLearningData = pgTable("ai_learning_data", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -836,10 +820,9 @@ export const aiLearningData = pgTable("ai_learning_data", {
   index("idx_ai_learning_company").on(table.companyId),
   index("idx_ai_learning_category").on(table.category),
   index("idx_ai_learning_confidence").on(table.confidence),
-]); */
+]);
 
 // AI Feedback - user feedback on AI responses
-/* DUPLICATE - Moved to modular schema
 export const aiFeedback = pgTable("ai_feedback", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   messageId: varchar("message_id").notNull().references(() => aiMessages.id, { onDelete: 'cascade' }),
@@ -855,12 +838,11 @@ export const aiFeedback = pgTable("ai_feedback", {
 }, (table) => [
   index("idx_ai_feedback_message").on(table.messageId),
   index("idx_ai_feedback_company").on(table.companyId),
-]); */
+]);
 
 // ============== MASTER AI TRAINING SYSTEM ==============
 
 // AI Model Versions - master AI model version tracking
-/* DUPLICATE - Moved to modular schema
 export const aiModelVersions = pgTable("ai_model_versions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -879,10 +861,9 @@ export const aiModelVersions = pgTable("ai_model_versions", {
 }, (table) => [
   index("idx_ai_model_versions_status").on(table.status),
   index("idx_ai_model_versions_created").on(table.createdAt),
-]); */
+]);
 
 // AI Model Deployments - track which companies have which AI versions
-/* DUPLICATE - Moved to modular schema
 export const aiModelDeployments = pgTable("ai_model_deployments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -899,7 +880,7 @@ export const aiModelDeployments = pgTable("ai_model_deployments", {
   index("idx_ai_deployments_company").on(table.companyId),
   index("idx_ai_deployments_version").on(table.modelVersionId),
   index("idx_ai_deployments_status").on(table.deploymentStatus),
-]); */
+]);
 
 // Master Training Datasets - curated training data by platform admin
 export const masterTrainingDatasets = pgTable("master_training_datasets", {
@@ -1003,7 +984,6 @@ export const aiDeploymentQueue = pgTable("ai_deployment_queue", {
 ]);
 
 // User storage table with Replit Auth fields and local auth support
-/* DUPLICATE - Moved to modular schema
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }), // Multi-tenant link
@@ -1044,10 +1024,9 @@ export const users = pgTable("users", {
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}); */
+});
 
 // Junction table to support multiple roles per user
-/* DUPLICATE - Moved to modular schema
 export const userRoles = pgTable("user_roles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -1055,10 +1034,9 @@ export const userRoles = pgTable("user_roles", {
   assignedAt: timestamp("assigned_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_user_roles_user_id").on(table.userId),
-]); */
+]);
 
 // Enhanced Permission System Tables
-/* DUPLICATE - Moved to modular schema
 export const permissions = pgTable("permissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   permissionKey: varchar("permission_key").notNull().unique(),
@@ -1068,9 +1046,8 @@ export const permissions = pgTable("permissions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_permissions_category").on(table.category),
-]); */
+]);
 
-/* DUPLICATE - Moved to modular schema
 export const rolePermissions = pgTable("role_permissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -1080,9 +1057,8 @@ export const rolePermissions = pgTable("role_permissions", {
 }, (table) => [
   index("idx_role_permissions_company").on(table.companyId),
   index("idx_role_permissions_role").on(table.role),
-]); */
+]);
 
-/* DUPLICATE - Moved to modular schema
 export const userCustomPermissions = pgTable("user_custom_permissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -1092,12 +1068,11 @@ export const userCustomPermissions = pgTable("user_custom_permissions", {
   createdBy: varchar("created_by").references(() => users.id),
 }, (table) => [
   index("idx_user_custom_permissions_user").on(table.userId),
-]); */
+]);
 
 // ============== DYNAMIC RBAC SYSTEM ==============
 
 // Dynamic Roles - Company-specific roles (both defaults and custom)
-/* DUPLICATE - Moved to modular schema
 export const dynamicRoles = pgTable("dynamic_roles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -1117,10 +1092,9 @@ export const dynamicRoles = pgTable("dynamic_roles", {
   index("idx_dynamic_roles_name").on(table.name),
   index("idx_dynamic_roles_system_default").on(table.isSystemDefault),
   uniqueIndex("unique_role_per_company").on(table.companyId, table.name),
-]); */
+]);
 
 // Dynamic Role Permissions - Many-to-many: which permissions does each role have?
-/* DUPLICATE - Moved to modular schema
 export const dynamicRolePermissions = pgTable("dynamic_role_permissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   roleId: varchar("role_id").notNull().references(() => dynamicRoles.id, { onDelete: 'cascade' }),
@@ -1132,10 +1106,9 @@ export const dynamicRolePermissions = pgTable("dynamic_role_permissions", {
   index("idx_dynamic_role_permissions_role").on(table.roleId),
   index("idx_dynamic_role_permissions_permission").on(table.permissionId),
   uniqueIndex("unique_role_permission").on(table.roleId, table.permissionId),
-]); */
+]);
 
 // User Dynamic Roles - Many-to-many: which roles are assigned to each user?
-/* DUPLICATE - Moved to modular schema
 export const userDynamicRoles = pgTable("user_dynamic_roles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -1150,10 +1123,9 @@ export const userDynamicRoles = pgTable("user_dynamic_roles", {
   index("idx_user_dynamic_roles_role").on(table.roleId),
   index("idx_user_dynamic_roles_primary").on(table.isPrimary),
   uniqueIndex("unique_user_role").on(table.userId, table.roleId),
-]); */
+]);
 
 // Role Change Audit - Track all permission/role changes for compliance
-/* DUPLICATE - Moved to modular schema
 export const roleChangeAudit = pgTable("role_change_audit", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -1175,7 +1147,7 @@ export const roleChangeAudit = pgTable("role_change_audit", {
   index("idx_role_change_audit_role").on(table.roleId),
   index("idx_role_change_audit_timestamp").on(table.changedAt),
   index("idx_role_change_audit_action").on(table.actionType),
-]); */
+]);
 
 // ============== AUDIT LOGS (HIPAA Compliance) ==============
 
@@ -1193,7 +1165,6 @@ export const auditEventTypeEnum = pgEnum("audit_event_type", [
   "print"
 ]);
 
-/* DUPLICATE - Moved to modular schema
 export const auditLogs = pgTable("audit_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   timestamp: timestamp("timestamp").notNull().defaultNow(),
@@ -1241,9 +1212,8 @@ export const auditLogs = pgTable("audit_logs", {
   index("idx_audit_logs_phi").on(table.phiAccessed),
   index("idx_audit_logs_event_type").on(table.eventType),
   index("idx_audit_logs_retention").on(table.retentionDate),
-]); */
+]);
 
-/* DUPLICATE - Moved to modular schema
 export const patients = pgTable("patients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   customerNumber: varchar("customer_number", { length: 20 }).notNull().unique(),
@@ -1358,9 +1328,8 @@ export const patients = pgTable("patients", {
   // Soft Delete
   deletedAt: timestamp("deleted_at"),
   deletedBy: varchar("deleted_by", { length: 255 }),
-}); */
+});
 
-/* DUPLICATE - Moved to modular schema
 export const orders = pgTable("orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderNumber: text("order_number").notNull().unique(),
@@ -1425,9 +1394,8 @@ export const orders = pgTable("orders", {
   // Soft Delete
   deletedAt: timestamp("deleted_at"),
   deletedBy: varchar("deleted_by", { length: 255 }),
-}); */
+});
 
-/* DUPLICATE - Moved to modular schema
 export const consultLogs = pgTable("consult_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -1440,7 +1408,7 @@ export const consultLogs = pgTable("consult_logs", {
   labResponse: text("lab_response"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   respondedAt: timestamp("responded_at"),
-}); */
+});
 
 // Patient Activity Log - Comprehensive history tracking
 export const patientActivityTypeEnum = pgEnum("patient_activity_type", [
@@ -1571,7 +1539,6 @@ export const userPreferences = pgTable("user_preferences", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-/* DUPLICATE - Moved to modular schema
 export const eyeExaminations = pgTable("eye_examinations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -1624,9 +1591,8 @@ export const eyeExaminations = pgTable("eye_examinations", {
   // Soft Delete
   deletedAt: timestamp("deleted_at"),
   deletedBy: varchar("deleted_by", { length: 255 }),
-}); */
+});
 
-/* DUPLICATE - Moved to modular schema
 export const prescriptions = pgTable("prescriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -1761,10 +1727,9 @@ export const prescriptions = pgTable("prescriptions", {
   index("idx_prescriptions_follow_up").on(table.followUpDate),
   index("idx_prescriptions_retention").on(table.recordRetentionDate),
   index("idx_prescriptions_verified").on(table.verifiedByEcpId),
-]); */
+]);
 
 // Test Rooms table - Enhanced with scheduling & equipment tracking
-/* DUPLICATE - Moved to modular schema
 export const testRooms = pgTable("test_rooms", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -1797,7 +1762,7 @@ export const testRooms = pgTable("test_rooms", {
   index("idx_test_rooms_active").on(table.isActive),
   index("idx_test_rooms_status").on(table.currentStatus),
   index("idx_test_rooms_location").on(table.locationId),
-]); */
+]);
 
 // Test Room Bookings - For scheduling and conflict detection
 export const testRoomBookings = pgTable("test_room_bookings", {
@@ -1880,7 +1845,6 @@ export const remoteSessions = pgTable("remote_sessions", {
 ]);
 
 // GOC Compliance Checks table
-/* DUPLICATE - Moved to modular schema
 export const gocComplianceChecks = pgTable("goc_compliance_checks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -1897,7 +1861,7 @@ export const gocComplianceChecks = pgTable("goc_compliance_checks", {
   index("idx_goc_compliance_company").on(table.companyId),
   index("idx_goc_compliance_status").on(table.status),
   index("idx_goc_compliance_date").on(table.checkDate),
-]); */
+]);
 
 // Prescription Templates table
 export const prescriptionTemplates = pgTable("prescription_templates", {
@@ -1917,7 +1881,6 @@ export const prescriptionTemplates = pgTable("prescription_templates", {
 ]);
 
 // Clinical Protocols table
-/* DUPLICATE - Moved to modular schema
 export const clinicalProtocols = pgTable("clinical_protocols", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -1932,9 +1895,8 @@ export const clinicalProtocols = pgTable("clinical_protocols", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_clinical_protocols_company").on(table.companyId),
-]); */
+]);
 
-/* DUPLICATE - Moved to modular schema
 export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -1966,9 +1928,8 @@ export const products = pgTable("products", {
 }, (table) => [
   index("idx_products_company_barcode").on(table.companyId, table.barcode),
   index("idx_products_category").on(table.category),
-]); */
+]);
 
-/* DUPLICATE - Moved to modular schema
 export const invoices = pgTable("invoices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   invoiceNumber: text("invoice_number").notNull().unique(),
@@ -1986,9 +1947,8 @@ export const invoices = pgTable("invoices", {
   // Soft Delete
   deletedAt: timestamp("deleted_at"),
   deletedBy: varchar("deleted_by", { length: 255 }),
-}); */
+});
 
-/* DUPLICATE - Moved to modular schema
 export const invoiceLineItems = pgTable("invoice_line_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   invoiceId: varchar("invoice_id").notNull().references(() => invoices.id),
@@ -1998,10 +1958,9 @@ export const invoiceLineItems = pgTable("invoice_line_items", {
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-}); */
+});
 
 // Coupons table for discount codes
-/* DUPLICATE - Moved to modular schema
 export const coupons = pgTable("coupons", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   code: varchar("code", { length: 50 }).notNull().unique(),
@@ -2015,10 +1974,9 @@ export const coupons = pgTable("coupons", {
   usedCount: integer("used_count").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}); */
+});
 
 // Revenue Recognition Events for GAAP/IFRS compliance
-/* DUPLICATE - Moved to modular schema
 export const revenueRecognitionEvents = pgTable("revenue_recognition_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: 'cascade' }),
@@ -2034,7 +1992,7 @@ export const revenueRecognitionEvents = pgTable("revenue_recognition_events", {
   index("idx_revenue_recognition_invoice").on(table.invoiceId),
   index("idx_revenue_recognition_company").on(table.companyId),
   index("idx_revenue_recognition_date").on(table.recognitionDate),
-]); */
+]);
 
 // Enums for new features
 export const adaptAlertSeverityEnum = pgEnum("adapt_alert_severity", [
@@ -2128,28 +2086,24 @@ export const biRecommendations = pgTable("bi_recommendations", {
   index("idx_bi_recommendations_priority").on(table.priority),
 ]);
 
-/* DUPLICATE - users table moved to core domain */
-// export const upsertUserSchema = createInsertSchema(users);
+export const upsertUserSchema = createInsertSchema(users);
+export const insertPatientSchema = createInsertSchema(patients).omit({
+  id: true,
+  customerNumber: true,  // Auto-generated
+  createdAt: true,
+});
 
-/* DUPLICATE - patients table moved to modular schema */
-// export const insertPatientSchema = createInsertSchema(patients).omit({
-//   id: true,
-//   customerNumber: true,  // Auto-generated
-//   createdAt: true,
-// });
-
-/* DUPLICATE - orders table moved to modular schema */
-// export const insertOrderSchema = createInsertSchema(orders).omit({
-//   id: true,
-//   orderNumber: true,
-//   orderDate: true,
-//   completedAt: true,
-//   patientId: true,
-//   ecpId: true,
-// }).extend({
-//   patientName: z.string().min(1, "Patient name is required"),
-//   patientDOB: z.string().optional(),
-// });
+export const insertOrderSchema = createInsertSchema(orders).omit({
+  id: true,
+  orderNumber: true,
+  orderDate: true,
+  completedAt: true,
+  patientId: true,
+  ecpId: true,
+}).extend({
+  patientName: z.string().min(1, "Patient name is required"),
+  patientDOB: z.string().optional(),
+});
 
 export const updateOrderStatusSchema = z.object({
   status: z.enum(["pending", "in_production", "quality_check", "shipped", "completed", "on_hold", "cancelled"]),
@@ -2157,15 +2111,14 @@ export const updateOrderStatusSchema = z.object({
 
 export type OrderStatus = z.infer<typeof updateOrderStatusSchema>['status'];
 
-/* DUPLICATE - consultLogs moved to modular schema */
-// export const insertConsultLogSchema = createInsertSchema(consultLogs).omit({
-//   id: true,
-//   createdAt: true,
-//   respondedAt: true,
-//   labResponse: true,
-//   status: true,
-//   ecpId: true,
-// });
+export const insertConsultLogSchema = createInsertSchema(consultLogs).omit({
+  id: true,
+  createdAt: true,
+  respondedAt: true,
+  labResponse: true,
+  status: true,
+  ecpId: true,
+});
 
 export const insertPatientActivityLogSchema = createInsertSchema(patientActivityLog).omit({
   id: true,
@@ -2259,56 +2212,51 @@ export const updateUserPreferencesSchema = createInsertSchema(userPreferences).o
   updatedAt: true,
 });
 
-/* DUPLICATE - eyeExamination moved to modular schema */
-// export const insertEyeExaminationSchema = createInsertSchema(eyeExaminations).omit({
-//   id: true,
-//   createdAt: true,
-//   updatedAt: true,
-//   ecpId: true,
-// });
+export const insertEyeExaminationSchema = createInsertSchema(eyeExaminations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  ecpId: true,
+});
 
-/* DUPLICATE - prescription moved to modular schema */
-// export const insertPrescriptionSchema = createInsertSchema(prescriptions).omit({
-//   id: true,
-//   createdAt: true,
-//   ecpId: true,
-//   isSigned: true,
-//   signedByEcpId: true,
-//   digitalSignature: true,
-//   signedAt: true,
-// });
+export const insertPrescriptionSchema = createInsertSchema(prescriptions).omit({
+  id: true,
+  createdAt: true,
+  ecpId: true,
+  isSigned: true,
+  signedByEcpId: true,
+  digitalSignature: true,
+  signedAt: true,
+});
 
-/* DUPLICATE - products moved to modular schema */
-// export const insertProductSchema = createInsertSchema(products).omit({
-//   id: true,
-//   createdAt: true,
-//   updatedAt: true,
-//   ecpId: true,
-// });
+export const insertProductSchema = createInsertSchema(products).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  ecpId: true,
+});
 
-/* DUPLICATE - invoices moved to modular schema */
-// export const insertInvoiceSchema = createInsertSchema(invoices).omit({
-//   id: true,
-//   invoiceNumber: true,
-//   createdAt: true,
-//   updatedAt: true,
-//   ecpId: true,
-// });
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({
+  id: true,
+  invoiceNumber: true,
+  createdAt: true,
+  updatedAt: true,
+  ecpId: true,
+});
 
-/* DUPLICATE - invoiceLineItems moved to modular schema */
-// export const insertInvoiceLineItemSchema = createInsertSchema(invoiceLineItems).omit({
-//   id: true,
-//   createdAt: true,
-//   invoiceId: true,
-// });
+export const insertInvoiceLineItemSchema = createInsertSchema(invoiceLineItems).omit({
+  id: true,
+  createdAt: true,
+  invoiceId: true,
+});
 
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
 
-// export type InsertPatient = z.infer<typeof insertPatientSchema>;
+export type InsertPatient = z.infer<typeof insertPatientSchema>;
 export type Patient = typeof patients.$inferSelect;
 
-// export type InsertOrder = z.infer<typeof insertOrderSchema>;
+export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type Order = typeof orders.$inferSelect;
 
 export type OrderWithDetails = Order & {
@@ -2321,7 +2269,7 @@ export type OrderWithDetails = Order & {
   };
 };
 
-// export type InsertConsultLog = z.infer<typeof insertConsultLogSchema>;
+export type InsertConsultLog = z.infer<typeof insertConsultLogSchema>;
 export type ConsultLog = typeof consultLogs.$inferSelect;
 
 export type InsertPurchaseOrder = z.infer<typeof insertPurchaseOrderSchema>;
@@ -2372,7 +2320,7 @@ export type UserWithRoles = User & {
   availableRoles: string[];
 };
 
-// export type InsertEyeExamination = z.infer<typeof insertEyeExaminationSchema>;
+export type InsertEyeExamination = z.infer<typeof insertEyeExaminationSchema>;
 export type EyeExamination = typeof eyeExaminations.$inferSelect;
 
 export type EyeExaminationWithDetails = EyeExamination & {
@@ -2384,7 +2332,7 @@ export type EyeExaminationWithDetails = EyeExamination & {
   };
 };
 
-// export type InsertPrescription = z.infer<typeof insertPrescriptionSchema>;
+export type InsertPrescription = z.infer<typeof insertPrescriptionSchema>;
 export type Prescription = typeof prescriptions.$inferSelect;
 
 export type PrescriptionWithDetails = Prescription & {
@@ -2414,13 +2362,13 @@ export type InsertReturn = typeof returns.$inferInsert;
 export type NonAdapt = typeof nonAdapts.$inferSelect;
 export type InsertNonAdapt = typeof nonAdapts.$inferInsert;
 
-// export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;
 
-// export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type Invoice = typeof invoices.$inferSelect;
 
-// export type InsertInvoiceLineItem = z.infer<typeof insertInvoiceLineItemSchema>;
+export type InsertInvoiceLineItem = z.infer<typeof insertInvoiceLineItemSchema>;
 export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
 
 export type Coupon = typeof coupons.$inferSelect;
@@ -2620,7 +2568,6 @@ export const ecpCatalogData = pgTable("ecp_catalog_data", {
 ]);
 
 // Table: AI Dispensing Recommendations - Good/Better/Best
-/* DUPLICATE - Moved to modular schema
 export const aiDispensingRecommendations = pgTable("ai_dispensing_recommendations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderId: varchar("order_id").references(() => orders.id).notNull(),
@@ -2664,7 +2611,7 @@ export const aiDispensingRecommendations = pgTable("ai_dispensing_recommendation
   index("idx_ai_recommendations_order").on(table.orderId),
   index("idx_ai_recommendations_ecp").on(table.ecpId),
   index("idx_ai_recommendations_status").on(table.recommendationStatus),
-]); */
+]);
 
 // Validation Schemas for AI Engine
 
@@ -2773,12 +2720,11 @@ export type AiRecommendationResponse = z.infer<typeof aiRecommendationResponseSc
 // ============== COMPANY & AI SYSTEM SCHEMAS ==============
 
 // Company schemas
-/* DUPLICATE - company moved to modular schema */
-// export const insertCompanySchema = createInsertSchema(companies);
-// export const updateCompanySchema = insertCompanySchema.partial();
+export const insertCompanySchema = createInsertSchema(companies);
+export const updateCompanySchema = insertCompanySchema.partial();
 
 export type Company = typeof companies.$inferSelect;
-// export type InsertCompany = typeof companies.$inferInsert;
+export type InsertCompany = typeof companies.$inferInsert;
 
 // Company-Supplier relationship schemas
 export const insertCompanySupplierRelationshipSchema = createInsertSchema(companySupplierRelationships);
@@ -2787,39 +2733,34 @@ export type CompanySupplierRelationship = typeof companySupplierRelationships.$i
 export type InsertCompanySupplierRelationship = typeof companySupplierRelationships.$inferInsert;
 
 // AI Conversation schemas
-/* DUPLICATE - aiConversation moved to modular schema */
-// export const insertAiConversationSchema = createInsertSchema(aiConversations);
-// export const updateAiConversationSchema = insertAiConversationSchema.partial();
+export const insertAiConversationSchema = createInsertSchema(aiConversations);
+export const updateAiConversationSchema = insertAiConversationSchema.partial();
 
 export type AiConversation = typeof aiConversations.$inferSelect;
-// export type InsertAiConversation = typeof aiConversations.$inferInsert;
+export type InsertAiConversation = typeof aiConversations.$inferInsert;
 
 // AI Message schemas
-/* DUPLICATE - aiMessages moved to modular schema */
-// export const insertAiMessageSchema = createInsertSchema(aiMessages);
+export const insertAiMessageSchema = createInsertSchema(aiMessages);
 
 export type AiMessage = typeof aiMessages.$inferSelect;
-// export type InsertAiMessage = typeof aiMessages.$inferInsert;
+export type InsertAiMessage = typeof aiMessages.$inferInsert;
 
 // AI Knowledge Base schemas
-/* DUPLICATE - aiKnowledgeBase moved to modular schema */
-// export const insertAiKnowledgeBaseSchema = createInsertSchema(aiKnowledgeBase);
-// export const updateAiKnowledgeBaseSchema = insertAiKnowledgeBaseSchema.partial();
+export const insertAiKnowledgeBaseSchema = createInsertSchema(aiKnowledgeBase);
+export const updateAiKnowledgeBaseSchema = insertAiKnowledgeBaseSchema.partial();
 
 export type AiKnowledgeBase = typeof aiKnowledgeBase.$inferSelect;
-// export type InsertAiKnowledgeBase = typeof aiKnowledgeBase.$inferInsert;
+export type InsertAiKnowledgeBase = typeof aiKnowledgeBase.$inferInsert;
 
 // AI Learning Data schemas
-/* DUPLICATE - aiLearningData moved to modular schema */
-// export const insertAiLearningDataSchema = createInsertSchema(aiLearningData);
-// export const updateAiLearningDataSchema = insertAiLearningDataSchema.partial();
+export const insertAiLearningDataSchema = createInsertSchema(aiLearningData);
+export const updateAiLearningDataSchema = insertAiLearningDataSchema.partial();
 
 export type AiLearningData = typeof aiLearningData.$inferSelect;
-// export type InsertAiLearningData = typeof aiLearningData.$inferInsert;
+export type InsertAiLearningData = typeof aiLearningData.$inferInsert;
 
 // AI Feedback schemas
-/* DUPLICATE - aiFeedback moved to modular schema */
-// export const insertAiFeedbackSchema = createInsertSchema(aiFeedback);
+export const insertAiFeedbackSchema = createInsertSchema(aiFeedback);
 
 export type AiFeedback = typeof aiFeedback.$inferSelect;
 
@@ -2832,89 +2773,80 @@ export type AITrainingJob = typeof aiTrainingJobs.$inferSelect;
 export type InsertAITrainingJob = typeof aiTrainingJobs.$inferInsert;
 export type MasterTrainingDataset = typeof masterTrainingDatasets.$inferSelect;
 export type InsertMasterTrainingDataset = typeof masterTrainingDatasets.$inferInsert;
-// export type InsertAiFeedback = typeof aiFeedback.$inferInsert;
+export type InsertAiFeedback = typeof aiFeedback.$inferInsert;
 
 // Permission schemas
-/* DUPLICATE - permissions moved to modular schema */
-// export const insertPermissionSchema = createInsertSchema(permissions);
-// export const updatePermissionSchema = insertPermissionSchema.partial();
+export const insertPermissionSchema = createInsertSchema(permissions);
+export const updatePermissionSchema = insertPermissionSchema.partial();
 
 export type Permission = typeof permissions.$inferSelect;
-// export type InsertPermission = typeof permissions.$inferInsert;
+export type InsertPermission = typeof permissions.$inferInsert;
 
 // Role Permission schemas
-/* DUPLICATE - rolePermissions moved to modular schema */
-// export const insertRolePermissionSchema = createInsertSchema(rolePermissions);
+export const insertRolePermissionSchema = createInsertSchema(rolePermissions);
 
 export type RolePermission = typeof rolePermissions.$inferSelect;
-// export type InsertRolePermission = typeof rolePermissions.$inferInsert;
+export type InsertRolePermission = typeof rolePermissions.$inferInsert;
 
 // User Custom Permission schemas
-/* DUPLICATE - userCustomPermissions moved to modular schema */
-// export const insertUserCustomPermissionSchema = createInsertSchema(userCustomPermissions);
+export const insertUserCustomPermissionSchema = createInsertSchema(userCustomPermissions);
 
 export type UserCustomPermission = typeof userCustomPermissions.$inferSelect;
-// export type InsertUserCustomPermission = typeof userCustomPermissions.$inferInsert;
+export type InsertUserCustomPermission = typeof userCustomPermissions.$inferInsert;
 
 // Dynamic Roles schemas
-/* DUPLICATE - dynamicRoles moved to modular schema */
-// export const insertDynamicRoleSchema = createInsertSchema(dynamicRoles).omit({
-//   id: true,
-//   createdAt: true,
-//   updatedAt: true,
-// });
-// export const updateDynamicRoleSchema = insertDynamicRoleSchema.partial();
+export const insertDynamicRoleSchema = createInsertSchema(dynamicRoles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const updateDynamicRoleSchema = insertDynamicRoleSchema.partial();
 
 export type DynamicRole = typeof dynamicRoles.$inferSelect;
-// export type InsertDynamicRole = z.infer<typeof insertDynamicRoleSchema>;
+export type InsertDynamicRole = z.infer<typeof insertDynamicRoleSchema>;
 
 // Dynamic Role Permissions schemas
-/* DUPLICATE - dynamicRolePermissions moved to modular schema */
-// export const insertDynamicRolePermissionSchema = createInsertSchema(dynamicRolePermissions).omit({
-//   id: true,
-//   createdAt: true,
-// });
+export const insertDynamicRolePermissionSchema = createInsertSchema(dynamicRolePermissions).omit({
+  id: true,
+  createdAt: true,
+});
 
 export type DynamicRolePermission = typeof dynamicRolePermissions.$inferSelect;
-// export type InsertDynamicRolePermission = z.infer<typeof insertDynamicRolePermissionSchema>;
+export type InsertDynamicRolePermission = z.infer<typeof insertDynamicRolePermissionSchema>;
 
 // User Dynamic Roles schemas
-/* DUPLICATE - userDynamicRoles moved to modular schema */
-// export const insertUserDynamicRoleSchema = createInsertSchema(userDynamicRoles).omit({
-//   id: true,
-//   assignedAt: true,
-// });
+export const insertUserDynamicRoleSchema = createInsertSchema(userDynamicRoles).omit({
+  id: true,
+  assignedAt: true,
+});
 
 export type UserDynamicRole = typeof userDynamicRoles.$inferSelect;
-// export type InsertUserDynamicRole = z.infer<typeof insertUserDynamicRoleSchema>;
+export type InsertUserDynamicRole = z.infer<typeof insertUserDynamicRoleSchema>;
 
 // Role Change Audit schemas
-/* DUPLICATE - roleChangeAudit moved to modular schema */
-// export const insertRoleChangeAuditSchema = createInsertSchema(roleChangeAudit).omit({
-//   id: true,
-//   changedAt: true,
-// });
+export const insertRoleChangeAuditSchema = createInsertSchema(roleChangeAudit).omit({
+  id: true,
+  changedAt: true,
+});
 
 export type RoleChangeAudit = typeof roleChangeAudit.$inferSelect;
-// export type InsertRoleChangeAudit = z.infer<typeof insertRoleChangeAuditSchema>;
+export type InsertRoleChangeAudit = z.infer<typeof insertRoleChangeAuditSchema>;
 
 // Audit Log schemas
-/* DUPLICATE - auditLogs moved to modular schema */
-// export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
-//   id: true,
-//   timestamp: true,
-// });
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  timestamp: true,
+});
 
 export type AuditLog = typeof auditLogs.$inferSelect;
-// export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
 // Test Rooms schemas
-/* DUPLICATE - testRoom moved to modular schema */
-// export const insertTestRoomSchema = createInsertSchema(testRooms);
-// export const updateTestRoomSchema = insertTestRoomSchema.partial();
+export const insertTestRoomSchema = createInsertSchema(testRooms);
+export const updateTestRoomSchema = insertTestRoomSchema.partial();
 
 export type TestRoom = typeof testRooms.$inferSelect;
-// export type InsertTestRoom = typeof testRooms.$inferInsert;
+export type InsertTestRoom = typeof testRooms.$inferInsert;
 
 // Test Room Bookings schemas
 export const insertTestRoomBookingSchema = createInsertSchema(testRoomBookings);
@@ -2924,12 +2856,11 @@ export type TestRoomBooking = typeof testRoomBookings.$inferSelect;
 export type InsertTestRoomBooking = typeof testRoomBookings.$inferInsert;
 
 // GOC Compliance Checks schemas
-/* DUPLICATE - gocComplianceCheck moved to modular schema */
-// export const insertGocComplianceCheckSchema = createInsertSchema(gocComplianceChecks);
-// export const updateGocComplianceCheckSchema = insertGocComplianceCheckSchema.partial();
+export const insertGocComplianceCheckSchema = createInsertSchema(gocComplianceChecks);
+export const updateGocComplianceCheckSchema = insertGocComplianceCheckSchema.partial();
 
 export type GocComplianceCheck = typeof gocComplianceChecks.$inferSelect;
-// export type InsertGocComplianceCheck = typeof gocComplianceChecks.$inferInsert;
+export type InsertGocComplianceCheck = typeof gocComplianceChecks.$inferInsert;
 
 // Prescription Templates schemas
 export const insertPrescriptionTemplateSchema = createInsertSchema(prescriptionTemplates);
@@ -2939,12 +2870,11 @@ export type PrescriptionTemplate = typeof prescriptionTemplates.$inferSelect;
 export type InsertPrescriptionTemplate = typeof prescriptionTemplates.$inferInsert;
 
 // Clinical Protocols schemas
-/* DUPLICATE - clinicalProtocol moved to modular schema */
-// export const insertClinicalProtocolSchema = createInsertSchema(clinicalProtocols);
-// export const updateClinicalProtocolSchema = insertClinicalProtocolSchema.partial();
+export const insertClinicalProtocolSchema = createInsertSchema(clinicalProtocols);
+export const updateClinicalProtocolSchema = insertClinicalProtocolSchema.partial();
 
 export type ClinicalProtocol = typeof clinicalProtocols.$inferSelect;
-// export type InsertClinicalProtocol = typeof clinicalProtocols.$inferInsert;
+export type InsertClinicalProtocol = typeof clinicalProtocols.$inferInsert;
 
 // ============================================
 // POS & Multi-Tenant Tables
@@ -3082,7 +3012,6 @@ export const movementTypeEnum = pgEnum("movement_type", [
   "initial"         // Initial stock entry
 ]);
 
-/* DUPLICATE - Moved to modular schema
 export const inventoryMovements = pgTable("inventory_movements", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").references(() => companies.id, { onDelete: "cascade" }).notNull(),
@@ -3113,10 +3042,9 @@ export const inventoryMovements = pgTable("inventory_movements", {
   index("idx_inventory_movements_type").on(table.movementType),
   index("idx_inventory_movements_date").on(table.createdAt),
   index("idx_inventory_movements_performed_by").on(table.performedBy),
-]); */
+]);
 
 // Product Variants for SKU management
-/* DUPLICATE - Moved to modular schema
 export const productVariants = pgTable("product_variants", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   productId: varchar("product_id").references(() => products.id, { onDelete: "cascade" }).notNull(),
@@ -3154,7 +3082,7 @@ export const productVariants = pgTable("product_variants", {
   index("idx_product_variants_company").on(table.companyId),
   index("idx_product_variants_sku").on(table.variantSku),
   index("idx_product_variants_barcode").on(table.barcode),
-]); */
+]);
 
 // Low Stock Alerts
 export const lowStockAlerts = pgTable("low_stock_alerts", {
@@ -3190,7 +3118,6 @@ export const lowStockAlerts = pgTable("low_stock_alerts", {
 // ============================================
 
 // Email templates for reusable email content
-/* DUPLICATE - Moved to modular schema
 export const emailTemplates = pgTable("email_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").references(() => companies.id).notNull(),
@@ -3217,10 +3144,9 @@ export const emailTemplates = pgTable("email_templates", {
   index("idx_email_templates_company").on(table.companyId),
   index("idx_email_templates_type").on(table.emailType),
   index("idx_email_templates_active").on(table.isActive),
-]); */
+]);
 
 // Email logs - all sent emails with tracking
-/* DUPLICATE - Moved to modular schema
 export const emailLogs = pgTable("email_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").references(() => companies.id).notNull(),
@@ -3276,10 +3202,9 @@ export const emailLogs = pgTable("email_logs", {
   index("idx_email_logs_sent_at").on(table.sentAt),
   index("idx_email_logs_tracking_id").on(table.trackingId),
   index("idx_email_logs_related").on(table.relatedEntityType, table.relatedEntityId),
-]); */
+]);
 
 // Email tracking events - detailed event log for analytics
-/* DUPLICATE - Moved to modular schema
 export const emailTrackingEvents = pgTable("email_tracking_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   emailLogId: varchar("email_log_id").references(() => emailLogs.id).notNull(),
@@ -3299,24 +3224,22 @@ export const emailTrackingEvents = pgTable("email_tracking_events", {
   index("idx_email_tracking_events_log").on(table.emailLogId),
   index("idx_email_tracking_events_type").on(table.eventType),
   index("idx_email_tracking_events_timestamp").on(table.timestamp),
-]); */
+]);
 
 // Insert and validation schemas
-/* DUPLICATE - inventoryMovements moved to modular schema */
-// export const insertInventoryMovementSchema = createInsertSchema(inventoryMovements, {
-//   quantity: z.number().int().refine(val => val !== 0, {
-//     message: 'Quantity cannot be zero',
-//   }),
-//   movementType: z.enum(["sale", "refund", "adjustment", "received", "transfer_out", "transfer_in", "damaged", "initial"]),
-// });
+export const insertInventoryMovementSchema = createInsertSchema(inventoryMovements, {
+  quantity: z.number().int().refine(val => val !== 0, {
+    message: 'Quantity cannot be zero',
+  }),
+  movementType: z.enum(["sale", "refund", "adjustment", "received", "transfer_out", "transfer_in", "damaged", "initial"]),
+});
 
-/* DUPLICATE - productVariants moved to modular schema */
-// export const insertProductVariantSchema = createInsertSchema(productVariants, {
-//   variantSku: z.string().min(1, "Variant SKU is required"),
-//   variantName: z.string().min(1, "Variant name is required"),
-// });
+export const insertProductVariantSchema = createInsertSchema(productVariants, {
+  variantSku: z.string().min(1, "Variant SKU is required"),
+  variantName: z.string().min(1, "Variant name is required"),
+});
 
-// export const updateProductVariantSchema = insertProductVariantSchema.partial();
+export const updateProductVariantSchema = insertProductVariantSchema.partial();
 
 export const insertLowStockAlertSchema = createInsertSchema(lowStockAlerts, {
   alertType: z.enum(["low_stock", "out_of_stock", "reorder_point"]),
@@ -3324,47 +3247,44 @@ export const insertLowStockAlertSchema = createInsertSchema(lowStockAlerts, {
   threshold: z.number().int().min(0),
 });
 
-/* DUPLICATE - emailTemplates moved to modular schema */
-// export const insertEmailTemplateSchema = createInsertSchema(emailTemplates, {
-//   name: z.string().min(1, "Template name is required"),
-//   subject: z.string().min(1, "Subject is required"),
-//   htmlContent: z.string().min(1, "HTML content is required"),
-//   emailType: z.enum(["invoice", "receipt", "prescription_reminder", "recall_notification", "appointment_reminder", "order_confirmation", "order_update", "marketing", "general"]),
-// });
+export const insertEmailTemplateSchema = createInsertSchema(emailTemplates, {
+  name: z.string().min(1, "Template name is required"),
+  subject: z.string().min(1, "Subject is required"),
+  htmlContent: z.string().min(1, "HTML content is required"),
+  emailType: z.enum(["invoice", "receipt", "prescription_reminder", "recall_notification", "appointment_reminder", "order_confirmation", "order_update", "marketing", "general"]),
+});
 
-// export const updateEmailTemplateSchema = insertEmailTemplateSchema.partial();
+export const updateEmailTemplateSchema = insertEmailTemplateSchema.partial();
 
-/* DUPLICATE - emailLogs moved to modular schema */
-// export const insertEmailLogSchema = createInsertSchema(emailLogs, {
-//   recipientEmail: z.string().email("Valid email is required"),
-//   subject: z.string().min(1, "Subject is required"),
-//   htmlContent: z.string().min(1, "HTML content is required"),
-//   emailType: z.enum(["invoice", "receipt", "prescription_reminder", "recall_notification", "appointment_reminder", "order_confirmation", "order_update", "marketing", "general"]),
-// });
+export const insertEmailLogSchema = createInsertSchema(emailLogs, {
+  recipientEmail: z.string().email("Valid email is required"),
+  subject: z.string().min(1, "Subject is required"),
+  htmlContent: z.string().min(1, "HTML content is required"),
+  emailType: z.enum(["invoice", "receipt", "prescription_reminder", "recall_notification", "appointment_reminder", "order_confirmation", "order_update", "marketing", "general"]),
+});
 
-/* DUPLICATE - emailTrackingEvents moved to modular schema */
-// export const insertEmailTrackingEventSchema = createInsertSchema(emailTrackingEvents, {
-//   eventType: z.enum(["sent", "delivered", "opened", "clicked", "bounced", "spam", "unsubscribed"]),
-// });
+export const insertEmailTrackingEventSchema = createInsertSchema(emailTrackingEvents, {
+  eventType: z.enum(["sent", "delivered", "opened", "clicked", "bounced", "spam", "unsubscribed"]),
+});
 
 // Type exports
 export type InventoryMovement = typeof inventoryMovements.$inferSelect;
-// export type InsertInventoryMovement = typeof inventoryMovements.$inferInsert;
+export type InsertInventoryMovement = typeof inventoryMovements.$inferInsert;
 
 export type ProductVariant = typeof productVariants.$inferSelect;
-// export type InsertProductVariant = typeof productVariants.$inferInsert;
+export type InsertProductVariant = typeof productVariants.$inferInsert;
 
 export type LowStockAlert = typeof lowStockAlerts.$inferSelect;
 export type InsertLowStockAlert = typeof lowStockAlerts.$inferInsert;
 
 export type EmailTemplate = typeof emailTemplates.$inferSelect;
-// export type InsertEmailTemplate = typeof emailTemplates.$inferInsert;
+export type InsertEmailTemplate = typeof emailTemplates.$inferInsert;
 
 export type EmailLog = typeof emailLogs.$inferSelect;
-// export type InsertEmailLog = typeof emailLogs.$inferInsert;
+export type InsertEmailLog = typeof emailLogs.$inferInsert;
 
 export type EmailTrackingEvent = typeof emailTrackingEvents.$inferSelect;
-// export type InsertEmailTrackingEvent = typeof emailTrackingEvents.$inferInsert;
+export type InsertEmailTrackingEvent = typeof emailTrackingEvents.$inferInsert;
 
 export type Equipment = typeof equipment.$inferSelect;
 export type InsertEquipment = typeof equipment.$inferInsert;
@@ -3391,7 +3311,6 @@ export const aiNotificationPriorityEnum = pgEnum("ai_notification_priority", [
  * AI-generated notifications and proactive insights
  * Stores daily briefings, alerts, and recommendations
  */
-/* DUPLICATE - Moved to modular schema
 export const aiNotifications = pgTable("ai_notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -3426,20 +3345,19 @@ export const aiNotifications = pgTable("ai_notifications", {
   index("idx_ai_notifications_company").on(table.companyId, table.createdAt),
   index("idx_ai_notifications_user").on(table.userId, table.isRead),
   index("idx_ai_notifications_priority").on(table.priority, table.createdAt),
-]); */
+]);
 
-/* DUPLICATE - aiNotifications moved to modular schema */
-// export const insertAiNotificationSchema = createInsertSchema(aiNotifications, {
-//   type: z.enum(["briefing", "alert", "reminder", "insight"]),
-//   priority: z.enum(["critical", "high", "medium", "low"]),
-//   title: z.string().min(1, "Title is required"),
-//   message: z.string().min(1, "Message is required"),
-// });
+export const insertAiNotificationSchema = createInsertSchema(aiNotifications, {
+  type: z.enum(["briefing", "alert", "reminder", "insight"]),
+  priority: z.enum(["critical", "high", "medium", "low"]),
+  title: z.string().min(1, "Title is required"),
+  message: z.string().min(1, "Message is required"),
+});
 
-// export const updateAiNotificationSchema = insertAiNotificationSchema.partial();
+export const updateAiNotificationSchema = insertAiNotificationSchema.partial();
 
 export type AiNotification = typeof aiNotifications.$inferSelect;
-// export type InsertAiNotification = typeof aiNotifications.$inferInsert;
+export type InsertAiNotification = typeof aiNotifications.$inferInsert;
 
 // ============================================
 // AI Purchase Orders (Autonomous Purchasing)
@@ -4175,7 +4093,6 @@ export const patientFaceAnalysis = pgTable("patient_face_analysis", {
  * Frame Characteristics Table
  * Extended frame metadata for AI recommendations
  */
-/* DUPLICATE - Moved to modular schema
 export const frameCharacteristics = pgTable("frame_characteristics", {
   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
 
@@ -4220,13 +4137,12 @@ export const frameCharacteristics = pgTable("frame_characteristics", {
   index("idx_frame_chars_company").on(table.companyId),
   index("idx_frame_chars_style").on(table.frameStyle),
   index("idx_frame_chars_material").on(table.frameMaterial),
-]); */
+]);
 
 /**
  * Frame Recommendations Table
  * Stores AI-generated frame recommendations for patients
  */
-/* DUPLICATE - Moved to modular schema
 export const frameRecommendations = pgTable("frame_recommendations", {
   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
 
@@ -4267,13 +4183,12 @@ export const frameRecommendations = pgTable("frame_recommendations", {
   index("idx_frame_recs_company").on(table.companyId),
   index("idx_frame_recs_match_score").on(table.matchScore),
   index("idx_frame_recs_rank").on(table.rank),
-]); */
+]);
 
 /**
  * Frame Recommendation Analytics Table
  * Tracks performance of frame recommendations
  */
-/* DUPLICATE - Moved to modular schema
 export const frameRecommendationAnalytics = pgTable("frame_recommendation_analytics", {
   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
 
@@ -4309,7 +4224,7 @@ export const frameRecommendationAnalytics = pgTable("frame_recommendation_analyt
   index("idx_frame_rec_analytics_company").on(table.companyId),
   index("idx_frame_rec_analytics_product").on(table.productId),
   index("idx_frame_rec_analytics_period").on(table.periodStart, table.periodEnd),
-]); */
+]);
 
 // Zod schemas for face analysis
 export const createFaceAnalysisSchema = z.object({
@@ -4359,11 +4274,11 @@ export const createFrameCharacteristicsSchema = z.object({
 export type PatientFaceAnalysis = typeof patientFaceAnalysis.$inferSelect;
 export type InsertPatientFaceAnalysis = typeof patientFaceAnalysis.$inferInsert;
 export type FrameCharacteristics = typeof frameCharacteristics.$inferSelect;
-// export type InsertFrameCharacteristics = typeof frameCharacteristics.$inferInsert;
+export type InsertFrameCharacteristics = typeof frameCharacteristics.$inferInsert;
 export type FrameRecommendation = typeof frameRecommendations.$inferSelect;
 export type InsertFrameRecommendation = typeof frameRecommendations.$inferInsert;
 export type FrameRecommendationAnalytics = typeof frameRecommendationAnalytics.$inferSelect;
-// export type InsertFrameRecommendationAnalytics = typeof frameRecommendationAnalytics.$inferInsert;
+export type InsertFrameRecommendationAnalytics = typeof frameRecommendationAnalytics.$inferInsert;
 
 // Export schemas and types
 export const insertMarketInsightSchema = createInsertSchema(marketInsights);
@@ -4453,7 +4368,6 @@ export const nhsExemptionReasonEnum = pgEnum("nhs_exemption_reason", [
  * NHS Practitioners Table
  * GOC-registered optometrists and dispensing opticians
  */
-/* DUPLICATE - Moved to modular schema
 export const nhsPractitioners = pgTable("nhs_practitioners", {
   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
 
@@ -4486,13 +4400,12 @@ export const nhsPractitioners = pgTable("nhs_practitioners", {
   index("idx_nhs_practitioners_user").on(table.userId),
   index("idx_nhs_practitioners_company").on(table.companyId),
   index("idx_nhs_practitioners_goc").on(table.gocNumber),
-]); */
+]);
 
 /**
  * NHS Contract Details
  * Practice-level NHS contract information
  */
-/* DUPLICATE - Moved to modular schema
 export const nhsContractDetails = pgTable("nhs_contract_details", {
   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
 
@@ -4525,13 +4438,12 @@ export const nhsContractDetails = pgTable("nhs_contract_details", {
 }, (table) => [
   index("idx_nhs_contracts_company").on(table.companyId),
   index("idx_nhs_contracts_ods").on(table.odsCode),
-]); */
+]);
 
 /**
  * NHS Claims
  * GOS sight test claims submitted to PCSE
  */
-/* DUPLICATE - Moved to modular schema
 export const nhsClaims = pgTable("nhs_claims", {
   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
 
@@ -4599,13 +4511,12 @@ export const nhsClaims = pgTable("nhs_claims", {
   index("idx_nhs_claims_practitioner").on(table.practitionerId),
   index("idx_nhs_claims_status").on(table.status),
   index("idx_nhs_claims_date").on(table.claimDate),
-]); */
+]);
 
 /**
  * NHS Vouchers
  * Optical vouchers for glasses/contact lenses
  */
-/* DUPLICATE - Moved to modular schema
 export const nhsVouchers = pgTable("nhs_vouchers", {
   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
 
@@ -4659,13 +4570,12 @@ export const nhsVouchers = pgTable("nhs_vouchers", {
   index("idx_nhs_vouchers_patient").on(table.patientId),
   index("idx_nhs_vouchers_status").on(table.status),
   index("idx_nhs_vouchers_expiry").on(table.expiryDate),
-]); */
+]);
 
 /**
  * NHS Patient Exemptions
  * Track patient NHS exemption status
  */
-/* DUPLICATE - Moved to modular schema
 export const nhsPatientExemptions = pgTable("nhs_patient_exemptions", {
   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
 
@@ -4703,13 +4613,12 @@ export const nhsPatientExemptions = pgTable("nhs_patient_exemptions", {
   index("idx_nhs_exemptions_patient").on(table.patientId),
   index("idx_nhs_exemptions_status").on(table.isActive),
   index("idx_nhs_exemptions_expiry").on(table.validUntil),
-]); */
+]);
 
 /**
  * NHS Payments
  * Track PCSE payments received
  */
-/* DUPLICATE - Moved to modular schema
 export const nhsPayments = pgTable("nhs_payments", {
   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
 
@@ -4750,7 +4659,7 @@ export const nhsPayments = pgTable("nhs_payments", {
   index("idx_nhs_payments_company").on(table.companyId),
   index("idx_nhs_payments_date").on(table.paymentDate),
   index("idx_nhs_payments_reconciled").on(table.isReconciled),
-]); */
+]);
 
 /**
  * NHS Claims Retry Queue
@@ -4762,7 +4671,6 @@ export const nhsPayments = pgTable("nhs_payments", {
  * - 3rd retry: 24 hours after 2nd retry
  * - After 3 retries: Manual intervention required
  */
-/* DUPLICATE - Moved to modular schema
 export const nhsClaimsRetryQueue = pgTable("nhs_claims_retry_queue", {
   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
 
@@ -4797,10 +4705,9 @@ export const nhsClaimsRetryQueue = pgTable("nhs_claims_retry_queue", {
   index("idx_retry_queue_claim").on(table.claimId),
   index("idx_retry_queue_company").on(table.companyId),
   index("idx_retry_queue_status").on(table.status),
-]); */
+]);
 
 // Zod schemas for NHS
-/* DUPLICATE - Moved to NHS domain
 export const createNhsPractitionerSchema = z.object({
   userId: z.string().min(1),
   companyId: z.string().min(1),
@@ -4815,7 +4722,6 @@ export const createNhsPractitionerSchema = z.object({
   indemnityExpiryDate: z.string().optional(),
 });
 
-/* DUPLICATE - Moved to NHS domain
 export const createNhsClaimSchema = z.object({
   companyId: z.string().min(1),
   patientId: z.string().min(1),
@@ -4831,9 +4737,8 @@ export const createNhsClaimSchema = z.object({
   referralUrgency: z.enum(["routine", "urgent", "emergency"]).optional(),
   clinicalNotes: z.string().optional(),
   claimAmount: z.number().positive(),
-}); */
+});
 
-/* DUPLICATE - Moved to NHS domain
 export const createNhsVoucherSchema = z.object({
   companyId: z.string().min(1),
   patientId: z.string().min(1),
@@ -4851,13 +4756,13 @@ export const createNhsVoucherSchema = z.object({
   cylinderOS: z.number().optional(),
   prismRequired: z.boolean().default(false),
   tintRequired: z.boolean().default(false),
-}); */
+});
 
 // Export types
 export type NhsPractitioner = typeof nhsPractitioners.$inferSelect;
 export type InsertNhsPractitioner = typeof nhsPractitioners.$inferInsert;
 export type NhsContractDetails = typeof nhsContractDetails.$inferSelect;
-// export type InsertNhsContractDetails = typeof nhsContractDetails.$inferInsert;
+export type InsertNhsContractDetails = typeof nhsContractDetails.$inferInsert;
 export type NhsClaim = typeof nhsClaims.$inferSelect;
 export type InsertNhsClaim = typeof nhsClaims.$inferInsert;
 export type NhsVoucher = typeof nhsVouchers.$inferSelect;
@@ -6214,7 +6119,6 @@ export const severityEnum = pgEnum("severity", [
  * Risk Scores Table
  * Stores calculated risk scores for patients with contributing factors
  */
-/* DUPLICATE - Moved to modular schema
 export const riskScores = pgTable(
   "risk_scores",
   {
@@ -6246,7 +6150,7 @@ export const riskScores = pgTable(
     categoryIdx: index("risk_scores_category_idx").on(table.category),
     calculatedDateIdx: index("risk_scores_calculated_date_idx").on(table.calculatedDate),
   })
-); */
+);
 
 /**
  * Health Risk Assessments Table
@@ -6409,8 +6313,7 @@ export const riskStratificationCohorts = pgTable(
 );
 
 // Zod validation schemas for Population Health tables
-/* DUPLICATE - riskScore moved to modular schema */
-// export const insertRiskScoreSchema = createInsertSchema(riskScores);
+export const insertRiskScoreSchema = createInsertSchema(riskScores);
 export const insertHealthRiskAssessmentSchema = createInsertSchema(healthRiskAssessments);
 export const insertPredictiveModelSchema = createInsertSchema(predictiveModels);
 export const insertPredictiveAnalysisSchema = createInsertSchema(predictiveAnalyses);
@@ -6419,7 +6322,7 @@ export const insertRiskStratificationCohortSchema = createInsertSchema(riskStrat
 
 // TypeScript types
 export type RiskScore = typeof riskScores.$inferSelect;
-// export type InsertRiskScore = typeof riskScores.$inferInsert;
+export type InsertRiskScore = typeof riskScores.$inferInsert;
 export type HealthRiskAssessment = typeof healthRiskAssessments.$inferSelect;
 export type InsertHealthRiskAssessment = typeof healthRiskAssessments.$inferInsert;
 export type PredictiveModel = typeof predictiveModels.$inferSelect;
@@ -6485,7 +6388,6 @@ export const recipientTypeEnum = pgEnum("recipient_type", [
  * Message Templates Table
  * Stores reusable message templates for email, SMS, push notifications
  */
-/* DUPLICATE - Moved to modular schema
 export const messageTemplates = pgTable(
   "message_templates",
   {
@@ -6508,13 +6410,12 @@ export const messageTemplates = pgTable(
     categoryIdx: index("message_templates_category_idx").on(table.category),
     activeIdx: index("message_templates_active_idx").on(table.active),
   })
-); */
+);
 
 /**
  * Messages Table
  * Stores all sent messages with delivery tracking
  */
-/* DUPLICATE - Moved to modular schema
 export const messages = pgTable(
   "messages",
   {
@@ -6564,7 +6465,7 @@ export const messages = pgTable(
     scheduledForIdx: index("messages_scheduled_for_idx").on(table.scheduledFor),
     sentAtIdx: index("messages_sent_at_idx").on(table.sentAt),
   })
-); */
+);
 
 /**
  * Unsubscribes Table
@@ -6728,19 +6629,17 @@ export const smsMessageEvents = pgTable(
 );
 
 // Zod validation schemas for Communications tables
-/* DUPLICATE - messageTemplate moved to modular schema */
-// export const insertMessageTemplateSchema = createInsertSchema(messageTemplates);
-/* DUPLICATE - message moved to modular schema */
-// export const insertMessageSchema = createInsertSchema(messages);
+export const insertMessageTemplateSchema = createInsertSchema(messageTemplates);
+export const insertMessageSchema = createInsertSchema(messages);
 export const insertUnsubscribeSchema = createInsertSchema(unsubscribes);
 export const insertWhatsappMessageEventSchema = createInsertSchema(whatsappMessageEvents);
 export const insertSmsMessageEventSchema = createInsertSchema(smsMessageEvents);
 
 // TypeScript types
 export type MessageTemplate = typeof messageTemplates.$inferSelect;
-// export type InsertMessageTemplate = typeof messageTemplates.$inferInsert;
+export type InsertMessageTemplate = typeof messageTemplates.$inferInsert;
 export type Message = typeof messages.$inferSelect;
-// export type InsertMessage = typeof messages.$inferInsert;
+export type InsertMessage = typeof messages.$inferInsert;
 export type Unsubscribe = typeof unsubscribes.$inferSelect;
 export type InsertUnsubscribe = typeof unsubscribes.$inferInsert;
 export type WhatsappMessageEvent = typeof whatsappMessageEvents.$inferSelect;
@@ -8103,7 +8002,6 @@ export const outreachContactResultEnum = pgEnum("outreach_contact_result", ["suc
  * Care Plans Table
  * Comprehensive care plans for patients
  */
-/* DUPLICATE - Moved to modular schema
 export const carePlans = pgTable(
   "care_plans",
   {
@@ -8158,7 +8056,7 @@ export const carePlans = pgTable(
     categoryIdx: index("care_plans_category_idx").on(table.category),
     nextReviewIdx: index("care_plans_next_review_idx").on(table.nextReviewDate),
   })
-); */
+);
 
 /**
  * Care Teams Table
@@ -8355,8 +8253,7 @@ export const patientOutreach = pgTable(
 );
 
 // Zod validation schemas for Care Coordination tables
-/* DUPLICATE - carePlan moved to modular schema */
-// export const insertCarePlanSchema = createInsertSchema(carePlans);
+export const insertCarePlanSchema = createInsertSchema(carePlans);
 export const insertCareTeamSchema = createInsertSchema(careTeams);
 export const insertCareGapSchema = createInsertSchema(careGaps);
 export const insertTransitionOfCareSchema = createInsertSchema(transitionsOfCare);
@@ -8365,7 +8262,7 @@ export const insertPatientOutreachSchema = createInsertSchema(patientOutreach);
 
 // TypeScript types
 export type CarePlan = typeof carePlans.$inferSelect;
-// export type InsertCarePlan = typeof carePlans.$inferInsert;
+export type InsertCarePlan = typeof carePlans.$inferInsert;
 export type CareTeam = typeof careTeams.$inferSelect;
 export type InsertCareTeam = typeof careTeams.$inferInsert;
 export type CareGap = typeof careGaps.$inferSelect;
@@ -8767,7 +8664,6 @@ export const qualityImprovementProjects = pgTable(
 );
 
 // PDSA Cycles table
-/* DUPLICATE - Moved to modular schema
 export const pdsaCycles = pgTable(
   "pdsa_cycles",
   {
@@ -8816,7 +8712,7 @@ export const pdsaCycles = pgTable(
     projectIdx: index("pdsa_cycles_project_idx").on(table.projectId),
     statusIdx: index("pdsa_cycles_status_idx").on(table.status),
   })
-); */
+);
 
 // Care Bundles table
 export const careBundles = pgTable(
@@ -8953,8 +8849,7 @@ export const bestPractices = pgTable(
 
 // Zod validation schemas for Quality Improvement tables
 export const insertQualityImprovementProjectSchema = createInsertSchema(qualityImprovementProjects);
-/* DUPLICATE - pDSACycle moved to modular schema */
-// export const insertPDSACycleSchema = createInsertSchema(pdsaCycles);
+export const insertPDSACycleSchema = createInsertSchema(pdsaCycles);
 export const insertCareBundleSchema = createInsertSchema(careBundles);
 export const insertBundleComplianceSchema = createInsertSchema(bundleCompliance);
 export const insertPerformanceImprovementSchema = createInsertSchema(performanceImprovements);
@@ -8964,7 +8859,7 @@ export const insertBestPracticeSchema = createInsertSchema(bestPractices);
 export type QualityImprovementProject = typeof qualityImprovementProjects.$inferSelect;
 export type InsertQualityImprovementProject = typeof qualityImprovementProjects.$inferInsert;
 export type PDSACycle = typeof pdsaCycles.$inferSelect;
-// export type InsertPDSACycle = typeof pdsaCycles.$inferInsert;
+export type InsertPDSACycle = typeof pdsaCycles.$inferInsert;
 export type CareBundle = typeof careBundles.$inferSelect;
 export type InsertCareBundle = typeof careBundles.$inferInsert;
 export type BundleCompliance = typeof bundleCompliance.$inferSelect;
@@ -9019,7 +8914,6 @@ export const subscriptionStatusEnum = pgEnum("subscription_status", [
 ]);
 
 // Feature usage tracking table
-/* DUPLICATE - Moved to modular schema
 export const featureUsageMetrics = pgTable("feature_usage_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -9036,10 +8930,9 @@ export const featureUsageMetrics = pgTable("feature_usage_metrics", {
   index("idx_feature_usage_name").on(table.featureName),
   index("idx_feature_usage_tier").on(table.tier),
   uniqueIndex("idx_feature_usage_unique").on(table.companyId, table.featureName),
-]); */
+]);
 
 // Customer health score table
-/* DUPLICATE - Moved to modular schema
 export const customerHealthScores = pgTable("customer_health_scores", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -9064,10 +8957,9 @@ export const customerHealthScores = pgTable("customer_health_scores", {
 }, (table) => [
   index("idx_health_scores_company").on(table.companyId),
   index("idx_health_scores_risk").on(table.riskLevel),
-]); */
+]);
 
 // Churn prediction table - ML model outputs
-/* DUPLICATE - Moved to modular schema
 export const churnPredictions = pgTable("churn_predictions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -9092,10 +8984,9 @@ export const churnPredictions = pgTable("churn_predictions", {
   index("idx_churn_predictions_company").on(table.companyId),
   index("idx_churn_predictions_probability").on(table.churnProbability),
   index("idx_churn_predictions_risk").on(table.predictedChurnDate),
-]); */
+]);
 
 // Customer acquisition source tracking
-/* DUPLICATE - Moved to modular schema
 export const customerAcquisitionSources = pgTable("customer_acquisition_sources", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -9130,10 +9021,9 @@ export const customerAcquisitionSources = pgTable("customer_acquisition_sources"
   index("idx_acq_source_company").on(table.companyId),
   index("idx_acq_source_name").on(table.source),
   index("idx_acq_source_period").on(table.periodStart),
-]); */
+]);
 
 // Cohort analysis tracking
-/* DUPLICATE - Moved to modular schema
 export const customerCohorts = pgTable("customer_cohorts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -9173,10 +9063,9 @@ export const customerCohorts = pgTable("customer_cohorts", {
   index("idx_cohorts_company").on(table.companyId),
   index("idx_cohorts_period").on(table.periodStart),
   index("idx_cohorts_segment").on(table.segment),
-]); */
+]);
 
 // Usage events for analytics
-/* DUPLICATE - Moved to modular schema
 export const usageEvents = pgTable("usage_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -9199,10 +9088,9 @@ export const usageEvents = pgTable("usage_events", {
   index("idx_usage_events_type").on(table.eventType),
   index("idx_usage_events_user").on(table.userId),
   index("idx_usage_events_created").on(table.createdAt),
-]); */
+]);
 
 // Monthly revenue tracking for MRR/ARR calculations
-/* DUPLICATE - Moved to modular schema
 export const monthlyRecurringRevenue = pgTable("monthly_recurring_revenue", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -9233,7 +9121,7 @@ export const monthlyRecurringRevenue = pgTable("monthly_recurring_revenue", {
   index("idx_mrr_company").on(table.companyId),
   index("idx_mrr_period").on(table.year, table.month),
   uniqueIndex("idx_mrr_unique").on(table.companyId, table.year, table.month),
-]); */
+]);
 
 // NPS category enum
 export const npsCategoryEnum = pgEnum("nps_category", [
@@ -9243,7 +9131,6 @@ export const npsCategoryEnum = pgEnum("nps_category", [
 ]);
 
 // User Feedback table
-/* DUPLICATE - Moved to modular schema
 export const feedback = pgTable(
   "feedback",
   {
@@ -9267,10 +9154,9 @@ export const feedback = pgTable(
     statusIdx: index("feedback_status_idx").on(table.status),
     createdAtIdx: index("feedback_created_at_idx").on(table.createdAt),
   })
-); */
+);
 
 // NPS Surveys table
-/* DUPLICATE - Moved to modular schema
 export const npsSurveys = pgTable(
   "nps_surveys",
   {
@@ -9290,30 +9176,28 @@ export const npsSurveys = pgTable(
     createdAtIdx: index("nps_created_at_idx").on(table.createdAt),
     triggerIdx: index("nps_trigger_idx").on(table.trigger),
   })
-); */
+);
 
 // Zod validation schemas
-/* DUPLICATE - feedback moved to modular schema */
-// export const insertFeedbackSchema = createInsertSchema(feedback).omit({
-//   id: true,
-//   createdAt: true,
-//   updatedAt: true,
-//   resolvedAt: true,
-//   resolvedBy: true,
-//   adminNotes: true,
-// });
+export const insertFeedbackSchema = createInsertSchema(feedback).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  resolvedAt: true,
+  resolvedBy: true,
+  adminNotes: true,
+});
 
-// export const updateFeedbackSchema = insertFeedbackSchema.partial();
+export const updateFeedbackSchema = insertFeedbackSchema.partial();
 
-/* DUPLICATE - npsSurveys moved to modular schema */
-// export const insertNPSSurveySchema = createInsertSchema(npsSurveys).omit({
-//   id: true,
-//   createdAt: true,
-// });
+export const insertNPSSurveySchema = createInsertSchema(npsSurveys).omit({
+  id: true,
+  createdAt: true,
+});
 
 // TypeScript types
 export type Feedback = typeof feedback.$inferSelect;
-// export type InsertFeedback = typeof feedback.$inferInsert;
+export type InsertFeedback = typeof feedback.$inferInsert;
 export type NPSSurvey = typeof npsSurveys.$inferSelect;
 export type InsertNPSSurvey = typeof npsSurveys.$inferInsert;
 
@@ -10321,12 +10205,12 @@ export type InsertPatientPortalAccessLog = typeof patientPortalAccessLogs.$infer
 // that reference older table names or expected tables that were not yet created
 
 // Alias: activityLogs -> auditLogs
-// export const activityLogs = auditLogs;
+export const activityLogs = auditLogs;
 export type ActivityLog = AuditLog;
 export type InsertActivityLog = InsertAuditLog;
 
 // Alias: examinations -> eyeExaminations
-// export const examinations = eyeExaminations;
+export const examinations = eyeExaminations;
 export type Examination = EyeExamination;
 export type InsertExamination = InsertEyeExamination;
 
@@ -10508,7 +10392,6 @@ export type MedicalClaim = typeof medicalClaims.$inferSelect;
 export type InsertMedicalClaim = typeof medicalClaims.$inferInsert;
 
 // Payments Table (for BillingService)
-/* DUPLICATE - Moved to modular schema
 export const payments = pgTable("payments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -10526,13 +10409,12 @@ export const payments = pgTable("payments", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}); */
+});
 
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
 
 // Billing Codes Table (for BillingService)
-/* DUPLICATE - Moved to modular schema
 export const billingCodes = pgTable("billing_codes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -10549,7 +10431,7 @@ export const billingCodes = pgTable("billing_codes", {
   terminationDate: timestamp("termination_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}); */
+});
 
 export type BillingCode = typeof billingCodes.$inferSelect;
 export type InsertBillingCode = typeof billingCodes.$inferInsert;

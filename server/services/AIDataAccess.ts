@@ -6,16 +6,15 @@
  */
 
 import { db } from "../../db";
-import { 
-  orders, 
+import {
+  
+  orders, patients, companies, users, eyeExaminations,
   invoices,
   invoiceLineItems,
-  products, 
-  patients, 
-  eyeExaminations,
-  companies,
-  users
-} from "@shared/schema";
+  products
+} from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
 import { eq, and, gte, lte, sql, desc, count, sum, avg, or, like } from "drizzle-orm";
 import { createLogger } from "../utils/logger";
 

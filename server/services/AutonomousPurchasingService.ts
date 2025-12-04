@@ -12,15 +12,19 @@
  */
 
 import { db } from "../db";
-import { 
-  products, 
-  aiPurchaseOrders, 
-  aiPurchaseOrderItems,
+import {
   users,
-  purchaseOrders,
+  aiPurchaseOrders,
+  aiPurchaseOrderItems,
   poLineItems,
   demandForecasts,
-} from "@shared/schema";
+  products
+} from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
+import {
+  purchaseOrders
+} from '@shared/schemaLegacy';
 import { eq, and, lt, desc, sql, isNotNull, gte } from "drizzle-orm";
 import { AIDataAccess, type QueryContext } from "./AIDataAccess";
 import { ExternalAIService } from "./ExternalAIService";

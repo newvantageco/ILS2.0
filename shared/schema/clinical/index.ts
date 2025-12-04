@@ -245,30 +245,6 @@ export const clinicalProtocols = pgTable("clinical_protocols", {
 
 // ============================================
 // CONSULT LOGS
-// ============================================
-
-export const consultLogs = pgTable("consult_logs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull(),
-  patientId: varchar("patient_id").notNull(),
-  ecpId: varchar("ecp_id").notNull(),
-  orderId: varchar("order_id"),
-  consultType: varchar("consult_type", { length: 50 }).notNull(),
-  priority: consultPriorityEnum("priority").default("normal"),
-  subject: varchar("subject", { length: 255 }),
-  notes: text("notes"),
-  attachments: jsonb("attachments").$type<string[]>(),
-  status: varchar("status", { length: 50 }).default("open"),
-  resolvedAt: timestamp("resolved_at"),
-  resolvedBy: varchar("resolved_by"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  index("idx_consult_logs_company").on(table.companyId),
-  index("idx_consult_logs_patient").on(table.patientId),
-  index("idx_consult_logs_order").on(table.orderId),
-  index("idx_consult_logs_status").on(table.status),
-]);
 
 // ============================================
 // GOC COMPLIANCE CHECKS
@@ -298,7 +274,6 @@ export const insertEyeExaminationSchema = createInsertSchema(eyeExaminations);
 export const insertPrescriptionSchema = createInsertSchema(prescriptions);
 export const insertTestRoomSchema = createInsertSchema(testRooms);
 export const insertClinicalProtocolSchema = createInsertSchema(clinicalProtocols);
-export const insertConsultLogSchema = createInsertSchema(consultLogs);
 export const insertGocComplianceCheckSchema = createInsertSchema(gocComplianceChecks);
 
 // ============================================
@@ -313,7 +288,5 @@ export type TestRoom = typeof testRooms.$inferSelect;
 export type InsertTestRoom = typeof testRooms.$inferInsert;
 export type ClinicalProtocol = typeof clinicalProtocols.$inferSelect;
 export type InsertClinicalProtocol = typeof clinicalProtocols.$inferInsert;
-export type ConsultLog = typeof consultLogs.$inferSelect;
-export type InsertConsultLog = typeof consultLogs.$inferInsert;
 export type GocComplianceCheck = typeof gocComplianceChecks.$inferSelect;
 export type InsertGocComplianceCheck = typeof gocComplianceChecks.$inferInsert;

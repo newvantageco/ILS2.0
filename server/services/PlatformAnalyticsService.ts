@@ -12,17 +12,13 @@
  */
 
 import { db } from "../../db";
-import { 
-  companies, 
-  invoices, 
-  orders, 
-  patients,
-  marketInsights,
-  platformStatistics,
-  aggregatedMetrics,
-  companyRelationships,
-  users
-} from "@shared/schema";
+import {
+  
+  companies, orders, patients, users, marketInsights, platformStatistics, aggregatedMetrics, companyRelationships,
+  invoices
+} from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
 import { sql, eq, and, gte, lte, desc, count, avg, sum, min, max } from "drizzle-orm";
 import { createLogger } from "../utils/logger";
 

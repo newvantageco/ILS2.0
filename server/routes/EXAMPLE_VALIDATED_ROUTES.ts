@@ -13,15 +13,12 @@ import { Router, Request, Response } from 'express';
 import { validateBody, validateQuery, validateParams, validateDatabaseOutput } from '../middleware/zodValidation';
 import { z } from 'zod';
 import {
-  insertOrderSchema,
-  updateOrderStatusSchema,
-  insertPatientSchema,
-  insertPrescriptionSchema,
-  orders,
-  patients,
-  prescriptions,
-  users,
+  
+  orders, patients, users, insertOrderSchema, updateOrderStatusSchema, insertPatientSchema, insertPrescriptionSchema,
+  prescriptions
 } from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
 import { eq, or, like } from 'drizzle-orm';
 // import { db } from '../db'; // You would import your actual db instance
 // import bcrypt from 'bcrypt'; // For password hashing

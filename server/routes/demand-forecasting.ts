@@ -7,7 +7,13 @@
 
 import { Express } from "express";
 import { db } from "../../db";
-import { demandForecasts, seasonalPatterns, forecastAccuracyMetrics, users, products } from "@shared/schema";
+import {
+  
+  users, demandForecasts, seasonalPatterns, forecastAccuracyMetrics,
+  products
+} from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 import { DemandForecastingService } from "../services/DemandForecastingService";
 import { createLogger } from "../utils/logger";

@@ -21,13 +21,11 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { db } from '../../db';
+// Import tables not yet extracted to modular domains
 import {
-  aiConversations,
-  aiMessages,
-  aiKnowledgeBase,
-  aiLearningData,
-  aiFeedback,
+  aiFeedback
 } from '@shared/schema';
+// Import tables not yet extracted to modular domains
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { createLogger } from '../../utils/logger';
 import { ToolRegistry, type Tool } from './ToolRegistry';

@@ -3,7 +3,10 @@ import { isAuthenticated } from '../middleware/auth';
 import EquipmentDiscoveryService from '../services/EquipmentDiscoveryService';
 import { db } from '../db';
 import { eq } from 'drizzle-orm';
-import { equipment } from '@shared/schema';
+// Import tables not yet extracted to modular domains
+import {
+  equipment
+} from '@shared/schemaLegacy';;
 import { createLogger } from '../utils/logger';
 import { ErrorResponses, asyncHandler } from '../utils/errorResponses';
 

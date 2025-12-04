@@ -1,5 +1,11 @@
 import { db } from "../db";
-import { prescriptionUploads, prescriptions, patients } from "@shared/schema";
+import {
+  
+  patients, prescriptionUploads,
+  prescriptions
+} from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
 import { eq, and } from "drizzle-orm";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";

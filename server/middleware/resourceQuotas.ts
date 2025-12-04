@@ -6,7 +6,13 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../../db';
-import { orders, patients, users, products, eyeExaminations } from '@shared/schema';
+import {
+  
+  orders, patients, users, eyeExaminations,
+  products
+} from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
 import { eq, and, count, sql } from 'drizzle-orm';
 import { cacheService } from '../services/CacheService';
 import logger from '../utils/logger';

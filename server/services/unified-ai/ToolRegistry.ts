@@ -20,12 +20,16 @@ import { db } from '../../db';
 import {
   orders,
   patients,
-  products,
-  invoices,
+  users,
+  products,  // Moved to inventory domain
+  invoices,  // Moved to billing domain
+} from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
+import {
   appointments,
   purchaseOrders,
-  users,
-} from '@shared/schema';
+} from '@shared/schemaLegacy';
 import { eq, and, desc, gte, sql, count } from 'drizzle-orm';
 import { createLogger } from '../../utils/logger';
 import { v4 as uuidv4 } from 'uuid';

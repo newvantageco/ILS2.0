@@ -5,16 +5,13 @@
 
 import { db } from '../db';
 import {
-  users,
-  patients,
-  orders,
-  eyeExaminations,
+  
+  users, patients, orders, auditLogs, eyeExaminations, consultLogs, type User,
   prescriptions,
-  consultLogs,
-  invoices,
-  auditLogs,
-  type User,
+  invoices
 } from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
 import { eq, and } from 'drizzle-orm';
 import { instrumentQuery } from '../utils/queryInstrumentation';
 

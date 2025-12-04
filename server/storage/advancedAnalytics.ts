@@ -1,5 +1,11 @@
 import { db } from "../db";
-import { orders, posTransactions, posTransactionItems, products, users } from "@shared/schema";
+import {
+  
+  orders, users, posTransactions, posTransactionItems,
+  products
+} from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
 import { and, eq, gte, lte, sql, desc, between } from "drizzle-orm";
 
 export interface ConversionFunnelData {

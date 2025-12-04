@@ -7,11 +7,15 @@
 
 import { db } from '../db';
 import {
-  patients,
-  eyeExaminations,
-  prescriptions,
-  appointments,
+  
+  patients, eyeExaminations,
+  prescriptions
 } from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
+import {
+  appointments
+} from '@shared/schemaLegacy';;
 import type { Patient, EyeExamination, Prescription } from '@shared/schema';
 import { eq, and, desc, sql, gte, or } from 'drizzle-orm';
 import { BaseRepository, type QueryOptions } from './BaseRepository';

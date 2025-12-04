@@ -1,5 +1,11 @@
 import { db } from "../db";
-import { orders, orderTimeline } from "@shared/schema";
+import {
+  
+  orders,
+  orderTimeline
+} from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
 import { eq, and, desc, gte, sql } from "drizzle-orm";
 import type { Order } from "@shared/schema";
 

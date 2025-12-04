@@ -7,12 +7,15 @@
 
 import { db } from '../db';
 import {
+  
+  aiFeedback,
   aiConversations,
   aiMessages,
   aiKnowledgeBase,
-  aiLearningData,
-  aiFeedback,
+  aiLearningData
 } from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
 import type { AIConversation, AIMessage } from '@shared/schema';
 import { eq, and, desc, sql, gte, cosineDistance } from 'drizzle-orm';
 import { BaseRepository, type QueryOptions } from './BaseRepository';

@@ -7,11 +7,12 @@
 
 import { db } from '../db';
 import {
-  orders,
-  orderTimeline,
-  patients,
-  users,
+  
+  orders, patients, users,
+  orderTimeline
 } from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
 import type { Order, OrderTimeline, Patient } from '@shared/schema';
 import { eq, and, desc, sql, inArray, gte, lte } from 'drizzle-orm';
 import { BaseRepository, type QueryOptions } from './BaseRepository';

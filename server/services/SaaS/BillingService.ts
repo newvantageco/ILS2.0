@@ -13,13 +13,13 @@
 import logger from '../../utils/logger';
 import { db } from '../../../db';
 import {
-  invoices,
   coupons,
   revenueRecognitionEvents,
-  emailLogs,
   type Coupon,
   type InsertRevenueRecognitionEvent,
   type InsertEmailLog,
+  invoices,
+  emailLogs
 } from '@shared/schema';
 import { eq, and, lte, gte, isNull } from 'drizzle-orm';
 import Stripe from 'stripe';

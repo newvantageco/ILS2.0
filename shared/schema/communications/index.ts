@@ -13,6 +13,8 @@ import { pgTable, text, varchar, timestamp, jsonb, index, pgEnum, integer, boole
 import { createInsertSchema } from "drizzle-zod";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
+import { notificationTypeEnum, notificationSeverityEnum } from "../core/enums";
+import { companies } from "../core/tables";
 
 // ============================================
 // COMMUNICATION ENUMS
@@ -50,6 +52,68 @@ export const emailEventTypeEnum = pgEnum("email_event_type", [
   "spam",
   "unsubscribed"
 ]);
+
+export const communicationChannelEnum = pgEnum("communication_channel", [
+  "email",
+  "sms",
+  "push",
+  "in_app",
+  "whatsapp"
+]);
+
+export const messageStatusEnum = pgEnum("message_status", [
+  "draft",
+  "queued",
+  "sending",
+  "sent",
+  "delivered",
+  "opened",
+  "clicked",
+  "bounced",
+  "failed",
+  "unsubscribed"
+]);
+
+export const messagePriorityEnum = pgEnum("message_priority", [
+  "low",
+  "normal",
+  "high",
+  "urgent"
+]);
+
+export const messageCategoryEnum = pgEnum("message_category", [
+  "transactional",
+  "marketing",
+  "appointment",
+  "reminder",
+  "alert"
+]);
+
+export const recipientTypeEnum = pgEnum("recipient_type", [
+  "patient",
+  "user",
+  "provider"
+]);
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    type: notificationTypeEnum("type").notNull(),
+    title: text("title").notNull(),
+    message: text("message").notNull(),
+    severity: notificationSeverityEnum("severity").notNull(),
+    target: jsonb("target").notNull(),
+    read: boolean("read").default(false).notNull(),
+    readAt: timestamp("read_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("idx_notifications_created_at").on(table.createdAt)],
+);
 
 // ============================================
 // EMAIL TEMPLATES
@@ -168,6 +232,89 @@ export const emailTrackingEvents = pgTable("email_tracking_events", {
   index("idx_email_tracking_events_type").on(table.eventType),
   index("idx_email_tracking_events_timestamp").on(table.timestamp),
 ]);
+
+// ============================================
+// MESSAGE TEMPLATES
+// ============================================
+
+export const messageTemplates = pgTable(
+  "message_templates",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    channel: communicationChannelEnum("channel").notNull(),
+    subject: text("subject"), // For email
+    body: text("body").notNull(), // Supports template variables like {{firstName}}
+    variables: jsonb("variables").notNull().$type<string[]>(), // List of required variables
+    category: messageCategoryEnum("category").notNull(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("message_templates_company_idx").on(table.companyId),
+    channelIdx: index("message_templates_channel_idx").on(table.channel),
+    categoryIdx: index("message_templates_category_idx").on(table.category),
+    activeIdx: index("message_templates_active_idx").on(table.active),
+  })
+);
+
+// ============================================
+// MESSAGES
+// ============================================
+
+export const messages = pgTable(
+  "messages",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    channel: communicationChannelEnum("channel").notNull(),
+    templateId: text("template_id").references(() => messageTemplates.id, { onDelete: "set null" }),
+
+    // Recipients
+    recipientId: text("recipient_id").notNull(), // Patient/User ID
+    recipientType: recipientTypeEnum("recipient_type").notNull(),
+    to: text("to").notNull(), // Email address, phone number, or device token
+
+    // Content
+    subject: text("subject"),
+    body: text("body").notNull(),
+    metadata: jsonb("metadata").$type<Record<string, any>>(),
+
+    // Status
+    status: messageStatusEnum("status").notNull().default("draft"),
+    priority: messagePriorityEnum("priority").notNull().default("normal"),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    openedAt: timestamp("opened_at", { withTimezone: true }),
+    clickedAt: timestamp("clicked_at", { withTimezone: true }),
+    failedAt: timestamp("failed_at", { withTimezone: true }),
+
+    // Error handling
+    errorMessage: text("error_message"),
+    retryCount: integer("retry_count").notNull().default(0),
+    maxRetries: integer("max_retries").notNull().default(3),
+
+    // Tracking
+    trackingId: text("tracking_id"),
+    campaignId: text("campaign_id"),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyIdx: index("messages_company_idx").on(table.companyId),
+    recipientIdx: index("messages_recipient_idx").on(table.recipientId),
+    statusIdx: index("messages_status_idx").on(table.status),
+    channelIdx: index("messages_channel_idx").on(table.channel),
+    templateIdx: index("messages_template_idx").on(table.templateId),
+    campaignIdx: index("messages_campaign_idx").on(table.campaignId),
+    scheduledForIdx: index("messages_scheduled_for_idx").on(table.scheduledFor),
+    sentAtIdx: index("messages_sent_at_idx").on(table.sentAt),
+  })
+);
 
 // ============================================
 // ZOD SCHEMAS

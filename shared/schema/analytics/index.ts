@@ -167,56 +167,6 @@ export const returns = pgTable("returns", {
 // AUDIT LOGS (HIPAA COMPLIANCE)
 // ============================================
 
-export const auditLogs = pgTable("audit_logs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  timestamp: timestamp("timestamp").notNull().defaultNow(),
-
-  // Who performed the action
-  userId: varchar("user_id"),
-  userEmail: varchar("user_email"),
-  userRole: roleEnum("user_role"),
-  companyId: varchar("company_id"),
-
-  // What action was performed
-  eventType: auditEventTypeEnum("event_type").notNull(),
-  resourceType: varchar("resource_type").notNull(),
-  resourceId: varchar("resource_id"),
-  action: text("action").notNull(),
-
-  // Where the action occurred
-  ipAddress: varchar("ip_address"),
-  userAgent: text("user_agent"),
-  endpoint: varchar("endpoint"),
-  method: varchar("method", { length: 10 }),
-
-  // Result of the action
-  statusCode: integer("status_code"),
-  success: boolean("success").notNull(),
-  errorMessage: text("error_message"),
-
-  // Data changes (for updates)
-  changesBefore: jsonb("changes_before"),
-  changesAfter: jsonb("changes_after"),
-  metadata: jsonb("metadata"),
-
-  // HIPAA-specific fields
-  phiAccessed: boolean("phi_accessed").default(false),
-  phiFields: jsonb("phi_fields"),
-  justification: text("justification"),
-
-  // Retention
-  retentionDate: timestamp("retention_date"),
-}, (table) => [
-  index("idx_audit_logs_user").on(table.userId),
-  index("idx_audit_logs_company").on(table.companyId),
-  index("idx_audit_logs_timestamp").on(table.timestamp),
-  index("idx_audit_logs_resource").on(table.resourceType, table.resourceId),
-  index("idx_audit_logs_phi").on(table.phiAccessed),
-  index("idx_audit_logs_event_type").on(table.eventType),
-  index("idx_audit_logs_retention").on(table.retentionDate),
-]);
-
-// ============================================
 // FEATURE USAGE METRICS
 // ============================================
 
@@ -500,7 +450,6 @@ export const npsSurveys = pgTable("nps_surveys", {
 export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents);
 export const insertQualityIssueSchema = createInsertSchema(qualityIssues);
 export const insertReturnSchema = createInsertSchema(returns);
-export const insertAuditLogSchema = createInsertSchema(auditLogs);
 export const insertFeatureUsageMetricSchema = createInsertSchema(featureUsageMetrics);
 export const insertCustomerHealthScoreSchema = createInsertSchema(customerHealthScores);
 export const insertChurnPredictionSchema = createInsertSchema(churnPredictions);
@@ -521,8 +470,6 @@ export type QualityIssue = typeof qualityIssues.$inferSelect;
 export type InsertQualityIssue = typeof qualityIssues.$inferInsert;
 export type Return = typeof returns.$inferSelect;
 export type InsertReturn = typeof returns.$inferInsert;
-export type AuditLog = typeof auditLogs.$inferSelect;
-export type InsertAuditLog = typeof auditLogs.$inferInsert;
 export type FeatureUsageMetric = typeof featureUsageMetrics.$inferSelect;
 export type InsertFeatureUsageMetric = typeof featureUsageMetrics.$inferInsert;
 export type CustomerHealthScore = typeof customerHealthScores.$inferSelect;

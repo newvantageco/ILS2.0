@@ -9,10 +9,10 @@ import { db } from '../db';
 import {
   posTransactions,
   posTransactionItems,
-  products,
   inventoryMovements,
   insertPosTransactionSchema,
   insertPosTransactionItemSchema,
+  products
 } from '@shared/schema';
 import { eq, and, desc, gte, lte, sql, between } from 'drizzle-orm';
 import { validateBody, validateQuery, validateParams } from '../middleware/zodValidation';

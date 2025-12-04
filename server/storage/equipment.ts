@@ -1,5 +1,8 @@
 import { db } from "../db";
-import { equipment } from "@shared/schema";
+// Import tables not yet extracted to modular domains
+import {
+  equipment
+} from '@shared/schemaLegacy';;
 import { eq, and, desc, gte, lte } from "drizzle-orm";
 import type { Equipment } from "@shared/schema";
 

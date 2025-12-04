@@ -19,7 +19,13 @@
  */
 
 import { db } from '../db';
-import { orders, patients, users, invoices } from '@shared/schema';
+import {
+  
+  orders, patients, users,
+  invoices
+} from '@shared/schema';
+
+// Import tables not yet extracted to modular domains
 import type { Order, Patient, User, OrderWithDetails } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { createLogger } from '../utils/logger';
