@@ -39,7 +39,7 @@ export default function EmailLoginPage() {
         setAuthTokens(data.accessToken, data.refreshToken, data.expiresIn);
       }
 
-      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/jwt/me"] });
 
       toast({
         title: "Login successful",

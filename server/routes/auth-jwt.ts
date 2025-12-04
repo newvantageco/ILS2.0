@@ -466,8 +466,12 @@ router.get('/me', authenticateJWT, async (req: Request, res: Response) => {
       });
     }
 
-    // Get full user profile from database
-    const user = await storage.getUser(authUser.id);
+    // Get full user profile from database using raw SQL (bypassing broken schema)
+    const userResult = await pool.query(
+      'SELECT id, email, first_name, last_name, role, company_id, is_active, last_login_at FROM users WHERE id = $1',
+      [authUser.id]
+    );
+    const user = userResult.rows[0];
 
     if (!user) {
       return res.status(404).json({

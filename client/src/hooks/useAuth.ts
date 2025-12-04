@@ -5,7 +5,7 @@ import type { User } from "@shared/schema";
 
 export function useAuth() {
   const { data: user, isLoading } = useQuery<User | null>({
-    queryKey: ["/api/auth/user"],
+    queryKey: ["/api/auth/jwt/me"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     retry: false,
   });
