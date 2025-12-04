@@ -282,9 +282,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Setup authentication strategies
-if (process.env.NODE_ENV === "development") {
-  setupLocalAuth();
-}
+setupLocalAuth();
 
 // ============== CSRF PROTECTION ==============
 // Protect against Cross-Site Request Forgery attacks
