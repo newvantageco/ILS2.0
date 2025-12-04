@@ -312,7 +312,7 @@ const csrfExemptPaths = [
   '/health',
   '/api/webhooks', // Webhooks have their own signature verification
   '/api/company-admin', // JWT-authenticated routes don't need CSRF protection
-];
+]; // Updated: CSRF exempt for company-admin endpoint
 
 if (csrfEnabled) {
   app.use((req: Request, res: Response, next: NextFunction) => {
