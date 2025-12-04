@@ -7585,266 +7585,275 @@ export type InsertGdprDeletionRequest = typeof gdprDeletionRequests.$inferInsert
 //
 // ========== End Engagement Workflows Tables ==========
 
+/* DUPLICATE - Predictive Analytics enums moved to predictive domain */
 // ========== Predictive Analytics Tables ==========
-
-/**
- * Predictive Analytics Enums
- * Note: Reusing riskLevelEnum from Population Health section
+//
+// /**
+//  * Predictive Analytics Enums
+//  * Note: Reusing riskLevelEnum from Population Health section
 //  */
-export const predictionConfidenceEnum = pgEnum("prediction_confidence", ["low", "medium", "high"]);
-export const mlModelTypeEnum = pgEnum("ml_model_type", ["classification", "regression", "clustering"]);
-export const mlModelStatusEnum = pgEnum("ml_model_status", ["active", "testing", "deprecated"]);
-export const riskTypeEnum = pgEnum("risk_type", ["readmission", "disease_progression", "complication", "mortality"]);
-export const readmissionTimeframeEnum = pgEnum("readmission_timeframe", ["7_days", "30_days", "90_days"]);
+// export const predictionConfidenceEnum = pgEnum("prediction_confidence", ["low", "medium", "high"]);
+// export const mlModelTypeEnum = pgEnum("ml_model_type", ["classification", "regression", "clustering"]);
+// export const mlModelStatusEnum = pgEnum("ml_model_status", ["active", "testing", "deprecated"]);
+// export const riskTypeEnum = pgEnum("risk_type", ["readmission", "disease_progression", "complication", "mortality"]);
+// export const readmissionTimeframeEnum = pgEnum("readmission_timeframe", ["7_days", "30_days", "90_days"]);
 
-/**
- * ML Models Table
- * Stores machine learning models for predictions
+/* DUPLICATE - mlModels table moved to predictive domain */
+// /**
+//  * ML Models Table
+//  * Stores machine learning models for predictions
 //  */
-export const mlModels = pgTable(
-  "ml_models",
-  {
-    id: text("id").primaryKey(),
-    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    type: mlModelTypeEnum("type").notNull(),
-    version: text("version").notNull(),
-    trainedAt: timestamp("trained_at", { withTimezone: true }).notNull(),
-
+// export const mlModels = pgTable(
+//   "ml_models",
+//   {
+//     id: text("id").primaryKey(),
+//     companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+//     name: text("name").notNull(),
+//     type: mlModelTypeEnum("type").notNull(),
+//     version: text("version").notNull(),
+//     trainedAt: timestamp("trained_at", { withTimezone: true }).notNull(),
+//
     // Features and performance
-    features: jsonb("features").notNull().$type<string[]>(),
-    performance: jsonb("performance").notNull().$type<{
-      accuracy?: number;
-      precision?: number;
-      recall?: number;
-      f1Score?: number;
-      auc?: number;
-      rmse?: number;
-    }>(),
+//     features: jsonb("features").notNull().$type<string[]>(),
+//     performance: jsonb("performance").notNull().$type<{
+//       accuracy?: number;
+//       precision?: number;
+//       recall?: number;
+//       f1Score?: number;
+//       auc?: number;
+//       rmse?: number;
+//     }>(),
+//
+//     status: mlModelStatusEnum("status").notNull().default("active"),
+//     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+//   },
+//   (table) => ({
+//     companyIdx: index("ml_models_company_idx").on(table.companyId),
+//     statusIdx: index("ml_models_status_idx").on(table.status),
+//     typeIdx: index("ml_models_type_idx").on(table.type),
+//   })
+// );
 
-    status: mlModelStatusEnum("status").notNull().default("active"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => ({
-    companyIdx: index("ml_models_company_idx").on(table.companyId),
-    statusIdx: index("ml_models_status_idx").on(table.status),
-    typeIdx: index("ml_models_type_idx").on(table.type),
-  })
-);
-
-/**
- * Risk Stratifications Table
- * Stores risk assessments for patients
+/* DUPLICATE - riskStratifications table moved to predictive domain */
+// /**
+//  * Risk Stratifications Table
+//  * Stores risk assessments for patients
 //  */
-export const riskStratifications = pgTable(
-  "risk_stratifications",
-  {
-    id: text("id").primaryKey(),
-    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
-
-    riskType: riskTypeEnum("risk_type").notNull(),
-    riskLevel: riskLevelEnum("risk_level").notNull(),
-    riskScore: integer("risk_score").notNull(), // 0-100
-    confidence: predictionConfidenceEnum("confidence").notNull(),
-
+// export const riskStratifications = pgTable(
+//   "risk_stratifications",
+//   {
+//     id: text("id").primaryKey(),
+//     companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+//     patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+//
+//     riskType: riskTypeEnum("risk_type").notNull(),
+//     riskLevel: riskLevelEnum("risk_level").notNull(),
+//     riskScore: integer("risk_score").notNull(), // 0-100
+//     confidence: predictionConfidenceEnum("confidence").notNull(),
+//
     // Complex data stored as JSONB
-    riskFactors: jsonb("risk_factors").notNull().$type<Array<{
-      factor: string;
-      weight: number;
-      value: any;
-      impact: 'positive' | 'negative' | 'neutral';
-      description: string;
-    }>>(),
-    interventions: jsonb("interventions").notNull().$type<string[]>(),
+//     riskFactors: jsonb("risk_factors").notNull().$type<Array<{
+//       factor: string;
+//       weight: number;
+//       value: any;
+//       impact: 'positive' | 'negative' | 'neutral';
+//       description: string;
+//     }>>(),
+//     interventions: jsonb("interventions").notNull().$type<string[]>(),
+//
+//     predictedTimeframe: text("predicted_timeframe"),
+//     modelVersion: text("model_version").notNull(),
+//     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+//   },
+//   (table) => ({
+//     companyIdx: index("risk_stratifications_company_idx").on(table.companyId),
+//     patientIdx: index("risk_stratifications_patient_idx").on(table.patientId),
+//     riskTypeIdx: index("risk_stratifications_risk_type_idx").on(table.riskType),
+//     riskLevelIdx: index("risk_stratifications_risk_level_idx").on(table.riskLevel),
+//     createdAtIdx: index("risk_stratifications_created_at_idx").on(table.createdAt),
+//   })
+// );
 
-    predictedTimeframe: text("predicted_timeframe"),
-    modelVersion: text("model_version").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => ({
-    companyIdx: index("risk_stratifications_company_idx").on(table.companyId),
-    patientIdx: index("risk_stratifications_patient_idx").on(table.patientId),
-    riskTypeIdx: index("risk_stratifications_risk_type_idx").on(table.riskType),
-    riskLevelIdx: index("risk_stratifications_risk_level_idx").on(table.riskLevel),
-    createdAtIdx: index("risk_stratifications_created_at_idx").on(table.createdAt),
-  })
-);
-
-/**
- * Readmission Predictions Table
- * Stores hospital readmission risk predictions
+/* DUPLICATE - readmissionPredictions table moved to predictive domain */
+// /**
+//  * Readmission Predictions Table
+//  * Stores hospital readmission risk predictions
 //  */
-export const readmissionPredictions = pgTable(
-  "readmission_predictions",
-  {
-    id: text("id").primaryKey(),
-    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
-    admissionId: text("admission_id").notNull(),
+// export const readmissionPredictions = pgTable(
+//   "readmission_predictions",
+//   {
+//     id: text("id").primaryKey(),
+//     companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+//     patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+//     admissionId: text("admission_id").notNull(),
+//
+//     probability: integer("probability").notNull(), // 0-100
+//     riskLevel: riskLevelEnum("risk_level").notNull(),
+//     timeframe: readmissionTimeframeEnum("timeframe").notNull(),
+//
+//     contributingFactors: jsonb("contributing_factors").notNull().$type<Array<{
+//       factor: string;
+//       weight: number;
+//       value: any;
+//       impact: 'positive' | 'negative' | 'neutral';
+//       description: string;
+//     }>>(),
+//     preventiveActions: jsonb("preventive_actions").notNull().$type<string[]>(),
+//
+//     confidence: predictionConfidenceEnum("confidence").notNull(),
+//     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+//   },
+//   (table) => ({
+//     companyIdx: index("readmission_predictions_company_idx").on(table.companyId),
+//     patientIdx: index("readmission_predictions_patient_idx").on(table.patientId),
+//     admissionIdx: index("readmission_predictions_admission_idx").on(table.admissionId),
+//     riskLevelIdx: index("readmission_predictions_risk_level_idx").on(table.riskLevel),
+//     createdAtIdx: index("readmission_predictions_created_at_idx").on(table.createdAt),
+//   })
+// );
 
-    probability: integer("probability").notNull(), // 0-100
-    riskLevel: riskLevelEnum("risk_level").notNull(),
-    timeframe: readmissionTimeframeEnum("timeframe").notNull(),
-
-    contributingFactors: jsonb("contributing_factors").notNull().$type<Array<{
-      factor: string;
-      weight: number;
-      value: any;
-      impact: 'positive' | 'negative' | 'neutral';
-      description: string;
-    }>>(),
-    preventiveActions: jsonb("preventive_actions").notNull().$type<string[]>(),
-
-    confidence: predictionConfidenceEnum("confidence").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => ({
-    companyIdx: index("readmission_predictions_company_idx").on(table.companyId),
-    patientIdx: index("readmission_predictions_patient_idx").on(table.patientId),
-    admissionIdx: index("readmission_predictions_admission_idx").on(table.admissionId),
-    riskLevelIdx: index("readmission_predictions_risk_level_idx").on(table.riskLevel),
-    createdAtIdx: index("readmission_predictions_created_at_idx").on(table.createdAt),
-  })
-);
-
-/**
- * No-Show Predictions Table
- * Stores appointment no-show risk predictions
+/* DUPLICATE - noShowPredictions table moved to predictive domain */
+// /**
+//  * No-Show Predictions Table
+//  * Stores appointment no-show risk predictions
 //  */
-export const noShowPredictions = pgTable(
-  "no_show_predictions",
-  {
-    id: text("id").primaryKey(),
-    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
-    appointmentId: text("appointment_id").notNull(),
+// export const noShowPredictions = pgTable(
+//   "no_show_predictions",
+//   {
+//     id: text("id").primaryKey(),
+//     companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+//     patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+//     appointmentId: text("appointment_id").notNull(),
+//
+//     probability: integer("probability").notNull(), // 0-100
+//     riskLevel: riskLevelEnum("risk_level").notNull(),
+//
+//     contributingFactors: jsonb("contributing_factors").notNull().$type<Array<{
+//       factor: string;
+//       weight: number;
+//       value: any;
+//       impact: 'positive' | 'negative' | 'neutral';
+//       description: string;
+//     }>>(),
+//     recommendedActions: jsonb("recommended_actions").notNull().$type<string[]>(),
+//
+//     confidence: predictionConfidenceEnum("confidence").notNull(),
+//     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+//   },
+//   (table) => ({
+//     companyIdx: index("no_show_predictions_company_idx").on(table.companyId),
+//     patientIdx: index("no_show_predictions_patient_idx").on(table.patientId),
+//     appointmentIdx: index("no_show_predictions_appointment_idx").on(table.appointmentId),
+//     riskLevelIdx: index("no_show_predictions_risk_level_idx").on(table.riskLevel),
+//     createdAtIdx: index("no_show_predictions_created_at_idx").on(table.createdAt),
+//   })
+// );
 
-    probability: integer("probability").notNull(), // 0-100
-    riskLevel: riskLevelEnum("risk_level").notNull(),
-
-    contributingFactors: jsonb("contributing_factors").notNull().$type<Array<{
-      factor: string;
-      weight: number;
-      value: any;
-      impact: 'positive' | 'negative' | 'neutral';
-      description: string;
-    }>>(),
-    recommendedActions: jsonb("recommended_actions").notNull().$type<string[]>(),
-
-    confidence: predictionConfidenceEnum("confidence").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => ({
-    companyIdx: index("no_show_predictions_company_idx").on(table.companyId),
-    patientIdx: index("no_show_predictions_patient_idx").on(table.patientId),
-    appointmentIdx: index("no_show_predictions_appointment_idx").on(table.appointmentId),
-    riskLevelIdx: index("no_show_predictions_risk_level_idx").on(table.riskLevel),
-    createdAtIdx: index("no_show_predictions_created_at_idx").on(table.createdAt),
-  })
-);
-
-/**
- * Disease Progression Predictions Table
- * Stores predictions for disease progression over time
+/* DUPLICATE - diseaseProgressionPredictions table moved to predictive domain */
+// /**
+//  * Disease Progression Predictions Table
+//  * Stores predictions for disease progression over time
 //  */
-export const diseaseProgressionPredictions = pgTable(
-  "disease_progression_predictions",
-  {
-    id: text("id").primaryKey(),
-    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+// export const diseaseProgressionPredictions = pgTable(
+//   "disease_progression_predictions",
+//   {
+//     id: text("id").primaryKey(),
+//     companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+//     patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+//
+//     disease: text("disease").notNull(),
+//     currentStage: text("current_stage").notNull(),
+//
+//     predictedStages: jsonb("predicted_stages").notNull().$type<Array<{
+//       stage: string;
+//       timeframe: string;
+//       probability: number;
+//       interventions?: string[];
+//     }>>(),
+//     riskFactors: jsonb("risk_factors").notNull().$type<Array<{
+//       factor: string;
+//       weight: number;
+//       value: any;
+//       impact: 'positive' | 'negative' | 'neutral';
+//       description: string;
+//     }>>(),
+//
+//     confidence: predictionConfidenceEnum("confidence").notNull(),
+//     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+//   },
+//   (table) => ({
+//     companyIdx: index("disease_progression_predictions_company_idx").on(table.companyId),
+//     patientIdx: index("disease_progression_predictions_patient_idx").on(table.patientId),
+//     diseaseIdx: index("disease_progression_predictions_disease_idx").on(table.disease),
+//     createdAtIdx: index("disease_progression_predictions_created_at_idx").on(table.createdAt),
+//   })
+// );
 
-    disease: text("disease").notNull(),
-    currentStage: text("current_stage").notNull(),
-
-    predictedStages: jsonb("predicted_stages").notNull().$type<Array<{
-      stage: string;
-      timeframe: string;
-      probability: number;
-      interventions?: string[];
-    }>>(),
-    riskFactors: jsonb("risk_factors").notNull().$type<Array<{
-      factor: string;
-      weight: number;
-      value: any;
-      impact: 'positive' | 'negative' | 'neutral';
-      description: string;
-    }>>(),
-
-    confidence: predictionConfidenceEnum("confidence").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => ({
-    companyIdx: index("disease_progression_predictions_company_idx").on(table.companyId),
-    patientIdx: index("disease_progression_predictions_patient_idx").on(table.patientId),
-    diseaseIdx: index("disease_progression_predictions_disease_idx").on(table.disease),
-    createdAtIdx: index("disease_progression_predictions_created_at_idx").on(table.createdAt),
-  })
-);
-
-/**
- * Treatment Outcome Predictions Table
- * Stores predictions for treatment outcomes
+/* DUPLICATE - treatmentOutcomePredictions table moved to predictive domain */
+// /**
+//  * Treatment Outcome Predictions Table
+//  * Stores predictions for treatment outcomes
 //  */
-export const treatmentOutcomePredictions = pgTable(
-  "treatment_outcome_predictions",
-  {
-    id: text("id").primaryKey(),
-    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-    patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+// export const treatmentOutcomePredictions = pgTable(
+//   "treatment_outcome_predictions",
+//   {
+//     id: text("id").primaryKey(),
+//     companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+//     patientId: text("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+//
+//     treatment: text("treatment").notNull(),
+//     condition: text("condition").notNull(),
+//
+//     predictedOutcomes: jsonb("predicted_outcomes").notNull().$type<Array<{
+//       outcome: string;
+//       probability: number;
+//       timeframe: string;
+//       confidenceInterval?: {
+//         lower: number;
+//         upper: number;
+//       };
+//     }>>(),
+//     successProbability: integer("success_probability").notNull(), // 0-100
+//     alternativeTreatments: jsonb("alternative_treatments").$type<Array<{
+//       treatment: string;
+//       successProbability: number;
+//       rationale: string;
+//     }>>(),
+//
+//     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+//   },
+//   (table) => ({
+//     companyIdx: index("treatment_outcome_predictions_company_idx").on(table.companyId),
+//     patientIdx: index("treatment_outcome_predictions_patient_idx").on(table.patientId),
+//     treatmentIdx: index("treatment_outcome_predictions_treatment_idx").on(table.treatment),
+//     createdAtIdx: index("treatment_outcome_predictions_created_at_idx").on(table.createdAt),
+//   })
+// );
 
-    treatment: text("treatment").notNull(),
-    condition: text("condition").notNull(),
-
-    predictedOutcomes: jsonb("predicted_outcomes").notNull().$type<Array<{
-      outcome: string;
-      probability: number;
-      timeframe: string;
-      confidenceInterval?: {
-        lower: number;
-        upper: number;
-      };
-    }>>(),
-    successProbability: integer("success_probability").notNull(), // 0-100
-    alternativeTreatments: jsonb("alternative_treatments").$type<Array<{
-      treatment: string;
-      successProbability: number;
-      rationale: string;
-    }>>(),
-
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => ({
-    companyIdx: index("treatment_outcome_predictions_company_idx").on(table.companyId),
-    patientIdx: index("treatment_outcome_predictions_patient_idx").on(table.patientId),
-    treatmentIdx: index("treatment_outcome_predictions_treatment_idx").on(table.treatment),
-    createdAtIdx: index("treatment_outcome_predictions_created_at_idx").on(table.createdAt),
-  })
-);
-
+/* DUPLICATE - Zod validation schemas for predictive analytics moved to predictive domain */
 // Zod validation schemas for Predictive Analytics tables
-export const insertMlModelSchema = createInsertSchema(mlModels);
-export const insertRiskStratificationSchema = createInsertSchema(riskStratifications);
-export const insertReadmissionPredictionSchema = createInsertSchema(readmissionPredictions);
-export const insertNoShowPredictionSchema = createInsertSchema(noShowPredictions);
-export const insertDiseaseProgressionPredictionSchema = createInsertSchema(diseaseProgressionPredictions);
-export const insertTreatmentOutcomePredictionSchema = createInsertSchema(treatmentOutcomePredictions);
+// export const insertMlModelSchema = createInsertSchema(mlModels);
+// export const insertRiskStratificationSchema = createInsertSchema(riskStratifications);
+// export const insertReadmissionPredictionSchema = createInsertSchema(readmissionPredictions);
+// export const insertNoShowPredictionSchema = createInsertSchema(noShowPredictions);
+// export const insertDiseaseProgressionPredictionSchema = createInsertSchema(diseaseProgressionPredictions);
+// export const insertTreatmentOutcomePredictionSchema = createInsertSchema(treatmentOutcomePredictions);
 
+/* DUPLICATE - TypeScript types for predictive analytics moved to predictive domain */
 // TypeScript types
-export type MlModel = typeof mlModels.$inferSelect;
-export type InsertMlModel = typeof mlModels.$inferInsert;
-export type RiskStratification = typeof riskStratifications.$inferSelect;
-export type InsertRiskStratification = typeof riskStratifications.$inferInsert;
-export type ReadmissionPrediction = typeof readmissionPredictions.$inferSelect;
-export type InsertReadmissionPrediction = typeof readmissionPredictions.$inferInsert;
-export type NoShowPrediction = typeof noShowPredictions.$inferSelect;
-export type InsertNoShowPrediction = typeof noShowPredictions.$inferInsert;
-export type DiseaseProgressionPrediction = typeof diseaseProgressionPredictions.$inferSelect;
-export type InsertDiseaseProgressionPrediction = typeof diseaseProgressionPredictions.$inferInsert;
-export type TreatmentOutcomePrediction = typeof treatmentOutcomePredictions.$inferSelect;
-export type InsertTreatmentOutcomePrediction = typeof treatmentOutcomePredictions.$inferInsert;
-
+// export type MlModel = typeof mlModels.$inferSelect;
+// export type InsertMlModel = typeof mlModels.$inferInsert;
+// export type RiskStratification = typeof riskStratifications.$inferSelect;
+// export type InsertRiskStratification = typeof riskStratifications.$inferInsert;
+// export type ReadmissionPrediction = typeof readmissionPredictions.$inferSelect;
+// export type InsertReadmissionPrediction = typeof readmissionPredictions.$inferInsert;
+// export type NoShowPrediction = typeof noShowPredictions.$inferSelect;
+// export type InsertNoShowPrediction = typeof noShowPredictions.$inferInsert;
+// export type DiseaseProgressionPrediction = typeof diseaseProgressionPredictions.$inferSelect;
+// export type InsertDiseaseProgressionPrediction = typeof diseaseProgressionPredictions.$inferInsert;
+// export type TreatmentOutcomePrediction = typeof treatmentOutcomePredictions.$inferSelect;
+// export type InsertTreatmentOutcomePrediction = typeof treatmentOutcomePredictions.$inferInsert;
+//
 // ========== Appointment Booking Tables ==========
 /**
  * Appointment Booking Enums

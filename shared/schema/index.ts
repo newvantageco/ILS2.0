@@ -86,6 +86,9 @@ export * from './cds';
 // Workflows Domain - automated patient engagement, workflow automation
 export * from './workflows';
 
+// Predictive Domain - ML/AI predictions, risk stratification, outcome forecasting
+export * from './predictive';
+
 // ============================================
 // BACKWARD COMPATIBILITY REMOVED
 // ============================================
