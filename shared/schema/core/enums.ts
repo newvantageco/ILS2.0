@@ -77,7 +77,6 @@ export const examinationStatusEnum = pgEnum("examination_status", [
 ]);
 
 export const consultPriorityEnum = pgEnum("consult_priority", [
-  "low",
   "normal",
   "high",
   "urgent"
@@ -260,17 +259,43 @@ export const documentTypeEnum = pgEnum("document_type", [
 // ============================================
 
 export const companyTypeEnum = pgEnum("company_type", [
-  "ecp_practice",
-  "lab",
-  "supplier",
-  "distributor",
-  "manufacturer"
+  "ecp", // Eye Care Professional practice
+  "lab", // Lens manufacturing lab
+  "supplier", // Material/equipment supplier
+  "hybrid" // Multiple capabilities
 ]);
 
 export const companyStatusEnum = pgEnum("company_status", [
-  "pending",
   "active",
   "suspended",
-  "trial",
-  "cancelled"
+  "pending_approval",
+  "deactivated"
+]);
+
+// ============================================
+// PATIENT ENUMS
+// ============================================
+
+export const patientActivityTypeEnum = pgEnum("patient_activity_type", [
+  "profile_created",
+  "profile_updated",
+  "examination_scheduled",
+  "examination_completed",
+  "prescription_issued",
+  "order_placed",
+  "order_updated",
+  "order_completed",
+  "contact_lens_fitted",
+  "recall_sent",
+  "appointment_booked",
+  "appointment_cancelled",
+  "payment_received",
+  "refund_issued",
+  "complaint_logged",
+  "complaint_resolved",
+  "consent_updated",
+  "document_uploaded",
+  "note_added",
+  "referral_made",
+  "communication_sent"
 ]);

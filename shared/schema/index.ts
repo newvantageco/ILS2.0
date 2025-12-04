@@ -12,12 +12,18 @@
 // CORE EXPORTS
 // ============================================
 
-// Core enums - shared across domains
-export * from './core/enums';
+// Core tables and enums - foundation of multi-tenant architecture
+export * from './core';
 
 // ============================================
 // DOMAIN EXPORTS
 // ============================================
+
+// Patients Domain - patient records and activity
+export * from './patients';
+
+// Orders Domain - order management, timeline, consultation logs
+export * from './orders';
 
 // AI Domain - conversations, knowledge base, learning
 export * from './ai';
@@ -41,21 +47,25 @@ export * from './nhs';
 export * from './communications';
 
 // ============================================
-// BACKWARD COMPATIBILITY
+// BACKWARD COMPATIBILITY REMOVED
 // ============================================
 
 /**
- * Re-export everything from main schema for backward compatibility.
- * This ensures existing imports continue to work:
+ * MIGRATION COMPLETE: Foundation tables (companies, users, sessions, userRoles,
+ * patients, orders) are now exported from their respective modular domains.
+ *
+ * The monolithic schema.ts backward compatibility export has been removed.
+ * All table imports now use the modular schema structure:
  *
  * ```typescript
- * import { users, orders } from '@shared/schema';
+ * import { users, companies } from '@shared/schema/core';
+ * import { patients } from '@shared/schema/patients';
+ * import { orders } from '@shared/schema/orders';
  * ```
  *
- * New code can use domain imports:
+ * Or use the unified export:
  *
  * ```typescript
- * import { aiConversations } from '@shared/schema/ai';
+ * import { users, orders, patients } from '@shared/schema';
  * ```
  */
-export * from '../schema';
