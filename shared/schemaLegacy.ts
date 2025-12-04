@@ -5642,273 +5642,279 @@ export type InsertShopifyWebhook = typeof shopifyWebhooks.$inferInsert;
  * Insurance Payers
  * Stores information about insurance companies and payers
  */
-export const insurancePayers = pgTable("insurance_payers", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
-
+/* DUPLICATE - insurancePayers table moved to insurance domain */
+// export const insurancePayers = pgTable("insurance_payers", {
+//   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+//   companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+//
   // Payer Information
-  name: varchar("name", { length: 255 }).notNull(),
-  payerId: varchar("payer_id", { length: 100 }).notNull(), // Electronic payer ID
-  type: payerTypeEnum("type").notNull(),
-
+//   name: varchar("name", { length: 255 }).notNull(),
+//   payerId: varchar("payer_id", { length: 100 }).notNull(), // Electronic payer ID
+//   type: payerTypeEnum("type").notNull(),
+//
   // Contact Information
-  contactInfo: jsonb("contact_info"), // { phone, fax, email, address }
-
+//   contactInfo: jsonb("contact_info"), // { phone, fax, email, address }
+//
   // Configuration
-  claimSubmissionMethod: claimSubmissionMethodEnum("claim_submission_method").default("electronic"),
-  timelyFilingLimitDays: integer("timely_filing_limit_days").default(365),
-
+//   claimSubmissionMethod: claimSubmissionMethodEnum("claim_submission_method").default("electronic"),
+//   timelyFilingLimitDays: integer("timely_filing_limit_days").default(365),
+//
   // Status
-  active: boolean("active").default(true),
-
+//   active: boolean("active").default(true),
+//
   // Metadata
-  metadata: jsonb("metadata"),
-
+//   metadata: jsonb("metadata"),
+//
   // Timestamps
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [
-  index("insurance_payers_company_idx").on(table.companyId),
-  uniqueIndex("insurance_payers_company_payer_id").on(table.companyId, table.payerId),
-]);
-
-/**
- * Insurance Claims
- * Generic insurance claims for US-style RCM
- */
-export const insuranceClaims = pgTable("insurance_claims", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-
+//   createdAt: timestamp("created_at").notNull().defaultNow(),
+//   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+// }, (table) => [
+//   index("insurance_payers_company_idx").on(table.companyId),
+//   uniqueIndex("insurance_payers_company_payer_id").on(table.companyId, table.payerId),
+// ]);
+//
+// /**
+//  * Insurance Claims
+//  * Generic insurance claims for US-style RCM
+//  */
+/* DUPLICATE - insuranceClaims table moved to insurance domain */
+// export const insuranceClaims = pgTable("insurance_claims", {
+//   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+//
   // References
-  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
-  patientId: varchar("patient_id", { length: 255 }).references(() => patients.id),
-  payerId: varchar("payer_id", { length: 255 }).references(() => insurancePayers.id),
-
+//   companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+//   patientId: varchar("patient_id", { length: 255 }).references(() => patients.id),
+//   payerId: varchar("payer_id", { length: 255 }).references(() => insurancePayers.id),
+//
   // Claim Details
-  claimNumber: varchar("claim_number", { length: 50 }).notNull().unique(),
-  claimType: claimTypeEnum("claim_type").notNull(),
-  status: claimStatusEnum("status").notNull().default("draft"),
-
+//   claimNumber: varchar("claim_number", { length: 50 }).notNull().unique(),
+//   claimType: claimTypeEnum("claim_type").notNull(),
+//   status: claimStatusEnum("status").notNull().default("draft"),
+//
   // Dates
-  serviceDate: date("service_date").notNull(),
-  submittedAt: timestamp("submitted_at"),
-  processedAt: timestamp("processed_at"),
-
+//   serviceDate: date("service_date").notNull(),
+//   submittedAt: timestamp("submitted_at"),
+//   processedAt: timestamp("processed_at"),
+//
   // Financial (in cents)
-  totalCharges: decimal("total_charges", { precision: 10, scale: 2 }).notNull(),
-  allowedAmount: decimal("allowed_amount", { precision: 10, scale: 2 }),
-  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }),
-  patientResponsibility: decimal("patient_responsibility", { precision: 10, scale: 2 }),
-  adjustments: decimal("adjustments", { precision: 10, scale: 2 }).default("0"),
-
+//   totalCharges: decimal("total_charges", { precision: 10, scale: 2 }).notNull(),
+//   allowedAmount: decimal("allowed_amount", { precision: 10, scale: 2 }),
+//   paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }),
+//   patientResponsibility: decimal("patient_responsibility", { precision: 10, scale: 2 }),
+//   adjustments: decimal("adjustments", { precision: 10, scale: 2 }).default("0"),
+//
   // Provider Information
-  renderingProviderId: varchar("rendering_provider_id", { length: 255 }),
-  billingProviderId: varchar("billing_provider_id", { length: 255 }),
-
+//   renderingProviderId: varchar("rendering_provider_id", { length: 255 }),
+//   billingProviderId: varchar("billing_provider_id", { length: 255 }),
+//
   // Place of Service
-  placeOfService: servicePlaceEnum("place_of_service"),
-
+//   placeOfService: servicePlaceEnum("place_of_service"),
+//
   // Diagnosis Codes
-  diagnosisCodes: jsonb("diagnosis_codes"), // Array of ICD-10 codes
-
+//   diagnosisCodes: jsonb("diagnosis_codes"), // Array of ICD-10 codes
+//
   // Payer Response
-  payerResponse: jsonb("payer_response"),
-  rejectionReason: text("rejection_reason"),
-  remittanceAdviceNumber: varchar("remittance_advice_number", { length: 100 }),
-
+//   payerResponse: jsonb("payer_response"),
+//   rejectionReason: text("rejection_reason"),
+//   remittanceAdviceNumber: varchar("remittance_advice_number", { length: 100 }),
+//
   // Notes
-  notes: text("notes"),
-
+//   notes: text("notes"),
+//
   // Metadata
-  metadata: jsonb("metadata"),
-
+//   metadata: jsonb("metadata"),
+//
   // Timestamps
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [
-  index("insurance_claims_company_idx").on(table.companyId),
-  index("insurance_claims_patient_idx").on(table.patientId),
-  index("insurance_claims_payer_idx").on(table.payerId),
-  index("insurance_claims_status_idx").on(table.status),
-  index("insurance_claims_service_date_idx").on(table.serviceDate),
-]);
-
-/**
- * Claim Line Items
- * Individual procedure/service lines within a claim
- */
-export const claimLineItems = pgTable("claim_line_items", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-
+//   createdAt: timestamp("created_at").notNull().defaultNow(),
+//   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+// }, (table) => [
+//   index("insurance_claims_company_idx").on(table.companyId),
+//   index("insurance_claims_patient_idx").on(table.patientId),
+//   index("insurance_claims_payer_idx").on(table.payerId),
+//   index("insurance_claims_status_idx").on(table.status),
+//   index("insurance_claims_service_date_idx").on(table.serviceDate),
+// ]);
+//
+// /**
+//  * Claim Line Items
+//  * Individual procedure/service lines within a claim
+//  */
+/* DUPLICATE - claimLineItems table moved to insurance domain */
+// export const claimLineItems = pgTable("claim_line_items", {
+//   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+//
   // References
-  companyId: varchar("company_id", { length: 255 }).references(() => companies.id, { onDelete: "cascade" }),
-  claimId: varchar("claim_id", { length: 255 }).notNull().references(() => insuranceClaims.id, { onDelete: "cascade" }),
-
+//   companyId: varchar("company_id", { length: 255 }).references(() => companies.id, { onDelete: "cascade" }),
+//   claimId: varchar("claim_id", { length: 255 }).notNull().references(() => insuranceClaims.id, { onDelete: "cascade" }),
+//
   // Line Item Details
-  lineNumber: integer("line_number").notNull(),
-  serviceDate: date("service_date").notNull(),
-
+//   lineNumber: integer("line_number").notNull(),
+//   serviceDate: date("service_date").notNull(),
+//
   // Procedure
-  procedureCode: varchar("procedure_code", { length: 20 }).notNull(), // CPT/HCPCS code
-  modifiers: jsonb("modifiers"), // Array of modifiers
-  description: text("description"),
-
+//   procedureCode: varchar("procedure_code", { length: 20 }).notNull(), // CPT/HCPCS code
+//   modifiers: jsonb("modifiers"), // Array of modifiers
+//   description: text("description"),
+//
   // Diagnosis
-  diagnosisCodePointers: jsonb("diagnosis_code_pointers"),
-
+//   diagnosisCodePointers: jsonb("diagnosis_code_pointers"),
+//
   // Quantities and Amounts (in cents)
-  units: integer("units").notNull().default(1),
-  chargeAmount: decimal("charge_amount", { precision: 10, scale: 2 }).notNull(),
-  allowedAmount: decimal("allowed_amount", { precision: 10, scale: 2 }),
-  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }),
-  adjustmentAmount: decimal("adjustment_amount", { precision: 10, scale: 2 }).default("0"),
-  patientResponsibility: decimal("patient_responsibility", { precision: 10, scale: 2 }),
-
+//   units: integer("units").notNull().default(1),
+//   chargeAmount: decimal("charge_amount", { precision: 10, scale: 2 }).notNull(),
+//   allowedAmount: decimal("allowed_amount", { precision: 10, scale: 2 }),
+//   paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }),
+//   adjustmentAmount: decimal("adjustment_amount", { precision: 10, scale: 2 }).default("0"),
+//   patientResponsibility: decimal("patient_responsibility", { precision: 10, scale: 2 }),
+//
   // Place of Service
-  placeOfService: servicePlaceEnum("place_of_service"),
-
+//   placeOfService: servicePlaceEnum("place_of_service"),
+//
   // Provider
-  renderingProviderId: varchar("rendering_provider_id", { length: 255 }),
-
+//   renderingProviderId: varchar("rendering_provider_id", { length: 255 }),
+//
   // Status
-  status: claimStatusEnum("status"),
-
+//   status: claimStatusEnum("status"),
+//
   // Metadata
-  metadata: jsonb("metadata"),
-
+//   metadata: jsonb("metadata"),
+//
   // Timestamps
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [
-  index("claim_line_items_claim_idx").on(table.claimId),
-  index("claim_line_items_service_date_idx").on(table.serviceDate),
-]);
-
-/**
- * Claim Submission Batches
- * Tracks batches of claims submitted together
- */
-export const claimBatches = pgTable("claim_batches", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-  companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
-
+//   createdAt: timestamp("created_at").notNull().defaultNow(),
+//   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+// }, (table) => [
+//   index("claim_line_items_claim_idx").on(table.claimId),
+//   index("claim_line_items_service_date_idx").on(table.serviceDate),
+// ]);
+//
+// /**
+//  * Claim Submission Batches
+//  * Tracks batches of claims submitted together
+//  */
+/* DUPLICATE - claimBatches table moved to insurance domain */
+// export const claimBatches = pgTable("claim_batches", {
+//   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+//   companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
+//
   // Batch Details
-  batchNumber: varchar("batch_number", { length: 100 }).notNull().unique(),
-  payerId: varchar("payer_id", { length: 255 }).references(() => insurancePayers.id),
-
+//   batchNumber: varchar("batch_number", { length: 100 }).notNull().unique(),
+//   payerId: varchar("payer_id", { length: 255 }).references(() => insurancePayers.id),
+//
   // Claim IDs in batch (stored as JSON array)
-  claimIds: jsonb("claim_ids").notNull().$type<string[]>(),
-
+//   claimIds: jsonb("claim_ids").notNull().$type<string[]>(),
+//
   // Statistics
-  totalClaims: integer("total_claims").notNull(),
-  succeeded: integer("succeeded").notNull().default(0),
-  totalChargeAmount: decimal("total_charge_amount", { precision: 12, scale: 2 }).notNull(),
-
+//   totalClaims: integer("total_claims").notNull(),
+//   succeeded: integer("succeeded").notNull().default(0),
+//   totalChargeAmount: decimal("total_charge_amount", { precision: 12, scale: 2 }).notNull(),
+//
   // Submission
-  submittedAt: timestamp("submitted_at").notNull(),
-  submittedBy: varchar("submitted_by", { length: 255 }).notNull(),
-  status: batchStatusEnum("status").notNull().default("processing"),
-
+//   submittedAt: timestamp("submitted_at").notNull(),
+//   submittedBy: varchar("submitted_by", { length: 255 }).notNull(),
+//   status: batchStatusEnum("status").notNull().default("processing"),
+//
   // Clearinghouse Response
-  clearinghouseResponse: jsonb("clearinghouse_response"),
-
+//   clearinghouseResponse: jsonb("clearinghouse_response"),
+//
   // Timestamps
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [
-  index("claim_batches_company_idx").on(table.companyId),
-  index("claim_batches_payer_idx").on(table.payerId),
-  index("claim_batches_status_idx").on(table.status),
-  index("claim_batches_submitted_idx").on(table.submittedAt),
-]);
-
-/**
- * Claim Appeals
- * Tracks appeals for denied or underpaid claims
- */
-export const claimAppeals = pgTable("claim_appeals", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-
+//   createdAt: timestamp("created_at").notNull().defaultNow(),
+//   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+// }, (table) => [
+//   index("claim_batches_company_idx").on(table.companyId),
+//   index("claim_batches_payer_idx").on(table.payerId),
+//   index("claim_batches_status_idx").on(table.status),
+//   index("claim_batches_submitted_idx").on(table.submittedAt),
+// ]);
+//
+// /**
+//  * Claim Appeals
+//  * Tracks appeals for denied or underpaid claims
+//  */
+/* DUPLICATE - claimAppeals table moved to insurance domain */
+// export const claimAppeals = pgTable("claim_appeals", {
+//   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+//
   // References
-  claimId: varchar("claim_id", { length: 255 }).notNull().references(() => insuranceClaims.id, { onDelete: "cascade" }),
-
+//   claimId: varchar("claim_id", { length: 255 }).notNull().references(() => insuranceClaims.id, { onDelete: "cascade" }),
+//
   // Appeal Details
-  appealNumber: integer("appeal_number").notNull(),
-  appealDate: timestamp("appeal_date").notNull(),
-  appealedBy: varchar("appealed_by", { length: 255 }).notNull(),
-  appealReason: text("appeal_reason").notNull(),
-  supportingDocuments: jsonb("supporting_documents").$type<string[]>(),
-
+//   appealNumber: integer("appeal_number").notNull(),
+//   appealDate: timestamp("appeal_date").notNull(),
+//   appealedBy: varchar("appealed_by", { length: 255 }).notNull(),
+//   appealReason: text("appeal_reason").notNull(),
+//   supportingDocuments: jsonb("supporting_documents").$type<string[]>(),
+//
   // Status
-  status: appealStatusEnum("status").notNull().default("submitted"),
-
+//   status: appealStatusEnum("status").notNull().default("submitted"),
+//
   // Resolution
-  resolutionDate: timestamp("resolution_date"),
-  resolutionAmount: decimal("resolution_amount", { precision: 10, scale: 2 }),
-  notes: text("notes"),
-
+//   resolutionDate: timestamp("resolution_date"),
+//   resolutionAmount: decimal("resolution_amount", { precision: 10, scale: 2 }),
+//   notes: text("notes"),
+//
   // Timestamps
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [
-  index("claim_appeals_claim_idx").on(table.claimId),
-  index("claim_appeals_status_idx").on(table.status),
-  index("claim_appeals_date_idx").on(table.appealDate),
-]);
-
-/**
- * Electronic Remittance Advice (ERA)
- * Tracks electronic payment remittance from payers
- */
-export const claimERAs = pgTable("claim_eras", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-
+//   createdAt: timestamp("created_at").notNull().defaultNow(),
+//   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+// }, (table) => [
+//   index("claim_appeals_claim_idx").on(table.claimId),
+//   index("claim_appeals_status_idx").on(table.status),
+//   index("claim_appeals_date_idx").on(table.appealDate),
+// ]);
+//
+// /**
+//  * Electronic Remittance Advice (ERA)
+//  * Tracks electronic payment remittance from payers
+//  */
+/* DUPLICATE - claimERAs table moved to insurance domain */
+// export const claimERAs = pgTable("claim_eras", {
+//   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+//
   // ERA Details
-  eraNumber: varchar("era_number", { length: 100 }).notNull().unique(),
-  payerId: varchar("payer_id", { length: 255 }).references(() => insurancePayers.id),
-
+//   eraNumber: varchar("era_number", { length: 100 }).notNull().unique(),
+//   payerId: varchar("payer_id", { length: 255 }).references(() => insurancePayers.id),
+//
   // Payment Information
-  paymentAmount: decimal("payment_amount", { precision: 12, scale: 2 }).notNull(),
-  paymentDate: date("payment_date").notNull(),
-  checkNumber: varchar("check_number", { length: 100 }),
-
+//   paymentAmount: decimal("payment_amount", { precision: 12, scale: 2 }).notNull(),
+//   paymentDate: date("payment_date").notNull(),
+//   checkNumber: varchar("check_number", { length: 100 }),
+//
   // Claim Payments (stored as JSON array)
-  claimPayments: jsonb("claim_payments").notNull().$type<Array<{
-    claimId: string;
-    claimNumber: string;
-    paidAmount: number;
-    allowedAmount: number;
-    adjustments: Array<{
-      code: string;
-      amount: number;
-      reason: string;
-    }>;
-  }>>(),
-
+//   claimPayments: jsonb("claim_payments").notNull().$type<Array<{
+//     claimId: string;
+//     claimNumber: string;
+//     paidAmount: number;
+//     allowedAmount: number;
+//     adjustments: Array<{
+//       code: string;
+//       amount: number;
+//       reason: string;
+//     }>;
+//   }>>(),
+//
   // Processing
-  receivedAt: timestamp("received_at").notNull(),
-  processedAt: timestamp("processed_at"),
-
+//   receivedAt: timestamp("received_at").notNull(),
+//   processedAt: timestamp("processed_at"),
+//
   // Metadata
-  metadata: jsonb("metadata"),
-
+//   metadata: jsonb("metadata"),
+//
   // Timestamps
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [
-  index("claim_eras_payer_idx").on(table.payerId),
-  index("claim_eras_payment_date_idx").on(table.paymentDate),
-  index("claim_eras_received_idx").on(table.receivedAt),
-]);
-
+//   createdAt: timestamp("created_at").notNull().defaultNow(),
+//   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+// }, (table) => [
+//   index("claim_eras_payer_idx").on(table.payerId),
+//   index("claim_eras_payment_date_idx").on(table.paymentDate),
+//   index("claim_eras_received_idx").on(table.receivedAt),
+// ]);
+//
 // ========== End RCM Tables ==========
-
+//
 // ========== Quality Measures Tables ==========
-
-/**
- * Quality Measures
- * Definitions of quality measures (HEDIS, MIPS, CQM, etc.)
- */
+//
+// /**
+//  * Quality Measures
+//  * Definitions of quality measures (HEDIS, MIPS, CQM, etc.)
+//  */
 export const qualityMeasures = pgTable("quality_measures", {
   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -5946,7 +5952,7 @@ export const qualityMeasures = pgTable("quality_measures", {
 /**
  * Measure Calculations
  * Results of quality measure calculations
- */
+//  */
 export const measureCalculations = pgTable("measure_calculations", {
   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   measureId: varchar("measure_id", { length: 255 }).notNull().references(() => qualityMeasures.id, { onDelete: "cascade" }),
@@ -5993,7 +5999,7 @@ export const measureCalculations = pgTable("measure_calculations", {
 /**
  * Star Ratings
  * Medicare Star Ratings data
- */
+//  */
 export const starRatings = pgTable("star_ratings", {
   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -6036,7 +6042,7 @@ export const starRatings = pgTable("star_ratings", {
 /**
  * Quality Gap Analyses
  * Gap analysis results for quality measures
- */
+//  */
 export const qualityGapAnalyses = pgTable("quality_gap_analyses", {
   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   measureId: varchar("measure_id", { length: 255 }).notNull().references(() => qualityMeasures.id, { onDelete: "cascade" }),
@@ -6077,7 +6083,7 @@ export const qualityGapAnalyses = pgTable("quality_gap_analyses", {
 /**
  * Quality Dashboards
  * Dashboard configurations for quality measures
- */
+//  */
 export const qualityDashboards = pgTable("quality_dashboards", {
   id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   companyId: varchar("company_id", { length: 255 }).notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -6111,38 +6117,39 @@ export const qualityDashboards = pgTable("quality_dashboards", {
 
 // ========== End Quality Measures Tables ==========
 
-// Zod Schemas for RCM
-export const insertPayerSchema = createInsertSchema(insurancePayers);
-export const updatePayerSchema = insertPayerSchema.partial();
-
-export const insertClaimSchema = createInsertSchema(insuranceClaims);
-export const updateClaimSchema = insertClaimSchema.partial();
-
-export const insertClaimLineItemSchema = createInsertSchema(claimLineItems);
-export const updateClaimLineItemSchema = insertClaimLineItemSchema.partial();
-
-export const insertClaimBatchSchema = createInsertSchema(claimBatches);
-export const updateClaimBatchSchema = insertClaimBatchSchema.partial();
-
-export const insertClaimAppealSchema = createInsertSchema(claimAppeals);
-export const updateClaimAppealSchema = insertClaimAppealSchema.partial();
-
-export const insertClaimERASchema = createInsertSchema(claimERAs);
-export const updateClaimERASchema = insertClaimERASchema.partial();
-
-// Export RCM Types
-export type InsurancePayer = typeof insurancePayers.$inferSelect;
-export type InsertInsurancePayer = typeof insurancePayers.$inferInsert;
-export type InsuranceClaim = typeof insuranceClaims.$inferSelect;
-export type InsertInsuranceClaim = typeof insuranceClaims.$inferInsert;
-export type ClaimLineItem = typeof claimLineItems.$inferSelect;
-export type InsertClaimLineItem = typeof claimLineItems.$inferInsert;
-export type ClaimBatch = typeof claimBatches.$inferSelect;
-export type InsertClaimBatch = typeof claimBatches.$inferInsert;
-export type ClaimAppeal = typeof claimAppeals.$inferSelect;
-export type InsertClaimAppeal = typeof claimAppeals.$inferInsert;
-export type ClaimERA = typeof claimERAs.$inferSelect;
-export type InsertClaimERA = typeof claimERAs.$inferInsert;
+/* DUPLICATE - Insurance Zod schemas and types moved to insurance domain */
+// // Zod Schemas for RCM
+// export const insertPayerSchema = createInsertSchema(insurancePayers);
+// export const updatePayerSchema = insertPayerSchema.partial();
+//
+// export const insertClaimSchema = createInsertSchema(insuranceClaims);
+// export const updateClaimSchema = insertClaimSchema.partial();
+//
+// export const insertClaimLineItemSchema = createInsertSchema(claimLineItems);
+// export const updateClaimLineItemSchema = insertClaimLineItemSchema.partial();
+//
+// export const insertClaimBatchSchema = createInsertSchema(claimBatches);
+// export const updateClaimBatchSchema = insertClaimBatchSchema.partial();
+//
+// export const insertClaimAppealSchema = createInsertSchema(claimAppeals);
+// export const updateClaimAppealSchema = insertClaimAppealSchema.partial();
+//
+// export const insertClaimERASchema = createInsertSchema(claimERAs);
+// export const updateClaimERASchema = insertClaimERASchema.partial();
+//
+// // Export RCM Types
+// export type InsurancePayer = typeof insurancePayers.$inferSelect;
+// export type InsertInsurancePayer = typeof insurancePayers.$inferInsert;
+// export type InsuranceClaim = typeof insuranceClaims.$inferSelect;
+// export type InsertInsuranceClaim = typeof insuranceClaims.$inferInsert;
+// export type ClaimLineItem = typeof claimLineItems.$inferSelect;
+// export type InsertClaimLineItem = typeof claimLineItems.$inferInsert;
+// export type ClaimBatch = typeof claimBatches.$inferSelect;
+// export type InsertClaimBatch = typeof claimBatches.$inferInsert;
+// export type ClaimAppeal = typeof claimAppeals.$inferSelect;
+// export type InsertClaimAppeal = typeof claimAppeals.$inferInsert;
+// export type ClaimERA = typeof claimERAs.$inferSelect;
+// export type InsertClaimERA = typeof claimERAs.$inferInsert;
 
 // Zod Schemas for Quality Measures
 export const insertQualityMeasureSchema = createInsertSchema(qualityMeasures);
@@ -6225,7 +6232,7 @@ export const severityEnum = pgEnum("severity", [
 /**
  * Risk Scores Table
  * Stores calculated risk scores for patients with contributing factors
- */
+//  */
 /* DUPLICATE - Moved to modular schema
 export const riskScores = pgTable(
   "risk_scores",
@@ -6263,7 +6270,7 @@ export const riskScores = pgTable(
 /**
  * Health Risk Assessments Table
  * Stores structured health risk assessment questionnaires and responses
- */
+//  */
 export const healthRiskAssessments = pgTable(
   "health_risk_assessments",
   {
@@ -6299,7 +6306,7 @@ export const healthRiskAssessments = pgTable(
 /**
  * Predictive Models Table
  * Stores ML/statistical models for predicting patient outcomes
- */
+//  */
 export const predictiveModels = pgTable(
   "predictive_models",
   {
@@ -6328,7 +6335,7 @@ export const predictiveModels = pgTable(
 /**
  * Predictive Analyses Table
  * Stores results of running predictive models on patient data
- */
+//  */
 export const predictiveAnalyses = pgTable(
   "predictive_analyses",
   {
@@ -6361,7 +6368,7 @@ export const predictiveAnalyses = pgTable(
 /**
  * Social Determinants Table
  * Tracks social determinants of health (SDOH) and interventions
- */
+//  */
 export const socialDeterminants = pgTable(
   "social_determinants",
   {
@@ -6393,7 +6400,7 @@ export const socialDeterminants = pgTable(
 /**
  * Risk Stratification Cohorts Table
  * Defines patient cohorts based on risk criteria for population management
- */
+//  */
 export const riskStratificationCohorts = pgTable(
   "risk_stratification_cohorts",
   {
@@ -6496,7 +6503,7 @@ export const recipientTypeEnum = pgEnum("recipient_type", [
 /**
  * Message Templates Table
  * Stores reusable message templates for email, SMS, push notifications
- */
+//  */
 /* DUPLICATE - Moved to modular schema
 export const messageTemplates = pgTable(
   "message_templates",
@@ -6525,7 +6532,7 @@ export const messageTemplates = pgTable(
 /**
  * Messages Table
  * Stores all sent messages with delivery tracking
- */
+//  */
 /* DUPLICATE - Moved to modular schema
 export const messages = pgTable(
   "messages",
@@ -6581,7 +6588,7 @@ export const messages = pgTable(
 /**
  * Unsubscribes Table
  * Tracks user opt-outs from communications
- */
+//  */
 export const unsubscribes = pgTable(
   "unsubscribes",
   {
@@ -6610,7 +6617,7 @@ export const unsubscribes = pgTable(
 /**
  * WhatsApp Message Events Table
  * Tracks WhatsApp-specific delivery events and provider data
- */
+//  */
 export const whatsappMessageStatusEnum = pgEnum("whatsapp_message_status", [
   "queued",
   "sent",
@@ -6674,7 +6681,7 @@ export const whatsappMessageEvents = pgTable(
 /**
  * SMS Message Events Table
  * Tracks SMS-specific delivery events and provider data
- */
+//  */
 export const smsMessageStatusEnum = pgEnum("sms_message_status", [
   "queued",
   "sent",
@@ -6766,7 +6773,7 @@ export type InsertSmsMessageEvent = typeof smsMessageEvents.$inferInsert;
 
 /**
  * GDPR Deletion Request Status
- */
+//  */
 export const gdprDeletionStatusEnum = pgEnum("gdpr_deletion_status", [
   "pending",
   "approved",
@@ -6778,7 +6785,7 @@ export const gdprDeletionStatusEnum = pgEnum("gdpr_deletion_status", [
 
 /**
  * GDPR Deletion Request Type
- */
+//  */
 export const gdprDeletionTypeEnum = pgEnum("gdpr_deletion_type", [
   "anonymization", // Anonymize PII but keep records for analytics
   "hard_delete"     // Complete removal from database
@@ -6786,7 +6793,7 @@ export const gdprDeletionTypeEnum = pgEnum("gdpr_deletion_type", [
 
 /**
  * GDPR Data Subject Type
- */
+//  */
 export const gdprDataSubjectTypeEnum = pgEnum("gdpr_data_subject_type", [
   "patient",
   "user",
@@ -6797,7 +6804,7 @@ export const gdprDataSubjectTypeEnum = pgEnum("gdpr_data_subject_type", [
 /**
  * GDPR Deletion Requests Table
  * Tracks right-to-deletion requests under GDPR and UK GDPR compliance
- */
+//  */
 export const gdprDeletionRequests = pgTable(
   "gdpr_deletion_requests",
   {
@@ -6875,7 +6882,7 @@ export type InsertGdprDeletionRequest = typeof gdprDeletionRequests.$inferInsert
 
 /**
  * Campaign status lifecycle
- */
+//  */
 export const campaignStatusEnum = pgEnum("campaign_status", [
   "draft",
   "scheduled",
@@ -6887,7 +6894,7 @@ export const campaignStatusEnum = pgEnum("campaign_status", [
 
 /**
  * Campaign type
- */
+//  */
 export const campaignTypeEnum = pgEnum("campaign_type", [
   "one_time",
   "recurring",
@@ -6897,7 +6904,7 @@ export const campaignTypeEnum = pgEnum("campaign_type", [
 
 /**
  * Campaign frequency for recurring campaigns
- */
+//  */
 export const campaignFrequencyEnum = pgEnum("campaign_frequency", [
   "daily",
   "weekly",
@@ -6906,12 +6913,12 @@ export const campaignFrequencyEnum = pgEnum("campaign_frequency", [
 
 /**
  * A/B test variant
- */
+//  */
 export const abTestVariantEnum = pgEnum("ab_test_variant", ["A", "B"]);
 
 /**
  * Audience segment criteria operators
- */
+//  */
 export const segmentOperatorEnum = pgEnum("segment_operator", [
   "eq",
   "ne",
@@ -6930,7 +6937,7 @@ export const segmentOperatorEnum = pgEnum("segment_operator", [
 /**
  * Audience Segments Table
  * Stores audience segmentation criteria for targeted campaigns
- */
+//  */
 export const audienceSegments = pgTable(
   "audience_segments",
   {
@@ -6956,7 +6963,7 @@ export const audienceSegments = pgTable(
 /**
  * Campaigns Table
  * Stores marketing campaign configuration and tracking metrics
- */
+//  */
 export const campaigns = pgTable(
   "campaigns",
   {
@@ -7012,7 +7019,7 @@ export const campaigns = pgTable(
 /**
  * Campaign Recipients Table
  * Junction table tracking which recipients received each campaign
- */
+//  */
 export const campaignRecipients = pgTable(
   "campaign_recipients",
   {
@@ -7049,7 +7056,7 @@ export type InsertCampaignRecipient = typeof campaignRecipients.$inferInsert;
 
 /**
  * Alert severity levels
- */
+//  */
 export const alertSeverityEnum = pgEnum("alert_severity", [
   "info",
   "warning",
@@ -7058,7 +7065,7 @@ export const alertSeverityEnum = pgEnum("alert_severity", [
 
 /**
  * Drug interaction severity
- */
+//  */
 export const interactionSeverityEnum = pgEnum("interaction_severity", [
   "minor",
   "moderate",
@@ -7068,7 +7075,7 @@ export const interactionSeverityEnum = pgEnum("interaction_severity", [
 
 /**
  * Recommendation confidence level
- */
+//  */
 export const confidenceLevelEnum = pgEnum("confidence_level", [
   "low",
   "medium",
@@ -7078,7 +7085,7 @@ export const confidenceLevelEnum = pgEnum("confidence_level", [
 
 /**
  * Clinical alert types
- */
+//  */
 export const clinicalAlertTypeEnum = pgEnum("clinical_alert_type", [
   "drug_interaction",
   "allergy",
@@ -7089,7 +7096,7 @@ export const clinicalAlertTypeEnum = pgEnum("clinical_alert_type", [
 
 /**
  * Guideline strength of recommendation
- */
+//  */
 export const recommendationStrengthEnum = pgEnum("recommendation_strength", [
   "A", // Strong
   "B", // Moderate
@@ -7099,7 +7106,7 @@ export const recommendationStrengthEnum = pgEnum("recommendation_strength", [
 
 /**
  * Quality of evidence
- */
+//  */
 export const evidenceQualityEnum = pgEnum("evidence_quality", [
   "high",
   "moderate",
@@ -7109,7 +7116,7 @@ export const evidenceQualityEnum = pgEnum("evidence_quality", [
 
 /**
  * Lab result status
- */
+//  */
 export const labStatusEnum = pgEnum("lab_status", [
   "normal",
   "low",
@@ -7119,7 +7126,7 @@ export const labStatusEnum = pgEnum("lab_status", [
 
 /**
  * Diagnostic urgency
- */
+//  */
 export const diagnosticUrgencyEnum = pgEnum("diagnostic_urgency", [
   "routine",
   "urgent",
@@ -7133,7 +7140,7 @@ export const diagnosticUrgencyEnum = pgEnum("diagnostic_urgency", [
 /**
  * Drugs Table
  * Stores drug database for clinical decision support
- */
+//  */
 export const drugs = pgTable(
   "drugs",
   {
@@ -7164,7 +7171,7 @@ export const drugs = pgTable(
 /**
  * Drug Interactions Table
  * Stores known drug-drug interactions
- */
+//  */
 export const drugInteractions = pgTable(
   "drug_interactions",
   {
@@ -7190,7 +7197,7 @@ export const drugInteractions = pgTable(
 /**
  * Clinical Guidelines Table
  * Stores clinical practice guidelines
- */
+//  */
 export const clinicalGuidelines = pgTable(
   "clinical_guidelines",
   {
@@ -7222,7 +7229,7 @@ export const clinicalGuidelines = pgTable(
 /**
  * Clinical Alerts Table
  * Stores clinical alerts for patient safety
- */
+//  */
 export const clinicalAlerts = pgTable(
   "clinical_alerts",
   {
@@ -7251,7 +7258,7 @@ export const clinicalAlerts = pgTable(
 /**
  * Treatment Recommendations Table
  * Stores AI-generated treatment recommendations
- */
+//  */
 export const treatmentRecommendations = pgTable(
   "treatment_recommendations",
   {
@@ -7284,7 +7291,7 @@ export const treatmentRecommendations = pgTable(
 /**
  * Diagnostic Suggestions Table
  * Stores AI-generated diagnostic suggestions
- */
+//  */
 export const diagnosticSuggestions = pgTable(
   "diagnostic_suggestions",
   {
@@ -7342,7 +7349,7 @@ export type InsertDiagnosticSuggestion = typeof diagnosticSuggestions.$inferInse
 
 /**
  * Workflow trigger types
- */
+//  */
 export const workflowTriggerEnum = pgEnum("workflow_trigger", [
   "patient_registered",
   "appointment_scheduled",
@@ -7361,7 +7368,7 @@ export const workflowTriggerEnum = pgEnum("workflow_trigger", [
 
 /**
  * Workflow action types
- */
+//  */
 export const workflowActionTypeEnum = pgEnum("workflow_action_type", [
   "send_message",
   "wait",
@@ -7373,7 +7380,7 @@ export const workflowActionTypeEnum = pgEnum("workflow_action_type", [
 
 /**
  * Workflow status
- */
+//  */
 export const workflowStatusEnum = pgEnum("workflow_status", [
   "active",
   "paused",
@@ -7382,7 +7389,7 @@ export const workflowStatusEnum = pgEnum("workflow_status", [
 
 /**
  * Workflow instance status
- */
+//  */
 export const workflowInstanceStatusEnum = pgEnum("workflow_instance_status", [
   "pending",
   "running",
@@ -7398,7 +7405,7 @@ export const workflowInstanceStatusEnum = pgEnum("workflow_instance_status", [
 /**
  * Workflows Table
  * Stores workflow definitions for automated patient engagement
- */
+//  */
 export const workflows = pgTable(
   "workflows",
   {
@@ -7460,7 +7467,7 @@ export const workflows = pgTable(
 /**
  * Workflow Instances Table
  * Stores individual workflow executions for patients
- */
+//  */
 export const workflowInstances = pgTable(
   "workflow_instances",
   {
@@ -7500,7 +7507,7 @@ export const workflowInstances = pgTable(
 /**
  * Workflow Run Counts Table
  * Tracks how many times each workflow has run for each patient
- */
+//  */
 export const workflowRunCounts = pgTable(
   "workflow_run_counts",
   {
@@ -7540,7 +7547,7 @@ export type InsertWorkflowRunCount = typeof workflowRunCounts.$inferInsert;
 /**
  * Predictive Analytics Enums
  * Note: Reusing riskLevelEnum from Population Health section
- */
+//  */
 export const predictionConfidenceEnum = pgEnum("prediction_confidence", ["low", "medium", "high"]);
 export const mlModelTypeEnum = pgEnum("ml_model_type", ["classification", "regression", "clustering"]);
 export const mlModelStatusEnum = pgEnum("ml_model_status", ["active", "testing", "deprecated"]);
@@ -7550,7 +7557,7 @@ export const readmissionTimeframeEnum = pgEnum("readmission_timeframe", ["7_days
 /**
  * ML Models Table
  * Stores machine learning models for predictions
- */
+//  */
 export const mlModels = pgTable(
   "ml_models",
   {
@@ -7585,7 +7592,7 @@ export const mlModels = pgTable(
 /**
  * Risk Stratifications Table
  * Stores risk assessments for patients
- */
+//  */
 export const riskStratifications = pgTable(
   "risk_stratifications",
   {
@@ -7624,7 +7631,7 @@ export const riskStratifications = pgTable(
 /**
  * Readmission Predictions Table
  * Stores hospital readmission risk predictions
- */
+//  */
 export const readmissionPredictions = pgTable(
   "readmission_predictions",
   {
@@ -7661,7 +7668,7 @@ export const readmissionPredictions = pgTable(
 /**
  * No-Show Predictions Table
  * Stores appointment no-show risk predictions
- */
+//  */
 export const noShowPredictions = pgTable(
   "no_show_predictions",
   {
@@ -7697,7 +7704,7 @@ export const noShowPredictions = pgTable(
 /**
  * Disease Progression Predictions Table
  * Stores predictions for disease progression over time
- */
+//  */
 export const diseaseProgressionPredictions = pgTable(
   "disease_progression_predictions",
   {
@@ -7736,7 +7743,7 @@ export const diseaseProgressionPredictions = pgTable(
 /**
  * Treatment Outcome Predictions Table
  * Stores predictions for treatment outcomes
- */
+//  */
 export const treatmentOutcomePredictions = pgTable(
   "treatment_outcome_predictions",
   {
@@ -7798,14 +7805,14 @@ export type InsertTreatmentOutcomePrediction = typeof treatmentOutcomePrediction
 // ========== Appointment Booking Tables ==========
 /**
  * Appointment Booking Enums
- */
+//  */
 /* DUPLICATE - cancelledByEnum moved to appointments domain */
 // export const cancelledByEnum = pgEnum("cancelled_by", ["patient", "provider", "system"]);
 
 /**
  * Appointment Types Table
  * Defines types of appointments that can be booked
- */
+//  */
 /* DUPLICATE - appointmentTypes table moved to appointments domain */
 // export const appointmentTypes = pgTable(
 //   "appointment_types",
@@ -7831,7 +7838,7 @@ export type InsertTreatmentOutcomePrediction = typeof treatmentOutcomePrediction
 /**
  * Provider Availability Table
  * Stores provider schedules and available time slots
- */
+//  */
 /* DUPLICATE - providerAvailability table moved to appointments domain */
 // export const providerAvailability = pgTable(
 //   "provider_availability",
@@ -7861,7 +7868,7 @@ export type InsertTreatmentOutcomePrediction = typeof treatmentOutcomePrediction
 /**
  * Appointment Bookings Table
  * Stores patient appointment bookings
- */
+//  */
 /* DUPLICATE - appointmentBookings table moved to appointments domain */
 // export const appointmentBookings = pgTable(
 //   "appointment_bookings",
@@ -7954,7 +7961,7 @@ export type InsertTreatmentOutcomePrediction = typeof treatmentOutcomePrediction
 /**
  * Medical Records Table
  * Patient portal medical records (exams, prescriptions, lab results, documents)
- */
+//  */
 /* DUPLICATE - medicalRecords table moved to patientportal domain */
 // export const medicalRecords = pgTable(
 //   "medical_records",
@@ -7990,7 +7997,7 @@ export type InsertTreatmentOutcomePrediction = typeof treatmentOutcomePrediction
 /**
  * Portal Conversations Table
  * Patient-provider messaging conversations
- */
+//  */
 /* DUPLICATE - portalConversations table moved to patientportal domain */
 // export const portalConversations = pgTable(
 //   "portal_conversations",
@@ -8018,7 +8025,7 @@ export type InsertTreatmentOutcomePrediction = typeof treatmentOutcomePrediction
 /**
  * Portal Messages Table
  * Individual messages within conversations
- */
+//  */
 /* DUPLICATE - portalMessages table moved to patientportal domain */
 // export const portalMessages = pgTable(
 //   "portal_messages",
@@ -8052,7 +8059,7 @@ export type InsertTreatmentOutcomePrediction = typeof treatmentOutcomePrediction
 /**
  * Portal Payments Table
  * Patient bill payments through portal
- */
+//  */
 /* DUPLICATE - portalPayments table moved to patientportal domain */
 // export const portalPayments = pgTable(
 //   "portal_payments",
@@ -8100,7 +8107,7 @@ export type InsertTreatmentOutcomePrediction = typeof treatmentOutcomePrediction
 
 /**
  * Care Coordination Enums
- */
+//  */
 export const carePlanStatusEnum = pgEnum("care_plan_status", ["draft", "active", "on_hold", "completed", "cancelled"]);
 export const carePlanCategoryEnum = pgEnum("care_plan_category", ["chronic_disease", "preventive", "transitional", "behavioral_health", "other"]);
 export const careGoalStatusEnum = pgEnum("care_goal_status", ["not_started", "in_progress", "achieved", "not_achieved", "cancelled"]);
@@ -8125,7 +8132,7 @@ export const outreachContactResultEnum = pgEnum("outreach_contact_result", ["suc
 /**
  * Care Plans Table
  * Comprehensive care plans for patients
- */
+//  */
 /* DUPLICATE - Moved to modular schema
 export const carePlans = pgTable(
   "care_plans",
@@ -8186,7 +8193,7 @@ export const carePlans = pgTable(
 /**
  * Care Teams Table
  * Multi-disciplinary care teams for patients
- */
+//  */
 export const careTeams = pgTable(
   "care_teams",
   {
@@ -8227,7 +8234,7 @@ export const careTeams = pgTable(
 /**
  * Care Gaps Table
  * Identified gaps in patient care requiring attention
- */
+//  */
 export const careGaps = pgTable(
   "care_gaps",
   {
@@ -8262,7 +8269,7 @@ export const careGaps = pgTable(
 /**
  * Transitions of Care Table
  * Tracks patient transitions between care settings
- */
+//  */
 export const transitionsOfCare = pgTable(
   "transitions_of_care",
   {
@@ -8307,7 +8314,7 @@ export const transitionsOfCare = pgTable(
 /**
  * Care Coordination Tasks Table
  * Tasks for care coordination workflow
- */
+//  */
 export const careCoordinationTasks = pgTable(
   "care_coordination_tasks",
   {
@@ -8345,7 +8352,7 @@ export const careCoordinationTasks = pgTable(
 /**
  * Patient Outreach Table
  * Tracks patient outreach attempts and outcomes
- */
+//  */
 export const patientOutreach = pgTable(
   "patient_outreach",
   {
@@ -8406,7 +8413,7 @@ export type InsertPatientOutreach = typeof patientOutreach.$inferInsert;
 
 /**
  * Chronic Disease Management Enums
- */
+//  */
 export const registryCriteriaTypeEnum = pgEnum("registry_criteria_type", ["diagnosis", "lab_value", "medication", "procedure", "risk_score"]);
 export const criteriaOperatorEnum = pgEnum("criteria_operator", ["equals", "contains", "greater_than", "less_than", "in_range"]);
 export const registryEnrollmentStatusEnum = pgEnum("registry_enrollment_status", ["active", "inactive", "graduated", "deceased", "transferred"]);
@@ -8424,7 +8431,7 @@ export const preventiveCareImportanceEnum = pgEnum("preventive_care_importance",
 /**
  * Disease Registries Table
  * Chronic disease registries for population management
- */
+//  */
 export const diseaseRegistries = pgTable(
   "disease_registries",
   {
@@ -8455,7 +8462,7 @@ export const diseaseRegistries = pgTable(
 /**
  * Registry Enrollments Table
  * Patient enrollments in disease registries
- */
+//  */
 export const registryEnrollments = pgTable(
   "registry_enrollments",
   {
@@ -8482,7 +8489,7 @@ export const registryEnrollments = pgTable(
 /**
  * Disease Management Programs Table
  * Disease management programs and protocols
- */
+//  */
 export const diseaseManagementPrograms = pgTable(
   "disease_management_programs",
   {
@@ -8533,7 +8540,7 @@ export const diseaseManagementPrograms = pgTable(
 /**
  * Program Enrollments Table
  * Patient enrollments in disease management programs
- */
+//  */
 export const programEnrollments = pgTable(
   "program_enrollments",
   {
@@ -8565,7 +8572,7 @@ export const programEnrollments = pgTable(
 /**
  * Clinical Metrics Table
  * Clinical measurements and outcomes tracking
- */
+//  */
 export const clinicalMetrics = pgTable(
   "clinical_metrics",
   {
@@ -8598,7 +8605,7 @@ export const clinicalMetrics = pgTable(
 /**
  * Patient Engagement Table
  * Patient engagement activities and milestones
- */
+//  */
 export const patientEngagement = pgTable(
   "patient_engagement",
   {
@@ -8626,7 +8633,7 @@ export const patientEngagement = pgTable(
 /**
  * Outcome Tracking Table
  * Clinical and quality outcomes tracking
- */
+//  */
 export const outcomeTracking = pgTable(
   "outcome_tracking",
   {
@@ -8660,7 +8667,7 @@ export const outcomeTracking = pgTable(
 /**
  * Preventive Care Recommendations Table
  * Preventive care recommendations and tracking
- */
+//  */
 export const preventiveCareRecommendations = pgTable(
   "preventive_care_recommendations",
   {
@@ -10380,182 +10387,189 @@ export type Examination = EyeExamination;
 export type InsertExamination = InsertEyeExamination;
 
 // Insurance Companies Table (for BillingService)
-export const insuranceCompanies = pgTable("insurance_companies", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
-  name: varchar("name", { length: 255 }).notNull(),
-  displayName: varchar("display_name", { length: 255 }),
-  payerId: varchar("payer_id", { length: 100 }),
-  npi: varchar("npi", { length: 20 }),
-  address: jsonb("address"),
-  phone: varchar("phone", { length: 50 }),
-  fax: varchar("fax", { length: 50 }),
-  email: varchar("email", { length: 255 }),
-  website: varchar("website", { length: 500 }),
-  ediTradingPartnerId: varchar("edi_trading_partner_id", { length: 100 }),
-  clearinghouse: varchar("clearinghouse", { length: 100 }),
-  claimSubmissionMethod: varchar("claim_submission_method", { length: 50 }),
-  attachmentRequirements: jsonb("attachment_requirements"),
-  isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export type InsuranceCompany = typeof insuranceCompanies.$inferSelect;
-export type InsertInsuranceCompany = typeof insuranceCompanies.$inferInsert;
-
+/* DUPLICATE - insuranceCompanies table moved to insurance domain */
+// export const insuranceCompanies = pgTable("insurance_companies", {
+//   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+//   name: varchar("name", { length: 255 }).notNull(),
+//   displayName: varchar("display_name", { length: 255 }),
+//   payerId: varchar("payer_id", { length: 100 }),
+//   npi: varchar("npi", { length: 20 }),
+//   address: jsonb("address"),
+//   phone: varchar("phone", { length: 50 }),
+//   fax: varchar("fax", { length: 50 }),
+//   email: varchar("email", { length: 255 }),
+//   website: varchar("website", { length: 500 }),
+//   ediTradingPartnerId: varchar("edi_trading_partner_id", { length: 100 }),
+//   clearinghouse: varchar("clearinghouse", { length: 100 }),
+//   claimSubmissionMethod: varchar("claim_submission_method", { length: 50 }),
+//   attachmentRequirements: jsonb("attachment_requirements"),
+//   isActive: boolean("is_active").default(true).notNull(),
+//   createdAt: timestamp("created_at").defaultNow().notNull(),
+//   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+// });
+//
+// export type InsuranceCompany = typeof insuranceCompanies.$inferSelect;
+// export type InsertInsuranceCompany = typeof insuranceCompanies.$inferInsert;
+//
 // Insurance Plans Table (for BillingService)
-export const insurancePlans = pgTable("insurance_plans", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
-  insuranceCompanyId: varchar("insurance_company_id").references(() => insuranceCompanies.id, { onDelete: 'cascade' }),
-  planName: varchar("plan_name", { length: 255 }).notNull(),
-  planType: varchar("plan_type", { length: 50 }).notNull(), // hmo, ppo, pos, epo, medicare, medicaid, etc.
-  planId: varchar("plan_id", { length: 100 }),
-  groupId: varchar("group_id", { length: 100 }),
-  copaymentAmount: decimal("copayment_amount", { precision: 10, scale: 2 }),
-  deductibleAmount: decimal("deductible_amount", { precision: 10, scale: 2 }),
-  coinsurancePercentage: decimal("coinsurance_percentage", { precision: 5, scale: 2 }),
-  outOfPocketMaximum: decimal("out_of_pocket_maximum", { precision: 10, scale: 2 }),
-  visionCoverage: jsonb("vision_coverage"),
-  examCoverage: jsonb("exam_coverage"),
-  materialsCoverage: jsonb("materials_coverage"),
-  preauthorizationRequired: boolean("preauthorization_required").default(false),
-  referralRequired: boolean("referral_required").default(false),
-  timelyFilingDays: integer("timely_filing_days"),
-  effectiveDate: timestamp("effective_date"),
-  terminationDate: timestamp("termination_date"),
-  isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export type InsurancePlan = typeof insurancePlans.$inferSelect;
-export type InsertInsurancePlan = typeof insurancePlans.$inferInsert;
-
+/* DUPLICATE - insurancePlans table moved to insurance domain */
+// export const insurancePlans = pgTable("insurance_plans", {
+//   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+//   insuranceCompanyId: varchar("insurance_company_id").references(() => insuranceCompanies.id, { onDelete: 'cascade' }),
+//   planName: varchar("plan_name", { length: 255 }).notNull(),
+//   planType: varchar("plan_type", { length: 50 }).notNull(), // hmo, ppo, pos, epo, medicare, medicaid, etc.
+//   planId: varchar("plan_id", { length: 100 }),
+//   groupId: varchar("group_id", { length: 100 }),
+//   copaymentAmount: decimal("copayment_amount", { precision: 10, scale: 2 }),
+//   deductibleAmount: decimal("deductible_amount", { precision: 10, scale: 2 }),
+//   coinsurancePercentage: decimal("coinsurance_percentage", { precision: 5, scale: 2 }),
+//   outOfPocketMaximum: decimal("out_of_pocket_maximum", { precision: 10, scale: 2 }),
+//   visionCoverage: jsonb("vision_coverage"),
+//   examCoverage: jsonb("exam_coverage"),
+//   materialsCoverage: jsonb("materials_coverage"),
+//   preauthorizationRequired: boolean("preauthorization_required").default(false),
+//   referralRequired: boolean("referral_required").default(false),
+//   timelyFilingDays: integer("timely_filing_days"),
+//   effectiveDate: timestamp("effective_date"),
+//   terminationDate: timestamp("termination_date"),
+//   isActive: boolean("is_active").default(true).notNull(),
+//   createdAt: timestamp("created_at").defaultNow().notNull(),
+//   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+// });
+//
+// export type InsurancePlan = typeof insurancePlans.$inferSelect;
+// export type InsertInsurancePlan = typeof insurancePlans.$inferInsert;
+//
 // AI Analyses Table (for AnalyticsService)
-export const aiAnalyses = pgTable("ai_analyses", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-  modelType: varchar("model_type", { length: 100 }).notNull(),
-  analysisType: varchar("analysis_type", { length: 100 }).notNull(),
-  confidence: decimal("confidence", { precision: 5, scale: 4 }),
-  inputData: jsonb("input_data"),
-  outputData: jsonb("output_data"),
-  processingTimeMs: integer("processing_time_ms"),
-  errorMessage: text("error_message"),
-  userId: varchar("user_id").references(() => users.id),
-  resourceType: varchar("resource_type", { length: 50 }),
-  resourceId: varchar("resource_id"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export type AiAnalysis = typeof aiAnalyses.$inferSelect;
-export type InsertAiAnalysis = typeof aiAnalyses.$inferInsert;
-
+/* DUPLICATE - aiAnalyses table (insurance-related) moved to insurance domain */
+// export const aiAnalyses = pgTable("ai_analyses", {
+//   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//   companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+//   modelType: varchar("model_type", { length: 100 }).notNull(),
+//   analysisType: varchar("analysis_type", { length: 100 }).notNull(),
+//   confidence: decimal("confidence", { precision: 5, scale: 4 }),
+//   inputData: jsonb("input_data"),
+//   outputData: jsonb("output_data"),
+//   processingTimeMs: integer("processing_time_ms"),
+//   errorMessage: text("error_message"),
+//   userId: varchar("user_id").references(() => users.id),
+//   resourceType: varchar("resource_type", { length: 50 }),
+//   resourceId: varchar("resource_id"),
+//   createdAt: timestamp("created_at").defaultNow().notNull(),
+// });
+//
+// export type AiAnalysis = typeof aiAnalyses.$inferSelect;
+// export type InsertAiAnalysis = typeof aiAnalyses.$inferInsert;
+//
 // Patient Insurance Table (for BillingService)
-export const patientInsurance = pgTable("patient_insurance", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
-  patientId: varchar("patient_id").notNull().references(() => patients.id, { onDelete: 'cascade' }),
-  insurancePlanId: varchar("insurance_plan_id").references(() => insurancePlans.id),
-  memberId: varchar("member_id", { length: 100 }),
-  subscriberId: varchar("subscriber_id", { length: 100 }),
-  groupNumber: varchar("group_number", { length: 100 }),
-  subscriberFirstName: varchar("subscriber_first_name", { length: 100 }),
-  subscriberLastName: varchar("subscriber_last_name", { length: 100 }),
-  subscriberDob: timestamp("subscriber_dob"),
-  relationshipToSubscriber: varchar("relationship_to_subscriber", { length: 50 }),
-  priority: integer("priority").default(1),
-  status: varchar("status", { length: 50 }).default("active"),
-  effectiveDate: timestamp("effective_date"),
-  terminationDate: timestamp("termination_date"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export type PatientInsurance = typeof patientInsurance.$inferSelect;
-export type InsertPatientInsurance = typeof patientInsurance.$inferInsert;
-
+/* DUPLICATE - patientInsurance table moved to insurance domain */
+// export const patientInsurance = pgTable("patient_insurance", {
+//   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+//   patientId: varchar("patient_id").notNull().references(() => patients.id, { onDelete: 'cascade' }),
+//   insurancePlanId: varchar("insurance_plan_id").references(() => insurancePlans.id),
+//   memberId: varchar("member_id", { length: 100 }),
+//   subscriberId: varchar("subscriber_id", { length: 100 }),
+//   groupNumber: varchar("group_number", { length: 100 }),
+//   subscriberFirstName: varchar("subscriber_first_name", { length: 100 }),
+//   subscriberLastName: varchar("subscriber_last_name", { length: 100 }),
+//   subscriberDob: timestamp("subscriber_dob"),
+//   relationshipToSubscriber: varchar("relationship_to_subscriber", { length: 50 }),
+//   priority: integer("priority").default(1),
+//   status: varchar("status", { length: 50 }).default("active"),
+//   effectiveDate: timestamp("effective_date"),
+//   terminationDate: timestamp("termination_date"),
+//   createdAt: timestamp("created_at").defaultNow().notNull(),
+//   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+// });
+//
+// export type PatientInsurance = typeof patientInsurance.$inferSelect;
+// export type InsertPatientInsurance = typeof patientInsurance.$inferInsert;
+//
 // Eligibility Verifications Table (for BillingService)
-export const eligibilityVerifications = pgTable("eligibility_verifications", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
-  patientId: varchar("patient_id").notNull().references(() => patients.id, { onDelete: 'cascade' }),
-  insurancePlanId: varchar("insurance_plan_id").references(() => insurancePlans.id),
-  verificationDate: timestamp("verification_date").defaultNow().notNull(),
-  verifiedBy: varchar("verified_by").references(() => users.id),
-  status: varchar("status", { length: 50 }).default("pending"),
-  eligibilityStatus: varchar("eligibility_status", { length: 50 }),
-  coverageDetails: jsonb("coverage_details"),
-  copayAmount: decimal("copay_amount", { precision: 10, scale: 2 }),
-  deductibleRemaining: decimal("deductible_remaining", { precision: 10, scale: 2 }),
-  outOfPocketRemaining: decimal("out_of_pocket_remaining", { precision: 10, scale: 2 }),
-  responseData: jsonb("response_data"),
-  errorMessage: text("error_message"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export type EligibilityVerification = typeof eligibilityVerifications.$inferSelect;
-export type InsertEligibilityVerification = typeof eligibilityVerifications.$inferInsert;
-
+/* DUPLICATE - eligibilityVerifications table moved to insurance domain */
+// export const eligibilityVerifications = pgTable("eligibility_verifications", {
+//   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+//   patientId: varchar("patient_id").notNull().references(() => patients.id, { onDelete: 'cascade' }),
+//   insurancePlanId: varchar("insurance_plan_id").references(() => insurancePlans.id),
+//   verificationDate: timestamp("verification_date").defaultNow().notNull(),
+//   verifiedBy: varchar("verified_by").references(() => users.id),
+//   status: varchar("status", { length: 50 }).default("pending"),
+//   eligibilityStatus: varchar("eligibility_status", { length: 50 }),
+//   coverageDetails: jsonb("coverage_details"),
+//   copayAmount: decimal("copay_amount", { precision: 10, scale: 2 }),
+//   deductibleRemaining: decimal("deductible_remaining", { precision: 10, scale: 2 }),
+//   outOfPocketRemaining: decimal("out_of_pocket_remaining", { precision: 10, scale: 2 }),
+//   responseData: jsonb("response_data"),
+//   errorMessage: text("error_message"),
+//   createdAt: timestamp("created_at").defaultNow().notNull(),
+// });
+//
+// export type EligibilityVerification = typeof eligibilityVerifications.$inferSelect;
+// export type InsertEligibilityVerification = typeof eligibilityVerifications.$inferInsert;
+//
 // Preauthorizations Table (for BillingService)
-export const preauthorizations = pgTable("preauthorizations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
-  patientId: varchar("patient_id").notNull().references(() => patients.id, { onDelete: 'cascade' }),
-  insurancePlanId: varchar("insurance_plan_id").references(() => insurancePlans.id),
-  requestDate: timestamp("request_date").defaultNow().notNull(),
-  requestedBy: varchar("requested_by").references(() => users.id),
-  serviceType: varchar("service_type", { length: 100 }),
-  procedureCodes: jsonb("procedure_codes"),
-  diagnosisCodes: jsonb("diagnosis_codes"),
-  status: varchar("status", { length: 50 }).default("pending"),
-  authorizationNumber: varchar("authorization_number", { length: 100 }),
-  approvedUnits: integer("approved_units"),
-  approvedAmount: decimal("approved_amount", { precision: 10, scale: 2 }),
-  effectiveDate: timestamp("effective_date"),
-  expirationDate: timestamp("expiration_date"),
-  denialReason: text("denial_reason"),
-  notes: text("notes"),
-  responseData: jsonb("response_data"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export type Preauthorization = typeof preauthorizations.$inferSelect;
-export type InsertPreauthorization = typeof preauthorizations.$inferInsert;
-
+/* DUPLICATE - preauthorizations table moved to insurance domain */
+// export const preauthorizations = pgTable("preauthorizations", {
+//   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+//   patientId: varchar("patient_id").notNull().references(() => patients.id, { onDelete: 'cascade' }),
+//   insurancePlanId: varchar("insurance_plan_id").references(() => insurancePlans.id),
+//   requestDate: timestamp("request_date").defaultNow().notNull(),
+//   requestedBy: varchar("requested_by").references(() => users.id),
+//   serviceType: varchar("service_type", { length: 100 }),
+//   procedureCodes: jsonb("procedure_codes"),
+//   diagnosisCodes: jsonb("diagnosis_codes"),
+//   status: varchar("status", { length: 50 }).default("pending"),
+//   authorizationNumber: varchar("authorization_number", { length: 100 }),
+//   approvedUnits: integer("approved_units"),
+//   approvedAmount: decimal("approved_amount", { precision: 10, scale: 2 }),
+//   effectiveDate: timestamp("effective_date"),
+//   expirationDate: timestamp("expiration_date"),
+//   denialReason: text("denial_reason"),
+//   notes: text("notes"),
+//   responseData: jsonb("response_data"),
+//   createdAt: timestamp("created_at").defaultNow().notNull(),
+//   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+// });
+//
+// export type Preauthorization = typeof preauthorizations.$inferSelect;
+// export type InsertPreauthorization = typeof preauthorizations.$inferInsert;
+//
 // Medical Claims Table (for BillingService)
-export const medicalClaims = pgTable("medical_claims", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
-  patientId: varchar("patient_id").notNull().references(() => patients.id, { onDelete: 'cascade' }),
-  insurancePlanId: varchar("insurance_plan_id").references(() => insurancePlans.id),
-  claimNumber: varchar("claim_number", { length: 50 }).notNull(),
-  claimType: varchar("claim_type", { length: 50 }).default("professional"),
-  status: varchar("status", { length: 50 }).default("draft"),
-  serviceDate: timestamp("service_date").notNull(),
-  placeOfService: varchar("place_of_service", { length: 10 }),
-  diagnosisCodes: jsonb("diagnosis_codes"),
-  totalCharges: decimal("total_charges", { precision: 10, scale: 2 }),
-  allowedAmount: decimal("allowed_amount", { precision: 10, scale: 2 }),
-  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }),
-  patientResponsibility: decimal("patient_responsibility", { precision: 10, scale: 2 }),
-  adjustmentAmount: decimal("adjustment_amount", { precision: 10, scale: 2 }),
-  adjustmentReasons: jsonb("adjustment_reasons"),
-  submittedAt: timestamp("submitted_at"),
-  processedAt: timestamp("processed_at"),
-  denialReason: text("denial_reason"),
-  notes: text("notes"),
-  createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export type MedicalClaim = typeof medicalClaims.$inferSelect;
-export type InsertMedicalClaim = typeof medicalClaims.$inferInsert;
-
+/* DUPLICATE - medicalClaims table moved to insurance domain */
+// export const medicalClaims = pgTable("medical_claims", {
+//   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+//   patientId: varchar("patient_id").notNull().references(() => patients.id, { onDelete: 'cascade' }),
+//   insurancePlanId: varchar("insurance_plan_id").references(() => insurancePlans.id),
+//   claimNumber: varchar("claim_number", { length: 50 }).notNull(),
+//   claimType: varchar("claim_type", { length: 50 }).default("professional"),
+//   status: varchar("status", { length: 50 }).default("draft"),
+//   serviceDate: timestamp("service_date").notNull(),
+//   placeOfService: varchar("place_of_service", { length: 10 }),
+//   diagnosisCodes: jsonb("diagnosis_codes"),
+//   totalCharges: decimal("total_charges", { precision: 10, scale: 2 }),
+//   allowedAmount: decimal("allowed_amount", { precision: 10, scale: 2 }),
+//   paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }),
+//   patientResponsibility: decimal("patient_responsibility", { precision: 10, scale: 2 }),
+//   adjustmentAmount: decimal("adjustment_amount", { precision: 10, scale: 2 }),
+//   adjustmentReasons: jsonb("adjustment_reasons"),
+//   submittedAt: timestamp("submitted_at"),
+//   processedAt: timestamp("processed_at"),
+//   denialReason: text("denial_reason"),
+//   notes: text("notes"),
+//   createdBy: varchar("created_by").references(() => users.id),
+//   createdAt: timestamp("created_at").defaultNow().notNull(),
+//   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+// });
+//
+// export type MedicalClaim = typeof medicalClaims.$inferSelect;
+// export type InsertMedicalClaim = typeof medicalClaims.$inferInsert;
+//
 // Payments Table (for BillingService)
 /* DUPLICATE - Moved to modular schema
 export const payments = pgTable("payments", {

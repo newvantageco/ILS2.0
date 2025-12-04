@@ -68,6 +68,9 @@ export * from './lab';
 // EHR Domain - electronic health records, medications, allergies, clinical notes
 export * from './ehr';
 
+// Insurance Domain - claims, payers, eligibility, preauthorizations
+export * from './insurance';
+
 // ============================================
 // BACKWARD COMPATIBILITY REMOVED
 // ============================================
