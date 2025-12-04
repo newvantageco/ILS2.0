@@ -57,6 +57,7 @@ import {
   TestTube,
   ClipboardList,
   TrendingUp,
+  Plus,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "wouter";
@@ -92,6 +93,22 @@ export default function PlatformAdminPage() {
   const [editFormData, setEditFormData] = useState({
     role: "",
     accountStatus: "",
+  });
+
+  // Create company state
+  const [isCreateCompanyOpen, setIsCreateCompanyOpen] = useState(false);
+  const [createCompanyForm, setCreateCompanyForm] = useState({
+    name: "",
+    type: "ecp",
+    email: "",
+    phone: "",
+    website: "",
+    subscriptionPlan: "free",
+    exemptFromSubscription: true,
+    adminFirstName: "",
+    adminLastName: "",
+    adminEmail: "",
+    adminPassword: "",
   });
 
   // Fetch all users
@@ -197,6 +214,53 @@ export default function PlatformAdminPage() {
       });
       setIsEditUserOpen(false);
       setSelectedUser(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Create company mutation
+  const createCompanyMutation = useMutation({
+    mutationFn: async (companyData: typeof createCompanyForm) => {
+      const response = await fetch("/api/company-admin/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(companyData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create company");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/platform-admin/companies"] });
+      toast({
+        title: "Company Created",
+        description: "Company has been created successfully without subscription requirements.",
+      });
+      setIsCreateCompanyOpen(false);
+      setCreateCompanyForm({
+        name: "",
+        type: "ecp",
+        email: "",
+        phone: "",
+        website: "",
+        subscriptionPlan: "free",
+        exemptFromSubscription: true,
+        adminFirstName: "",
+        adminLastName: "",
+        adminEmail: "",
+        adminPassword: "",
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -654,10 +718,18 @@ export default function PlatformAdminPage() {
         <TabsContent value="companies" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>All Companies</CardTitle>
-              <CardDescription>
-                View and manage company registrations
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>All Companies</CardTitle>
+                  <CardDescription>
+                    View and manage company registrations
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setIsCreateCompanyOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Company
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {loadingCompanies ? (
@@ -875,6 +947,149 @@ export default function PlatformAdminPage() {
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Company Dialog */}
+      <Dialog open={isCreateCompanyOpen} onOpenChange={setIsCreateCompanyOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Company</DialogTitle>
+            <DialogDescription>
+              Create a company exempt from subscription requirements. This company will have full platform access without payment.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium">Company Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="companyName">Company Name *</Label>
+                  <Input
+                    id="companyName"
+                    value={createCompanyForm.name}
+                    onChange={(e) => setCreateCompanyForm({ ...createCompanyForm, name: e.target.value })}
+                    placeholder="Acme Eyecare"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="companyType">Company Type *</Label>
+                  <Select
+                    value={createCompanyForm.type}
+                    onValueChange={(value) => setCreateCompanyForm({ ...createCompanyForm, type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ecp">Eyecare Practice</SelectItem>
+                      <SelectItem value="lab">Laboratory</SelectItem>
+                      <SelectItem value="supplier">Supplier</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="companyEmail">Company Email *</Label>
+                  <Input
+                    id="companyEmail"
+                    type="email"
+                    value={createCompanyForm.email}
+                    onChange={(e) => setCreateCompanyForm({ ...createCompanyForm, email: e.target.value })}
+                    placeholder="contact@acmeeyecare.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="companyPhone">Phone Number</Label>
+                  <Input
+                    id="companyPhone"
+                    value={createCompanyForm.phone}
+                    onChange={(e) => setCreateCompanyForm({ ...createCompanyForm, phone: e.target.value })}
+                    placeholder="+1 (555) 123-4567"
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="companyWebsite">Website</Label>
+                  <Input
+                    id="companyWebsite"
+                    value={createCompanyForm.website}
+                    onChange={(e) => setCreateCompanyForm({ ...createCompanyForm, website: e.target.value })}
+                    placeholder="https://acmeeyecare.com"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="text-sm font-medium">Admin User (Optional)</h3>
+              <p className="text-sm text-muted-foreground">Create an admin user for this company</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="adminFirstName">First Name</Label>
+                  <Input
+                    id="adminFirstName"
+                    value={createCompanyForm.adminFirstName}
+                    onChange={(e) => setCreateCompanyForm({ ...createCompanyForm, adminFirstName: e.target.value })}
+                    placeholder="John"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="adminLastName">Last Name</Label>
+                  <Input
+                    id="adminLastName"
+                    value={createCompanyForm.adminLastName}
+                    onChange={(e) => setCreateCompanyForm({ ...createCompanyForm, adminLastName: e.target.value })}
+                    placeholder="Doe"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="adminEmail">Admin Email</Label>
+                  <Input
+                    id="adminEmail"
+                    type="email"
+                    value={createCompanyForm.adminEmail}
+                    onChange={(e) => setCreateCompanyForm({ ...createCompanyForm, adminEmail: e.target.value })}
+                    placeholder="admin@acmeeyecare.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="adminPassword">Admin Password</Label>
+                  <Input
+                    id="adminPassword"
+                    type="password"
+                    value={createCompanyForm.adminPassword}
+                    onChange={(e) => setCreateCompanyForm({ ...createCompanyForm, adminPassword: e.target.value })}
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 border-t pt-4">
+              <div className="flex items-center justify-between rounded-lg border p-4 bg-green-50 dark:bg-green-950">
+                <div className="space-y-0.5">
+                  <div className="text-sm font-medium">Subscription Exempt</div>
+                  <div className="text-sm text-muted-foreground">
+                    This company will have free, unlimited access to the platform
+                  </div>
+                </div>
+                <Badge variant="default" className="bg-green-600">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Exempt
+                </Badge>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateCompanyOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createCompanyMutation.mutate(createCompanyForm)}
+              disabled={!createCompanyForm.name || !createCompanyForm.email || !createCompanyForm.type || createCompanyMutation.isPending}
+            >
+              {createCompanyMutation.isPending ? "Creating..." : "Create Company"}
             </Button>
           </DialogFooter>
         </DialogContent>

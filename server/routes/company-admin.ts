@@ -20,12 +20,12 @@ const logger = createLogger('company-admin');
 /**
  * POST /api/company-admin/companies
  * Create a new company (no subscription required)
- * Only company_admin can access this
+ * Only company_admin and platform_admin can access this
  */
 router.post(
   '/companies',
   authenticateJWT,
-  requireRole(['company_admin']),
+  requireRole(['company_admin', 'platform_admin']),
   async (req: Request, res: Response) => {
     try {
       const {
