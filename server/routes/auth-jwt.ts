@@ -102,7 +102,7 @@ function clearFailedAttempts(email: string): void {
 // Validation schemas
 const loginSchema = z.object({
   email: z.string().email('Invalid email format'),
-  password: z.string().min(1, 'Password is required')
+  password: z.string().min(12, 'Password must be at least 12 characters')
 });
 
 const refreshSchema = z.object({

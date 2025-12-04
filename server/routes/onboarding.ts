@@ -150,6 +150,7 @@ router.post('/signup', async (req: Request, res: Response) => {
       roles: [finalRole],
       companyId: newCompany.id, // CRITICAL: Associate user with company immediately
       accountStatus: 'active', // Auto-activate since they created the company
+      isEmailVerified: true, // Auto-verify company creators (they own the company)
       subscriptionPlan: newCompany.subscriptionPlan,
       organizationName: companyName,
     } as any);

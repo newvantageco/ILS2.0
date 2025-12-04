@@ -87,6 +87,7 @@ JWT_SECRET=$(openssl rand -hex 32 2>/dev/null || head -c 64 /dev/urandom | base6
 CSRF_SECRET=$(openssl rand -hex 32 2>/dev/null || head -c 64 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 64)
 
 # Set variables
+log_info "Setting environment variables..."
 railway variables set \
     NODE_ENV=production \
     PORT=5000 \
@@ -97,8 +98,12 @@ railway variables set \
     JWT_AUTH_REQUIRED=false \
     WORKERS_ENABLED=true \
     LOG_LEVEL=info \
-    METRICS_ENABLED=true \
-    2>/dev/null || true
+    METRICS_ENABLED=true
+
+if [ $? -ne 0 ]; then
+    log_error "Failed to set environment variables"
+    exit 1
+fi
 
 log_success "Core environment variables set"
 
@@ -119,8 +124,17 @@ log_info "=========================================="
 log_info "Waiting for deployment to complete..."
 sleep 10
 
-# Get the public domain
-RAILWAY_DOMAIN=$(railway domain 2>/dev/null || echo "")
+# Get the public domain (with retries)
+log_info "Getting Railway domain..."
+RAILWAY_DOMAIN=""
+for i in {1..5}; do
+    RAILWAY_DOMAIN=$(railway domain 2>/dev/null || echo "")
+    if [ -n "$RAILWAY_DOMAIN" ]; then
+        break
+    fi
+    log_warn "Domain not ready yet, retrying in 10s... ($i/5)"
+    sleep 10
+done
 
 if [ -n "$RAILWAY_DOMAIN" ]; then
     log_success "Backend deployed at: https://$RAILWAY_DOMAIN"
@@ -129,10 +143,17 @@ if [ -n "$RAILWAY_DOMAIN" ]; then
     railway variables set \
         CORS_ORIGIN="https://$RAILWAY_DOMAIN" \
         APP_URL="https://$RAILWAY_DOMAIN" \
-        BASE_URL="https://$RAILWAY_DOMAIN" \
-        2>/dev/null || true
+        BASE_URL="https://$RAILWAY_DOMAIN"
+    
+    if [ $? -ne 0 ]; then
+        log_warn "Failed to set URL variables. Set manually in Railway dashboard."
+    fi
 else
-    log_warn "Could not get domain. Set CORS_ORIGIN manually in Railway dashboard."
+    log_error "Could not get Railway domain after 5 attempts"
+    log_warn "MANUAL ACTION REQUIRED:"
+    log_warn "1. Go to Railway dashboard: https://railway.app/dashboard"
+    log_warn "2. Generate domain for your service"
+    log_warn "3. Run: railway variables set CORS_ORIGIN=https://your-domain.railway.app"
 fi
 
 echo ""
