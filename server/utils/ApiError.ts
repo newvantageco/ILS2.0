@@ -212,48 +212,11 @@ export function toApiError(error: any): ApiError {
 // DOMAIN-SPECIFIC ERROR RE-EXPORTS
 // ============================================
 
-export {
-  ErrorCodes,
-  // Patient errors
-  PatientNotFoundError,
-  PatientDuplicateError,
-  PatientNHSNumberInvalidError,
-  PatientConsentRequiredError,
-  PatientGDPRDeletionError,
-  // Clinical errors
-  ExaminationNotFoundError,
-  PrescriptionExpiredError,
-  PrescriptionInvalidError,
-  ReferralRequiredError,
-  // Inventory errors
-  ProductNotFoundError,
-  ProductOutOfStockError,
-  InsufficientStockError,
-  ProductDiscontinuedError,
-  InventoryLockedError,
-  DuplicateBarcodeError,
-  // Order errors
-  OrderNotFoundError,
-  OrderCannotModifyError,
-  OrderCannotCancelError,
-  OrderDispensingError,
-  // Billing errors
-  InvoiceNotFoundError,
-  InvoiceAlreadyPaidError,
-  InvoiceVoidedError,
-  PaymentAmountInvalidError,
-  RefundExceedsPaidError,
-  // NHS errors
-  NHSNumberInvalidError,
-  NHSClaimInvalidError,
-  NHSVoucherExpiredError,
-  NHSExemptionInvalidError,
-  NHSPractitionerNotFoundError,
-  NHSPCSESubmissionError,
-  // Tenant isolation errors
-  CrossTenantAccessError,
-  TenantContextMissingError,
-  TenantMismatchError,
-  TenantQuotaExceededError,
-  TenantFeatureDisabledError,
-} from './DomainErrors';
+// REMOVED: Circular dependency fix
+// Previously re-exported DomainErrors here, which created a circular dependency:
+// ApiError.ts → DomainErrors.ts → ApiError.ts
+//
+// MIGRATION: Import domain errors directly from DomainErrors.ts instead:
+// import { PatientNotFoundError, OrderNotFoundError, ... } from './utils/DomainErrors';
+//
+// This was causing: ReferenceError: Cannot access 'ApiError' before initialization

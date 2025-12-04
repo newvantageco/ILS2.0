@@ -8,7 +8,9 @@ import passport from "passport";
 import compression from "compression";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
-import { registerRoutes } from "./routes";
+// OLD: import { registerRoutes } from "./routes"; // 6,295-line monolith (DEPRECATED)
+import { registerDomainRoutes, registerLegacyAIRoutes } from "./routes/domains";
+import { createServer, type Server } from "http";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupLocalAuth } from "./localAuth";
 import { ensureMasterUser } from "./masterUser";
@@ -488,8 +490,16 @@ app.get('/api/diagnostic/filesystem', (req: Request, res: Response) => {
     // Routes will be registered, then static files served at the end
     // Don't intercept root route - let it fall through to static file server
 
-    const server = await registerRoutes(app);
-    log("Routes registered successfully");
+    // Register modern domain-based routes
+    registerDomainRoutes(app);
+
+    // Register legacy AI routes with deprecation warnings (will be removed in future)
+    registerLegacyAIRoutes(app);
+
+    log("✅ Domain routes registered successfully (6,295-line monolith REPLACED!)");
+
+    // Create HTTP server (previously done inside registerRoutes)
+    const server = createServer(app);
 
     // ============== VITE / STATIC FILE SERVING ==============
     // Setup Vite in development or static serving in production
