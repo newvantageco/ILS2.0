@@ -74,6 +74,9 @@ export * from './insurance';
 // Quality Domain - quality measures, star ratings, gap analyses, dashboards
 export * from './quality';
 
+// Population Health Domain - risk stratification, predictive analytics, SDOH
+export * from './populationhealth';
+
 // ============================================
 // BACKWARD COMPATIBILITY REMOVED
 // ============================================
