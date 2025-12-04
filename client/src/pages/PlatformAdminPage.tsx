@@ -227,9 +227,20 @@ export default function PlatformAdminPage() {
   // Create company mutation
   const createCompanyMutation = useMutation({
     mutationFn: async (companyData: typeof createCompanyForm) => {
+      // Get JWT token from localStorage
+      const accessToken = localStorage.getItem('ils_access_token');
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      // Add Authorization header with JWT token
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
       const response = await fetch("/api/company-admin/companies", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         credentials: "include",
         body: JSON.stringify(companyData),
       });
