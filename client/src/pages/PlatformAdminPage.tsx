@@ -30,21 +30,36 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  Shield, 
-  Users, 
-  Building2, 
-  Key, 
-  Trash2, 
-  Edit, 
+import {
+  Shield,
+  Users,
+  Building2,
+  Key,
+  Trash2,
+  Edit,
   Search,
   CheckCircle,
   XCircle,
   Clock,
   UserX,
   RotateCcw,
+  LayoutDashboard,
+  Activity,
+  Settings,
+  Brain,
+  Zap,
+  ShoppingCart,
+  Heart,
+  BarChart3,
+  Flag,
+  FileText,
+  Stethoscope,
+  TestTube,
+  ClipboardList,
+  TrendingUp,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Link } from "wouter";
 
 interface User {
   id: string;
@@ -252,8 +267,12 @@ export default function PlatformAdminPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="users" className="space-y-6">
+      <Tabs defaultValue="dashboard" className="space-y-6">
         <TabsList>
+          <TabsTrigger value="dashboard" className="gap-2">
+            <LayoutDashboard className="h-4 w-4" />
+            Dashboard
+          </TabsTrigger>
           <TabsTrigger value="users" className="gap-2">
             <Users className="h-4 w-4" />
             Users
@@ -263,6 +282,272 @@ export default function PlatformAdminPage() {
             Companies
           </TabsTrigger>
         </TabsList>
+
+        {/* Dashboard Tab */}
+        <TabsContent value="dashboard" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {/* User & Company Management */}
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  User Management
+                </CardTitle>
+                <CardDescription>Manage all user accounts and permissions</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Link href="/platform-admin/users">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Users className="h-4 w-4 mr-2" />
+                    View All Users
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  Company Management
+                </CardTitle>
+                <CardDescription>Manage companies and approvals</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Link href="/platform-admin/companies">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Building2 className="h-4 w-4 mr-2" />
+                    View Companies
+                  </Button>
+                </Link>
+                <Link href="/platform-admin/company-approvals">
+                  <Button variant="outline" className="w-full justify-start">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Company Approvals
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            {/* System Administration */}
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  System Health
+                </CardTitle>
+                <CardDescription>Monitor system status and health</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Link href="/platform-admin/system-health">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Activity className="h-4 w-4 mr-2" />
+                    System Health
+                  </Button>
+                </Link>
+                <Link href="/platform-admin/service-status">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Zap className="h-4 w-4 mr-2" />
+                    Service Status
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  System Configuration
+                </CardTitle>
+                <CardDescription>Platform settings and configuration</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Link href="/platform-admin/system-config">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Settings className="h-4 w-4 mr-2" />
+                    System Config
+                  </Button>
+                </Link>
+                <Link href="/platform-admin/settings">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Platform Settings
+                  </Button>
+                </Link>
+                <Link href="/platform-admin/feature-flags">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Flag className="h-4 w-4 mr-2" />
+                    Feature Flags
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-5 w-5" />
+                  API Management
+                </CardTitle>
+                <CardDescription>API keys and documentation</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Link href="/platform-admin/api-keys">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Key className="h-4 w-4 mr-2" />
+                    API Keys
+                  </Button>
+                </Link>
+                <Link href="/platform-admin/api-docs">
+                  <Button variant="outline" className="w-full justify-start">
+                    <FileText className="h-4 w-4 mr-2" />
+                    API Documentation
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            {/* AI/ML Models */}
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="h-5 w-5" />
+                  AI/ML Models
+                </CardTitle>
+                <CardDescription>Manage AI and ML models</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Link href="/platform-admin/ai-models">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Brain className="h-4 w-4 mr-2" />
+                    AI Models
+                  </Button>
+                </Link>
+                <Link href="/platform-admin/ml-models">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Brain className="h-4 w-4 mr-2" />
+                    ML Models
+                  </Button>
+                </Link>
+                <Link href="/platform-admin/python-ml">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Brain className="h-4 w-4 mr-2" />
+                    Python ML Dashboard
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            {/* Integrations */}
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingCart className="h-5 w-5" />
+                  Integrations
+                </CardTitle>
+                <CardDescription>External system integrations</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Link href="/platform-admin/shopify">
+                  <Button variant="outline" className="w-full justify-start">
+                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    Shopify Integration
+                  </Button>
+                </Link>
+                <Link href="/platform-admin/nhs">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Heart className="h-4 w-4 mr-2" />
+                    NHS Integration
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            {/* Healthcare */}
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Stethoscope className="h-5 w-5" />
+                  Healthcare
+                </CardTitle>
+                <CardDescription>Healthcare and clinical systems</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Link href="/platform-admin/healthcare-analytics">
+                  <Button variant="outline" className="w-full justify-start">
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Healthcare Analytics
+                  </Button>
+                </Link>
+                <Link href="/platform-admin/practice-management">
+                  <Button variant="outline" className="w-full justify-start">
+                    <ClipboardList className="h-4 w-4 mr-2" />
+                    Practice Management
+                  </Button>
+                </Link>
+                <Link href="/platform-admin/laboratory">
+                  <Button variant="outline" className="w-full justify-start">
+                    <TestTube className="h-4 w-4 mr-2" />
+                    Laboratory Integration
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            {/* Analytics */}
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Analytics & Metrics
+                </CardTitle>
+                <CardDescription>Business intelligence and SaaS metrics</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Link href="/platform-admin/saas-metrics">
+                  <Button variant="outline" className="w-full justify-start">
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    SaaS Metrics
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{users?.length || 0}</div>
+                <p className="text-xs text-muted-foreground">Across all companies</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium">Total Companies</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{companies?.length || 0}</div>
+                <p className="text-xs text-muted-foreground">Active and pending</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {users?.filter(u => u.accountStatus === 'active').length || 0}
+                </div>
+                <p className="text-xs text-muted-foreground">Currently active</p>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
         {/* Users Tab */}
         <TabsContent value="users" className="space-y-4">
