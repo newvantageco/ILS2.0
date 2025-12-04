@@ -56,6 +56,9 @@ export * from './healthcare';
 // Appointments Domain - scheduling, bookings, calendar management
 export * from './appointments';
 
+// Contact Lens Domain - assessments, fittings, prescriptions, aftercare
+export * from './contactlens';
+
 // ============================================
 // BACKWARD COMPATIBILITY REMOVED
 // ============================================
