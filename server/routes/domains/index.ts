@@ -26,6 +26,7 @@ import analyticsRoutes, { registerBiRoutes, registerSaaSRoutes, pythonAnalyticsR
 import healthcareRoutes from './healthcare';
 import integrationsRoutes, { shopifyWebhookRoutes } from './integrations';
 import systemRoutes from './system';
+import onboardingRoutes from '../onboarding';
 
 // Middleware imports
 import { secureRoute } from '../../middleware/secureRoute';
@@ -57,6 +58,11 @@ const domainRoutes: DomainConfig[] = [
     path: '/api/auth',
     router: authRoutes,
     description: 'Authentication services',
+  },
+  {
+    path: '/api/onboarding',
+    router: onboardingRoutes,
+    description: 'User onboarding and signup',
   },
   {
     path: '/api/admin',

@@ -208,10 +208,7 @@ if (process.env.NODE_ENV === 'production') {
 app.use('/api', globalRateLimiter);
 
 // Apply strict auth rate limiter (5 attempts/15min per IP)
-app.use('/api/auth/login', authRateLimiter);
-app.use('/api/auth/login-email', authRateLimiter);
-app.use('/api/auth/signup', authRateLimiter);
-app.use('/api/auth/signup-email', authRateLimiter);
+app.use('/api/auth/jwt/login', authRateLimiter);
 app.use('/api/auth/forgot-password', authRateLimiter);
 app.use('/api/auth/reset-password', authRateLimiter);
 app.use('/api/patient-portal/auth/forgot-password', authRateLimiter);
@@ -298,13 +295,10 @@ const csrfEnabled = process.env.CSRF_ENABLED !== 'false';
 // CSRF token flow implemented: frontend fetches token from /api/csrf-token and sends in X-CSRF-Token header
 const csrfExemptPaths = [
   '/api/csrf-token', // CSRF token endpoint must be exempt (it generates the token)
-  '/api/auth/login',
-  '/api/auth/login-email',
-  '/api/auth/signup',
-  '/api/auth/signup-email',
+  '/api/auth/jwt/login',
   '/api/auth/forgot-password',
   '/api/auth/reset-password',
-  '/api/auth/verify-email',
+  '/api/auth/verify',
   '/api/auth/google',
   '/api/auth/google/callback',
   '/api/onboarding',
