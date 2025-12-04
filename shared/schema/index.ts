@@ -80,6 +80,9 @@ export * from './populationhealth';
 // Campaigns Domain - marketing campaigns, audience segments, campaign tracking
 export * from './campaigns';
 
+// CDS Domain - clinical decision support, drug interactions, guidelines, alerts
+export * from './cds';
+
 // ============================================
 // BACKWARD COMPATIBILITY REMOVED
 // ============================================
