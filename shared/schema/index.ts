@@ -89,6 +89,9 @@ export * from './workflows';
 // Predictive Domain - ML/AI predictions, risk stratification, outcome forecasting
 export * from './predictive';
 
+// Care Coordination Domain - care teams, care gaps, transitions of care, patient outreach
+export * from './carecoordination';
+
 // ============================================
 // BACKWARD COMPATIBILITY REMOVED
 // ============================================
