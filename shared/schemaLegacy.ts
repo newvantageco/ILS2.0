@@ -6602,187 +6602,192 @@ export const messages = pgTable(
   })
 ); */
 
-/**
- * Unsubscribes Table
- * Tracks user opt-outs from communications
+/* DUPLICATE - unsubscribes table moved to communications domain */
+// /**
+//  * Unsubscribes Table
+//  * Tracks user opt-outs from communications
 //  */
-export const unsubscribes = pgTable(
-  "unsubscribes",
-  {
-    id: text("id").primaryKey(),
-    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-    recipientId: text("recipient_id").notNull(),
-    channel: communicationChannelEnum("channel").notNull(),
-    category: messageCategoryEnum("category"),
-    unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }).notNull().defaultNow(),
-    reason: text("reason"),
-  },
-  (table) => ({
-    companyIdx: index("unsubscribes_company_idx").on(table.companyId),
-    recipientIdx: index("unsubscribes_recipient_idx").on(table.recipientId),
-    channelIdx: index("unsubscribes_channel_idx").on(table.channel),
-    categoryIdx: index("unsubscribes_category_idx").on(table.category),
+// export const unsubscribes = pgTable(
+//   "unsubscribes",
+//   {
+//     id: text("id").primaryKey(),
+//     companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+//     recipientId: text("recipient_id").notNull(),
+//     channel: communicationChannelEnum("channel").notNull(),
+//     category: messageCategoryEnum("category"),
+//     unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }).notNull().defaultNow(),
+//     reason: text("reason"),
+//   },
+//   (table) => ({
+//     companyIdx: index("unsubscribes_company_idx").on(table.companyId),
+//     recipientIdx: index("unsubscribes_recipient_idx").on(table.recipientId),
+//     channelIdx: index("unsubscribes_channel_idx").on(table.channel),
+//     categoryIdx: index("unsubscribes_category_idx").on(table.category),
     // Unique constraint: one unsubscribe per recipient+channel+category
-    uniqueUnsubscribe: index("unsubscribes_unique_idx").on(
-      table.recipientId,
-      table.channel,
-      table.category
-    ),
-  })
-);
+//     uniqueUnsubscribe: index("unsubscribes_unique_idx").on(
+//       table.recipientId,
+//       table.channel,
+//       table.category
+//     ),
+//   })
+// );
 
-/**
- * WhatsApp Message Events Table
- * Tracks WhatsApp-specific delivery events and provider data
+/* DUPLICATE - whatsappMessageStatusEnum + whatsappMessageEvents table moved to communications domain */
+// /**
+//  * WhatsApp Message Events Table
+//  * Tracks WhatsApp-specific delivery events and provider data
 //  */
-export const whatsappMessageStatusEnum = pgEnum("whatsapp_message_status", [
-  "queued",
-  "sent",
-  "delivered",
-  "read",
-  "failed",
-  "undelivered"
-]);
-
-export const whatsappMessageEvents = pgTable(
-  "whatsapp_message_events",
-  {
-    id: text("id").primaryKey(),
-    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-    messageId: text("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
-
+// export const whatsappMessageStatusEnum = pgEnum("whatsapp_message_status", [
+//   "queued",
+//   "sent",
+//   "delivered",
+//   "read",
+//   "failed",
+//   "undelivered"
+// ]);
+//
+// export const whatsappMessageEvents = pgTable(
+//   "whatsapp_message_events",
+//   {
+//     id: text("id").primaryKey(),
+//     companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+//     messageId: text("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
+//
     // Twilio WhatsApp Business API data
-    twilioMessageSid: text("twilio_message_sid"), // Twilio unique message ID
-    twilioAccountSid: text("twilio_account_sid"), // Twilio account identifier
-    twilioStatus: whatsappMessageStatusEnum("twilio_status"), // Twilio delivery status
-
+//     twilioMessageSid: text("twilio_message_sid"), // Twilio unique message ID
+//     twilioAccountSid: text("twilio_account_sid"), // Twilio account identifier
+//     twilioStatus: whatsappMessageStatusEnum("twilio_status"), // Twilio delivery status
+//
     // Phone numbers
-    from: text("from").notNull(), // Sender WhatsApp number (format: whatsapp:+1234567890)
-    to: text("to").notNull(), // Recipient WhatsApp number
-
+//     from: text("from").notNull(), // Sender WhatsApp number (format: whatsapp:+1234567890)
+//     to: text("to").notNull(), // Recipient WhatsApp number
+//
     // Message data
-    numSegments: integer("num_segments"), // Number of message segments
-    numMedia: integer("num_media").default(0), // Number of media attachments
-    mediaUrls: jsonb("media_urls").$type<string[]>(), // Media attachment URLs
-
+//     numSegments: integer("num_segments"), // Number of message segments
+//     numMedia: integer("num_media").default(0), // Number of media attachments
+//     mediaUrls: jsonb("media_urls").$type<string[]>(), // Media attachment URLs
+//
     // Pricing
-    price: decimal("price", { precision: 10, scale: 4 }), // Message cost
-    priceUnit: text("price_unit").default("USD"), // Currency
-
+//     price: decimal("price", { precision: 10, scale: 4 }), // Message cost
+//     priceUnit: text("price_unit").default("USD"), // Currency
+//
     // Status tracking
-    status: whatsappMessageStatusEnum("status").notNull().default("queued"),
-    errorCode: text("error_code"), // Error code if failed
-    errorMessage: text("error_message"), // Error description
-
+//     status: whatsappMessageStatusEnum("status").notNull().default("queued"),
+//     errorCode: text("error_code"), // Error code if failed
+//     errorMessage: text("error_message"), // Error description
+//
     // Timestamps
-    queuedAt: timestamp("queued_at", { withTimezone: true }),
-    sentAt: timestamp("sent_at", { withTimezone: true }),
-    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
-    readAt: timestamp("read_at", { withTimezone: true }),
-    failedAt: timestamp("failed_at", { withTimezone: true }),
-
+//     queuedAt: timestamp("queued_at", { withTimezone: true }),
+//     sentAt: timestamp("sent_at", { withTimezone: true }),
+//     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+//     readAt: timestamp("read_at", { withTimezone: true }),
+//     failedAt: timestamp("failed_at", { withTimezone: true }),
+//
     // Metadata
-    metadata: jsonb("metadata").$type<Record<string, any>>(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => ({
-    companyIdx: index("whatsapp_events_company_idx").on(table.companyId),
-    messageIdx: index("whatsapp_events_message_idx").on(table.messageId),
-    twilioSidIdx: index("whatsapp_events_twilio_sid_idx").on(table.twilioMessageSid),
-    statusIdx: index("whatsapp_events_status_idx").on(table.status),
-    sentAtIdx: index("whatsapp_events_sent_at_idx").on(table.sentAt),
-  })
-);
+//     metadata: jsonb("metadata").$type<Record<string, any>>(),
+//     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+//     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+//   },
+//   (table) => ({
+//     companyIdx: index("whatsapp_events_company_idx").on(table.companyId),
+//     messageIdx: index("whatsapp_events_message_idx").on(table.messageId),
+//     twilioSidIdx: index("whatsapp_events_twilio_sid_idx").on(table.twilioMessageSid),
+//     statusIdx: index("whatsapp_events_status_idx").on(table.status),
+//     sentAtIdx: index("whatsapp_events_sent_at_idx").on(table.sentAt),
+//   })
+// );
 
-/**
- * SMS Message Events Table
- * Tracks SMS-specific delivery events and provider data
+/* DUPLICATE - smsMessageStatusEnum + smsMessageEvents table moved to communications domain */
+// /**
+//  * SMS Message Events Table
+//  * Tracks SMS-specific delivery events and provider data
 //  */
-export const smsMessageStatusEnum = pgEnum("sms_message_status", [
-  "queued",
-  "sent",
-  "delivered",
-  "failed",
-  "undelivered"
-]);
-
-export const smsMessageEvents = pgTable(
-  "sms_message_events",
-  {
-    id: text("id").primaryKey(),
-    companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-    messageId: text("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
-
+// export const smsMessageStatusEnum = pgEnum("sms_message_status", [
+//   "queued",
+//   "sent",
+//   "delivered",
+//   "failed",
+//   "undelivered"
+// ]);
+//
+// export const smsMessageEvents = pgTable(
+//   "sms_message_events",
+//   {
+//     id: text("id").primaryKey(),
+//     companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+//     messageId: text("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
+//
     // Twilio SMS API data
-    twilioMessageSid: text("twilio_message_sid"), // Twilio unique message ID
-    twilioAccountSid: text("twilio_account_sid"), // Twilio account identifier
-    twilioStatus: smsMessageStatusEnum("twilio_status"), // Twilio delivery status
-
+//     twilioMessageSid: text("twilio_message_sid"), // Twilio unique message ID
+//     twilioAccountSid: text("twilio_account_sid"), // Twilio account identifier
+//     twilioStatus: smsMessageStatusEnum("twilio_status"), // Twilio delivery status
+//
     // Phone numbers
-    from: text("from").notNull(), // Sender phone number
-    to: text("to").notNull(), // Recipient phone number
-
+//     from: text("from").notNull(), // Sender phone number
+//     to: text("to").notNull(), // Recipient phone number
+//
     // Message data
-    body: text("body").notNull(), // SMS body text
-    numSegments: integer("num_segments"), // Number of SMS segments
-    numMedia: integer("num_media").default(0), // Number of MMS attachments
-    mediaUrls: jsonb("media_urls").$type<string[]>(), // MMS attachment URLs
-
+//     body: text("body").notNull(), // SMS body text
+//     numSegments: integer("num_segments"), // Number of SMS segments
+//     numMedia: integer("num_media").default(0), // Number of MMS attachments
+//     mediaUrls: jsonb("media_urls").$type<string[]>(), // MMS attachment URLs
+//
     // Carrier information
-    carrierName: text("carrier_name"), // Recipient's carrier
-    carrierType: text("carrier_type"), // mobile, landline, voip
-
+//     carrierName: text("carrier_name"), // Recipient's carrier
+//     carrierType: text("carrier_type"), // mobile, landline, voip
+//
     // Pricing
-    price: decimal("price", { precision: 10, scale: 4 }), // Message cost
-    priceUnit: text("price_unit").default("USD"), // Currency
-
+//     price: decimal("price", { precision: 10, scale: 4 }), // Message cost
+//     priceUnit: text("price_unit").default("USD"), // Currency
+//
     // Status tracking
-    status: smsMessageStatusEnum("status").notNull().default("queued"),
-    errorCode: text("error_code"), // Error code if failed
-    errorMessage: text("error_message"), // Error description
-
+//     status: smsMessageStatusEnum("status").notNull().default("queued"),
+//     errorCode: text("error_code"), // Error code if failed
+//     errorMessage: text("error_message"), // Error description
+//
     // Timestamps
-    queuedAt: timestamp("queued_at", { withTimezone: true }),
-    sentAt: timestamp("sent_at", { withTimezone: true }),
-    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
-    failedAt: timestamp("failed_at", { withTimezone: true }),
-
+//     queuedAt: timestamp("queued_at", { withTimezone: true }),
+//     sentAt: timestamp("sent_at", { withTimezone: true }),
+//     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+//     failedAt: timestamp("failed_at", { withTimezone: true }),
+//
     // Metadata
-    metadata: jsonb("metadata").$type<Record<string, any>>(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => ({
-    companyIdx: index("sms_events_company_idx").on(table.companyId),
-    messageIdx: index("sms_events_message_idx").on(table.messageId),
-    twilioSidIdx: index("sms_events_twilio_sid_idx").on(table.twilioMessageSid),
-    statusIdx: index("sms_events_status_idx").on(table.status),
-    sentAtIdx: index("sms_events_sent_at_idx").on(table.sentAt),
-    toIdx: index("sms_events_to_idx").on(table.to),
-  })
-);
+//     metadata: jsonb("metadata").$type<Record<string, any>>(),
+//     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+//     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+//   },
+//   (table) => ({
+//     companyIdx: index("sms_events_company_idx").on(table.companyId),
+//     messageIdx: index("sms_events_message_idx").on(table.messageId),
+//     twilioSidIdx: index("sms_events_twilio_sid_idx").on(table.twilioMessageSid),
+//     statusIdx: index("sms_events_status_idx").on(table.status),
+//     sentAtIdx: index("sms_events_sent_at_idx").on(table.sentAt),
+//     toIdx: index("sms_events_to_idx").on(table.to),
+//   })
+// );
 
 // Zod validation schemas for Communications tables
 /* DUPLICATE - messageTemplate moved to modular schema */
 // export const insertMessageTemplateSchema = createInsertSchema(messageTemplates);
 /* DUPLICATE - message moved to modular schema */
 // export const insertMessageSchema = createInsertSchema(messages);
-export const insertUnsubscribeSchema = createInsertSchema(unsubscribes);
-export const insertWhatsappMessageEventSchema = createInsertSchema(whatsappMessageEvents);
-export const insertSmsMessageEventSchema = createInsertSchema(smsMessageEvents);
+/* DUPLICATE - Zod validation schemas for messaging moved to communications domain */
+// export const insertUnsubscribeSchema = createInsertSchema(unsubscribes);
+// export const insertWhatsappMessageEventSchema = createInsertSchema(whatsappMessageEvents);
+// export const insertSmsMessageEventSchema = createInsertSchema(smsMessageEvents);
 
 // TypeScript types
 export type MessageTemplate = typeof messageTemplates.$inferSelect;
 // export type InsertMessageTemplate = typeof messageTemplates.$inferInsert;
 export type Message = typeof messages.$inferSelect;
 // export type InsertMessage = typeof messages.$inferInsert;
-export type Unsubscribe = typeof unsubscribes.$inferSelect;
-export type InsertUnsubscribe = typeof unsubscribes.$inferInsert;
-export type WhatsappMessageEvent = typeof whatsappMessageEvents.$inferSelect;
-export type InsertWhatsappMessageEvent = typeof whatsappMessageEvents.$inferInsert;
-export type SmsMessageEvent = typeof smsMessageEvents.$inferSelect;
-export type InsertSmsMessageEvent = typeof smsMessageEvents.$inferInsert;
+/* DUPLICATE - TypeScript types for messaging moved to communications domain */
+// export type Unsubscribe = typeof unsubscribes.$inferSelect;
+// export type InsertUnsubscribe = typeof unsubscribes.$inferInsert;
+// export type WhatsappMessageEvent = typeof whatsappMessageEvents.$inferSelect;
+// export type InsertWhatsappMessageEvent = typeof whatsappMessageEvents.$inferInsert;
+// export type SmsMessageEvent = typeof smsMessageEvents.$inferSelect;
+// export type InsertSmsMessageEvent = typeof smsMessageEvents.$inferInsert;
 
 // ========== End Communications Tables ==========
 
