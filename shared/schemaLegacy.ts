@@ -9748,235 +9748,240 @@ export const immunizationStatusEnum = pgEnum("immunization_status", [
   "unknown"
 ]);
 
+/* DUPLICATE - medications table moved to ehr domain */
 // Medications
-export const medications = pgTable(
-  "medications",
-  {
-    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-    patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
-    practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
-    
+// export const medications = pgTable(
+//   "medications",
+//   {
+//     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//     companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+//     patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
+//     practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
+//
     // Medication details
-    medicationName: varchar("medication_name", { length: 255 }).notNull(),
-    genericName: varchar("generic_name", { length: 255 }),
-    ndcCode: varchar("ndc_code", { length: 20 }), // National Drug Code
-    dosage: varchar("dosage", { length: 100 }).notNull(),
-    route: varchar("route", { length: 50 }).notNull(), // oral, topical, etc.
-    frequency: varchar("frequency", { length: 100 }).notNull(),
-    instructions: text("instructions"),
-    
+//     medicationName: varchar("medication_name", { length: 255 }).notNull(),
+//     genericName: varchar("generic_name", { length: 255 }),
+//     ndcCode: varchar("ndc_code", { length: 20 }), // National Drug Code
+//     dosage: varchar("dosage", { length: 100 }).notNull(),
+//     route: varchar("route", { length: 50 }).notNull(), // oral, topical, etc.
+//     frequency: varchar("frequency", { length: 100 }).notNull(),
+//     instructions: text("instructions"),
+//
     // Prescription details
-    prescribedDate: timestamp("prescribed_date", { withTimezone: true }).notNull(),
-    startDate: timestamp("start_date", { withTimezone: true }),
-    endDate: timestamp("end_date", { withTimezone: true }),
-    status: medicationStatusEnum("status").notNull().default("active"),
-    
+//     prescribedDate: timestamp("prescribed_date", { withTimezone: true }).notNull(),
+//     startDate: timestamp("start_date", { withTimezone: true }),
+//     endDate: timestamp("end_date", { withTimezone: true }),
+//     status: medicationStatusEnum("status").notNull().default("active"),
+//
     // Prescribing information
-    reason: text("reason"),
-    quantity: integer("quantity"),
-    refills: integer("refills").default(0),
-    pharmacy: varchar("pharmacy", { length: 255 }),
-    
+//     reason: text("reason"),
+//     quantity: integer("quantity"),
+//     refills: integer("refills").default(0),
+//     pharmacy: varchar("pharmacy", { length: 255 }),
+//
     // Metadata
-    prescribedBy: varchar("prescribed_by").references(() => users.id),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-    
+//     prescribedBy: varchar("prescribed_by").references(() => users.id),
+//     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+//     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+//
     // External identifiers
-    externalPrescriptionId: varchar("external_prescription_id", { length: 100 }),
-  },
-  (table) => [
-    index("idx_medications_company").on(table.companyId),
-    index("idx_medications_patient").on(table.patientId),
-    index("idx_medications_practitioner").on(table.practitionerId),
-    index("idx_medications_status").on(table.status),
-    index("idx_medications_name").on(table.medicationName),
-    index("idx_medications_prescribed_date").on(table.prescribedDate),
-  ],
-);
+//     externalPrescriptionId: varchar("external_prescription_id", { length: 100 }),
+//   },
+//   (table) => [
+//     index("idx_medications_company").on(table.companyId),
+//     index("idx_medications_patient").on(table.patientId),
+//     index("idx_medications_practitioner").on(table.practitionerId),
+//     index("idx_medications_status").on(table.status),
+//     index("idx_medications_name").on(table.medicationName),
+//     index("idx_medications_prescribed_date").on(table.prescribedDate),
+//   ],
+// );
 
+/* DUPLICATE - allergies table moved to ehr domain */
 // Allergies
-export const allergies = pgTable(
-  "allergies",
-  {
-    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-    patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
-    practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
-    
+// export const allergies = pgTable(
+//   "allergies",
+//   {
+//     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//     companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+//     patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
+//     practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
+//
     // Allergy details
-    allergen: varchar("allergen", { length: 255 }).notNull(),
-    allergenType: varchar("allergen_type", { length: 50 }).notNull(), // medication, food, environmental
-    severity: allergySeverityEnum("severity").notNull(),
-    reaction: text("reaction").notNull(),
-    
+//     allergen: varchar("allergen", { length: 255 }).notNull(),
+//     allergenType: varchar("allergen_type", { length: 50 }).notNull(), // medication, food, environmental
+//     severity: allergySeverityEnum("severity").notNull(),
+//     reaction: text("reaction").notNull(),
+//
     // Status and dates
-    status: varchar("status", { length: 50 }).default("active"),
-    onsetDate: date("onset_date"),
-    reportedDate: timestamp("reported_date", { withTimezone: true }).defaultNow(),
-    
+//     status: varchar("status", { length: 50 }).default("active"),
+//     onsetDate: date("onset_date"),
+//     reportedDate: timestamp("reported_date", { withTimezone: true }).defaultNow(),
+//
     // Clinical notes
-    notes: text("notes"),
-    
+//     notes: text("notes"),
+//
     // Metadata
-    reportedBy: varchar("reported_by").references(() => users.id),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-  },
-  (table) => [
-    index("idx_allergies_company").on(table.companyId),
-    index("idx_allergies_patient").on(table.patientId),
-    index("idx_allergies_severity").on(table.severity),
-    index("idx_allergies_status").on(table.status),
-    index("idx_allergies_allergen").on(table.allergen),
-  ],
-);
+//     reportedBy: varchar("reported_by").references(() => users.id),
+//     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+//     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+//   },
+//   (table) => [
+//     index("idx_allergies_company").on(table.companyId),
+//     index("idx_allergies_patient").on(table.patientId),
+//     index("idx_allergies_severity").on(table.severity),
+//     index("idx_allergies_status").on(table.status),
+//     index("idx_allergies_allergen").on(table.allergen),
+//   ],
+// );
 
+/* DUPLICATE - clinicalNotes table moved to ehr domain */
 // Clinical Notes
-export const clinicalNotes = pgTable(
-  "clinical_notes",
-  {
-    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-    patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
-    practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
-    
+// export const clinicalNotes = pgTable(
+//   "clinical_notes",
+//   {
+//     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//     companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+//     patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
+//     practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
+//
     // Note details
-    noteType: clinicalNoteTypeEnum("note_type").notNull(),
-    title: varchar("title", { length: 255 }).notNull(),
-    content: text("content").notNull(),
-    
+//     noteType: clinicalNoteTypeEnum("note_type").notNull(),
+//     title: varchar("title", { length: 255 }).notNull(),
+//     content: text("content").notNull(),
+//
     // SOAP structure (Subjective, Objective, Assessment, Plan)
-    subjective: text("subjective"),
-    objective: text("objective"),
-    assessment: text("assessment"),
-    plan: text("plan"),
-    
+//     subjective: text("subjective"),
+//     objective: text("objective"),
+//     assessment: text("assessment"),
+//     plan: text("plan"),
+//
     // Date and time
-    noteDate: timestamp("note_date", { withTimezone: true }).notNull(),
-    serviceDate: timestamp("service_date", { withTimezone: true }),
-    
+//     noteDate: timestamp("note_date", { withTimezone: true }).notNull(),
+//     serviceDate: timestamp("service_date", { withTimezone: true }),
+//
     // Status and workflow
-    status: varchar("status", { length: 50 }).default("draft"),
-    isSigned: boolean("is_signed").default(false),
-    signedAt: timestamp("signed_at", { withTimezone: true }),
-    signedBy: varchar("signed_by").references(() => users.id),
-    
+//     status: varchar("status", { length: 50 }).default("draft"),
+//     isSigned: boolean("is_signed").default(false),
+//     signedAt: timestamp("signed_at", { withTimezone: true }),
+//     signedBy: varchar("signed_by").references(() => users.id),
+//
     // Metadata
-    createdBy: varchar("created_by").references(() => users.id),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-    
+//     createdBy: varchar("created_by").references(() => users.id),
+//     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+//     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+//
     // Attachments and references
-    appointmentId: varchar("appointment_id").references(() => appointments.id),
-    attachments: jsonb("attachments"), // Array of file references
-
+//     appointmentId: varchar("appointment_id").references(() => appointments.id),
+//     attachments: jsonb("attachments"), // Array of file references
+//
     // Soft Delete
-    deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    deletedBy: varchar("deleted_by").references(() => users.id),
-  },
-  (table) => [
-    index("idx_clinical_notes_company").on(table.companyId),
-    index("idx_clinical_notes_patient").on(table.patientId),
-    index("idx_clinical_notes_practitioner").on(table.practitionerId),
-    index("idx_clinical_notes_type").on(table.noteType),
-    index("idx_clinical_notes_date").on(table.noteDate),
-    index("idx_clinical_notes_status").on(table.status),
-    index("idx_clinical_notes_appointment").on(table.appointmentId),
-  ],
-);
+//     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+//     deletedBy: varchar("deleted_by").references(() => users.id),
+//   },
+//   (table) => [
+//     index("idx_clinical_notes_company").on(table.companyId),
+//     index("idx_clinical_notes_patient").on(table.patientId),
+//     index("idx_clinical_notes_practitioner").on(table.practitionerId),
+//     index("idx_clinical_notes_type").on(table.noteType),
+//     index("idx_clinical_notes_date").on(table.noteDate),
+//     index("idx_clinical_notes_status").on(table.status),
+//     index("idx_clinical_notes_appointment").on(table.appointmentId),
+//   ],
+// );
 
+/* DUPLICATE - vitalSigns table moved to ehr domain */
 // Vital Signs
-export const vitalSigns = pgTable(
-  "vital_signs",
-  {
-    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-    patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
-    practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
-    
+// export const vitalSigns = pgTable(
+//   "vital_signs",
+//   {
+//     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//     companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+//     patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
+//     practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
+//
     // Vital sign details
-    vitalType: vitalSignTypeEnum("vital_type").notNull(),
-    value: varchar("value", { length: 100 }).notNull(),
-    unit: varchar("unit", { length: 50 }).notNull(),
-    
+//     vitalType: vitalSignTypeEnum("vital_type").notNull(),
+//     value: varchar("value", { length: 100 }).notNull(),
+//     unit: varchar("unit", { length: 50 }).notNull(),
+//
     // Measurement details
-    measurementDate: timestamp("measurement_date", { withTimezone: true }).notNull(),
-    method: varchar("method", { length: 100 }), // How it was measured
-    position: varchar("position", { length: 50 }), // Patient position during measurement
-    
+//     measurementDate: timestamp("measurement_date", { withTimezone: true }).notNull(),
+//     method: varchar("method", { length: 100 }), // How it was measured
+//     position: varchar("position", { length: 50 }), // Patient position during measurement
+//
     // Clinical context
-    interpretation: varchar("interpretation", { length: 50 }), // normal, high, low, critical
-    notes: text("notes"),
-    
+//     interpretation: varchar("interpretation", { length: 50 }), // normal, high, low, critical
+//     notes: text("notes"),
+//
     // Metadata
-    measuredBy: varchar("measured_by").references(() => users.id),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-    
+//     measuredBy: varchar("measured_by").references(() => users.id),
+//     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+//
     // Device information
-    deviceId: varchar("device_id", { length: 100 }),
-    deviceType: varchar("device_type", { length: 100 }),
-
+//     deviceId: varchar("device_id", { length: 100 }),
+//     deviceType: varchar("device_type", { length: 100 }),
+//
     // Soft Delete
-    deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    deletedBy: varchar("deleted_by").references(() => users.id),
-  },
-  (table) => [
-    index("idx_vital_signs_company").on(table.companyId),
-    index("idx_vital_signs_patient").on(table.patientId),
-    index("idx_vital_signs_type").on(table.vitalType),
-    index("idx_vital_signs_date").on(table.measurementDate),
-    index("idx_vital_signs_interpretation").on(table.interpretation),
-  ],
-);
+//     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+//     deletedBy: varchar("deleted_by").references(() => users.id),
+//   },
+//   (table) => [
+//     index("idx_vital_signs_company").on(table.companyId),
+//     index("idx_vital_signs_patient").on(table.patientId),
+//     index("idx_vital_signs_type").on(table.vitalType),
+//     index("idx_vital_signs_date").on(table.measurementDate),
+//     index("idx_vital_signs_interpretation").on(table.interpretation),
+//   ],
+// );
 
+/* DUPLICATE - immunizations table moved to ehr domain */
 // Immunizations
-export const immunizations = pgTable(
-  "immunizations",
-  {
-    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-    companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
-    patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
-    practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
-    
+// export const immunizations = pgTable(
+//   "immunizations",
+//   {
+//     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//     companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+//     patientId: varchar("patient_id").references(() => users.id, { onDelete: 'cascade' }),
+//     practitionerId: varchar("practitioner_id").references(() => users.id, { onDelete: 'set null' }),
+//
     // Vaccine details
-    vaccineName: varchar("vaccine_name", { length: 255 }).notNull(),
-    vaccineType: varchar("vaccine_type", { length: 100 }).notNull(),
-    manufacturer: varchar("manufacturer", { length: 255 }),
-    lotNumber: varchar("lot_number", { length: 100 }),
-    
+//     vaccineName: varchar("vaccine_name", { length: 255 }).notNull(),
+//     vaccineType: varchar("vaccine_type", { length: 100 }).notNull(),
+//     manufacturer: varchar("manufacturer", { length: 255 }),
+//     lotNumber: varchar("lot_number", { length: 100 }),
+//
     // Administration details
-    administrationDate: timestamp("administration_date", { withTimezone: true }).notNull(),
-    dose: varchar("dose", { length: 100 }),
-    route: varchar("route", { length: 50 }),
-    site: varchar("site", { length: 50 }), // Injection site
-    
+//     administrationDate: timestamp("administration_date", { withTimezone: true }).notNull(),
+//     dose: varchar("dose", { length: 100 }),
+//     route: varchar("route", { length: 50 }),
+//     site: varchar("site", { length: 50 }), // Injection site
+//
     // Status and dates
-    status: immunizationStatusEnum("status").notNull().default("administered"),
-    nextDueDate: timestamp("next_due_date", { withTimezone: true }),
-    
+//     status: immunizationStatusEnum("status").notNull().default("administered"),
+//     nextDueDate: timestamp("next_due_date", { withTimezone: true }),
+//
     // Clinical information
-    indications: text("indications"),
-    adverseEvents: text("adverse_events"),
-    notes: text("notes"),
-    
+//     indications: text("indications"),
+//     adverseEvents: text("adverse_events"),
+//     notes: text("notes"),
+//
     // Metadata
-    administeredBy: varchar("administered_by").references(() => users.id),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-    
+//     administeredBy: varchar("administered_by").references(() => users.id),
+//     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+//     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+//
     // External identifiers
-    cvxCode: varchar("cvx_code", { length: 10 }), // CDC Vaccine Code
-  },
-  (table) => [
-    index("idx_immunizations_company").on(table.companyId),
-    index("idx_immunizations_patient").on(table.patientId),
-    index("idx_immunizations_vaccine").on(table.vaccineName),
-    index("idx_immunizations_date").on(table.administrationDate),
-    index("idx_immunizations_status").on(table.status),
-  ],
-);
+//     cvxCode: varchar("cvx_code", { length: 10 }), // CDC Vaccine Code
+//   },
+//   (table) => [
+//     index("idx_immunizations_company").on(table.companyId),
+//     index("idx_immunizations_patient").on(table.patientId),
+//     index("idx_immunizations_vaccine").on(table.vaccineName),
+//     index("idx_immunizations_date").on(table.administrationDate),
+//     index("idx_immunizations_status").on(table.status),
+//   ],
+// );
 
 /* DUPLICATE - labResults table moved to lab domain */
 // Lab Results
@@ -10190,35 +10195,36 @@ export const immunizations = pgTable(
 //   updatedAt: true
 // });
 
-export const insertMedicationSchema = createInsertSchema(medications).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true
-});
-
-export const insertAllergySchema = createInsertSchema(allergies).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true
-});
-
-export const insertClinicalNoteSchema = createInsertSchema(clinicalNotes).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  signedAt: true
-});
-
-export const insertVitalSignSchema = createInsertSchema(vitalSigns).omit({
-  id: true,
-  createdAt: true
-});
-
-export const insertImmunizationSchema = createInsertSchema(immunizations).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true
-});
+/* DUPLICATE - EHR Zod schemas moved to ehr domain */
+// export const insertMedicationSchema = createInsertSchema(medications).omit({
+//   id: true,
+//   createdAt: true,
+//   updatedAt: true
+// });
+//
+// export const insertAllergySchema = createInsertSchema(allergies).omit({
+//   id: true,
+//   createdAt: true,
+//   updatedAt: true
+// });
+//
+// export const insertClinicalNoteSchema = createInsertSchema(clinicalNotes).omit({
+//   id: true,
+//   createdAt: true,
+//   updatedAt: true,
+//   signedAt: true
+// });
+//
+// export const insertVitalSignSchema = createInsertSchema(vitalSigns).omit({
+//   id: true,
+//   createdAt: true
+// });
+//
+// export const insertImmunizationSchema = createInsertSchema(immunizations).omit({
+//   id: true,
+//   createdAt: true,
+//   updatedAt: true
+// });
 
 // export const insertLabResultSchema = createInsertSchema(labResults).omit({
 //   id: true,
@@ -10227,16 +10233,17 @@ export const insertImmunizationSchema = createInsertSchema(immunizations).omit({
 // });
 
 // TypeScript types
-export type Medication = typeof medications.$inferSelect;
-export type InsertMedication = typeof medications.$inferInsert;
-export type Allergy = typeof allergies.$inferSelect;
-export type InsertAllergy = typeof allergies.$inferInsert;
-export type ClinicalNote = typeof clinicalNotes.$inferSelect;
-export type InsertClinicalNote = typeof clinicalNotes.$inferInsert;
-export type VitalSign = typeof vitalSigns.$inferSelect;
-export type InsertVitalSign = typeof vitalSigns.$inferInsert;
-export type Immunization = typeof immunizations.$inferSelect;
-export type InsertImmunization = typeof immunizations.$inferInsert;
+/* DUPLICATE - EHR TypeScript types moved to ehr domain */
+// export type Medication = typeof medications.$inferSelect;
+// export type InsertMedication = typeof medications.$inferInsert;
+// export type Allergy = typeof allergies.$inferSelect;
+// export type InsertAllergy = typeof allergies.$inferInsert;
+// export type ClinicalNote = typeof clinicalNotes.$inferSelect;
+// export type InsertClinicalNote = typeof clinicalNotes.$inferInsert;
+// export type VitalSign = typeof vitalSigns.$inferSelect;
+// export type InsertVitalSign = typeof vitalSigns.$inferInsert;
+// export type Immunization = typeof immunizations.$inferSelect;
+// export type InsertImmunization = typeof immunizations.$inferInsert;
 // export type LabResult = typeof labResults.$inferSelect;
 // export type InsertLabResult = typeof labResults.$inferInsert;
 // export type LabOrder = typeof labOrders.$inferSelect;

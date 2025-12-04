@@ -65,6 +65,9 @@ export * from './patientportal';
 // Lab Domain - laboratory tests, results, quality control
 export * from './lab';
 
+// EHR Domain - electronic health records, medications, allergies, clinical notes
+export * from './ehr';
+
 // ============================================
 // BACKWARD COMPATIBILITY REMOVED
 // ============================================
