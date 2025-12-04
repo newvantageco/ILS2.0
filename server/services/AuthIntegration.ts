@@ -1,7 +1,7 @@
 /**
  * Auth Integration Adapter
- * 
- * Bridges between existing Replit auth and new unified AuthService
+ *
+ * Bridges between existing local auth and new unified AuthService
  * Enables zero-downtime migration to Cognito/Auth0
  */
 
@@ -132,7 +132,7 @@ export class AuthIntegration {
   }
 
   /**
-   * Authenticate using legacy auth (Replit/existing)
+   * Authenticate using legacy auth (local/existing)
    * This is called by existing passport middleware
    */
   private async authenticateWithLegacy(

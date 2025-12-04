@@ -173,8 +173,8 @@ export default function EmailLoginPage() {
             <div className="flex gap-2 text-sm text-muted-foreground">
               <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-medium text-foreground mb-1">Alternative login options:</p>
-                <p>You can also sign in using Replit authentication from the home page.</p>
+                <p className="font-medium text-foreground mb-1">Need help?</p>
+                <p>Contact your administrator if you're having trouble signing in.</p>
               </div>
             </div>
           </div>

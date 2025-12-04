@@ -45,7 +45,7 @@ export function setupLocalAuth() {
         }
 
         if (!user.password) {
-          return done(null, false, { message: "This account uses Replit login. Please sign in with Replit." });
+          return done(null, false, { message: "This account requires password setup. Please contact your administrator." });
         }
 
         const isValidPassword = await bcrypt.compare(password, user.password);
@@ -59,7 +59,7 @@ export function setupLocalAuth() {
           return done(null, false, { message: "Account is not active. Please contact support." });
         }
 
-        // Create session user object similar to Replit Auth
+        // Create session user object
         const sessionUser = {
           claims: {
             sub: user.id,
@@ -92,18 +92,18 @@ export async function hashPassword(password: string): Promise<string> {
   return await bcrypt.hash(password, saltRounds);
 }
 
-// Middleware to check if user is authenticated (works with both Replit and local auth)
+// Middleware to check if user is authenticated
 export function isAuthenticatedLocal(req: any, res: any, next: any) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-  
+
   // For local auth users, no token refresh needed
   if (req.user.local) {
     return next();
   }
-  
-  // For Replit auth users, check token expiration
+
+  // For other auth methods, check token expiration
   // (This will be handled by the existing isAuthenticated middleware)
   return next();
 }

@@ -148,7 +148,7 @@ export default function SignupPage() {
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Sign In Required</CardTitle>
-            <CardDescription>Please sign in with Replit to continue</CardDescription>
+            <CardDescription>Please sign in to continue</CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={() => setLocation("/")} className="w-full" data-testid="button-go-home">
