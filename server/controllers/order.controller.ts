@@ -10,10 +10,9 @@ import type { AuthenticatedRequest } from "../middleware/auth";
 import { BaseController, ExtendedAuthenticatedRequest } from "./base.controller";
 import { OrderService } from "../services/order.service";
 import { storage } from "../storage";
-import { 
-  insertOrderSchema, 
+import {
   updateOrderStatusSchema,
-  OrderStatus 
+  OrderStatus
 } from "@shared/schema";
 import { z } from "zod";
 
