@@ -296,6 +296,7 @@ const csrfEnabled = process.env.CSRF_ENABLED !== 'false';
 const csrfExemptPaths = [
   '/api/csrf-token', // CSRF token endpoint must be exempt (it generates the token)
   '/api/admin-init', // Admin initialization endpoint (one-time use)
+  '/api/create-test-ecp', // ECP test account creation (one-time use)
   '/api/auth/jwt/login',
   '/api/auth/login',
   '/api/auth/login-email',
