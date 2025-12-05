@@ -502,6 +502,10 @@ app.get('/api/diagnostic/filesystem', (req: Request, res: Response) => {
     // Register legacy AI routes with deprecation warnings (will be removed in future)
     registerLegacyAIRoutes(app);
 
+    // TEMPORARY: Database migration endpoint (REMOVE after indexes are applied)
+    const dbMigrationRoutes = await import("./routes/db-migration");
+    app.use("/api/db-migration", dbMigrationRoutes.default);
+
     log("✅ Domain routes registered successfully (6,295-line monolith REPLACED!)");
 
     // Create HTTP server (previously done inside registerRoutes)
