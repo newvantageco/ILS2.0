@@ -118,7 +118,7 @@ export default function PlatformAdminPage() {
 
   // Fetch all companies
   const { data: companies, isLoading: loadingCompanies } = useQuery<Company[]>({
-    queryKey: ["/api/platform-admin/companies"],
+    queryKey: ["/api/admin/companies"],
   });
 
   // Reset password mutation
@@ -253,7 +253,7 @@ export default function PlatformAdminPage() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/platform-admin/companies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/companies"] });
       toast({
         title: "Company Created",
         description: "Company has been created successfully without subscription requirements.",
