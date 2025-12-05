@@ -302,6 +302,7 @@ const csrfExemptPaths = [
   '/api/unlock-and-reset-ecp', // Unlock and reset ECP (one-time use)
   '/api/create-fresh-ecp', // Create fresh ECP account
   '/api/delete-test-ecp', // Delete test ECP account
+  '/api/debug-ecp-user', // Debug ECP user (one-time use)
   '/api/auth/jwt/login',
   '/api/auth/login',
   '/api/auth/login-email',
