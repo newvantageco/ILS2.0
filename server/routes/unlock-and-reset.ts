@@ -17,12 +17,10 @@ router.post('/unlock-and-reset-ecp', async (req: Request, res: Response) => {
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Unlock account and reset password
+    // Unlock account and reset password (just reset password, ignore lock fields)
     const result = await pool.query(
       `UPDATE users
        SET password = $1,
-           failed_login_attempts = 0,
-           account_locked_until = NULL,
            updated_at = NOW()
        WHERE email = $2
        RETURNING id, email, role, first_name, last_name`,
