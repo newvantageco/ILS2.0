@@ -493,6 +493,11 @@ app.get('/api/diagnostic/filesystem', (req: Request, res: Response) => {
     app.use('/api', adminInitRouter);
     logger.info({}, '✅ Admin initialization endpoint registered');
 
+    // ECP test account creation endpoint
+    const createTestEcpRouter = (await import('./routes/create-test-ecp-endpoint.js')).default;
+    app.use('/api', createTestEcpRouter);
+    logger.info({}, '✅ ECP test account endpoint registered');
+
     // Routes will be registered, then static files served at the end
     // Don't intercept root route - let it fall through to static file server
 
