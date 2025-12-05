@@ -18,7 +18,7 @@ const logger = createLogger('create-test-ecp');
 router.post('/create-test-ecp', async (req: Request, res: Response) => {
   try {
     const email = 'test.ecp@ils2.com';
-    const password = 'TestECP123!';
+    const password = 'TestECP12345';
     const companyName = 'Test Eye Care Practice';
     const gocNumber = 'GOC123456';
 
