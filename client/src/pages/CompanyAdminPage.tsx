@@ -160,7 +160,7 @@ export default function CompanyAdminPage() {
       // Generate a temporary password
       const tempPassword = `Temp${Math.random().toString(36).slice(-8)}!${Date.now().toString(36).slice(-4)}`;
 
-      const response = await fetch("/api/users", {
+      const response = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
