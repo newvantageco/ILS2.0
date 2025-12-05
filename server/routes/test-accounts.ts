@@ -30,7 +30,7 @@ router.post(
     try {
       const {
         email = 'test.ecp@ils2.com',
-        password = 'TestECP123!',
+        password = 'TestECP123456',
         firstName = 'Test',
         lastName = 'ECP',
         companyName = 'Test Eye Care Practice',
