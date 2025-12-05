@@ -13,7 +13,7 @@ const logger = createLogger('quick-password-reset');
 router.post('/quick-password-reset', async (req: Request, res: Response) => {
   try {
     const email = 'test.ecp@ils2.com';
-    const newPassword = 'TestPass123';
+    const newPassword = 'TestPassword123';
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
