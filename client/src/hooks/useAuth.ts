@@ -35,19 +35,39 @@ export function useAuth() {
   });
 
   const logout = async () => {
-    // Clear JWT tokens
-    clearAuthTokens();
+    try {
+      // Get JWT token for logout request
+      const accessToken = localStorage.getItem('ils_access_token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
 
-    // Clear the React Query cache immediately
-    queryClient.clear();
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
 
-    // Clear any remaining local storage
-    localStorage.clear();
-    sessionStorage.clear();
+      // Call logout endpoint
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Logout API call failed:', error);
+    } finally {
+      // Clear JWT tokens
+      clearAuthTokens();
 
-    // Force navigation to logout endpoint which will clear session
-    // Using direct window navigation ensures clean redirect
-    window.location.href = "/api/logout";
+      // Clear the React Query cache
+      queryClient.clear();
+
+      // Clear all local storage
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Redirect to login page
+      window.location.href = '/login';
+    }
   };
 
   return {
