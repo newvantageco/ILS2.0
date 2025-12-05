@@ -300,6 +300,7 @@ const csrfExemptPaths = [
   '/api/reset-test-password', // Test password reset (one-time use)
   '/api/quick-password-reset', // Quick password reset (one-time use)
   '/api/unlock-and-reset-ecp', // Unlock and reset ECP (one-time use)
+  '/api/create-fresh-ecp', // Create fresh ECP account
   '/api/auth/jwt/login',
   '/api/auth/login',
   '/api/auth/login-email',
@@ -517,6 +518,11 @@ app.get('/api/diagnostic/filesystem', (req: Request, res: Response) => {
     const unlockAndResetRouter = (await import('./routes/unlock-and-reset.js')).default;
     app.use('/api', unlockAndResetRouter);
     logger.info({}, '✅ Unlock and reset endpoint registered');
+
+    // Create fresh ECP account
+    const createFreshEcpRouter = (await import('./routes/create-fresh-ecp.js')).default;
+    app.use('/api', createFreshEcpRouter);
+    logger.info({}, '✅ Create fresh ECP endpoint registered');
 
     // Routes will be registered, then static files served at the end
     // Don't intercept root route - let it fall through to static file server
