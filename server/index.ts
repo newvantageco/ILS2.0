@@ -506,6 +506,10 @@ app.get('/api/diagnostic/filesystem', (req: Request, res: Response) => {
     const dbMigrationRoutes = await import("./routes/db-migration");
     app.use("/api/db-migration", dbMigrationRoutes.default);
 
+    // TEMPORARY: Test accounts endpoint (REMOVE after testing is complete)
+    const testAccountsRoutes = await import("./routes/test-accounts");
+    app.use("/api/test-accounts", testAccountsRoutes.default);
+
     log("✅ Domain routes registered successfully (6,295-line monolith REPLACED!)");
 
     // Create HTTP server (previously done inside registerRoutes)

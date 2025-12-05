@@ -323,6 +323,48 @@ export default function PlatformAdminPage() {
     },
   });
 
+  // Create test ECP account mutation
+  const createTestECPMutation = useMutation({
+    mutationFn: async () => {
+      const accessToken = localStorage.getItem('ils_access_token');
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch("/api/test-accounts/create-ecp", {
+        method: "POST",
+        headers,
+        credentials: "include",
+        body: JSON.stringify({}),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create test ECP");
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Test ECP Created",
+        description: `Email: ${data.credentials.email} | Password: ${data.credentials.password}`,
+        duration: 10000,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to Create Test ECP",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredUsers = users?.filter((user) => {
     const query = searchQuery.toLowerCase();
     return (
@@ -522,6 +564,32 @@ export default function PlatformAdminPage() {
                 <p className="text-xs text-muted-foreground">
                   This will create 20+ database indexes for better performance.
                   Safe to run multiple times (will skip existing indexes).
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Test Accounts - TEMPORARY */}
+            <Card className="hover:shadow-lg transition-shadow border-blue-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  Test Accounts
+                </CardTitle>
+                <CardDescription>Create test accounts for testing</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button
+                  onClick={() => createTestECPMutation.mutate()}
+                  disabled={createTestECPMutation.isPending}
+                  className="w-full justify-start"
+                  variant="outline"
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  {createTestECPMutation.isPending ? "Creating..." : "Create Test ECP Account"}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Creates a test ECP account with default credentials.
+                  Check the toast notification for login details.
                 </p>
               </CardContent>
             </Card>
