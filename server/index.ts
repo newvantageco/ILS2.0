@@ -319,7 +319,7 @@ const csrfExemptPaths = [
   '/api/webhooks', // Webhooks have their own signature verification
   '/api/company-admin', // JWT-authenticated routes don't need CSRF protection
   '/api/test-accounts', // JWT-authenticated test account routes
-]; // Updated: Logout endpoint fix deployed
+]; // Updated: Test account management endpoints added 2025-12-05
 
 if (csrfEnabled) {
   app.use((req: Request, res: Response, next: NextFunction) => {
