@@ -173,7 +173,12 @@ router.post('/', requireCompanyOrPlatformAdmin, async (req, res) => {
       firstName: z.string().min(1),
       lastName: z.string().min(1),
       role: z.string(),
-      companyId: z.string().optional()
+      companyId: z.string().optional(),
+      // ECP-specific fields
+      gocNumber: z.string().optional(),
+      gocRegistrationType: z.string().optional(),
+      professionalQualifications: z.string().optional(),
+      contactPhone: z.string().optional(),
     });
 
     const validation = schema.safeParse(req.body);
@@ -184,7 +189,18 @@ router.post('/', requireCompanyOrPlatformAdmin, async (req, res) => {
       });
     }
 
-    const { email, password, firstName, lastName, role, companyId } = validation.data;
+    const {
+      email,
+      password,
+      firstName,
+      lastName,
+      role,
+      companyId,
+      gocNumber,
+      gocRegistrationType,
+      professionalQualifications,
+      contactPhone,
+    } = validation.data;
 
     // Check if user can create this role
     const allowedRoles = getAllowedRolesForCreation(userRole);
@@ -227,21 +243,36 @@ router.post('/', requireCompanyOrPlatformAdmin, async (req, res) => {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
+    // Build user values object
+    const userValues: any = {
+      id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      firstName,
+      lastName,
+      role: role as any,
+      companyId: targetCompanyId,
+      subscriptionPlan: 'full', // Default for company users
+      isActive: true,
+      isVerified: true, // Auto-verify for admin-created users
+    };
+
+    // Add ECP-specific fields if provided
+    if (gocNumber) userValues.gocNumber = gocNumber;
+    if (gocRegistrationType) userValues.gocRegistrationType = gocRegistrationType;
+    if (professionalQualifications) userValues.professionalQualifications = professionalQualifications;
+    if (contactPhone) userValues.contactPhone = contactPhone;
+
+    // For ECP role, set additional defaults
+    if (role === 'ecp') {
+      userValues.canPrescribe = true;
+      userValues.canDispense = true;
+    }
+
     // Create user
     const [newUser] = await db
       .insert(users)
-      .values({
-        id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        email: email.toLowerCase(),
-        password: hashedPassword,
-        firstName,
-        lastName,
-        role: role as any,
-        companyId: targetCompanyId,
-        subscriptionPlan: 'full', // Default for company users
-        isActive: true,
-        isVerified: true // Auto-verify for admin-created users
-      })
+      .values(userValues)
       .returning();
 
     // If creating a company_admin, add both company_admin and ecp roles for role switching

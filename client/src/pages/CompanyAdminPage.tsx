@@ -248,12 +248,31 @@ export default function CompanyAdminPage() {
       ? roleMapping[newUserForm.enhancedRole] || newUserForm.enhancedRole
       : newUserForm.role;
 
-    addUserMutation.mutate({
+    // Build user data object
+    const userData: any = {
       firstName: newUserForm.firstName,
       lastName: newUserForm.lastName,
       email: newUserForm.email,
       role: backendRole,
-    });
+    };
+
+    // Add ECP-specific fields if creating an ECP
+    if (backendRole === "ecp") {
+      if (newUserForm.gocNumber) {
+        userData.gocNumber = newUserForm.gocNumber;
+      }
+      if (newUserForm.gocRegistrationType) {
+        userData.gocRegistrationType = newUserForm.gocRegistrationType;
+      }
+      if (newUserForm.professionalQualifications) {
+        userData.professionalQualifications = newUserForm.professionalQualifications;
+      }
+      if (newUserForm.contactPhone) {
+        userData.contactPhone = newUserForm.contactPhone;
+      }
+    }
+
+    addUserMutation.mutate(userData);
   };
 
   return (
