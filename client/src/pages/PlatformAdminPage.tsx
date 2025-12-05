@@ -58,6 +58,7 @@ import {
   ClipboardList,
   TrendingUp,
   Plus,
+  Database,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "wouter";
@@ -282,6 +283,46 @@ export default function PlatformAdminPage() {
     },
   });
 
+  // Database migration mutation
+  const applyMigrationMutation = useMutation({
+    mutationFn: async () => {
+      const accessToken = localStorage.getItem('ils_access_token');
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch("/api/db-migration/apply-indexes", {
+        method: "POST",
+        headers,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to apply migration");
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Migration Successful",
+        description: `${data.results.created} indexes created, ${data.results.skipped} skipped. Total indexes: ${data.totalIndexes}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Migration Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredUsers = users?.filter((user) => {
     const query = searchQuery.toLowerCase();
     return (
@@ -456,6 +497,32 @@ export default function PlatformAdminPage() {
                     Feature Flags
                   </Button>
                 </Link>
+              </CardContent>
+            </Card>
+
+            {/* Database Management - TEMPORARY */}
+            <Card className="hover:shadow-lg transition-shadow border-orange-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="h-5 w-5 text-orange-600" />
+                  Database Migration
+                </CardTitle>
+                <CardDescription>Apply critical database indexes (one-time)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button
+                  onClick={() => applyMigrationMutation.mutate()}
+                  disabled={applyMigrationMutation.isPending}
+                  className="w-full justify-start"
+                  variant="outline"
+                >
+                  <Database className="h-4 w-4 mr-2" />
+                  {applyMigrationMutation.isPending ? "Applying..." : "Apply Index Migration"}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  This will create 20+ database indexes for better performance.
+                  Safe to run multiple times (will skip existing indexes).
+                </p>
               </CardContent>
             </Card>
 
