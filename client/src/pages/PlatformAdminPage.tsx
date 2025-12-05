@@ -119,6 +119,7 @@ export default function PlatformAdminPage() {
   // Fetch all companies
   const { data: companies, isLoading: loadingCompanies } = useQuery<Company[]>({
     queryKey: ["/api/admin/companies"],
+    select: (data: any) => data.companies || data, // Extract companies array from response
   });
 
   // Reset password mutation
