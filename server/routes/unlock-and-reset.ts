@@ -17,13 +17,16 @@ router.post('/unlock-and-reset-ecp', async (req: Request, res: Response) => {
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Unlock account and reset password (just reset password, ignore lock fields)
+    // Unlock account and reset password with full user activation
     const result = await pool.query(
       `UPDATE users
        SET password = $1,
+           is_active = true,
+           is_verified = true,
+           account_status = 'active',
            updated_at = NOW()
        WHERE email = $2
-       RETURNING id, email, role, first_name, last_name`,
+       RETURNING id, email, role, first_name, last_name, company_id`,
       [hashedPassword, email]
     );
 
@@ -36,11 +39,21 @@ router.post('/unlock-and-reset-ecp', async (req: Request, res: Response) => {
 
     const user = result.rows[0];
 
-    logger.info({ email }, 'Account unlocked and password reset');
+    // Also fix company settings if user has a company
+    let companyFixed = false;
+    if (user.company_id) {
+      await pool.query(
+        'UPDATE companies SET ai_enabled = $1, is_subscription_exempt = $2, subscription_plan = $3, status = $4 WHERE id = $5',
+        [true, true, 'full', 'active', user.company_id]
+      );
+      companyFixed = true;
+    }
+
+    logger.info({ email, companyFixed }, 'Account unlocked and password reset');
 
     return res.json({
       success: true,
-      message: 'ECP Account Unlocked and Password Reset',
+      message: 'ECP Account Unlocked and Password Reset' + (companyFixed ? ' (company also fixed)' : ''),
       credentials: {
         email: user.email,
         password: newPassword,

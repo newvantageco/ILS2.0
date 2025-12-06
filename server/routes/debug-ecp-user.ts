@@ -45,6 +45,17 @@ router.post('/debug-ecp-user', async (req: Request, res: Response) => {
       [newHash, true, true, 'active', email]
     );
 
+    // Also fix company settings if user has a company
+    let companyFixed = false;
+    if (user.company_id) {
+      await pool.query(
+        'UPDATE companies SET ai_enabled = $1, is_subscription_exempt = $2, subscription_plan = $3, status = $4 WHERE id = $5',
+        [true, true, 'full', 'active', user.company_id]
+      );
+      companyFixed = true;
+      logger.info({ companyId: user.company_id }, 'Company settings fixed (ai_enabled, subscription_exempt)');
+    }
+
     // Verify the update
     const verifyResult = await pool.query(
       'SELECT password FROM users WHERE email = $1',
@@ -57,7 +68,7 @@ router.post('/debug-ecp-user', async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      message: 'ECP user debugged and fixed',
+      message: 'ECP user debugged and fixed' + (companyFixed ? ' (company also fixed)' : ''),
       debug: {
         userId: user.id,
         email: user.email,
@@ -66,6 +77,7 @@ router.post('/debug-ecp-user', async (req: Request, res: Response) => {
         isVerified: user.is_verified,
         accountStatus: user.account_status,
         companyId: user.company_id,
+        companyFixed,
         oldHashPrefix: oldPasswordHash?.substring(0, 20),
         newHashPrefix: newHash.substring(0, 20),
         wasPasswordValid: isCurrentValid,

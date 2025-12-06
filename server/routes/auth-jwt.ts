@@ -15,6 +15,7 @@ import { jwtService } from '../services/JWTService.js';
 import { authenticateJWT, type AuthenticatedRequest } from '../middleware/auth-jwt.js';
 import { pool } from '../db.js';
 import { createLogger } from '../utils/logger.js';
+import { storage } from '../storage.js';
 
 const router = Router();
 const logger = createLogger('auth-jwt');
@@ -378,20 +379,8 @@ router.post('/logout', authenticateJWT, async (req: Request, res: Response) => {
         jwtService.revokeToken(refreshToken);
       }
 
-      // Log logout event with revocation info
-      await storage.createAuditLog({
-        userId: user.id,
-        companyId: user.company_id,
-        eventType: 'logout',
-        eventCategory: 'authentication',
-        description: 'User logged out - tokens revoked',
-        metadata: {
-          email: user.email,
-          tokenRevoked: true,
-          refreshTokenRevoked: !!refreshToken
-        }
-      });
-
+      // Log logout event
+      // TODO: Implement audit log using raw SQL when audit_logs table is available
       logger.info(`Logout + tokens revoked: ${user.email}`);
     }
 
@@ -509,6 +498,16 @@ router.get('/me', authenticateJWT, async (req: Request, res: Response) => {
  */
 function getUserPermissions(role: string): string[] {
   const rolePermissions: Record<string, string[]> = {
+    'platform_admin': [
+      'admin.all',
+      'company.all',
+      'user.all',
+      'data.all',
+      'settings.all',
+      'reports.all',
+      'ai.all',
+      'subscription.exempt'
+    ],
     'super_admin': [
       'admin.all',
       'company.all',
@@ -518,6 +517,18 @@ function getUserPermissions(role: string): string[] {
       'reports.all',
       'ai.all'
     ],
+    'company_admin': [
+      'company.manage',
+      'user.manage',
+      'data.all',
+      'settings.manage',
+      'reports.all',
+      'ai.use',
+      'orders.all',
+      'patients.all',
+      'inventory.all',
+      'prescriptions.all'
+    ],
     'admin': [
       'company.manage',
       'user.manage',
@@ -525,6 +536,31 @@ function getUserPermissions(role: string): string[] {
       'settings.manage',
       'reports.all',
       'ai.use'
+    ],
+    'ecp': [
+      'data.view',
+      'data.create',
+      'data.update',
+      'reports.view',
+      'ai.use',
+      'orders.view',
+      'orders.create',
+      'patients.view',
+      'patients.create',
+      'patients.update',
+      'prescriptions.view',
+      'prescriptions.create',
+      'examinations.view',
+      'examinations.create'
+    ],
+    'lab_tech': [
+      'data.view',
+      'data.update',
+      'reports.view',
+      'orders.view',
+      'orders.update',
+      'inventory.view',
+      'inventory.update'
     ],
     'manager': [
       'user.view',
@@ -702,20 +738,7 @@ router.post('/setup-password', async (req: Request, res: Response) => {
       accountStatus: 'active'
     });
 
-    // Create audit log
-    await storage.createAuditLog({
-      userId: user.id,
-      companyId: user.company_id,
-      eventType: 'password_setup',
-      eventCategory: 'authentication',
-      description: 'User completed initial password setup',
-      metadata: {
-        email: user.email,
-        ipAddress: req.ip,
-        userAgent: req.headers['user-agent']
-      }
-    });
-
+    // TODO: Implement audit log using raw SQL when audit_logs table is available
     logger.info(`Password setup completed for: ${user.email}`);
 
     res.json({

@@ -22,27 +22,36 @@ router.post('/create-fresh-ecp', async (req: Request, res: Response) => {
     const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
 
     if (existingUser.rows.length > 0) {
-      // Update existing
+      // Update existing user
       const hashedPassword = await bcrypt.hash(password, 10);
       await pool.query(
-        'UPDATE users SET password = $1, updated_at = NOW() WHERE email = $2',
-        [hashedPassword, email]
+        'UPDATE users SET password = $1, is_active = $2, is_verified = $3, account_status = $4, updated_at = NOW() WHERE email = $5',
+        [hashedPassword, true, true, 'active', email]
       );
+
+      // Also fix company settings
+      const userResult = await pool.query('SELECT company_id FROM users WHERE email = $1', [email]);
+      if (userResult.rows.length > 0 && userResult.rows[0].company_id) {
+        await pool.query(
+          'UPDATE companies SET ai_enabled = $1, is_subscription_exempt = $2, subscription_plan = $3, status = $4 WHERE id = $5',
+          [true, true, 'full', 'active', userResult.rows[0].company_id]
+        );
+      }
 
       logger.info({ email }, 'Password updated for existing ECP');
       return res.json({
         success: true,
-        message: 'ECP password updated',
+        message: 'ECP password updated and company configured',
         credentials: { email, password, loginUrl: 'https://ils.newvantageco.com/login' }
       });
     }
 
-    // Create company
+    // Create company with ai_enabled and subscription exemption
     const companyId = crypto.randomUUID();
     await pool.query(
-      `INSERT INTO companies (id, name, type, status, email, subscription_plan, is_subscription_exempt, goc_number, has_ecp_access, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())`,
-      [companyId, companyName, 'ecp', 'active', email, 'free_ecp', true, gocNumber, true]
+      `INSERT INTO companies (id, name, type, status, email, subscription_plan, is_subscription_exempt, goc_number, has_ecp_access, ai_enabled, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
+      [companyId, companyName, 'ecp', 'active', email, 'full', true, gocNumber, true, true]
     );
 
     // Create user
