@@ -12,19 +12,159 @@
 
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import authJWTRoutes from '../../auth-jwt';
 import twoFactorRoutes from '../../twoFactor';
 import verificationRoutes from '../../verification';
 import { registerGoogleAuthRoutes } from '../../google-auth';
 import { authenticateJWT, type AuthenticatedRequest } from '../../../middleware/auth-jwt';
 import { storage } from '../../../storage';
+import { pool } from '../../../db';
+import { jwtService } from '../../../services/JWTService';
 import { createLogger } from '../../../utils/logger';
 import { createAuditLog } from '../../../middleware/audit';
 
 const router = Router();
 const logger = createLogger('auth-domain');
 
-// JWT-based authentication
+// ============================================
+// LOGIN-EMAIL ROUTE (Legacy compatibility)
+// ============================================
+// This provides backward compatibility for frontend calling /api/auth/login-email
+
+const loginSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(1, 'Password is required')
+});
+
+/**
+ * Helper function to get user permissions based on role
+ */
+function getUserPermissions(role: string): string[] {
+  const rolePermissions: Record<string, string[]> = {
+    'platform_admin': ['admin.all', 'company.all', 'user.all', 'data.all', 'settings.all', 'reports.all', 'ai.all', 'subscription.exempt'],
+    'super_admin': ['admin.all', 'company.all', 'user.all', 'data.all', 'settings.all', 'reports.all', 'ai.all'],
+    'company_admin': ['company.manage', 'user.manage', 'data.all', 'settings.manage', 'reports.all', 'ai.use', 'orders.all', 'patients.all', 'inventory.all', 'prescriptions.all'],
+    'admin': ['company.manage', 'user.manage', 'data.all', 'settings.manage', 'reports.all', 'ai.use'],
+    'ecp': ['data.view', 'data.create', 'data.update', 'reports.view', 'ai.use', 'orders.view', 'orders.create', 'patients.view', 'patients.create', 'patients.update', 'prescriptions.view', 'prescriptions.create', 'examinations.view', 'examinations.create'],
+    'lab_tech': ['data.view', 'data.update', 'reports.view', 'orders.view', 'orders.update', 'inventory.view', 'inventory.update'],
+    'manager': ['user.view', 'data.manage', 'reports.view', 'ai.use'],
+    'staff': ['data.view', 'data.create', 'data.update', 'reports.view', 'ai.use'],
+    'user': ['data.view', 'reports.view']
+  };
+  return rolePermissions[role] || rolePermissions['user'];
+}
+
+/**
+ * POST /api/auth/login-email
+ * POST /api/auth/login
+ *
+ * Login with email and password - returns JWT tokens
+ * This is a convenience route that mirrors /api/auth/jwt/login
+ */
+const loginHandler = async (req: Request, res: Response) => {
+  try {
+    const validationResult = loginSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: validationResult.error.errors
+      });
+    }
+
+    const { email, password } = validationResult.data;
+    logger.info(`Login attempt for: ${email}`);
+
+    // Get user from database
+    const userResult = await pool.query(
+      'SELECT id, email, password, first_name, last_name, role, company_id, is_active, is_verified, account_status FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+    const user = userResult.rows[0];
+
+    if (!user) {
+      logger.warn(`Login failed: User not found - ${email}`);
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid email or password'
+      });
+    }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      logger.warn(`Login failed: Invalid password - ${email}`);
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid email or password'
+      });
+    }
+
+    // Check if user is active
+    if (!user.is_active) {
+      logger.warn(`Login failed: User inactive - ${email}`);
+      return res.status(401).json({
+        success: false,
+        error: 'Account is inactive. Please contact support.'
+      });
+    }
+
+    // Check email verification (skip for platform admins)
+    if (!user.is_verified && user.role !== 'platform_admin') {
+      logger.warn(`Login failed: Email not verified - ${email}`);
+      return res.status(403).json({
+        success: false,
+        error: 'Please verify your email address before logging in.',
+        code: 'EMAIL_NOT_VERIFIED'
+      });
+    }
+
+    // Get permissions and generate tokens
+    const permissions = getUserPermissions(user.role);
+    const tokens = jwtService.generateTokenPair({
+      userId: user.id,
+      companyId: user.company_id,
+      email: user.email,
+      role: user.role,
+      permissions
+    });
+
+    // Update last login
+    await pool.query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [user.id]);
+
+    logger.info(`Login successful: ${email}`);
+
+    res.json({
+      success: true,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresIn: tokens.expiresIn,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        role: user.role,
+        companyId: user.company_id,
+        permissions
+      }
+    });
+
+  } catch (error) {
+    logger.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Login failed. Please try again.'
+    });
+  }
+};
+
+// Register both /login and /login-email for compatibility
+router.post('/login', loginHandler);
+router.post('/login-email', loginHandler);
+
+// JWT-based authentication (full routes including refresh, logout, etc.)
 router.use('/jwt', authJWTRoutes);
 
 // Two-factor authentication
